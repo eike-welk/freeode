@@ -1,0 +1,7 @@
+A language and a compiler for simulation of continuous systems. This means integration of differential equations (ODE). Both lumped and distributed variables (PDE) are possible. The ability to solve DAEs is a long term goal.
+
+Further goals are:
+-Graphical tools.
+-Unstructured grids and arbitrarily shaped regions for PDEs.
+-A companion language for data acquisition and control where simulation objects could be embedded.
+-Integration of more problem specific languages e.g.: chemical reaction dynamics.

@@ -1,0 +1,25 @@
+MODEL mo1
+
+PARAMETER
+mu_max DEFAULT 0.32;
+Ks     DEFAULT 0.1;
+Yxs    DEFAULT 0.5;
+Ko     DEFAULT 1e-3;
+Yxo    DEFAULT 0.028;
+
+kla    DEFAULT 360.0;
+O_star DEFAULT 0.21;
+
+VARIABLE
+mu;
+X INITIAL 0.2; # Biomass
+S INITIAL 25;  # Sugar
+O INITIAL 0.21;# Oxygen
+
+EQUATION
+mu := mu_max * S/(S+Ks) * O/(O+Ko) ;
+$X := mu*X;
+$S := -1/Yxs*mu*X;
+$O := -1/Yxo*mu*X + kla*(O_star - O);
+
+END

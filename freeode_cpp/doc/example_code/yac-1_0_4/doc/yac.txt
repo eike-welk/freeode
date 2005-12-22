@@ -1,0 +1,1496 @@
+[/ 
+
+Copyright (c) 2004 Angus Leeming
+
+Distributed under the Boost Software License, Version 1.0. 
+(See accompanying file LICENSE_1_0.txt or copy at 
+http://www.boost.org/LICENSE_1_0.txt )
+
+]
+
+[doc YAC v1.0.4]
+
+[copyright
+  Copyright &copy; 2004 Angus Leeming<br/><br/>
+  Distributed under the Boost Software License,
+  Version 1.0. (See accompanying file
+  <a href="__TOP_LEVEL_DIR__/LICENSE_1_0.txt">LICENSE_1_0.txt</a> or copy at
+  <a href="http://www.boost.org/LICENSE_1_0.txt">
+     http://www.boost.org/LICENSE_1_0.txt
+  </a>)
+]
+
+[/ 17th March, 2004 ]
+
+[def :-)            [$theme/smiley.gif :-)]]
+[def Spirit         [@http://spirit.sourceforge.net Spirit]]
+[def YAC            [*YAC]]
+[def Gnuplot        [@http://www.gnuplot.info Gnuplot]]
+[def Boost          [@http://www.boost.org Boost]]
+
+[page Introduction]
+
+[table Usage summary
+   [yac '''[Input mode]''']
+   [[*Input mode]]
+   [-i, --interactive][Data input interactively]
+   [-f, --file FILE]  [Data input from FILE]
+   [-p, --piped]      [Data piped through stdin]
+]
+
+YAC is Yet Another Calculator. It is a command line tool that can
+accept data from a file, piped through stdin or input interactively
+from the command line. New variables and functions can be defined
+using a syntax similar to that of Gnuplot.
+
+[pre
+    print 2+3*sin(sqrt(2)/2)    # outputs 3.94891
+    pi_4 = 3.1415926536 / 4
+    print cos(pi_4)             # outputs 0.707107
+    foo(a,b) = a+b
+    print foo(1,2)              # outputs 3 ]
+
+It supplies only two pre-defined variables, [^pi] and [^e], but has a
+comprehensive set of built-in functions: [^abs], [^acos],
+[^acosh], [^asin], [^asinh], [^atan], [^atan2], [^atanh], [^besj0],
+[^besj1], [^besy0], [^besy1], [^ceil], [^cos], [^cosh], [^exp], [^floor],
+[^log], [^log10], [^sgn], [^sin], [^sinh], [^sqrt], [^tan], [^tanh] and, if
+present in your system C library, [^erf] and [^erfc]. These functions are the
+same as the corresponding functions in the Unix math library except that all
+functions take double arguments. Radians are used by those functions
+that accept or return angles.
+
+[h1 Compilation]
+
+The YAC source code requires that either the Boost 1.31.0 (or later)
+or the Spirit 1.8.0 (or later) distributions be present in the compile
+path. Here, compiling with [@http://gcc.gnu.org g++] under Linux:
+
+[pre
+    g++ -I$HOME/boost/cvs -o yac yac.cpp ]
+
+Lucio Flores has kindly contributed solution and project files for MS VC++.
+
+[h1 Documentation overview]
+
+YAC's parser has been written using the Spirit parser framework. Spirit
+enables a parser to be written with a syntax that is a recognizable
+approximation to Extended Backus Normal Form (EBNF). It is a joy to
+use, not least because the user documentation is truly excellent.
+However, some of Spirit's most powerful facilities are quite difficult
+to get to grips with. YAC was written to investigate these
+facilities more thoroughly. This documentation should be of interest to
+those thinking of using ['closures], ['lambda functions], ['lazy
+functions] and the ['functor parser] in their own code.
+
+The documentation that follows is organized into three sections. The
+[@grammar_overview.html Grammar overview] provides a formal definition
+of the grammar understood by YAC. The [@virtual_machine.html Virtual
+machine] describes just how YAC evaluates the parsed data. The
+[@parser.html Parser] provides the missing link, describing in some
+detail just how the input data is used to generate the computational
+tree. This last section is by far the largest of the three.
+
+[page Grammar overview]
+
+The Gnuplot-style syntax is defined by [^statement_list] in the
+grammar below. Omitted from this listing is the specification of [^expression],
+ in order to make clear the overall structure of the language. The grammar
+ defining [^expression], (to be found [@#expression here]) provides the rules
+ by which expressions such as  [^2+3*sin(sqrt(x)/y(x))] are parsed (where [^x]
+ and [^y] are a previously declared variable and function, respectively).
+
+[pre
+    statement_list      ::= (statement ('\n' | ';')+)*
+    statement           ::= var_assignment
+                          | function_definition
+                          | "print " expression_list
+    expression_list     ::= expression (',' expression)*
+    var_assignment      ::= name '=' expression
+    function_definition ::= name '(' name_list? ')' '=' expression
+    name_list           ::= name (',' name)*
+    name                ::= (alpha_p | '_') (alnum_p | '_')* ]
+
+Here, [^alpha_p] and [^alnum_p] are Spirit primitives meaning any alphabetic
+character '''[A-Za-z]''' and any character '''[A-Za-z0-9]''',
+respectively. Some points to note about this grammar:
+
+* Individual statements are terminated either by a new line or by a [^;] character. Multiple new lines or [^;] characters are allowed together, as in C.
+* variable declarations are implicit. The variable [^x] is placed in the table of known variables immediately after the entire [^statement], e.g. [^x=sin(2*pi*t/T)], is parsed. All variables are of type double.
+* function definitions are very simple, consisting of a single [^expression] only. Arguments are passed by value. It is implicitly understood that the result of this expression is the value returned by the function. A typical example might be [^axpy(a,b,c)=a*b+c].
+* functions with the same name but different argument lists can be overloaded. (YAC differs in this regard from Gnuplot.) The statement list below will be handled correctly by YAC, but will fail in Gnuplot at line 2. Interestingly, Gnuplot (and YAC) will both allow variables and functions with the same name to co-exist.
+
+[pre
+    0    foo(a)=2+a
+    1    foo(a,b)=a*b
+    2    print foo(3)    # outputs 5
+    3    print foo(3,4)  # outputs 12 ]
+
+[h1 Skip grammar]
+
+The grammar definition above provides only part of the story. The rest
+comes from the definition of what to ignore. The Gnuplot-style syntax
+dictates that the skip grammar is defined as:
+
+[pre
+    skip       ::= whitespace
+                 | '\\' whitespace* '\n'
+                 | '#' (anychar_p - '\n')*
+    whitespace ::= space_p - '\n' ]
+
+[^space_p] and [^anychar_p] are Spirit primitives matching any
+character that matches the C standard library routine [^isspace] and
+any character at all, respectively.
+
+Note that [^\n] is used by the main grammar to signify the end of a
+statement. This grammar will ignore whitespace other than [^\n] and will treat
+anything following a [^'#'] as a comment.
+
+The [^"\\\n"] grouping is used to continue a single statement over more than one
+line. This continuation behaviour is less sophisticated than that found in a
+Unix shell but is identical to that of Gnuplot. An expression such as:
+
+[pre
+    foo(a,b) = \ # Function declaration
+        a + b    # Function definition ]
+
+is illegal. This is a legal use of [^\]:
+
+[pre
+    foo(a,b) =   # Function declaration \
+        a + b    # Function definition ]
+
+but it does no more than continue the comment. (Parsing will fail
+thereafter because the function has no definition.)
+
+[h1 expression]
+
+The expression grammar is essentially similar to that of C and is defined
+formally by [^expr] below:
+
+[pre
+    expr          ::= logical_expr conditional_expr_helper?
+    conditional_expr_helper ::= '?' expr ':' expr conditional_expr_helper?
+    logical_expr  ::= bitwise_expr  (("&&" | "||") bitwise_expr)*
+    bitwise_expr  ::= equality_expr (('&' | '|' | '^') equality_expr)*
+    equality_expr ::= compare_expr  (("==" | "!=") compare_expr)*
+    compare_expr  ::= shift_expr    (('<' | '>' | "<=" | ">=") shift_expr)*
+    shift_expr    ::= add_expr      (("<<" | ">>") add_expr)*
+    add_expr      ::= mult_expr     (('+' | '-') mult_expr)*
+    mult_expr     ::= expr_atom     (('*' | '/' | '%') expr_atom)*
+    expr_atom     ::= number
+                    | function
+                    | '(' expr ')'
+                    | ('+' | '-' | '!') expr_atom
+    number        ::= real_p | local_vars | global_vars
+    function      ::= name '(' arg_list? ')'
+    arg_list      ::= expr (',' expr)* ]
+
+[^real_p] is a Spirit primitive that will match any real number. [^local_vars]
+and [^global_vars] are symbol tables of recognized local and global variables
+respectively. Similarly, [^function] must be found in the symbol table of known
+functions for the parser to pass the input as valid.
+
+Some points to note:
+
+* Most operations have left associativity, meaning that an expression like [^a+b+c] is interpreted to mean [^(a+b)+c]. The exception to this is the ternary if-else operator which has middle and right associativity. Middle associativity means that an expression like [^a?b?c:d:e] is allowed and should be interpreted to mean [^a?(b?c:d):e]. Right associativity means that [^a?b:c?d:e] is allowed and should be interpreted to mean [^a?b:(c?d:e)]. The grammar handles all these cases correctly. These associativity rules are identical to those of C.
+
+* The cascading nature of the grammar specification ensures that precedence of the possible operations increases from [^logical_expr] at the top to [^expr_atom] at the bottom. Thus [^a+b*c] is parsed as [^a+(b*c)]. These precedence rules are identical to those of C.
+
+* The arguments to various operations ([^&], [^|], [^^], [^<<], [^>>], [^%]) are cast implicitly to [^int] before invoking the operator, (because the underlying C++ code requires that these operations be performed on [^int]s). The grammar has no notion of type; it just happens, OK!
+
+This completes the formal definition of the grammar. An implementation of this
+grammar using Spirit can be found [@../src/example_parser.cpp here]. It
+conforms to the definition above exactly, save for the limitation that no
+symbol tables are checked when parsing any variables or functions.
+
+The code does nothing more than flag whether the input data conforms to the
+grammar. What it does demonstrate, however, is that writing a parser using Spirit
+is trivially easy once the grammar has been specified formally. The fun and
+games start when we try and attach semantic actions to each parsed snippet.
+
+[page Virtual machine]
+
+The YAC parser will use data conforming to this grammar to construct a
+virtual machine. Execution of this virtual machine leads to all results being
+printed to stdout.
+
+The machine has two, connected data structures:
+
+* symbol tables of variables and of functions.
+* a computational stack of data and operations. This stack will contain, for example, function_nodes that point to the corresponding definition in the function symbol table.
+
+Without going into any detail about these components, here is the
+definition of the [^virtual_machine] used by YAC.
+
+    namespace yac {
+
+    struct virtual_machine {
+        spirit::symbols<double> global_vars;
+        spirit::symbols<boost::shared_ptr<function> > funcs;
+        stack stk;
+    };
+
+    } // namespace yac
+
+One point to note: Spirit's symbols class template is a powerful tool. It is
+used here as a data store, but it is also a fully-fledged parser that can
+be filled at both compile time and during the parsing process. All these
+abilities are put to use by YAC.
+
+The process of generation of these data structures is akin to
+compilation. Execution of the virtual machine can be thought of as "unwinding
+the stack". The input data is parsed in its entirety before any attempt is made
+to evaluate it, meaning that the virtual machine may represent many individual
+commands. This separation, together with the desire to be able to re-define an
+existing function dynamically, means that the calculator ['must] be able to
+support a simple overloading of functions based on the number of
+arguments. Otherwise YAC would be unable to handle a statement list such as:
+
+[pre
+   0    foo(a)=2*a
+   1    print foo(2)    # outputs 4
+   2    foo(a,b)=a*b
+   3    print foo(2,3)  # outputs 6
+   2    foo(a,b)=a+b
+   3    print foo(2,3)  # outputs 5 ]
+
+In fact, both YAC and Gnuplot can handle this example correctly. YAC, because it
+supports function overloading based on function arity. Gnuplot, because
+each command is evaluated immediately after it is parsed. (Gnuplot
+would fail to evaluate the code above if lines 1 and 2 were
+swapped. YAC would have no such problem.)
+
+[h1 How it works]
+
+It is perhaps easiest to explain the operation of the virtual machine
+with the aid of an example. Consider the numeric expression
+[^sin(sqrt(2)/3)]. The parser will generate the following
+computational stack from it:
+
+[pre
+   0    number node     2
+   1    function node   sqrt
+   2    number node     3
+   3    function node   divide
+   4    function node   sin ]
+
+(['How] the parser does this will be explained [@parser.html later].)
+Evaluation of this stack proceeds by iterating through it from
+position 0 to a function node. Here, we reach position 1 containing
+the [^sqrt] function. This function takes a single argument which is
+grabbed from the proceeding position 0. The result of [^sqrt(2)] is
+stored at position 0 and the function node at position 1 is
+removed. The stack becomes:
+
+[pre
+   0    number node     result of sqrt(2)
+   1    number node     3
+   2    function node   divide
+   3    function node   sin ]
+
+We continue iterating through the stack until we reach the function
+node [^divide] at position 2. This function takes two arguments which
+we again grab from the proceeding two positions, 0 and 1. The result
+of [^divide(sqrt(2),3)] is stored in position 0 and the nodes at positions 1, 2
+are removed from the stack:
+
+[pre
+   0    number node     result of divide(sqrt(2),3)
+   1    function node   sin ]
+
+This process is finished when the stack is reduced to a single node:
+
+[pre
+   0    number node     result of sin(divide(sqrt(2),3)) ]
+
+This example illustrates several points:
+
+* No intelligence is required to evaluate the stack. It is simply a mechanical process. All the intelligence, that is the analysis of the input data using the rules of the grammar, is to be found in the parser and the construction of the stack.
+
+* The stack stores an assemblage of [^node]s. Both [^number_node]s and [^function_node]s derive from it. Indeed, this design is extensible to node types such as [^variable_node] and [^assign_node] that implement other functionalities.
+
+* The grammar is modular in nature. Both the grammar defining the evaluation of the numeric expression [^sin(sqrt(2)/3)] and the computational stack that is generated from it can be considered in isolation from the language as a whole or the other types of node that can be inserted in the stack.
+
+[page VM details]
+
+For those who prefer their descriptions to be in the form of source
+code, the compilable example [@../src/example_vm.cpp here] should
+help. It uses exactly the same code as YAC to implement the virtual machine, (
+[@../src/yac_virtual_machine.hpp declaration] and
+[@../src/yac_virtual_machine.cpp definition]), but the symbol tables and
+computational stack are hard-coded rather than generated dynamically by the
+parser.
+
+This example code illustrates how the virtual machine evaluates
+numerical expressions similar to the one described earlier. However, it then
+goes on to show:
+
+* How new variables are added to the symbol table and how the virtual machine then assigns a value to these variables by evaluation of the stack;
+
+* How new functions are added to the symbol table, using a simple name mangling scheme to enable functions with the same name but different arity to be overloaded. The code demonstrates that dynamic redefinition of the function body is handled correctly;
+
+* That recursive user-defined functions are handled correctly.
+
+That is, it trials the entire functionality of the virtual machine. Here, I
+compile it:
+
+[pre
+    g++ -DDEBUG -I$HOME/boost/cvs -o example_vm example_vm.cpp ]
+
+(The [^-DDEBUG] flag causes the machine to generate diagnostic output as the
+stack is evaluated.)
+
+What follows below is a description of some of the requirements that the
+design addresses.
+
+[h1 yac::stack]
+
+The computational stack is nothing more than a collection of polymorphic nodes:
+
+    namespace yac {
+
+    struct node {
+        virtual ~node() {}
+    };
+
+    struct stack {
+        std::list<boost::shared_ptr<node> > data;
+    };
+
+    } // namespace yac
+
+[h2 Iteration]
+
+Whilst it is convenient to use [^shared_ptr] to manage the data
+storage, this is an implementation detail. The user is interested in a
+collection of [^node]s, so all access to the data is controlled by the
+[^begin()] and [^end()] member functions that return
+[^boost::indirect_iterator]s to the data: Such an iterator, when dereferenced,
+returns a reference to a [^node] rather than to a [^shared_ptr<node>].
+
+    class stack {
+        typedef std::list<boost::shared_ptr<node> > container_t;
+        container_t data;
+    public:
+        typedef boost::indirect_iterator<container_t::iterator> iterator;
+
+        iterator begin();
+        iterator end();
+    };
+
+In fact, the class goes on to wrap only those member functions of [^std::list]
+that are actually used.
+
+[h2 Copy semantics]
+
+The copy semantics of
+[^list<shared_ptr<node> >] are completely different to those of the
+hypothetical [^list<node>]. This is unfortunate, because evaluation of
+the virtual machine requires that a copy be made of the stack and that this
+copy be transformed by the unwinding process. Moreover, when user-defined
+functions are used, evaluation requires that the data in the copied stack be
+altered to ensure that it is consistent with the symbol table of local
+variables. (The ability to define recursive functions means that each
+call to evaluate a user-defined function must use its own copy of any local
+variables data.)
+
+In order to provide the required copy semantics, [^yac::stack] defines a copy
+constructor and assignment operator that in turn invoke the helper
+function [^copy]:
+
+    struct node {
+        virtual boost::shared_ptr<node> clone() const = 0;
+    };
+
+    void copy(stack::container_t & lhs, stack::container_t const & rhs)
+    {
+        lhs.clear();
+
+        stack::container_t::const_iterator it = rhs.begin();
+        stack::container_t::const_iterator const end = rhs.end();
+        for(; it != end; ++it)
+            lhs.push_back((*it)->clone());
+    }
+
+That is, [^copy] generates a true copy of the raw data. Doing so places a
+requirement on all classes deriving from [^node] that they should implement a
+[^clone] member function that generates a copy of the data rather than
+increment the [^shared_ptr] reference count.
+
+[h2 Is it a list or a tree?]
+
+Generally speaking, the computational stack is a simple list of data and
+operations. However,
+YAC supports conditional evaluation of both [^a||b] and [^a?b:c] where [^a],
+[^b] and [^c] can all be complicated expressions themselves. Such conditional
+expressions are not well represented by a simple list, so YAC implements an
+[^or_node] and a [^branch_node] that contain [^stack] variables themselves. In
+the case of [^or_node], the stored [^stack] represents the expression [^b] in
+[^a||b]. It is evaluated only if [^a] evaluates to [^false]. The [^branch_node]
+stores two stacks, one for [^b] and one for [^c] in the expression
+[^a?b:c]. Which stack is evaluated depends on the result of evaluating [^a].
+
+Usually, these are mere implementation details of the two node types and the
+computational stack should be regarded as a simple list. That is, the code 
+that evaluates an [^or_node] or a [^branch_node] sees a [^function_node] that
+takes a single argument and returns a [^double]. The stacks strored internally
+by each node type are just that --- internal. An exception to this idea does 
+exist, however. If the user defines a recursive function such as:
+
+[pre
+    factorial(x) = (x < 0.01) ? 1 : x * factorial(x - 1) ]
+
+then evaluation of, say, [^factorial(2)] will require evaluations of
+[^factorial(1)] and [^factorial(0)] also. All three function calls should have
+separate symbol tables for the local variable [^x] and so the stack
+representation of [^(x<0.01)?1:x*factorial(x-1)] that is copied for
+each evaluation should be modified so that references to [^x] point to the
+correct data. [! Perhaps some code] will make this clearer:
+
+    // params contains the argument list to be passed to the function
+    double user_function::eval_priv(vector<double> const & params) const
+    {
+        BOOST_ASSERT(arg_names_.size() == arity_);
+
+        // Create a copy of the local variables symbol table.
+        symbol_table_t local_vars_copy = local_vars_;
+
+        // Assign values to the elements of this symbol table
+        // using the argument list data stored in params.
+        std::size_t const size = arg_names_.size();
+        for (std::size_t i = 0; i != size; ++i) {
+            double * const ptr = find(local_vars_copy, arg_names_[i].c_str());
+            BOOST_ASSERT(ptr);
+            *ptr = params[i];
+        }
+
+        // Ensure that the variable_nodes in stk_copy point to
+        // the appropriate entry in local_vars_copy (rather than
+        // those of local_vars_).
+        stack stk_copy = stk_;
+        update_stack(stk_copy, local_vars_copy, local_vars_, arg_names_);
+
+        // Evaluate the stack.
+        return evaluate(stk_copy);
+    }
+
+It is the [^update_stack] function only that requires a mechanism
+to iterate over the stored stacks of any [^or_node]s and [^branch_node]s in
+[^stk_copy]. The implementation is trivially simple, using [^nbranches] and
+[^branch] virtual functions to access these stacks:
+
+    struct node {
+        virtual std::size_t nbranches() const { return 0; }
+        virtual stack * branch(std::size_t) { return 0; }
+    };
+
+    struct function_node : public node {...};
+
+    struct or_node : public function_node {
+        or_node(stack const & stk);
+
+        std::size_t nbranches() const { return 1; }
+        stack * branch(std::size_t i) { return i == 0 ? &rhs_stk_ : 0; }
+    private:
+        stack rhs_stk_;
+    };
+
+    struct branch_node : public function_node {
+        branch_node(stack const & stk1, stack const & stk2);
+
+        std::size_t nbranches() const { return 2; }
+        stack * branch(std::size_t i)
+            { return (i > 1) ? 0 : (i == 0 ? &stk1_ : &stk2_); }
+    private:
+        stack stk1_, stk2_;
+    };
+
+[h1 The various node types]
+
+There are five primary node types visible to the [^evaluate] function:
+[^number_node] and [^function_node] together represent the numeric expressions
+defined by the expression grammar. Evaluation of such an expression proceeds
+in a manner identical to that described
+[@virtual_machine.html#how_it_works earlier]. [^print_node] simply outputs the
+evaluated expression to stdout. [^variable_node] will assign the result of such
+an  expression to an element of one of the variable symbol
+tables. [^func_def_node] will assign a [^user_func_expression] variable to an
+element in the functions symbol table. Almost all other node classes are
+specializations of [^function_node].
+
+
+
+[page Parser]
+
+The basic framework of the calculator has now been presented. Given
+the grammar defined in the [@grammar_overview.html grammar overview]
+and the implementation of the [@virtual_machine.html virtual machine],
+we are now in a position to describe the parser that goes from the one
+to the other.
+
+The simple numerical expression [^sin(sqrt(2)/3)] was used to
+describe the operation of the virtual machine. Such expressions form
+the right hand side of any statement that can be understood by
+YAC. However, the grammar defining all allowable expressions is rather
+complex. Moreover, much of the implementation is rather repetitive. I
+have, therefore, chosen to begin these implementation notes with a
+description of the code used to parse the variable and function
+declarations. After all, we've all seen enough code to parse a
+numerical expression by now. Time to look at the stuff that enables
+YAC to be a ['programmable] calculator.
+
+
+
+[page variable_grammar]
+
+Consider what happens when the parser encounters a variable
+declaration such as [^x=2]. Using Spirit, the parser for this
+statement can be written as:
+
+    spirit::rule<ScannerT> var_assignment;
+    expression_grammar expression;
+    name_grammar name;
+
+    var_assignment = name >> '=' >> expression;
+
+Having parsed this statement, the code should do two things:
+
+* update the table of global variables so that subsequent expressions understand that [^x] is a variable.
+
+* generate a [^stack] representation of the string [^x=2]:
+
+[pre
+    0    variable_node     x
+    1    const_value_node  2
+    2    assign_node ]
+
+[h1 Public interface of expression_grammar ]
+
+In order for [^expression_grammar] to parse an expression
+successfully, it must have access to lists of all existing variables and
+functions. If successful, it should make available a [^stack]
+representation of the data. If we use closures, then 'make available'
+becomes 'return'. The grammar's public interface follows naturally:
+
+    using namespace boost::spirit;
+    using boost::shared_ptr;
+
+    namespace yac {
+
+    struct stack_closure : closure<stack_closure, stack>
+    {
+        member1 stk;
+    };
+
+    struct expression_grammar
+        : spirit::grammar<expression_grammar, stack_closure::context_t>
+    {
+        typedef spirit::symbols<boost::shared_ptr<function> > function_table_t;
+        typedef spirit::symbols<double> var_table_t;
+
+        function_table_t const & functions;
+        var_table_t const & global_vars;
+
+        expression_grammar(function_table_t const & funcs,
+                           var_table_t const & gvars)
+            : functions(funcs), global_vars(gvars)
+        {}
+    };
+
+    } // namespace yac
+
+That is, the grammar receives [^const] references to symbols tables
+for both functions and variables. These tables are not altered during
+the parsing of the expression but are used to ascertain whether a
+given symbol is allowable.
+
+In fact, the code above does not tell quite the whole story;
+[^expression_grammar] has a second constructor also that takes an additional
+[^var_table_t] reference. This second constructor is used when parsing a
+function body, the second [^var_table_t] parameter being a symbol table of
+variables local to the function.
+
+[h1 Public interface of name_grammar]
+
+YAC variable and function names must conform to the same naming rules, so
+[^name_grammar] will be used by both. The semantic actions that are performed
+by the variable and function parsers are, however, rather different.
+
+In the case in question, the [^name_grammar] variable [^name] will be
+used to update the [^global_vars] symbol table that is accessed by the
+[^expression_grammar] variable [^expression]. However, the symbol
+table should ['not] be updated until ['after] [^expression] itself is
+parsed. Otherwise definitions such as [^x = x + 1] would be legal. (OK
+as an assignment but not as the original declaration of [^x].)
+
+This contrasts with the behaviour of the function_grammar which should
+add a function name to the symbol table of available functions
+['before] attempting to parse the defining [^expression]. (To enable
+recursive functions to be defined.)
+
+Clearly, therefore, these semantic actions should not be factored into
+the [^name_grammar] class itself. It's public interface is, therefore,
+trivial:
+
+    struct name_grammar : spirit::grammar<name_grammar>
+    {
+        name_grammar() {}
+    };
+
+Spirit will return a pair of iterators to the beginning and end of the
+variable or function name. Thereafter, it's up to the parent grammar to
+use these data appropriately.
+
+[h1 Public interface of variable_grammar]
+
+The public interface of the [^variable_grammar] class should fulfill the
+requirements outlined at the top of this page. It should 'return'
+a [^stack] wrapped up as a [^closure]. It's constructor should
+receive a [^non-const] reference to the global variables symbol
+table. Finally, this same constructor should also receive a [^const]
+reference to the functions symbol table to enable the grammar to parse
+[^expression]:
+
+    using namespace boost::spirit;
+    using boost::shared_ptr;
+
+    namespace yac {
+
+    struct stack_closure : closure<stack_closure, stack>
+    {
+        member1 stk;
+    };
+
+    struct variable_grammar
+        : grammar<variable_grammar, stack_closure::context_t>
+    {
+        typedef symbols<shared_ptr<function_node> > function_table_t;
+        typedef symbols<double> var_table_t;
+
+        function_table_t const & functions;
+        var_table_t & vars;
+
+        variable_grammar(function_table_t const & f, var_table_t & v)
+            : functions(f), vars(v)
+        {}
+
+        template <typename ScannerT>
+        struct definition;
+    };
+
+    } // namespace yac
+
+[h1 variable_grammar::definition]
+
+We know that [^variable_grammar::definition] will use [^name_grammar]
+and [^expression_grammar] variables to parse the input data and we
+know what arguments these grammars' constructors require:
+
+    template <typename ScannerT>
+    struct definition
+    {
+        definition(variable_grammar const & self)
+            : name(self.vars),
+              expression(self.functions, self.vars)
+        {
+            ...
+        }
+    private:
+        name_grammar name;
+        expression_grammar expression;
+    };
+
+Two sets of semantic actions should be invoked when parsing a variable
+declaration. First, the parsed data should be stored
+locally. Thereafter, the global symbol tables and expression stack
+should be updated. The first step is encoded quite simply:
+
+    namespace yac {
+
+    struct var_closure
+        : spirit::closure<var_closure, std::string, stack>
+    {
+        member1 name;
+        member2 stk;
+    };
+
+    typename spirit::rule<scanner_t, var_closure::context_t> step1;
+    typename spirit::rule<ScannerT> step2;
+
+    ...
+    step2
+       = step1
+         [
+             // semantic actions to fill the
+             // world-visible data structures.
+         ]
+       ;
+
+    step1
+        =  name
+           [
+               step2.name = construct_<std::string>(arg1, arg2)
+           ]
+        >> '='
+        >> expression
+           [
+               step2.stk = arg1
+           ]
+        ;
+
+This code snippet is a perfect example of Phoenix's lambda facilities
+in action. They can lead to extremely clear code. Note, however, that
+the semantic actions attached to [^step1] are updating the closure variables
+attached to step2. The code was split into [^step1] and [^step2]
+simply to ease readability. There are no problems with doing so
+because this grammar is not recursive. If it were, then the closures
+would have to be attached to [^step1] and these data would then be
+['returned] to [^step2]. Note, however, that it is the [^member1]
+closure variable that is returned in such cases, so we would need a
+compound data structure to store the data. In fact, it would be simpler
+to attach ['all] the semantic actions to the [^step1] rule, discarding
+[^step2] entirely.
+
+Having generated the local data stores, the  second stage of the
+process is to use this stored data to update the global variables
+symbol table [^self.global_vars] and the closure [^self.stk] that is
+'returned' by the [^variable_grammar]:
+
+    using phoenix::arg1;
+    using phoenix::if_;
+    using phoenix::var;
+
+    step2
+        = step1
+          [
+              if_(!find_symbol(var(self.vars), step2.name))
+              [
+                  add_symbol(var(self.vars), step2.name)
+              ]
+          ]
+          [
+              push_back(self.stk, find_symbol(var(self.vars),
+                                              step2.name)),
+              self.stk += step2.stk,
+              push_back(self.stk, new_<assign_node>())
+          ]
+        ;
+
+Whoaa! What's going on here?
+
+The first semantic action,
+[^if_(!var(name_return.already_present)) '''[...]'''],
+is an example of a Phoenix lazy statement. If the symbol is not
+already present in [^self.global_vars] then we add it. [^find_symbol] and
+[^add_symbol] are --- you've guessed it --- lazy functions invoking
+[^spirit::symbols::find] and [^spirit::symbols::add], respectively. The
+difference is that we wrote these lazy functions ourselves.
+
+Writing a lazy function is as easy as:
+
+    struct add_symbol_impl {
+        template <typename T, typename Arg>
+        struct result
+        {
+            typedef void type;
+        };
+
+        template <typename SymbolT>
+        void operator()(SymbolT & symbols, string const & str) const
+        {
+            symbols.add(str.c_str());
+        }
+    };
+
+    phoenix::function<add_symbol_impl> const
+        add_symbol = add_symbol_impl();
+
+That is, the [^phoenix::function<>] instance wraps a struct that contains
+a nested [^result] class template and a template [^operator()] that
+invokes the desired member function/variable. In this case, we're not
+interested in chaining multiple [^add]s together so [^result::type]
+is a [^typedef] for [^void]. Note that the [^result] template has the
+same number of template parameters as the [^operator()] has
+arguments, here two. The lazy functions specific to YAC can be found
+[@../src/yac_lazy_functions.hpp here].
+
+Having ensured that the [^vars] symbol table contains the
+just-parsed symbol, we're now in a position to construct the [^self.stk]
+closure 'returned' by [^variable_grammar]. The lazy functions
+[^push_back] and [^find_symbol] wrap [^stack::push_back]
+and [^spirit::symbols::find], respectively. [^+=] is a lazy operator
+invoking [^stack::operator+=] and [^new_] is Phoenix's lazy function wrapper
+for [^operator new] --- more on this later.
+
+The actual code for [^variable_grammar] can be found
+[@../src/yac_variable_grammar.hpp here]. I won't try and convince you
+that this example has been anything less than complicated. I would
+say, however, that it is trying to do something that is itself
+complicated. It is my belief that Spirit and Phoenix have enabled me
+to do so in a transparent manner. I can only hope that you believe so too.
+
+
+[page function_grammar]
+
+Consider what should happen when the parser encounters expressions
+such as:
+
+[pre
+    axpy(a,x,y) = a * x + y
+    factorial(x) = (x < 0.1) ? 1 : x * factorial(x - 1) ]
+
+The symbol table of recognized functions should be updated and a stack
+representation of the function assignment should be generated, much as
+occurs when a [@variable_grammar.html variable expression] is
+encountered. For example, the stack representation of [^axpy(a,x,y)=a*x+y] is
+
+[pre
+    0    variable_node    a
+    1    variable_node    x
+    2    function_node    mult
+    3    variable_node    y
+    4    function_node    add
+    5    func_def_node    axpy#3
+]
+
+where [^axpy#3] is the mangled name of the [^axpy] function taking 3
+arguments. All these nodes contain pointers to the appropriate entries in the
+various symbol tables.
+
+Separate actions for function declaration and function
+definition are required if YAC is to have the ability to re-define
+functions dynamically. That is, the function definition should be
+assigned to the function only in the course of evaluating the
+computational stack.
+
+[h1 Public interface of function_grammar]
+
+The similar requirements of [^function_grammar] and
+[^variable_grammar] mean that their public interfaces are also very
+similar. The only difference lies in which symbol table is [^const] and
+which is [^non-const]:
+
+    namespace yac {
+
+    struct function_grammar
+        : grammar<function_grammar, stack_closure::context_t>
+    {
+        typedef symbols<shared_ptr<function_node> > function_table_t;
+        typedef symbols<double> var_table_t;
+
+        function_table_t & functions;
+        var_table_t const & global_vars;
+
+        function_grammar(function_table_t & f, var_table_t const & v)
+            : functions(f), global_vars(v)
+        {}
+
+        template <typename ScannerT>
+        struct definition;
+    };
+
+    } // namespace yac
+
+
+[h1 user_function]
+
+Before going on to talk about the [^definition] struct of [^function_grammar]
+itself, it is pertinent to ask, "What's in a [^function] anyway?" Or rather,
+what's in the [^user_function] that derives from it? Here, then, are the
+interesting parts of its interface:
+
+    namespace yac {
+
+    struct user_func_expression {
+        typedef boost::shared_ptr<spirit::symbols<double> > symbol_table_ptr;
+
+        vector<string> arg_names;
+        symbol_table_ptr local_vars;
+        stack stk;
+    };
+
+    struct user_function : public function
+    {
+        typedef spirit::symbols<double> symbol_table_t;
+
+        user_function(std::string const & name, size_type const function_arity);
+        user_function & operator=(user_func_expression const & ufe);
+
+    private:
+        double eval_priv(std::vector<double> const & params) const;
+
+        size_type arity_;
+        std::vector<std::string> arg_names_;
+        symbol_table_t local_vars_;
+        stack stk_;
+    };
+
+    } // namespace yac
+
+
+The definition of [^eval_priv] has already been presented,
+[@vm_details.html#perhaps_some_code here] to explain just how a
+[^user_function] is evaluated. It was explained that a
+[^user_function] contains three separate data stores all of which are used when
+the function comes to be evaluated for a particular set of input parameters.
+
+* [^local_vars_] is the symbol table of variables whose scope is local to the function. In this simple grammar, these are simply the variables of the function's argument list.
+
+* [^arg_names_] is used to map the [^params] data to the values of these local variables when the function is evaluated.
+
+* Evaluation of the function involves "unwinding" of [^stk_] with the aid of the three symbol tables that store the functions, the global and the local variables. These stores are not referenced directly, but [^variable_node]s and [^function_node]s in [^stk_] will contain pointers to their data.
+
+Filling the data stores of a [^user_function] is a two-stage process. When the
+variable is created, at parse time, it's name and arity are
+set. Storing this variable, in the symbol table of known functions,
+e.g. [^aypy#3], will enable the [^expression_grammar] to parse any rhs
+[^expression] involving [^aypy#3] that occurs thereafter. The parsing process
+goes on to add a [^func_def_node] to the virtual machine's stack, representing
+the assignment of the function definition to the function variable. This
+assignment occurs when the stack comes to be evaluated, after the parsing is
+complete. A [^func_def_node] contains two stores: a pointer to the function in
+the function symbol table and a [^user_func_expression] variable that contains
+the three data stores described above.
+
+The logic behind the above description is, I hope, transparent. What is
+interesting from a Spirit point of view is best explained using the example
+function declaration [^axpy(a,x,y)=a*x+y]. The [^local_vars_] symbol table of
+this [^user_function] will contain three variables, [^a], [^x] and [^y]. This
+symbol table is created dynamically and will be stored in a
+[^user_func_expression] in the virtual machine's computational stack. However,
+this self-same store ['should also be made available] to the
+[^expression_grammar] variable tasked with parsing [^a*x+y] and generating a
+[^stack] from it. This requirement will lead to some quite complex use of the
+Spirit parser tools --- the [^expression_grammar] parser must also be created
+dynamically!
+
+[h1 function_grammar::definition]
+
+The Spirit representation of the grammar needed to parse a statement such
+as [^axpy(a,x,y)=a*x+y] is:
+
+    func_def  
+        =  func_decl
+           [
+               // Semantic actions to add the function to
+               // the symbol table of known functions.
+           ]
+        >> '='
+           // There is a catch here --- expression
+           // depends on a dynamically-created local_vars
+           // store.
+        >> expression
+           [
+               // Semantic actions to build a computational
+               // stack that will assign the function definition
+               // to the function variable.
+           ]
+        ;
+    func_decl 
+        = name >> '(' >> !name_list >> ')';
+    name_list 
+        = name >> *(',' >> name);
+
+where [^func_decl] is the rule used to parse [^axpy(a,x,y)].
+
+Clearly, parsing
+the input data is quite straight-forward, but the semantic actions that result
+are pretty complex. The snippet above illustrates the two-stage nature of the
+process of applying these actions. However, before considering them
+any further, let's return to the [^func_decl] rule itself.
+
+Three local variables are filled when parsing a function
+declaration like [^foo(a,b)], the function name and its argument list which is
+used to fill both a vector (so that the parameters passed to the function can
+be assigned to the correct local variable) and as a symbol table. Local
+variables in the context of a Spirit parser suggest that a closure should be
+attached to [^func_decl]:
+
+    struct func_closure
+        : spirit::closure<func_closure,
+                          std::string,
+                          std::vector<std::string>,
+                          boost::shared_ptr<spirit::symbols<double> >
+    {
+        member1 name;
+        member2 args;
+        member3 local_vars;
+    };
+
+The local variable symbol table is stored as a shared_ptr to simplify the
+accounting process that ensures all pointers to its data from the stack
+representing the function definition remain valid.
+
+An attempt to parse [^foo(a,b)] must ensure that this symbol table is
+reset for each function parsed. This is done as late as possible (i.e., after
+[^foo(]), using a lazy function wrapper for [^shared_ptr::reset].
+
+Thereafter, there is one subtlety that should be considered when parsing a
+function declaration like [^foo(a,b)]. That is, [^foo(a,a)] should be flagged as
+invalid, causing the parser to fail. Or in other words, the dynamically created
+[^func_def.local_vars] closure variable should be used in parsing the function
+declaration itself! (Remember, a Spirit symbol table is a fully fledged parser
+in its own right.) Fortunately for us, Spirit has a rather cool [^lazy_p]
+parser that fits the bill perfectly. [^lazy_p] is a lazy parser; that is, it
+can be created dynamically. The final result is:
+
+    // This rule parses "foo(a,b)", disallowing "foo(a,a)".
+    // Note that the closure variables are attached to "func_def"
+    // rather than to "func_decl".
+    // That's safe because this grammar is not recursive.
+    // "func_def" will go on to use these data to construct the
+    // final semantic actions.
+    func_decl
+        =  name
+           [
+               func_def.name = construct_<std::string>(arg1, arg2)
+           ]
+        >> ch_p('(')
+           [
+               reset(func_def.local_vars, new_<var_table_t>())
+           ]
+        >> !list_p((name - lazy_p(*func_def.local_vars))
+                   [
+                       push_back(func_def.args,
+                                 construct_<std::string>(arg1, arg2)),
+                       add_symbol(*func_def.local_vars,
+                                  construct_<std::string>(arg1, arg2))
+                   ]
+                 , ',')
+        >> ')';
+
+[blurb [$theme/alert.gif ALERT!]
+[*[^new_] or [^new] in semantic actions?][br][br]
+
+One very important point to note about the call to [^reset] is that the data is
+created using Phoenix's [^new_] lazy function.[br][br]
+
+It is possible to use [^new var_table_t] here (i.e., the code will compile)
+because all the information needed to invoke the [^var_table_t] constructor is
+available at compile time. However, to do so is almost certainly an
+error.[br][br]
+
+A call to [^new] will add a [^var_table_t] variable to the heap when the
+[^function_grammar::definition] constructor is invoked. A pointer to this
+variable is then stored until the input data comes to be parsed, whereupon it
+is passed to [^shared_ptr::reset()]. If more than one function comes to be
+parsed, then this pointer will be passed more than once --- disaster!
+]
+
+What I hope is gradually becoming clear is that almost all the difficulties
+that have been encountered so far have been in specifying exactly what semantic
+actions should be performed. Thereafter, Spirit makes it almost trivially easy
+to write the code itself. It really ['is] cool to be Lazy. :-)
+
+This feeling, that the semantic actions themselves are complex but that Spirit
+makes it easy to write the ensuing code, is reinforced when we come to consider
+the [^func_def] rule.
+
+Of the two "globally visible" semantic actions that are performed by
+[^function_grammar], the first, adding a new function to the symbol table of
+known functions, should be performed immediately after the [^func_decl] rule
+has finished. That means that the function name will then be available to the
+[^expression_grammar] variable that parses the function definition, enabling
+recursive functions to be defined:
+
+[pre
+    # x is a double, so testing (x == 0) isn't very clever.
+    factorial(x) = (x < 0.1) ? 1 : x * factorial(x - 1) ]
+
+Once again, Spirit makes the difficult seem easy:
+
+    func_def
+        =  func_decl
+           [
+               func_def.mangled_name = mangled_name(func_def.name,
+                                                    size(func_def.args)),
+
+               add_symbol(var(self.functions),
+                          func_def.mangled_name,
+                          construct_<user_function>(
+                              func_def.name,
+                              size(func_def.args))),
+           ]
+           ...
+
+Functions in the symbol table are accessed using a mangled version of their
+name to allow functions with the same name but different arity to be
+overloaded. The above code snippet uses yet another closure variable attached
+to [^func_def] to store this mangled name. Yup, you've guess it --- the
+[^mangled_name] function, above, is a lazy function too. Finally, [^construct_]
+is used to create a wrapper for the [^user_function] constructor. Ain't that
+just nifty?
+
+We're almost ready to move on to the task of parsing the function
+definition. Before we can do so, however, we must first create the
+parser. Again, Spirit makes it easy. The fifth and final member of the
+[^func_def] closure is a pointer to an [^expression_grammar] variable. Creating
+the parser uses the [^new_] lazy function wrapper for [^operator new]:
+
+    struct func_closure
+        : spirit::closure<func_closure,
+                          ...,
+                          boost::shared_ptr<expression_grammar> >
+    {
+        member5 expr;
+    };
+
+    func_def
+        =  func_decl
+           [
+               ...
+               // Create the expression_grammar instance that will
+               // parse the function definition.
+               reset(func_def.expr,
+                         new_<expression_grammar>(
+                             var(self.functions),
+                             var(self.global_vars),
+                             *func_def.local_vars))
+           ]
+           ...
+
+Voilà! An expression_grammar parser that knows about the function's local
+variables! The final step, parsing the function definition and adding a
+[^func_def] node to the [^stack] that is 'returned' by [^function_grammar]
+should now be straightforward. First, we must wrap the dynamically created
+[^expression_grammar] variable up inside a [^lazy_p] parser. Thereafter, we do
+no more than [^stk.push_back(new func_def_node(/* constructor args
+*/))]. Lazily, of course:
+
+    func_def
+        =  func_decl
+           [
+               ...
+           ]
+        >> '='
+        >> lazy_p(*func_def.expr)
+           [
+               // Add a node to the stack which will reset the
+               // definition of the named function.
+
+               // The func_def_node constructor:
+               // func_def_node(shared_ptr<function>,
+               //               user_func_expression const &);
+               push_back(self.stk,
+                         new_<func_def_node>(
+                             *find_symbol(var(self.functions),
+                                          func_def.mangled_name),
+                             construct_<user_func_expression>(
+                                 func_def.args,
+                                 func_def.local_vars,
+                                 arg1)))
+           ]
+        ;
+
+[^func_def_node]'s constructor takes two arguments. A pointer to the
+appropriate function in the function symbol table and a [^user_func_expression]
+variable that contains the function definition. Note that [^arg1], above, is
+the closure returned by the [^expression_grammar] that parsed this definition.
+
+The actual code for [^function_grammar] can be found
+[@../src/yac_function_grammar.hpp here]. Once again, I won't try and
+convince you that this has been an easy ride, but I think that Spirit and
+Phoenix have made it straightforward to apply some pretty hairy logic to the
+problem. Perhaps you think so too?
+
+[page expression_grammar]
+
+We've dealt with the parts of the parser that make YAC a ['programmable]
+calculator. Time now to return to the grammar that parses the right hand side
+of these statements. The [@grammar_overview.html#expression grammar] governing
+these expressions is rather complex. Nonetheless, many of the rules are of the
+same form
+
+[pre
+    rule1 ::= rule2 (operator_list rule2)* ]
+
+and the semantic actions applied after such a statement is parsed successfully
+are also similar in form. If this were "normal" code, we'd try and factor
+things into a function and invoke it multiple times, once for each grammar
+snippet. 
+
+Of course, this isn't "normal" code. For one thing, Spirit's [^rule]'s cannot
+be copied, so returning the resulting expression from a function is not
+possible. Nonetheless, Spirit does indeed possess the tool for the job. It's
+called the [^functor_parser]. Before revealing this jewel, however, let's
+consider the rules at the hard end, [^number] and [^function]. After all, it's
+these that we end up operating ['on].
+
+Parsing a number, a variable or a function call all result in the creation of a
+new node on the computational stack. For example:
+
+    number
+        = real_p
+          [
+              push_back(number.stk, new_<const_value_node>(arg1))
+          ]
+        | self.local_vars
+          [
+              push_back(number.stk,
+                        new_<variable_node>(address_of(arg1)))
+          ]
+        | self.global_vars
+          [
+              push_back(number.stk,
+                        new_<variable_node>(address_of(arg1)))
+          ]
+        ;
+
+a number or a variable found in one of the variable symbol tables causes a node
+to be pushed onto the stack closure variable attached to the [^number]
+rule. Note that the [^variable_node] constructor takes a ['pointer] to the data
+stored in the symbol table. [^address_of] is a lazy function that that
+effectively wraps [^&arg1].
+
+
+Thereafter, the stack closure attached to [^number] is pushed up the cascade of
+rules that govern the grammar in its entirety, eventually reaching the [^top]
+where it is assigned to the closure, [^self.stk], that is 'returned' from the
+[^expression_grammar] itself: 
+
+    top = expr[self.stk = arg1];
+
+    // a whole heap of intervening rules whose form
+    // is similar to that of mult_expr.
+
+    mult_expr 
+        =  expr_atom[ mult_expr.stk = arg1 ] 
+        >> '*' 
+        >> expr_atom[ mult_expr.stk += arg1, 
+                      push_back(mult_expr.stk, 
+                                /* function node pointing to "mult#2" */)
+                    ]
+        ;
+
+    expr_atom
+        = number
+          [
+              expr_atom.stk = arg1
+          ]
+        | func
+          [
+              expr_atom.stk = arg1
+          ]
+        | ...
+        ;
+
+On each step back up the stack, the stack attached to each rule is created from
+the contributions 'returned' from the rules below. What could be easier?
+
+Turn now to the [^func] rule that is used to parse a function call. Parsing a
+function call such as [^foo(1+2,bar(3,4))] is a little more complicated than
+just recognizing a variable [^x]. After all, it is the symbol tables of
+previously declared variables that do all the work for us there. Here, we must
+first generate the mangled name that is used to identify a function in the
+symbol table of known functions. This mangling requires the raw function name,
+here "foo", and the function arity, here 2, to generate the mangled name. Once
+again, closures attached to the [^func] rule make it easy to assemble the
+constituent parts:
+
+    func
+        =  name
+           [
+               func.arity = 0,
+               func.name = construct_<std::string>(arg1, arg2)
+           ]
+        >> ('(' >> !list_p(arg, ',') >> ')')
+        ;
+
+    arg
+        = expr
+          [
+              func.arity += 1,
+              func.stk += arg1
+          ]
+        ;
+
+where [^name] is a [^name_grammar] variable and [^expr] is the topmost rule
+governing an expression. (Any such expression is valid in the function
+argument list.) Having accumulated all this data, we're now in a position to
+ascertain whether the function is known:
+
+    func
+        =  ...
+        >> ('(' >> !list_p(arg, ',') >> ')')
+           [
+               func.func_ptr
+                   = checked_find_(var(self.functions),
+                                   mangled_name(func.name, func.arity))
+           ]
+
+[^checked_find_] returns a [^shared_ptr] copy of the appropriate entry in the
+symbol table. If the function is not found, [^checked_find_] returns an empty
+[^shared_ptr].
+
+Finally, we use Spirit's 
+[^if_p(condition)'''['''then-parser''']'''.else_p'''['''else-parser''']''']
+utility to either add a node to the computational stack or cause the parser to
+fail:
+
+        ...
+        >> if_p(func.func_ptr != function_ptr_t())
+           [
+               epsilon_p
+               [
+                   push_back(func.stk,
+                             new_<sys_function_node>(func.func_ptr))
+               ]
+           ]
+          .else_p[nothing_p]
+        ;
+
+Note that this block doesn't actually consume any more input data.
+
+[page binary_op_parser]
+
+That's pretty much all there is to YAC. All the logic needed to write such a
+utility has been laid bare. However, before saying "good night" there is time
+for one last introduction: the [^functor_parser]. The Functor Parser pages in
+the Spirit documentation don't really give much idea of the power of this
+tool. That's a shame because it can be used as the Spirit equivalent of a
+function call to refactor needlessly repetitive chunks of parser code.
+
+First, return to the Spirit code used to parse a multiplication:
+
+    mult_expr 
+        =  expr_atom[ mult_expr.stk = arg1 ] 
+        >> '*' 
+        >> expr_atom[ mult_expr.stk += arg1, 
+                      push_back(mult_expr.stk, 
+                                /* function node pointing to "mult#2" */)
+                    ]
+        ;
+
+The code is pretty straightforward, but these rules all have a similar form and
+they all lead to a similar set of semantic actions:
+
+[pre
+    bitwise_expr  ::= equality_expr (('&' | '|' | '^') equality_expr)*
+    equality_expr ::= compare_expr  (("==" | "!=") compare_expr)*
+    compare_expr  ::= shift_expr    (('<' | '>' | "<=" | ">=") shift_expr)*
+    shift_expr    ::= add_expr      (("<<" | ">>") add_expr)*
+    add_expr      ::= mult_expr     (('+' | '-') mult_expr)*
+    mult_expr     ::= expr_atom     (('*' | '/' | '%') expr_atom)* ]
+
+Clearly, writing out [^mult_expr] six times won't make the grammar any easier
+to read. (In fact, the [^mult_expr] above is a simplification. The actual code
+is even more ugly.) It would be great if the grammar statement could be turned
+into this code: 
+
+    bitwise_expr
+        = binary_op_p(equality_expr, bitwise_op)[bitwise_expr.stk = arg1];
+
+    equality_expr
+        = binary_op_p(compare_expr, equality_op)[equality_expr.stk = arg1];
+
+    compare_expr
+        = binary_op_p(shift_expr, compare_op)[compare_expr.stk = arg1];
+
+    shift_expr
+        = binary_op_p(add_expr, shift_op)[shift_expr.stk = arg1];
+
+    add_expr
+        = binary_op_p(mult_expr, add_op)[ add_expr.stk = arg1 ];
+
+    mult_expr
+        = binary_op_p(expr_atom, mult_op)[ mult_expr.stk = arg1 ];
+
+And, indeed, thanks to the [^functor_parser] that's exactly how it ['does]
+[@../src/yac_expression_grammar.hpp appear].
+
+The [^binary_op_p] parser takes two arguments, the second of which is a
+symbol table containing pointers to the functions representing the appropriate
+set of operations ([^'+' | '-'] etc.). That's just a YAC implentation
+detail. What is interesting is that [^binary_op_p] is a fully-fledged parser
+whose 'result' (here the result is a [^stack] variable) can be assigned to the
+parent rule's closure. The result is clear, easy to maintain code.
+
+The [^binary_op_p] has three components:
+
+1. [^struct binary_op_parser] is a class template that stores two parsers,
+created from the two [^rule]s passed to its constructor.
+It also defines a [^result_t] typedef which in this instance is a [^stack].
+The parser is invoked through the class' [^operator()] to fill a [^result]
+variable and to also return the number of characters parsed to the invoking
+routine. That is, it's public interface is:
+
+    template <typename TermT, typename OpT>
+    struct binary_op_parser {
+
+        binary_op_parser(TermT const & term_, OpT const & op_table_);
+
+        typedef stack result_t;
+
+        template <typename ScannerT>
+        std::ptrdiff_t
+        operator()(ScannerT const & scan, result_t & result) const
+    };
+
+The actual code is to be found [@../src/yac_binary_op_parser.hpp here]. Other
+code describing the approach is to be found in functor_parser.html in the
+spirit docs.
+
+2. [^struct binary_op_parser_gen] has a template [^operator()] which generates a
+conformant Spirit parser from the two arguments passed to it.
+ The return type of this [^operator()] looks pretty hairy at first sight,
+but actually it's saying no more than  that the [^rule] and symbol table passed
+to the [^operator()] must be converted to parsers if they are to be stored by
+the [^binary_op_parser] class template that does the actual work:
+
+    template <typename TermT, typename OpT>
+    spirit::functor_parser<
+	binary_op_parser<
+            typename spirit::as_parser<TermT>::type,
+            typename spirit::as_parser<OpT>::type
+        >
+    >
+    operator()(TermT const & term, OpT const & op_table) const;
+
+3. [^binary_op_p] is a concrete instantiation of this [^binary_op_parser_gen]
+struct. All of the Spirit parsers that we're now so familiar with are built in
+a similar way to [^binary_op_p].
+
+[page The end]
+
+[h1 Summary]
+
+I set out to write these pages for those interested in using some of
+Spirit's (and Phoenix's) more advanced tools in their own code. However, it
+quickly became clear that describing the tools themselves wouldn't help
+anyone very much. After all, that's exactly what I started out with --- the
+Spirit and Phoenix documentation. That's not to say that this documentation
+isn't any good; it is. However, after reading it, I found that I had little
+feel for the power of ['closures], ['lambda functions], ['lazy functions] and
+the ['functor parser] and no idea at all that they would simplify the process
+of writing some real code.
+
+What I have ended up writing here is probably a mish-mash. Nonetheless, I have
+tried to convey the idea that the hard part to writing YAC was figuring out the
+logical steps that need to be taken. I hope I've showed that, thereafter, the
+Spirit and Phoenix libraries make it simple to translate this logic into
+code. They allow the code writer to concentrate on the bigger picture and, as
+such, they're great.
+
+
+[h1 Acknowledgments]
+
+I have asked an interminable number of questions on the Spirit users'
+mailing list, (archived 
+[@http://news.gmane.org/gmane.comp.parsers.spirit.general here]) over the last
+month or so and received an enormous amount of useful advice. In particular,
+I'd like to thank Joel de Guzman, João Abecasis, Bryan Ross, Hartmut Kaiser,
+Martin Wille, Alex Rousskov and Carl Barron who have all kept me on the right
+track. Thanks, guys!
+
+Needless to say, YAC wouldn't exist without Spirit, a truly fabulous
+library. However, Joel de Guzman also wrote the 
+[@http://spirit.sourceforge.net/repository/applications/quickdoc.zip QuickDoc] 
+utility that I used to write this document. I hacked the original source
+(here's the [@../quickdoc-xhtml.diff patch]) to output the valid XHTML 1.1
+code you're now reading, but the original already did a great job. Thank you,
+Joel!
+
+[br][br]
+Angus Leeming[br]
+10th March, 2004

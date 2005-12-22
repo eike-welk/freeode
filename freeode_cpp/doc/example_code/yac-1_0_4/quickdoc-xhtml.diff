@@ -1,0 +1,656 @@
+diff -p -N -r -U 4 -X excl.tmp quickdoc/doc/theme/style.css quickdoc-hacked/doc/theme/style.css
+--- quickdoc/doc/theme/style.css	2002-09-29 03:55:52.000000000 +0100
++++ quickdoc-hacked/doc/theme/style.css	2004-03-17 17:57:50.000000000 +0000
+@@ -11,8 +11,9 @@ h3 { font: 120% sans-serif; font-weight:
+ h4 { font: bold 100% sans-serif; font-weight: bold; text-align: left;  }
+ h5 { font: italic 100% sans-serif; font-weight: bold; text-align: left;  }
+ h6 { font: small-caps 100% sans-serif; font-weight: bold; text-align: left;  }
+ 
++
+ pre
+ {
+     border-top: gray 1pt solid;
+     border-right: gray 1pt solid;
+@@ -24,22 +25,22 @@ pre
+     padding-left: 2pt;
+     padding-bottom: 2pt;
+ 
+     display: block;
+-    font-family: "courier new", courier, mono;
++    font-family: "courier new", courier, mono, sans-serif;
+     background-color: #eeeeee; font-size: small
+ }
+ 
+ code
+ {
+-    font-family: "Courier New", Courier, mono;
++    font-family: "Courier New", Courier, mono, sans-serif;
+     font-size: small
+ }
+ 
+ tt
+ {
+     display: inline;
+-    font-family: "Courier New", Courier, mono;
++    font-family: "Courier New", Courier, mono, sans-serif;
+     color: #000099;
+     font-size: small
+ }
+ 
+@@ -80,8 +81,15 @@ a:hover { color: #8080FF; }
+ .white_bkd      {  background-color: #FFFFFF}
+ .dk_grey_bkd    {  background-color: #999999}
+ .quotes         {  color: #666666; font-style: italic; font-weight: bold}
+ 
++.note_table
++{
++    margin: auto;
++    width: 80%;
++    margin-top: 10px;
++}
++
+ .note_box
+ {
+     display: block;
+ 
+@@ -99,30 +107,70 @@ a:hover { color: #8080FF; }
+     background-color: #E2E9EF;
+     font-size: small; text-align: justify
+ }
+ 
++.title
++{
++    background-image: url(bkd2.gif);
++    background-color: #AAAAAA;
++
++    font-family: Verdana, Arial, Helvetica, sans-serif;
++    font-weight: bold;
++    font-size: xx-large;
++
++    padding-top: 1px; 
++    padding-right: 1px; 
++    padding-bottom: 1px; 
++    padding-left: 10px; 
++}
++
++
++.user_table
++{
++    margin: auto;
++    width: 90%;
++    margin-top: 10px;
++}
++
++
+ .table_title
+ {
+     background-color: #648CCA;
+ 
+     font-family: Verdana, Arial, Helvetica, sans-serif; color: #FFFFFF;
+-    font-weight: bold
+-; padding-top: 4px; padding-right: 4px; padding-bottom: 4px; padding-left: 4px
++    font-weight: bold;
++
++    padding-top: 4px; 
++    padding-right: 4px; 
++    padding-bottom: 4px; 
++    padding-left: 4px;
+ }
+ 
++
+ .table_cells
+ {
+     background-color: #E2E9EF;
+ 
+     font-family: Geneva, Arial, Helvetica, san-serif;
+-    font-size: small
+-; padding-top: 4px; padding-right: 4px; padding-bottom: 4px; padding-left: 4px
++    font-size: small;
++
++    padding-top: 4px;
++    padding-right: 4px;
++    padding-bottom: 4px;
++    padding-left: 4px;
++}
++
++.toc_table
++{
++    margin: auto;
++    width: 80%;
++    margin-top: 10px;
+ }
+ 
+ .toc
+ {
+     DISPLAY: block;
+-    background-color: #E2E9EF
++    background-color: #E2E9EF;
+     font-family: Arial, Helvetica, sans-serif;
+ 
+     border-top: gray 1pt solid;
+     border-left: gray 1pt solid;
+diff -p -N -r -U 4 -X excl.tmp quickdoc/quickdoc.cpp quickdoc-hacked/quickdoc.cpp
+--- quickdoc/quickdoc.cpp	2004-03-17 17:57:22.000000000 +0000
++++ quickdoc-hacked/quickdoc.cpp	2004-03-17 17:57:50.000000000 +0000
+@@ -23,73 +23,106 @@ using namespace quickdoc;
+ using namespace boost::spirit;
+ 
+ void navigator(ostream& out, char const* prev, char const* next)
+ {
+-    out << "<table border=\"0\">\n"
++    out << "<table style=\"margin-top: 10px;\">\n"
+         << "  <tr>\n"
+-        << "    <td width=\"30\"><a href=\"../index.html\"><img src=\"theme/u_arr.gif\" border=\"0\"></a></td>\n"
++        << "    <td><a href=\"../index.html\"><img alt=\"TOP\" src=\"theme/u_arr.gif\"></img></a></td>\n"
+         ;
+ 
+     if (prev)
+-        out << "    <td width=\"30\"><a href=\"" << prev << "\"><img src=\"theme/l_arr.gif\" border=\"0\"></a></td>\n";
++        out << "    <td><a href=\"" << prev << "\"><img alt=\"PREVIOUS\" src=\"theme/l_arr.gif\"></img></a></td>\n";
+     else
+-        out << "    <td width=\"30\"><img src=\"theme/l_arr_disabled.gif\" border=\"0\"></td>\n";
++        out << "    <td><img alt=\"\" src=\"theme/l_arr_disabled.gif\"></img></td>\n";
+ 
+     if (next)
+-        out << "    <td width=\"20\"><a href=\"" << next << "\"><img src=\"theme/r_arr.gif\" border=\"0\"></a></td>\n";
++        out << "    <td><a href=\"" << next << "\"><img alt=\"NEXT\" src=\"theme/r_arr.gif\"></img></a></td>\n";
+     else
+-        out << "    <td width=\"20\"><img src=\"theme/r_arr_disabled.gif\" border=\"0\"></td>\n";
++        out << "    <td><img alt=\"\" src=\"theme/r_arr_disabled.gif\"></img></td>\n";
+ 
+     out << "   </tr>\n"
+         << "</table>\n"
+         ;
+ }
+ 
+ void title_bar(ostream& out, char const* title, char const* prev, char const* next, bool is_index = false)
+ {
+-    out << "<html>\n" << "<head>\n"
++      string const style_dir = is_index ? "doc/theme/" : "theme/";
++ 
++      out
++        << "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?>\n"
++        << "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\"\n"
++        << "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n"
++        << "<html xmlns=\"http://www.w3.org/1999/xhtml\" "
++          "xml:lang=\"en\">\n"
++        << "<?xml-stylesheet href=\"" << style_dir
++        << "style.css\" type=\"text/css\"?>\n"
++        << "<head>\n"
+         << "<!-- Generated by the Spirit (http://spirit.sf.net) QuickDoc -->\n"
+         << "<title>" << title << "</title>\n"
+-        << "<link rel=\"stylesheet\" href=\"" << (is_index ? "doc/" : "")
+-        << "theme/style.css\" type=\"text/css\">\n"
++        << "<link rel=\"stylesheet\" href=\"" << style_dir
++        << "style.css\" type=\"text/css\"/>\n"
+         ;
+ 
+     if (prev)
+-        out << "<link rel=\"prev\" href=\"" << prev << "\">\n";
++        out << "<link rel=\"prev\" href=\"" << prev << "\"/>\n";
+     if (next)
+-        out << "<link rel=\"next\" href=\"" << next << "\">\n";
++        out << "<link rel=\"next\" href=\""
++            << (is_index ? "doc/" : "") << next << "\"/>\n";
+ 
+     out << "</head>\n"
+         << "<body>\n"
+-        << "<table width=\"100%\" height=\"48\" border=\"0\" background=\"" << (is_index ? "doc/" : "")
+-        << "theme/bkd2.gif\" cellspacing=\"2\">\n"
++        << "<table class=\"title\" width=\"100%\" border=\"0\" cellspacing=\"2\">\n"
+         << "  <tr>\n"
+-        << "    <td width=\"10\">\n"
++        << "    <td>\n"
++        << title 
+         << "    </td>\n"
+-        << "    <td width=\"85%\">\n"
+-        << "      <font size=\"6\" face=\"Verdana, Arial, Helvetica, sans-serif\"><b>" << title << "</b></font>\n"
+-        << "    </td>\n"
+-        << "    <td width=\"112\"><a href=\"http://spirit.sf.net\">"
+-        << "<img src=\"" << (is_index ? "doc/" : "") << "theme/spirit.gif\""
+-        << " align=\"right\" border=\"0\"></a></td>\n"
++        << "    <td style=\"text-align: right;\"><a href=\"http://spirit.sourceforge.net\">"
++        << "<img alt=\"SPIRIT\" src=\"" << style_dir
++        << "spirit.gif\""
++        << " ></img></a></td>\n"
+         << "  </tr>\n"
+         << "</table>\n"
+-        << "<br>\n"
+         ;
+ }
+ 
+-void basic_footer(ostream& out)
++
++string copyright_;
++
++void basic_footer(ostream& out, bool is_index = false)
+ {
+-    out << "<br>\n"
+-        << "<hr size=\"1\">"
+-        << "<p class=\"copyright\">Copyright &copy; 2001-2002 Joel de Guzman<br><br>\n"
+-        << "<font size=\"2\">Permission to copy, use, modify, sell and distribute this document\n"
+-        << " is granted provided this copyright notice appears in all copies. This document\n"
+-        << " is provided &quot;as is&quot; without express or implied warranty, and with\n"
+-        << " no claim as to its suitability for any purpose. </font> </p>\n"
++    string const style_dir = is_index ? "doc/theme/" : "theme/";
++
++    string copyright = copyright_;
++    string const top_level_dir = "__TOP_LEVEL_DIR__";
++    while (true) {
++	    string::size_type const pos = copyright.find(top_level_dir);
++	    if (pos == string::npos)
++		    break;
++	    copyright.replace(pos, top_level_dir.size(),
++			      (is_index ? "." : ".."));
++    }
++    
++    out << "<hr/>\n"
++        << "<p>\n"
++        << "  <a href=\"http://validator.w3.org/check/referer\">\n"
++        << "    <img style=\"border:0;width:88px;height:31px\"\n"
++        << "      src=\"" << style_dir << "valid-xhtml11.png\"\n"
++        << "      alt=\"Valid XHTML 1.1!\" />\n"
++        << "  </a>\n"
++
++        << "  <a href=\"http://jigsaw.w3.org/css-validator/check/referer\">\n"
++        << "    <img style=\"border:0;width:88px;height:31px\"\n"
++        << "      src=\"" << style_dir << "vcss.png\"\n"
++        << "      alt=\"Valid CSS!\" />\n"
++        << "  </a>\n"
++        << "</p>\n"
++	<< "<p class=\"copyright\">\n"
++	<< copyright << '\n'
++	<< "</p>\n"
+         << "</body>\n"
+         << "</html>\n"
+-        ;
++	;
+ }
+ 
+ void start_page(ostream& out, char const* title, char const* prev, char const* next)
+ {
+@@ -107,15 +140,30 @@ namespace
+ {
+     template <typename CharT>
+     void print_char(CharT ch, ostream& out)
+     {
++        static string store;
++        string tmp;
+         switch (ch)
+         {
+-            case '<': out << "&lt;";    break;
+-            case '>': out << "&gt;";    break;
+-            case '&': out << "&amp;";   break;
+-            case '"': out << "&quot;";  break;
+-            default:  out << ch;        break;
++            case '-': store += ch;     break;
++            case '<': tmp = "&lt;";    break;
++            case '>': tmp = "&gt;";    break;
++            case '&': tmp = "&amp;";   break;
++            case '"': tmp = "&quot;";  break;
++            default:  tmp = string(1, ch); break;
++        }
++        if (!tmp.empty()) {
++            if (!store.empty()) {
++                if (store == "--")
++                    out << "&#8211;";
++                else if (store == "---")
++                    out << " &#8212; ";
++                else
++                    out << store;
++                store.clear();
++            }
++            out << tmp;
+         }
+     }
+ 
+     struct filter_identifier_char
+@@ -166,13 +214,15 @@ struct wrap_action
+     void operator()(IteratorT const& /*first*/, IteratorT const& /*last*/) const
+     {
+         if (out)
+         {
+-            string  str = phrase.str();
++            out << pre;
++            string str = phrase.str();
+             if (anchor)
+-                out << "<a name=\"" << make_identifier(str.begin(), str.end()) << "\"></a>";
++                out << "<a id=\""
++                    << make_identifier(str.begin(), str.end()) << "\"></a>";
+             phrase.str(string());
+-            out << pre << str << post;
++            out << str << post;
+         }
+     }
+ 
+     ostream&        out;
+@@ -191,9 +241,9 @@ struct process
+     void operator()(IteratorT first, IteratorT last) const
+     {
+         if (out)
+         {
+-            out << "<span class=" << name << ">";
++            out << "<span class=\"" << name << "\">";
+             while (first != last)
+                 print_char(*first++, out);
+             out << "</span>";
+         }
+@@ -227,13 +277,13 @@ struct code_action
+     void operator()(IteratorT first, IteratorT last) const
+     {
+         if (out)
+         {
+-            out << "<code><pre>\n";
++            out << "<pre><code>\n";
+             while (first != last && isspace(*first))    //  print leading spaces
+                 print_char(*first++, out);
+             parse(first, last, code_p);
+-            out << "</pre></code>\n";
++            out << "</code></pre>\n";
+         }
+     }
+ 
+     ostream& out;
+@@ -274,12 +324,12 @@ namespace
+     const char* h5_pre          = "<h5>";
+     const char* h5_post         = "</h5>";
+     const char* h6_pre          = "<h6>";
+     const char* h6_post         = "</h6>";
+-    const char* hr_             = "<hr>";
++    const char* hr_             = "<hr/>";
+ 
+     const char* blurb_pre =
+-        "<table width=\"80%\" border=\"0\" align=\"center\">\n"
++        "<table class=\"note_table\">\n"
+         "  <tr>\n"
+         "    <td class=\"note_box\">\n"
+         ;
+ 
+@@ -290,10 +340,10 @@ namespace
+         ;
+ 
+     const char* blockquote_pre      = "<blockquote><p>";
+     const char* blockquote_post     = "</p></blockquote>";
+-    const char* preformatted_pre    = "<code><pre>";
+-    const char* preformatted_post   = "</pre></code>";
++    const char* preformatted_pre    = "<pre><code>";
++    const char* preformatted_post   = "</code></pre>";
+     const char* list_item_pre       = "<li>";
+     const char* list_item_post      = "</li>";
+     const char* unordered_list_pre  = "<ul>";
+     const char* unordered_list_post = "</ul>";
+@@ -306,16 +356,18 @@ namespace
+     const char* underline_pre_      = "<u>";
+     const char* underline_post_     = "</u>";
+     const char* teletype_pre_       = "<tt>";
+     const char* teletype_post_      = "</tt>";
+-    const char* break_mark          = "<br>";
++    const char* break_mark          = "<br/>";
+     const char* link_post_          = "</a>";
++    const char* image_post_         = "\"></img>";
+     const char* start_row_          = "<tr>";
+     const char* end_row_            = "</tr>";
+     const char* start_cell_         = "<td class=\"table_cells\">";
+     const char* end_cell_           = "</td>";
+ }
+ 
++
+ struct plain_char_action
+ {
+     plain_char_action(stringstream& phrase_)
+     : phrase(phrase_) {}
+@@ -339,9 +391,9 @@ struct image_action
+     {
+         phrase << "<img src=\"";
+         while (first != last)
+             print_char(*first++, phrase);
+-        phrase << "\"></img>";
++        phrase << "\" alt=\"";
+     }
+ 
+     stringstream& phrase;
+ };
+@@ -374,14 +426,14 @@ struct page_level_action
+     unsigned& page_level;
+ };
+ 
+ template <typename T>
+-class assign_action
++class assign_action_
+ {
+ public:
+ 
+     explicit
+-    assign_action(T& ref_)
++    assign_action_(T& ref_)
+     : ref(ref_) {}
+ 
+     template <typename T2>
+     void operator()(T2 const& val) const
+@@ -463,8 +515,23 @@ struct do_macro_action
+ 
+     stringstream& phrase;
+ };
+ 
++struct label_action
++{
++    label_action(stringstream& phrase_)
++    : phrase(phrase_) {}
++
++    template <typename IteratorT>
++    void operator()(IteratorT first, IteratorT last) const
++    {
++        phrase << "<a id=\""
++               << make_identifier(first, last) << "\"></a>";
++    }
++
++    stringstream& phrase;
++};
++
+ struct link_action
+ {
+     link_action(stringstream& phrase_)
+     : phrase(phrase_) {}
+@@ -538,8 +605,9 @@ struct actions
+     , blockquote(buffer, phrase, blockquote_pre, blockquote_post)
+     , preformatted(buffer, phrase, preformatted_pre, preformatted_post)
+     , plain_char(phrase)
+     , image(phrase)
++    , image_post(phrase, image_post_)
+     , list_item(list_buffer, phrase, list_item_pre, list_item_post)
+     , unordered_list(buffer, list_buffer, unordered_list_pre, unordered_list_post)
+     , ordered_list(buffer, list_buffer, ordered_list_pre, ordered_list_post)
+     , bold_pre(phrase, bold_pre_)
+@@ -551,11 +619,13 @@ struct actions
+     , teletype_pre(phrase, teletype_pre_)
+     , teletype_post(phrase, teletype_post_)
+     , break_(phrase, break_mark)
+     , doc_title(doc_title_str)
++    , copyright(copyright_)
+     , identifier(*this)
+     , macro_def(*this)
+     , do_macro(phrase)
++    , label(phrase)
+     , link_pre(phrase)
+     , link_post(phrase, link_post_)
+     , table_title(table_title_str)
+     , table(*this)
+@@ -595,8 +665,9 @@ struct actions
+     markup_action           hr;
+     wrap_action             blurb, blockquote, preformatted;
+     plain_char_action       plain_char;
+     image_action            image;
++    markup_action           image_post;
+     wrap_action             list_item;
+     wrap_action             unordered_list;
+     wrap_action             ordered_list;
+     markup_action           bold_pre;
+@@ -607,16 +678,18 @@ struct actions
+     markup_action           underline_post;
+     markup_action           teletype_pre;
+     markup_action           teletype_post;
+     markup_action           break_;
+-    assign_action<string>   doc_title;
++    assign_action_<string>  doc_title;
++    assign_action_<string>  copyright;
+     symbols<string>         macro;
+     indentifier_action      identifier;
+     macro_def_action        macro_def;
+     do_macro_action         do_macro;
++    label_action            label;
+     link_action             link_pre;
+     markup_action           link_post;
+-    assign_action<string>   table_title;
++    assign_action_<string>  table_title;
+     table_action            table;
+     markup_action           start_row;
+     markup_action           end_row;
+     start_col_action        start_cell;
+@@ -628,9 +701,9 @@ template <typename IteratorT>
+ void table_action::operator()(IteratorT, IteratorT) const
+ {
+     if (actor.buffer)
+     {
+-        actor.buffer << "<table width=\"90%\" border=\"0\" align=\"center\">";
++        actor.buffer << "<table class=\"user_table\">";
+         actor.buffer << "  <tr>\n";
+         actor.buffer << "  <td class=\"table_title\" colspan=\"";
+         actor.buffer << actor.table_span << "\">\n";
+ 
+@@ -740,9 +813,9 @@ void page_action::build_page(char const*
+ //
+ ///////////////////////////////////////////////////////////////////////////////
+ void toc_start(ostream& out)
+ {
+-    out << "<table width=\"80%\" border=\"0\" align=\"center\">\n"
++    out << "<table class=\"toc_table\">\n"
+         << "  <tr>\n"
+         << "    <td class=\"toc_title\">Table of contents</td>\n"
+         << "  </tr>\n"
+         ;
+@@ -818,9 +891,9 @@ parse(char const* filename)
+             name += "index.html";
+             ofstream index(name.c_str());
+             if (index)
+             {
+-                cout << "Building Index " << "../index.html" << endl;
++                cout << "Building Index " << name << endl;
+                 string filename =
+                     make_filename(
+                         actor.titles[0].begin(),
+                         actor.titles[0].end(), ".html");
+@@ -828,9 +901,9 @@ parse(char const* filename)
+                 toc_start(index);
+                 for_each(actor.titles.begin(), actor.titles.end(),
+                     build_toc_entries(index, &*actor.page_levels.begin()));
+                 toc_end(index);
+-                basic_footer(index);
++                basic_footer(index, true);
+             }
+         }
+     }
+     else
+diff -p -N -r -U 4 -X excl.tmp quickdoc/quickdoc.hpp quickdoc-hacked/quickdoc.hpp
+--- quickdoc/quickdoc.hpp	2004-03-17 17:57:22.000000000 +0000
++++ quickdoc-hacked/quickdoc.hpp	2004-03-17 17:57:50.000000000 +0000
+@@ -40,9 +40,9 @@ namespace quickdoc
+         {
+             definition(quickdoc_grammar const& self)
+             {
+                 document =
+-                    doc_info >> blocks >> space
++                    doc_info >> copyright >> blocks >> space
+                     ;
+ 
+                 blocks =
+                    +(   block_markup
+@@ -70,8 +70,15 @@ namespace quickdoc
+                     >> (*(anychar_p - ']'))         [self.actions.doc_title]
+                     >> ']' >> +eol_p
+                     ;
+ 
++                copyright =
++                        *(space_p | comment)
++                    >> "[copyright" >> space
++                    >> (*(anychar_p - ']'))         [self.actions.copyright]
++                    >> ']' >> +eol_p
++                    ;
++
+                 hr =
+                     str_p("----")
+                     >> *(anychar_p - eol_p)
+                     >> +eol_p
+@@ -131,22 +138,30 @@ namespace quickdoc
+ 
+                 table =
+                     "table" >> space
+                     >>  (*(anychar_p - eol_p))      [self.actions.table_title]
+-                    >>  +eol_p                      [self.actions.start_row]
++                    >>  +eol_p
+                     >> *(   table_row
+                             >> +eol_p               [self.actions.end_row]
+                         )
+                     >>  eps_p                       [self.actions.table]
+                     ;
+ 
+                 table_row =
++                   !(       space
++                        >>  ch_p('[')               [self.actions.start_row]
++                                                    [self.actions.start_cell]
++                        >>  phrase
++                        >>  ch_p(']')               [self.actions.end_cell]
++                        >>  space
++                    )
++                        >>
+                    *(       space
+                         >>  ch_p('[')               [self.actions.start_cell]
+                         >>  phrase
+                         >>  ch_p(']')               [self.actions.end_cell]
+                         >>  space
+-                    )
++                   )
+                     ;
+ 
+                 identifier =
+                     *(anychar_p - (space_p | ']'))
+@@ -205,8 +220,9 @@ namespace quickdoc
+ 
+                 phrase_markup =
+                         '['
+                     >>  (   image
++                        |   label
+                         |   link
+                         |   bold
+                         |   italic
+                         |   underline
+@@ -231,9 +247,15 @@ namespace quickdoc
+                     ;
+ 
+                 image =
+                         '$' >> space
+-                    >> (*(anychar_p - ']'))         [self.actions.image]
++                    >> (*(anychar_p - space))       [self.actions.image]
++                    >>  !(space >> phrase)          [self.actions.image_post]
++                    ;
++
++                label =
++                        '!'
++                    >>  space >> phrase             [self.actions.label]
+                     ;
+ 
+                 link =
+                         '@'
+@@ -270,10 +292,11 @@ namespace quickdoc
+                             code_line, paragraph, space, comment, headings,
+                             page, h1, h2, h3, h4, h5, h6, hr, blurb, blockquote,
+                             phrase, phrase_markup, image, unordered_list,
+                             ordered_list, bold, italic, underline, teletype,
+-                            escape, def_macro, identifier, link, table, table_row,
+-                            unexpected, preformatted, line, common
++                            escape, def_macro, identifier, label, link, table,
++                            table_row, unexpected, preformatted, line, common,
++                            copyright
+                             ;
+ 
+             rule<ScannerT> const&
+             start() const { return document; }

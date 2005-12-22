@@ -1,0 +1,16 @@
+Begin3
+Title:          sim_lang -- Some description
+Version:        0.1
+Entered-date:   
+Description:    
+Keywords:       KDE Qt
+Author:         Eike Welk <eike.welk@post.rwth-aachen.de>
+Maintained-by:  Eike Welk <eike.welk@post.rwth-aachen.de>
+Home-page:      
+Alternate-site: 
+Primary-site:   ftp://ftp.kde.org/pub/kde/unstable/apps/utils
+                xxxxxx  sim_lang-0.1.tar.gz
+                xxx     sim_lang-0.1.lsm
+Platform:       Linux. Needs KDE
+Copying-policy: GPL
+End
