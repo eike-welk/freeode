@@ -257,7 +257,6 @@ struct model_grammar : public spirit::grammar<model_grammar>
 //                 = '$' >> (var_name >> eps_p)        [&set_variable_integrated];
 
             //very bad parser for mathematical expressions
-            ///@todo rejects if symbols have same beginning e.g.: mu, mu_max
             rough_math_expression
                     = +(longest_d[var_name | param_name] | real_p | '+' | '-' | '*' | '/' | '(' | ')');
         }
