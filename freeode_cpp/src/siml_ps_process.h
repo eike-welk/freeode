@@ -151,7 +151,7 @@ namespace siml {
                 //The start rule. Parses the complete process: PROCESS ... END
                 process_definition
                         = ( eps_p                   [&start_process] >> //clear all temporary storage
-                            "PROCESS" >> name       [assign_a(model.name)] >>
+                            "PROCESS" >> name       [assign_a(process.name)] >>
                             !parameter_section >> !set_section >> !equation_section >>
                             "END"
                           )                         [&return_process]
