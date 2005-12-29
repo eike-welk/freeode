@@ -22,8 +22,9 @@
 
 #include "parser.h"
 #include "siml_skip_grammar.h"
-#include "siml_name_grammar.h"
-#include "siml_model_grammar.h"
+// #include "siml_name_grammar.h"
+// #include "siml_model_grammar.h"
+#include "siml_ps_toplevel.h"
 #include "siml_python_generator.h"
 
 //#include <boost/spirit.hpp>
@@ -85,7 +86,7 @@ void Parser::doParse()
 //             "EQUATION\n mu := max_mu*S/(S+Ks); $X := mu*X; $S := 1/Yxs*mu*X;\n"
 //             "END";
 
-    std::ifstream inputStream("/home/eike/sim_lang/src/test.siml");
+    std::ifstream inputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/test.siml");
     std::istreambuf_iterator<char> itBegin(inputStream);
     std::istreambuf_iterator<char> itEnd;
     std::string<char> inputStr(itBegin, itEnd);
@@ -93,13 +94,15 @@ void Parser::doParse()
 
     cout << "The input: \n";
     cout << inputCStr;
-    cout << "\n\n";
+    cout << "-----------------------------------------------------\n\n";
 
     shared_ptr<CmCodeRepository> parse_result(new CmCodeRepository);
-    model_grammar model(parse_result);
+//     CmCodeRepository* parse_result_ptr = parse_result;
+//     model_grammar model(parse_result.get());
+    ps_toplevel toplevel_grammar(parse_result.get());
     skip_grammar skip;
     parse_info<> info;
-    info = boost::spirit::parse(inputCStr, model, skip);
+    info = boost::spirit::parse(inputCStr, toplevel_grammar, skip);
 
     if(info.full) {
         cout << "parser consumed all input.\n";
@@ -117,7 +120,7 @@ void Parser::doParse()
     show_CmCodeRepository(parse_result);
 
     //generate python program from CmCodeRepository
-    std::ofstream pyOutputStream("/home/eike/sim_lang/src/testproc.py");
+    std::ofstream pyOutputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/testproc.py");
     PyGenerator pyGen(parse_result, pyOutputStream, cerr);
 
     pyGen.generate_all();
@@ -129,44 +132,33 @@ void Parser::doParse()
 
 
 /*!
-@todo fuction should add on member variables or be static
 @todo make function const
 */
 void Parser::show_CmCodeRepository(shared_ptr<CmCodeRepository> parse_result)
 {
-    cout << "error messages: " << endl;
+    cout << "models ----------------------------------" << endl;
+    for( uint i=0; i < parse_result->model.size(); ++i )
+    {
+        CmModelDescriptor model;
+        model = parse_result->model[i];
+        model.display();
+        cout<<endl;
+    }
+
+    cout << "processes ----------------------------------" << endl;
+    for( uint i=0; i < parse_result->process.size(); ++i )
+    {
+        CmProcessDescriptor process;
+        process = parse_result->process[i];
+        process.display();
+        cout<<endl;
+    }
+
+    cout << "error messages ---------------------------- " << endl;
     for( uint i=0; i < parse_result->error.size(); ++i )
     {
         cout << parse_result->error[i].message_from_parser << endl;
     }
     cout << endl;
 
-    cout << "models parsed: " << endl;
-    for( uint i=0; i < parse_result->model.size(); ++i )
-    {
-        CmModelDescriptor model;
-        model = parse_result->model[i];
-
-        cout << "model: " << model.name << endl;
-        cout << "parameters:" << endl;
-        for(uint i=0; i<model.parameter.size(); ++i) {
-            cout << model.parameter[i].name << ",\t" << model.parameter[i].type << ",\t" << model.parameter[i].default_expr << endl;
-        }
-        cout << "variables:" << endl;
-        for(uint i=0; i<model.variable.size(); ++i) {
-            cout << model.variable[i].name << ",\t" << model.variable[i].type << endl;
-        }
-        cout << "equations:" << endl;
-//     uint es=model.equation.size();
-        for(uint i=0; i<model.equation.size(); ++i) {
-//         cout << model.equation[i].definition_text << endl;
-            cout << "lhs: "  << model.equation[i].lhs;
-            cout << "  rhs: " << model.equation[i].rhs;
-            if( model.equation[i].is_ode_assignment ) {
-                cout << "  - ODE" << endl;
-            } else {
-                cout << "  - algebraic" << endl;
-            }
-        }
-    }
 }

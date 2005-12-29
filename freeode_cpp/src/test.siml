@@ -23,3 +23,29 @@ $S := -1/Yxs*mu*X;
 $O := -1/Yxo*mu*X + kla*(O_star - O);
 
 END
+
+
+
+PROCESS pr1
+
+PARAMETER
+mu_max;
+
+UNIT
+rector AS mo1;
+
+SET
+mu_max := 0.5;
+
+#EQUATION
+
+INITIAL
+reactor.X := 0.1;
+
+SOLUTIONPARAMETERS
+ReportingInterval:=1; #[h]
+
+SCHEDULE
+CONTINUE FOR 1000
+
+END

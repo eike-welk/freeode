@@ -130,8 +130,12 @@ struct CmEquationDescriptor
 typedef std::vector<CmEquationDescriptor> CmEquationTable;
 
 
+struct CmModelDescriptor;
+//!container for models.
+typedef std::vector<CmModelDescriptor> CmModelTable;
+
 /*!
-@short Descripion of a model
+@short Descripion of a "MODEL"
 This is the parsing result of a model: "MODEL ... END"
 */
 struct CmModelDescriptor
@@ -144,13 +148,39 @@ struct CmModelDescriptor
     CmVariableTable variable;
     //!Container for the eqations. See: @see CmEquationDescriptor
     CmEquationTable equation;
+    //!Container for parameter initializations. ("SET section") See: @see CmEquationDescriptor
+//     CmEquationTable parameterAssignment;
+    //!Container for the sub models ("UNIT") @see CmModelDescriptor
+    CmModelTable subModel;
+
+    //!Display the model's contents (for debuging)
+    void display() const;
 };
-//!container for the models of a file.
-typedef std::vector<CmModelDescriptor> CmModelTable;
 
 
 /*!
-@short Toplevel parsing result.
+@short Descripion of a "PROCESS"
+This is the parsing result of a process: "PROCESS ... END"
+
+Processes and models are very similar. Processes contain aditional simulation
+execution features and code generation features.
+In a process models are instantiated.
+@see CmModelDescriptor
+*/
+struct CmProcessDescriptor: public CmModelDescriptor
+{
+    //!Container for initializations of integrated variables. ("INITIAL" section) See: @see CmEquationDescriptor
+//     CmEquationTable initialExpression;
+
+    //!Display the process' contents (for debuging)
+    void display() const;
+};
+//!container for processes.
+typedef std::vector<CmProcessDescriptor> CmProcessTable;
+
+
+/*!
+@short Storage for all parsing results.
 
 The code generator gets this object and it generates a computer program from it.
 Additonally errors and warnings from the parser and the code generator are
@@ -158,8 +188,10 @@ collected here too.
 */
 struct CmCodeRepository
 {
-    //!list of models
+    //!List of models
     CmModelTable model;
+    //!List of processes
+    CmProcessTable process;
     //!list of recognized errors
     CmErrorTable error;
 

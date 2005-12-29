@@ -25,7 +25,7 @@
 
 #include <boost/spirit/core.hpp>
 #include <boost/spirit/symbols/symbols.hpp>
-#include <boost/shared_ptr.hpp>
+// #include <boost/shared_ptr.hpp>
 
 #include <string>
 // #include <vector>
@@ -34,16 +34,23 @@
 //!Intermediate storage for data aquired while parsing a model.
 /*!Created a new namespace to avoid name clashes since these are all global symbols.
 The namespace is named for easier access in KDevelop. */
-namespace model_temp_store {
+namespace temp_store_model {
 using namespace siml;
 using namespace std;
-using boost::shared_ptr;
+// using boost::shared_ptr;
 
 //!The data gathered while parsing the model is stored here
 CmModelDescriptor model;
 
+//!error string
+string possible_error;
+
 //!Clear the whole temorary model
-void start_model(char const *, char const *) { model = CmModelDescriptor(); }
+void start_model(char const *, char const *)
+{
+    model = CmModelDescriptor();
+    possible_error = "Error at start of MODEL definition";
+}
 
 //parameter----------------------------------------------------------------
 //!temporary storage while a parameter definition is parsed
@@ -113,18 +120,15 @@ void add_assignment_time_derivative(char const * first, char const * const last)
     model.equation.push_back(e_temp);
 }
 
-//!error string
-string possible_error;
-
 //!pointer to the central storage of parse results
-shared_ptr<CmCodeRepository> parse_result_storage;
+CmCodeRepository* parse_result_storage;
 
 //!return the correctly parsed model.
 void return_model(char const * /*first*/, char const * const /*last*/)
 {
     cout << "Parsing model " << model.name << " finished correctly." << endl;
     parse_result_storage->model.push_back(model);
-    parse_result_storage.reset(); //decrease refference count
+//     parse_result_storage.reset(); //decrease refference count
 }
 
 //!return the error (the partial model is returned too).
@@ -137,10 +141,10 @@ void return_error(char const * /*first*/, char const * const /*last*/)
     ed.message_from_parser = possible_error;
     parse_result_storage->error.push_back(ed);
     parse_result_storage->model.push_back(model);
-    parse_result_storage.reset(); //decrease refference count
+//     parse_result_storage.reset(); //decrease refference count
 }
 
-} //namespace model_temp_store
+} //namespace temp_store_model
 
 
 
@@ -150,22 +154,30 @@ namespace spirit = boost::spirit;
 
 
 /*!
-@short This grammar parses a model.
+@short Grammar of a "MODEL".
 
 The model uses global variables to store temporary
-information, during a parsing run. Therefore the models can't be nested.
-To get around this limitation struct definition cold use funcor members. For an
+information, during a parsing run.
+
+@todo review this comment: Therefore the models can't be nested.
+To get around this limitation struct definition cold use functor members. For an
 example see: /usr/include/boost/spirit/symbols/symbols.hpp
 
 The temporary varibles and the semantic actions reside in the namespace
-"model_temp_store".
+"temp_store_model".
 */
 struct model_grammar : public spirit::grammar<model_grammar>
 {
-    //!Construct the grammar and give it a refference to the code model
-    model_grammar(boost::shared_ptr<CmCodeRepository> result_storage)
+    //!Construct the grammar
+    /*!Before using the grammar it must have a pointer to the global result storage.
+    Therefore the function set_result_storage (...) must be called. (once for all
+    model_grammar instances)*/
+    model_grammar() {}
+
+    //!Give the grammar a pointer to the global storage for parse results.
+    static void set_result_storage(CmCodeRepository* result_storage)
     {
-        model_temp_store::parse_result_storage = result_storage;
+        temp_store_model::parse_result_storage = result_storage;
     }
 
     //!When the grammar is used the framework creates this struct. All rules are defined here.
@@ -175,7 +187,7 @@ struct model_grammar : public spirit::grammar<model_grammar>
         //!The grammar's rules.
         definition(model_grammar const& self)
         {
-            using namespace model_temp_store;
+            using namespace temp_store_model;
             using spirit::str_p; using spirit::ch_p;
             using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
             using spirit::assign_a;

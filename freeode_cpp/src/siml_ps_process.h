@@ -26,7 +26,7 @@
 
 #include <boost/spirit/core.hpp>
 #include <boost/spirit/symbols/symbols.hpp>
-#include <boost/shared_ptr.hpp>
+// #include <boost/shared_ptr.hpp>
 
 #include <string>
 // #include <vector>
@@ -35,16 +35,23 @@
 //!Intermediate storage for data aquired while parsing a model.
 /*!Created a new namespace to avoid name clashes since these are all global symbols.
 The namespace is named for easier access in KDevelop. */
-namespace process_temp_store {
+namespace temp_store_process {
 using namespace siml;
 using namespace std;
-using boost::shared_ptr;
+// using boost::shared_ptr;
 
-//!The data gathered while parsing the model is stored here
-// CmModelDescriptor model;
+//!The data gathered while parsing the process is stored here
+CmProcessDescriptor process;
 
-//!Clear the whole temorary model
-void start_process(char const *, char const *) { /*model = CmModelDescriptor();*/ }
+//!error string
+string possible_error;
+
+//!Clear the whole temorary process
+void start_process(char const *, char const *)
+{
+    process = CmProcessDescriptor();
+    possible_error = "Error at start of PROCESS definition";
+}
 
 //parameter----------------------------------------------------------------
 //!temporary storage while a parameter definition is parsed
@@ -57,8 +64,8 @@ parsed parameters. The chunk of text that led to the new parameter desciptor
 is stored too*/
 void add_parameter(char const * first, char const * const last)
 {
-//     p_temp.definition_text = string(first, last);
-//     model.parameter.push_back(p_temp);
+    p_temp.definition_text = string(first, last);
+    process.parameter.push_back(p_temp);
 }
 
 
@@ -84,34 +91,29 @@ void add_parameter(char const * first, char const * const last)
 //     model.equation.push_back(e_temp);
 // }
 
-//!error string
-string possible_error;
-
 //!pointer to the central storage of parse results
-shared_ptr<CmCodeRepository> parse_result_storage;
+CmCodeRepository* parse_result_storage;
 
 //!return the correctly parsed model.
 void return_process(char const * /*first*/, char const * const /*last*/)
 {
-/*    cout << "Parsing model " << model.name << " finished correctly." << endl;
-    parse_result_storage->model.push_back(model);
-    parse_result_storage.reset(); //decrease refference count*/
+    cout << "Parsing process " << process.name << " finished correctly." << endl;
+    parse_result_storage->process.push_back(process);
 }
 
 //!return the error (the partial model is returned too).
 void return_error(char const * /*first*/, char const * const /*last*/)
 {
-/*    cout << "Parsing model " << model.name << " failled!" << endl;
+    cout << "Parsing process " << process.name << " failled!" << endl;
     cout << possible_error << endl;
 
     CmErrorDescriptor ed;
     ed.message_from_parser = possible_error;
     parse_result_storage->error.push_back(ed);
-    parse_result_storage->model.push_back(model);
-    parse_result_storage.reset(); //decrease refference count*/
+    parse_result_storage->process.push_back(process);
 }
 
-} //namespace process_temp_store
+} //namespace temp_store_process
 
 
 
@@ -127,14 +129,20 @@ namespace siml {
     information, during a parsing run.
 
     The temporary varibles and the semantic actions reside in the namespace
-    "process_temp_store".
+    "temp_store_process".
     */
     struct ps_process : public spirit::grammar<ps_process>
     {
         //!Construct the grammar and give it a refference to the code model
-        ps_process(boost::shared_ptr<CmCodeRepository> parse_storage)
+        /*!Before using the grammar it must have a pointer to the global result storage.
+        Therefore the function set_result_storage (...) must be called. (once for all
+        ps_process instances)*/
+        ps_process() {}
+
+        //!Give the grammar a pointer to the global storage for parse results.
+        static void set_result_storage(CmCodeRepository* result_storage)
         {
-            process_temp_store::parse_result_storage = parse_storage;
+            temp_store_process::parse_result_storage = result_storage;
         }
 
         //!When the grammar is used the framework creates this struct. All rules are defined here.
@@ -143,7 +151,7 @@ namespace siml {
             //!The grammar's rules.
             definition(ps_process const& self)
             {
-                using namespace process_temp_store;
+                using namespace temp_store_process;
                 using spirit::str_p; using spirit::ch_p;
                 using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
                 using spirit::assign_a;
@@ -151,8 +159,8 @@ namespace siml {
                 //The start rule. Parses the complete process: PROCESS ... END
                 process_definition
                         = ( eps_p                   [&start_process] >> //clear all temporary storage
-                            "PROCESS" >> name       [assign_a(process.name)] >>
-                            !parameter_section >> !set_section >> !equation_section >>
+                            "PROCESS" >> name       /*[assign_a(process.name)]*/ >>
+                            !parameter_section >> /* !set_section >> */
                             "END"
                           )                         [&return_process]
                         | ( eps_p                   [&return_error] >>
@@ -205,7 +213,7 @@ namespace siml {
 
                 //very bad parser for mathematical expressions
                 rough_math_expression
-                        = +(longest_d[var_name | param_name] | real_p | '+' | '-' | '*' | '/' | '(' | ')');
+                        = +(param_name | real_p | '+' | '-' | '*' | '/' | '(' | ')');
             }
 
             //!The start rule of the model grammar.
