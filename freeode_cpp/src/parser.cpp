@@ -21,7 +21,7 @@
 #define BOOST_SPIRIT_CLOSURE_LIMIT 10
 
 #include "parser.h"
-#include "siml_skip_grammar.h"
+#include "siml_ps_skip.h"
 // #include "siml_ps_name.h"
 // #include "siml_ps_model.h"
 #include "siml_ps_toplevel.h"
@@ -100,7 +100,7 @@ void Parser::doParse()
 //     CmCodeRepository* parse_result_ptr = parse_result;
 //     ps_model model(parse_result.get());
     ps_toplevel toplevel_grammar(parse_result.get());
-    skip_grammar skip;
+    ps_skip skip;
     parse_info<> info;
     info = boost::spirit::parse(inputCStr, toplevel_grammar, skip);
 

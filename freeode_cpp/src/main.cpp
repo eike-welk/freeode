@@ -28,9 +28,9 @@ main()
 
     return 0;
 }
-// #include "siml_skip_grammar.h"
+// #include "siml_ps_skip.h"
 //
 // int main()
 // {
-//     siml::skip_grammar s;
+//     siml::ps_skip s;
 // }

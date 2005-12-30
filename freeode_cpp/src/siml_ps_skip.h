@@ -43,12 +43,12 @@ Comments start with "#" and go to the end of the line.
 Comment can be between curly brackets "{" .... "}". These comments can be nested.
 @todo The end of line handling must be improved! The '\n' is not considered as whitespace because it is used to end statements.
 */
-struct skip_grammar : spirit::grammar<skip_grammar>
+struct ps_skip : spirit::grammar<ps_skip>
 {
     //!When the grammar is used the framework creates this struct.
     template <typename ScannerT>
     struct definition {
-        definition(skip_grammar const &)
+        definition(ps_skip const &)
         {
             using spirit::space_p;
             using spirit::anychar_p;
