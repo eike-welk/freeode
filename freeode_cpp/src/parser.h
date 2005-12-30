@@ -40,9 +40,6 @@ public:
     ~Parser();
 
     void doParse();
-
-    //!display code repository on stdout
-    void show_CmCodeRepository(boost::shared_ptr<siml::CmCodeRepository> parse_result);
 };
 
 #endif

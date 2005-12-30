@@ -25,7 +25,7 @@
 using std::cout;
 using std::endl;
 
-
+/*!Iterate through all lists and display their contents.*/
 void
 siml::CmModelDescriptor::display() const
 {
@@ -60,6 +60,7 @@ siml::CmModelDescriptor::display() const
 }
 
 
+/*!Iterate through all lists and display their contents.*/
 void
 siml::CmProcessDescriptor::display() const
 {
@@ -73,4 +74,31 @@ siml::CmProcessDescriptor::display() const
         cout << "|  "  << equation[i].lhs;
         cout << "  :=  " << equation[i].rhs;
     }*/
+}
+
+
+/*!Iterate through all lists and display their contents.*/
+void
+siml::CmCodeRepository::display() const
+{
+    cout << "models ----------------------------------" << endl;
+    for( uint i=0; i < model.size(); ++i )
+    {
+        model[i].display();
+        cout<<endl;
+    }
+
+    cout << "processes ----------------------------------" << endl;
+    for( uint i=0; i < process.size(); ++i )
+    {
+        process[i].display();
+        cout<<endl;
+    }
+
+    cout << "errors -----------------------------" << endl;
+    for( uint i=0; i < error.size(); ++i )
+    {
+        cout << error[i].error_message << endl;
+    }
+    cout << "------------------------------------" << endl;
 }

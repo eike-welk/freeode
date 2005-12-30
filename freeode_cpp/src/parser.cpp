@@ -117,7 +117,8 @@ void Parser::doParse()
 
 //     cout << "possible error at:" << info.stop << endl;
 
-    show_CmCodeRepository(parse_result);
+//     show_CmCodeRepository(parse_result);
+    parse_result->display();
 
     //generate python program from CmCodeRepository
     std::ofstream pyOutputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/testproc.py");
@@ -131,34 +132,3 @@ void Parser::doParse()
 }
 
 
-/*!
-@todo make function const
-*/
-void Parser::show_CmCodeRepository(shared_ptr<CmCodeRepository> parse_result)
-{
-    cout << "models ----------------------------------" << endl;
-    for( uint i=0; i < parse_result->model.size(); ++i )
-    {
-        CmModelDescriptor model;
-        model = parse_result->model[i];
-        model.display();
-        cout<<endl;
-    }
-
-    cout << "processes ----------------------------------" << endl;
-    for( uint i=0; i < parse_result->process.size(); ++i )
-    {
-        CmProcessDescriptor process;
-        process = parse_result->process[i];
-        process.display();
-        cout<<endl;
-    }
-
-    cout << "error messages ---------------------------- " << endl;
-    for( uint i=0; i < parse_result->error.size(); ++i )
-    {
-        cout << parse_result->error[i].message_from_parser << endl;
-    }
-    cout << endl;
-
-}
