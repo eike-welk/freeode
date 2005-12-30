@@ -46,7 +46,7 @@ CmModelDescriptor model;
 //!error that is maybe detected.
 CmErrorDescriptor err_temp;
 
-//!Clear the whole temorary model
+//!Clear the temporary storage
 void start_model(char const *, char const *)
 {
     model = CmModelDescriptor();
@@ -81,7 +81,7 @@ void add_variable(char const * first, char const * const last)
     model.variable.push_back(v_temp);
 }
 //!Mark one variable inside model as a state variable.
-/*!If the variable does not exist nothing will happen. @todo Should this become an internal compiler eror?*/
+/*!If the variable does not exist nothing will happen.*/
 void set_variable_integrated(char const * first, char const * const last)
 {
     string stateVarName(first, last);
@@ -136,6 +136,8 @@ void return_error(char const * /*first*/, char const * const /*last*/)
 {
     cout << "Parsing model " << model.name << " failled!" << endl;
 
+    model.errorsDetected = true;
+
     parse_result_storage->error.push_back(err_temp);
     parse_result_storage->model.push_back(model);
 }
@@ -154,6 +156,8 @@ namespace spirit = boost::spirit;
 
 The model uses global variables to store temporary
 information, during a parsing run.
+
+@todo combine model and process parser into one universal model parser.
 
 @todo review this comment: Therefore the models can't be nested.
 To get around this limitation struct definition cold use functor members. For an
@@ -207,9 +211,9 @@ struct ps_model : public spirit::grammar<ps_model>
 //                     | (eps_p[assign_a(possible_error, "Error in parameter definition!")] >> nothing_p)
                     | (eps_p[make_error("Error in parameter definition!", err_temp)] >> nothing_p)
                      );
-            parameter_definition //@TODO allow math expression in DEFAULT; units
+            parameter_definition //@TODO units
                 = ( eps_p                                [&start_parameter] >> //clear temporary storage
-                    (name - param_name)                  [param_name.add] //store in symbol table + check if name is already taken
+                    (name /*- param_name*/)                  /*[param_name.add]*/ //store in symbol table + check if name is already taken
                                                          [assign_a(p_temp.name)] >>  //store name in temporary storage
                     !("AS" >> str_p("REAL")              [assign_a(p_temp.type)]) >> //store parameter type
                     !("DEFAULT" >> rough_math_expression [assign_a(p_temp.default_expr)]) >> //store default value
@@ -222,9 +226,9 @@ struct ps_model : public spirit::grammar<ps_model>
                 *(    variable_definition
                     | (eps_p[make_error("Error in variable definition!", err_temp)] >> nothing_p)
                  );
-            variable_definition ///@TODO add upper and lower bounds; units; INITIAL values for integrated variables
+            variable_definition ///@TODO add upper and lower bounds; units;
                 = ( eps_p                                [&start_variable] >> //clear temporary storage
-                    (name - param_name - var_name)       [var_name.add]       //store in symbol table + check if name is already taken
+                    (name /*- param_name - var_name*/)       /*[var_name.add]*/       //store in symbol table + check if name is already taken
                                                          [assign_a(v_temp.name)] >>
                     !("AS" >> str_p("ANY")               [assign_a(v_temp.type)]) >>
                     !("INITIAL" >> rough_math_expression [assign_a(v_temp.initial_expr)]) >> //store initial value
@@ -245,30 +249,24 @@ struct ps_model : public spirit::grammar<ps_model>
                 = str_p("EQUATION") >>
                 *(    assignment_variable
                     | assignment_time_derivative
-                    ///@todo | equation
                     | (eps_p[make_error("Error in EQUATION section!", err_temp)] >> nothing_p)
                  );
             assignment_variable
                 = ( eps_p                           [&start_equation] >>
-                    (var_name >> eps_p)             [assign_a(e_temp.lhs)] >>
+                    (name >> eps_p)             [assign_a(e_temp.lhs)] >>
                     ":=" >> rough_math_expression   [assign_a(e_temp.rhs)] >>
                     +(ch_p('\n') | ';')
                   )                                 [&add_algebraic_assignment];
             assignment_time_derivative
                 = ( eps_p                           [&start_equation] >>
-                    '$' >> (var_name >> eps_p)      [assign_a(e_temp.lhs)] [&set_variable_integrated]>>
+                    '$' >> (name >> eps_p)      [assign_a(e_temp.lhs)] [&set_variable_integrated]>>
                     ":=" >> rough_math_expression   [assign_a(e_temp.rhs)] >>
                     +(ch_p('\n') | ';')
                   )                                 [&add_assignment_time_derivative];
-//             equation
-//                 = rough_math_expression >> "=" >> rough_math_expression;
-
-//             time_derivative
-//                 = '$' >> (var_name >> eps_p)        [&set_variable_integrated];
 
             //very bad parser for mathematical expressions
             rough_math_expression
-                    = +(longest_d[var_name | param_name] | real_p | '+' | '-' | '*' | '/' | '(' | ')');
+                    = +(name | real_p | '+' | '-' | '*' | '/' | '(' | ')');
         }
 
         //!The start rule of the model grammar.
@@ -287,9 +285,9 @@ struct ps_model : public spirit::grammar<ps_model>
         //!Grammar that describes all names (model, parameter, variable)
         ps_name name;
         //!symbol table for the known parmeter names.
-        spirit::symbols<> param_name;
+//         spirit::symbols<> param_name;
         //!symbol table for the known variable names.
-        spirit::symbols<> var_name;
+//         spirit::symbols<> var_name;
     };
 };
 

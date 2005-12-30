@@ -66,9 +66,61 @@ is stored too*/
 void add_parameter(char const * first, char const * const last)
 {
     p_temp.definition_text = string(first, last);
+    ///@todo check if name is unique
     process.parameter.push_back(p_temp);
 }
 
+//unit (sub-model)----------------------------------------------------------
+//!temporary storage while a unit definition is parsed
+CmSubModelDescriptor submod_temp;
+//!Clear the temporary storage for parsing parameters
+void start_sub_model(char const *, char const *) { submod_temp = CmSubModelDescriptor(); }
+//!Add a parameter definition to the model.
+void add_sub_model(char const * first, char const * const last)
+{
+    string definition_text(first, last);
+    ///@todo check if name is unique, if model type exists
+    process.subModel.push_back(submod_temp);
+}
+
+//parameter assignment (SET)----------------------------------------------------------------
+//!temporary storage while a variable definition is parsed
+CmEquationDescriptor param_assign_temp;
+//!Clear the temporary storage for the CmEquationDescriptor objects
+void start_param_assign(char const *, char const *) { param_assign_temp = CmEquationDescriptor(); }
+//!Add an assignment to a algebraic variable to the model. (a:=p2*c)
+void add_param_assign(char const * first, char const * const last)
+{
+    param_assign_temp.definition_text = string(first, last);
+    param_assign_temp.is_assignment = true;
+    param_assign_temp.is_ode_assignment = false;
+    process.parameterAssignment.push_back(param_assign_temp);
+}
+
+//initial value assignment (INITIAL)----------------------------------------------------------------
+//!temporary storage while a variable definition is parsed
+CmEquationDescriptor init_expr_temp;
+//!Clear the temporary storage for the CmEquationDescriptor objects
+void start_init_expr(char const *, char const *) { init_expr_temp = CmEquationDescriptor(); }
+//!Add an assignment to a algebraic variable to the model. (a:=p2*c)
+void add_init_expr(char const * first, char const * const last)
+{
+    init_expr_temp.definition_text = string(first, last);
+    init_expr_temp.is_assignment = true;
+    init_expr_temp.is_ode_assignment = false;
+    process.initialExpression.push_back(init_expr_temp);
+}
+
+//SOLUTIONPARAMETERS----------------------------------------------------------------
+//!temporary storage while a variable definition is parsed
+CmSolutionParameterDescriptor sol_parms_temp;
+//!Clear the temporary storage for the CmEquationDescriptor objects
+void start_sol_parms(char const *, char const *) { sol_parms_temp = CmSolutionParameterDescriptor(); }
+//!Add an assignment to a algebraic variable to the model. (a:=p2*c)
+void add_sol_parms(char const * /*first*/, char const * const /*last*/)
+{
+    process.solutionParameters = sol_parms_temp;
+}
 
 //equation----------------------------------------------------------------
 //!temporary storage while a variable definition is parsed
@@ -102,10 +154,12 @@ void return_process(char const * /*first*/, char const * const /*last*/)
     parse_result_storage->process.push_back(process);
 }
 
-//!return the error (the partial model is returned too).
+//!return the error (the partial process is returned too).
 void return_error(char const * /*first*/, char const * const /*last*/)
 {
     cout << "Parsing process " << process.name << " failled!" << endl;
+
+    process.errorsDetected = true;
 
     parse_result_storage->error.push_back(err_temp);
     parse_result_storage->process.push_back(process);
@@ -122,6 +176,8 @@ namespace siml {
 
     /*!
     @short Parser for "PROCESS".
+
+    @todo combine model and process parser into one universal model parser.
 
     The parser uses global variables to store temporary
     information, during a parsing run.
@@ -156,63 +212,90 @@ namespace siml {
 
                 //The start rule. Parses the complete process: PROCESS ... END
                 process_definition
-                        = str_p("PROCESS")          [&start_process] >> //clear all temporary storage
-                          ( ( name                  [assign_a(process.name)] >>
-                              !parameter_section >> /* !set_section >> */
-                              str_p("END")          [&return_process]
-                            )
-                          | ( eps_p                 [&return_error] >>
-                              nothing_p
-                            )
-                          );
+                    = str_p("PROCESS")            [&start_process] >> //clear all temporary storage
+                      ( (   name                  [assign_a(process.name)] >>
+                            !parameter_section >> !unit_section >> !set_section >>
+                            !initial_section >> !solutionparameters_section >>
+                            str_p("END")          [&return_process]
+                        )
+                      | ( eps_p                   [&return_error] >>
+                          nothing_p
+                        )
+                      );
 
                 //parse block of parameter definitions: PARAMETER p1 AS REAL; p2 AS REAL; ...
                 parameter_section
-                        =   str_p("PARAMETER") >>
+                    =   str_p("PARAMETER") >>
                         *(    parameter_definition
-                        | (eps_p[make_error("Error in parameter definition!", err_temp)] >> nothing_p)
+                            | (eps_p[make_error("Error in PARAMETER definition!", err_temp)] >> nothing_p)
                          );
                 parameter_definition ///@TODO units
-                        = ( eps_p                                [&start_parameter] >> //clear temporary storage
-                            (name - param_name)                  [param_name.add] //store in symbol table + check if name is already taken
-                                                                 [assign_a(p_temp.name)] >>  //store name in temporary storage
-                            !("AS" >> str_p("REAL")              [assign_a(p_temp.type)]) >> //store parameter type
-                            +(ch_p('\n') | ';')
-                          )                                      [&add_parameter]; //add parameter definition to model
+                    = ( eps_p                                [&start_parameter] >> //clear temporary storage
+                        (name /*- param_name*/)                  /*[param_name.add]*/ //store in symbol table + check if name is already taken
+                                                             [assign_a(p_temp.name)] >>  //store name in temporary storage
+                        !("AS" >> str_p("REAL")              [assign_a(p_temp.type)]) >> //store parameter type
+                        !("DEFAULT" >> rough_math_expression [assign_a(p_temp.default_expr)]) >> //store default value
+                        +(ch_p('\n') | ';')
+                      )                                      [&add_parameter]; //add parameter definition to model
 
-//             //parse the SET section where values are assigned to the parameters: SET p1=2.5; p2:=3.1;
-//             set_section
-//                 = str_p("SET") >>
-//                 *(    parameter_assignment
-//                     | (eps_p[assign_a(possible_error, "Error in SET section!")] >> nothing_p)
-//                  );
-//             parameter_assignment
-//                 = name >> ":=" >> rough_math_expression >> +(ch_p('\n') | ';');
+                //parse block of sub-model definitions: UNIT u1 AS Model1; ...
+                unit_section
+                    =   str_p("UNIT") >>
+                        *(    unit_definition
+                            | (eps_p[make_error("Error in UNIT (sub-model) definition!", err_temp)] >> nothing_p)
+                         );
+                unit_definition
+                    = ( eps_p                                [&start_sub_model] >> //clear temporary storage
+                        name                                 [assign_a(submod_temp.name)] >>  //store name in temporary storage
+                        !("AS" >> name                       [assign_a(submod_temp.type)]) >> //store sub model type
+                        +(ch_p('\n') | ';')
+                      )                                      [&add_sub_model]; //add sub-model definition to model
 
-//                 //Parse the EQUATION section: EQUATION v1 := 2*v2 + v3; $v2 := v2/v1;
-//                 equation_section
-//                         = str_p("EQUATION") >>
-//                         *(    assignment_variable
-//                             | assignment_time_derivative
-//                     ///@TODO | equation
-//                             | (eps_p[make_error("Error in EQUATION section!", err_temp)] >> nothing_p)
-//                          );
-//                 assignment_variable
-//                         = ( eps_p                           [&start_equation] >>
-//                             (var_name >> eps_p)             [assign_a(e_temp.lhs)] >>
-//                             ":=" >> rough_math_expression   [assign_a(e_temp.rhs)] >>
-//                             +(ch_p('\n') | ';')
-//                           )                                 [&add_algebraic_assignment];
-//                 assignment_time_derivative
-//                         = ( eps_p                           [&start_equation] >>
-//                             '$' >> (var_name >> eps_p)      [assign_a(e_temp.lhs)] [&set_variable_integrated]>>
-//                             ":=" >> rough_math_expression   [assign_a(e_temp.rhs)] >>
-//                             +(ch_p('\n') | ';')
-//                           )                                 [&add_assignment_time_derivative];
+                //parse the SET section where values are assigned to the parameters: SET p1=2.5; p2:=3.1;
+                set_section
+                    = str_p("SET") >>
+                    *(    parameter_assignment
+                        | (eps_p[make_error("Error in SET section!", err_temp)] >> nothing_p)
+                     );
+                parameter_assignment
+                    = ( name                                [&start_param_assign]
+                                                            [assign_a(param_assign_temp.lhs)] >>
+                        ":=" >> rough_math_expression       [assign_a(param_assign_temp.rhs)] >>
+                        +(ch_p('\n') | ';')
+                      )                                     [&add_param_assign];
+
+                //parse the INITIAL section where start values are assigned to the integrated variables: INITAIL v1=2.5; v2:=3.1;
+                initial_section
+                    = str_p("INITIAL") >>
+                      *(    initial_assignment
+                        |   (eps_p[make_error("Error in INITIAL section!", err_temp)] >> nothing_p)
+                       );
+                initial_assignment
+                    = ( name                                [&start_init_expr]
+                                                            [assign_a(init_expr_temp.lhs)] >>
+                        ":=" >> rough_math_expression       [assign_a(init_expr_temp.rhs)] >>
+                        +(ch_p('\n') | ';')
+                      )                                     [&add_init_expr];
+
+                //parse the SOLUTIONPARAMETERS section
+                solutionparameters_section
+                    = str_p("SOLUTIONPARAMETERS")           [&start_sol_parms] >>
+                      *(    solutionparameters_assignment   [&add_sol_parms]
+                        |   (eps_p[make_error("Error in SOLUTIONPARAMETERS section!", err_temp)] >> nothing_p)
+                       );
+                solutionparameters_assignment
+                    = ( str_p("ReportingInterval") >> ":=" >>
+                        (real_p >> eps_p)                   [assign_a(sol_parms_temp.reportingInterval)] >>
+                        +ch_p(';')
+                      )
+                    | ( str_p("SimulationTime") >> ":=" >>
+                        (real_p  >> eps_p)                  [assign_a(sol_parms_temp.simulationTime)] >>
+                        +ch_p(';')
+                      );
 
                 //very bad parser for mathematical expressions
                 rough_math_expression
-                        = +(param_name | real_p | '+' | '-' | '*' | '/' | '(' | ')');
+                        = +(name | real_p | '+' | '-' | '*' | '/' | '(' | ')');
             }
 
             //!The start rule of the model grammar.
@@ -222,14 +305,18 @@ namespace siml {
             private:
             //!Rules that are defined here
             spirit::rule<ScannerT>
-            process_definition, parameter_section, parameter_definition,
+            process_definition,
+            parameter_section, parameter_definition,
+            unit_section, unit_definition,
             set_section, parameter_assignment,
 //             equation_section, assignment_variable, assignment_time_derivative,
-            /*time_derivative,*/ rough_math_expression;
+            initial_section, initial_assignment,
+            solutionparameters_section, solutionparameters_assignment,
+            rough_math_expression;
             //!Grammar that describes all names (model, parameter, variable)
             ps_name name;
             //!symbol table for the known parmeter names.
-            spirit::symbols<> param_name;
+//             spirit::symbols<> param_name;
             //!symbol table for the known variable names.
 //             spirit::symbols<> var_name;
         };

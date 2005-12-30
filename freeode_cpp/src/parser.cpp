@@ -71,10 +71,6 @@ Parser::~Parser()
 
 /*!
 This is the parsing action
-
-@todo File IO:
-
-
 */
 void Parser::doParse()
 {

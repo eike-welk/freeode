@@ -31,9 +31,6 @@ namespace siml {
 
 This object contains data about an error. It is used to generate nicely
 formated error message.
-
-@todo An error generation functor would be great. e.g.: eps_p[error(code_m, "AS must be followed by a variable type")]
-@todo How should I deal with code generator errors?
 */
 struct CmErrorDescriptor
 {
@@ -68,12 +65,12 @@ struct CmParameterDescriptor
     std::string type;
     //!the default value, relevant if no value is set.
     std::string default_expr;
-//    //!mathematical expression from the set section.
-//     std::string set_expr;
+    //!mathematical expression from the set section.
+    std::string set_expr;
     //!text that was parsed to gather the information in this object.
     std::string definition_text;
 
-    CmParameterDescriptor() : type("REAL"), default_expr("1") {};
+    CmParameterDescriptor() : type("REAL"), default_expr("") {};
 };
 //!container for the parameter descriptors of a model. See: @see CmParameterDescriptor
 typedef std::vector<CmParameterDescriptor> CmParameterTable;
@@ -130,9 +127,31 @@ struct CmEquationDescriptor
 typedef std::vector<CmEquationDescriptor> CmEquationTable;
 
 
-struct CmModelDescriptor;
-//!container for models.
-typedef std::vector<CmModelDescriptor> CmModelTable;
+/*!
+@short Descripion of sub-models
+
+Represents one line of the "UNIT" section
+*/
+struct CmSubModelDescriptor
+{
+    //!The sub-model's name in the parent model.
+    std::string name;
+    //!The sub-model's type.
+    std::string type;
+};
+//!container for model references.
+typedef std::vector<CmSubModelDescriptor> CmSubModelTable;
+
+
+/*!
+@short Storage for "SOLUTIONPARAMETERS"
+*/
+struct CmSolutionParameterDescriptor
+{
+    std::string reportingInterval;
+    std::string simulationTime;
+};
+
 
 /*!
 @short Descripion of a "MODEL"
@@ -144,18 +163,25 @@ struct CmModelDescriptor
     std::string name;
     //!Container for parameters. See: @see CmParameterDescriptor
     CmParameterTable parameter;
+    //!Container for the sub models ("UNIT") @see CmSubModelDescriptor
+    CmSubModelTable subModel;
     //!Container for variables. See: @see CmVariableDescriptor
     CmVariableTable variable;
+    //!Container for parameter initializations. ("SET section") See: @see CmEquationDescriptor
+    CmEquationTable parameterAssignment;
     //!Container for the eqations. See: @see CmEquationDescriptor
     CmEquationTable equation;
-    //!Container for parameter initializations. ("SET section") See: @see CmEquationDescriptor
-//     CmEquationTable parameterAssignment;
-    //!Container for the sub models ("UNIT") @see CmModelDescriptor
-    CmModelTable subModel;
+    //!There are errors
+    bool errorsDetected;
 
+    //!Constructor
+    CmModelDescriptor(): errorsDetected(false) {};
     //!Display the model's contents (for debuging)
     void display() const;
 };
+struct CmModelDescriptor;
+//!container for models.
+typedef std::vector<CmModelDescriptor> CmModelTable;
 
 
 /*!
@@ -170,7 +196,9 @@ In a process models are instantiated.
 struct CmProcessDescriptor: public CmModelDescriptor
 {
     //!Container for initializations of integrated variables. ("INITIAL" section) See: @see CmEquationDescriptor
-//     CmEquationTable initialExpression;
+    CmEquationTable initialExpression;
+    //!Some simulation options
+    CmSolutionParameterDescriptor solutionParameters;
 
     //!Display the process' contents (for debuging)
     void display() const;

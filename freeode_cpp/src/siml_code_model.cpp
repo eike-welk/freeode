@@ -37,7 +37,7 @@ siml::CmModelDescriptor::display() const
 
     cout << "sub models:" << endl;
     for(uint i=0; i<subModel.size(); ++i) {
-        cout << "|  " << subModel[i].name << endl;
+        cout << "|  " << subModel[i].name << ", " << subModel[i].type << endl;
     }
 
     cout << "variables:" << endl;
@@ -45,18 +45,25 @@ siml::CmModelDescriptor::display() const
         cout << "|  " << variable[i].name << ", " << variable[i].type << endl;
     }
 
+    cout << "parameter assignments:" << endl;
+    for(uint i=0; i<parameterAssignment.size(); ++i) {
+//         cout << equation[i].definition_text << endl;
+        cout << "|  "    << parameterAssignment[i].lhs;
+        cout << "  :=  " << parameterAssignment[i].rhs << endl;
+    }
+
     cout << "equations:" << endl;
 //     uint es=equation.size();
     for(uint i=0; i<equation.size(); ++i) {
 //         cout << equation[i].definition_text << endl;
-        cout << "|  "  << equation[i].lhs;
+        cout << "|  "    << equation[i].lhs;
         cout << "  :=  " << equation[i].rhs;
-        if( equation[i].is_ode_assignment ) {
-            cout << "  - ODE" << endl;
-        } else {
-            cout << "  - algebraic" << endl;
-        }
+        if( equation[i].is_ode_assignment ) { cout << "  - ODE" << endl; }
+        else                                { cout << "  - algebraic" << endl; }
     }
+
+    if( errorsDetected ) { cout << "Errors detected!" << endl; }
+    else                 { cout << "No Errors." << endl; }
 }
 
 
@@ -67,13 +74,11 @@ siml::CmProcessDescriptor::display() const
     cout << "process ";
     CmModelDescriptor::display();
 
-/*    cout << "initial expressions:" << endl;
-    uint es=equation.size();
+    cout << "initial expressions:" << endl;
     for(uint i=0; i<initialExpression.size(); ++i) {
-        cout << equation[i].definition_text << endl;
-        cout << "|  "  << equation[i].lhs;
-        cout << "  :=  " << equation[i].rhs;
-    }*/
+        cout << "|  "    << initialExpression[i].lhs;
+        cout << "  :=  " << initialExpression[i].rhs << endl;
+    }
 }
 
 
