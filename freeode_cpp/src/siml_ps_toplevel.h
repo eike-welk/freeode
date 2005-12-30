@@ -23,7 +23,7 @@
 #define BOOST_SPIRIT_DEBUG
 
 #include "siml_code_model.h"
-// #include "siml_name_grammar.h"
+// #include "siml_ps_name.h"
 #include "siml_ps_model.h"
 #include "siml_ps_process.h"
 

@@ -21,7 +21,7 @@
 #define SIML_MODEL_GRAMMAR_HPP
 
 #include "siml_code_model.h"
-#include "siml_name_grammar.h"
+#include "siml_ps_name.h"
 #include "siml_error_generator.h"
 
 #include <boost/spirit/core.hpp>
@@ -285,7 +285,7 @@ struct ps_model : public spirit::grammar<ps_model>
             equation_section, assignment_variable, assignment_time_derivative,
             /*time_derivative,*/ rough_math_expression;
         //!Grammar that describes all names (model, parameter, variable)
-        name_grammar name;
+        ps_name name;
         //!symbol table for the known parmeter names.
         spirit::symbols<> param_name;
         //!symbol table for the known variable names.

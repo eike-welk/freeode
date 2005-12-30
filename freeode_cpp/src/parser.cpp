@@ -22,7 +22,7 @@
 
 #include "parser.h"
 #include "siml_skip_grammar.h"
-// #include "siml_name_grammar.h"
+// #include "siml_ps_name.h"
 // #include "siml_ps_model.h"
 #include "siml_ps_toplevel.h"
 #include "siml_python_generator.h"
@@ -49,7 +49,7 @@ using boost::shared_ptr;
 Parser::Parser()
 {
 
-    //The keywords. TODO put this into the definition of name_grammar
+    //The keywords. TODO put this into the definition of ps_name
     char const * const keywords[] = {
         "MODEL","PARAMETER", "VARIABLE", "SET", "EQUATION", "AS", "DEFAULT",
         "ASSIGN", "IF", "ELSE",
@@ -59,7 +59,7 @@ Parser::Parser()
     std::size_t const keywords_size = sizeof(keywords) / sizeof(keywords[0]);
 
     for (std::size_t i = 0; i < keywords_size; ++i) {
-            name_grammar::reserved_keywords.add(keywords[i]);
+            ps_name::reserved_keywords.add(keywords[i]);
     }
 }
 

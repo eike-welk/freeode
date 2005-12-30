@@ -42,11 +42,11 @@ numbers and "_". A name can not be equal to a keyword.
 
 The keyword rejection can be turned on and off in the constructor.
 
-For rejection of keywords the name_grammar contains a static member
+For rejection of keywords the ps_name contains a static member
 reserved_keywords (a symbol table), where keywords should be added at the start
 of the program.
 */
-class name_grammar : public spirit::grammar<name_grammar>
+class ps_name : public spirit::grammar<ps_name>
 {
     spirit::symbols<char> dummy_reserved_keywords;
 
@@ -56,10 +56,10 @@ public:
     static spirit::symbols<char> reserved_keywords;
     spirit::symbols<char> const & keywords;
 
-    //!construct the name_grammar
+    //!construct the ps_name
     /*! @param check_reserved_keywords if true keywords are rejected, otherwise keywords are accepted too.
     */
-    name_grammar(bool check_reserved_keywords = true)
+    ps_name(bool check_reserved_keywords = true)
         : keywords(check_reserved_keywords ?
                    reserved_keywords :
                    dummy_reserved_keywords)
@@ -68,7 +68,7 @@ public:
     //!When the grammar is used the framework creates this struct.
     template <typename ScannerT>
     struct definition {
-        definition(name_grammar const & self)
+        definition(ps_name const & self)
         {
             using spirit::alpha_p;
             using spirit::alnum_p;
@@ -88,7 +88,7 @@ public:
 };
 
 //Initialize the static symbol table
-spirit::symbols<char> name_grammar::reserved_keywords;
+spirit::symbols<char> ps_name::reserved_keywords;
 
 } // namespace siml
 
