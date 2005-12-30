@@ -23,6 +23,7 @@
 
 #include "siml_code_model.h"
 #include "siml_name_grammar.h"
+#include "siml_error_generator.h"
 
 #include <boost/spirit/core.hpp>
 #include <boost/spirit/symbols/symbols.hpp>
@@ -43,14 +44,14 @@ using namespace std;
 //!The data gathered while parsing the process is stored here
 CmProcessDescriptor process;
 
-//!error string
-string possible_error;
+//!error that is maybe detected.
+CmErrorDescriptor err_temp;
 
 //!Clear the whole temorary process
 void start_process(char const *, char const *)
 {
     process = CmProcessDescriptor();
-    possible_error = "Error at start of PROCESS definition";
+    err_temp = CmErrorDescriptor();
 }
 
 //parameter----------------------------------------------------------------
@@ -105,11 +106,8 @@ void return_process(char const * /*first*/, char const * const /*last*/)
 void return_error(char const * /*first*/, char const * const /*last*/)
 {
     cout << "Parsing process " << process.name << " failled!" << endl;
-    cout << possible_error << endl;
 
-    CmErrorDescriptor ed;
-    ed.message_from_parser = possible_error;
-    parse_result_storage->error.push_back(ed);
+    parse_result_storage->error.push_back(err_temp);
     parse_result_storage->process.push_back(process);
 }
 
@@ -158,20 +156,21 @@ namespace siml {
 
                 //The start rule. Parses the complete process: PROCESS ... END
                 process_definition
-                        = ( eps_p                   [&start_process] >> //clear all temporary storage
-                            "PROCESS" >> name       /*[assign_a(process.name)]*/ >>
-                            !parameter_section >> /* !set_section >> */
-                            "END"
-                          )                         [&return_process]
-                        | ( eps_p                   [&return_error] >>
-                            nothing_p
+                        = str_p("PROCESS")          [&start_process] >> //clear all temporary storage
+                          ( ( name                  [assign_a(process.name)] >>
+                              !parameter_section >> /* !set_section >> */
+                              str_p("END")          [&return_process]
+                            )
+                          | ( eps_p                 [&return_error] >>
+                              nothing_p
+                            )
                           );
 
                 //parse block of parameter definitions: PARAMETER p1 AS REAL; p2 AS REAL; ...
                 parameter_section
                         =   str_p("PARAMETER") >>
                         *(    parameter_definition
-                        | (eps_p[assign_a(possible_error, "Error in parameter definition!")] >> nothing_p)
+                        | (eps_p[make_error("Error in parameter definition!", err_temp)] >> nothing_p)
                          );
                 parameter_definition ///@TODO units
                         = ( eps_p                                [&start_parameter] >> //clear temporary storage
@@ -196,7 +195,7 @@ namespace siml {
 //                         *(    assignment_variable
 //                             | assignment_time_derivative
 //                     ///@TODO | equation
-//                             | (eps_p[assign_a(possible_error, "Error in EQUATION section!")] >> nothing_p)
+//                             | (eps_p[make_error("Error in EQUATION section!", err_temp)] >> nothing_p)
 //                          );
 //                 assignment_variable
 //                         = ( eps_p                           [&start_equation] >>

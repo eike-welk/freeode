@@ -22,6 +22,7 @@
 
 #include "siml_code_model.h"
 #include "siml_name_grammar.h"
+#include "siml_error_generator.h"
 
 #include <boost/spirit/core.hpp>
 #include <boost/spirit/symbols/symbols.hpp>
@@ -42,14 +43,14 @@ using namespace std;
 //!The data gathered while parsing the model is stored here
 CmModelDescriptor model;
 
-//!error string
-string possible_error;
+//!error that is maybe detected.
+CmErrorDescriptor err_temp;
 
 //!Clear the whole temorary model
 void start_model(char const *, char const *)
 {
     model = CmModelDescriptor();
-    possible_error = "Error at start of MODEL definition";
+    err_temp = CmErrorDescriptor();
 }
 
 //parameter----------------------------------------------------------------
@@ -128,20 +129,15 @@ void return_model(char const * /*first*/, char const * const /*last*/)
 {
     cout << "Parsing model " << model.name << " finished correctly." << endl;
     parse_result_storage->model.push_back(model);
-//     parse_result_storage.reset(); //decrease refference count
 }
 
 //!return the error (the partial model is returned too).
 void return_error(char const * /*first*/, char const * const /*last*/)
 {
     cout << "Parsing model " << model.name << " failled!" << endl;
-    cout << possible_error << endl;
 
-    CmErrorDescriptor ed;
-    ed.message_from_parser = possible_error;
-    parse_result_storage->error.push_back(ed);
+    parse_result_storage->error.push_back(err_temp);
     parse_result_storage->model.push_back(model);
-//     parse_result_storage.reset(); //decrease refference count
 }
 
 } //namespace temp_store_model
@@ -194,20 +190,22 @@ struct model_grammar : public spirit::grammar<model_grammar>
 
             //The start rule. Parses the complete model: MODEL ... END
             model_definition
-                = ( eps_p                   [&start_model] >> //clear all temorary storage
-                    "MODEL" >> name         [assign_a(model.name)] >>
-                    !parameter_section >> !variable_section >> !set_section >> !equation_section >>
-                    "END"
-                  )                         [&return_model]
-                | ( eps_p                   [&return_error] >>
-                    nothing_p
+                = str_p("MODEL")            [&start_model] >> //clear all temporary storage
+                  ( ( name                  [assign_a(model.name)] >>
+                      !parameter_section >> !variable_section >> !set_section >> !equation_section >>
+                      str_p("END")          [&return_model]
+                    )
+                  | ( eps_p                 [&return_error] >>
+                      nothing_p
+                    )
                   );
 
             //parse block of parameter definitions: PARAMETER p1 AS REAL DEFAULT 1; p2 AS REAL DEFAULT 10; ...
             parameter_section
                 =   str_p("PARAMETER") >>
                     *(    parameter_definition
-                        | (eps_p[assign_a(possible_error, "Error in parameter definition!")] >> nothing_p)
+//                     | (eps_p[assign_a(possible_error, "Error in parameter definition!")] >> nothing_p)
+                    | (eps_p[make_error("Error in parameter definition!", err_temp)] >> nothing_p)
                      );
             parameter_definition //@TODO allow math expression in DEFAULT; units
                 = ( eps_p                                [&start_parameter] >> //clear temporary storage
@@ -222,9 +220,9 @@ struct model_grammar : public spirit::grammar<model_grammar>
             variable_section
                 = str_p("VARIABLE") >>
                 *(    variable_definition
-                    | (eps_p[assign_a(possible_error, "Error in variable definition!")] >> nothing_p)
+                    | (eps_p[make_error("Error in variable definition!", err_temp)] >> nothing_p)
                  );
-            variable_definition //@TODO add upper and lower bounds; units; INITIAL values for integrated variables
+            variable_definition ///@TODO add upper and lower bounds; units; INITIAL values for integrated variables
                 = ( eps_p                                [&start_variable] >> //clear temporary storage
                     (name - param_name - var_name)       [var_name.add]       //store in symbol table + check if name is already taken
                                                          [assign_a(v_temp.name)] >>
@@ -247,8 +245,8 @@ struct model_grammar : public spirit::grammar<model_grammar>
                 = str_p("EQUATION") >>
                 *(    assignment_variable
                     | assignment_time_derivative
-                    //TODO | equation
-                    | (eps_p[assign_a(possible_error, "Error in EQUATION section!")] >> nothing_p)
+                    ///@todo | equation
+                    | (eps_p[make_error("Error in EQUATION section!", err_temp)] >> nothing_p)
                  );
             assignment_variable
                 = ( eps_p                           [&start_equation] >>
@@ -278,8 +276,6 @@ struct model_grammar : public spirit::grammar<model_grammar>
         start() const { return model_definition; }
 
         private:
-//         std::vector<std::string> parameter_name;
-//         std::vector<std::string> variable_name;
 
         //!Rules that are defined here
         spirit::rule<ScannerT>

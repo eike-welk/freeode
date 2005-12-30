@@ -30,11 +30,12 @@ namespace siml {
 /**
 functor class to generate an error
 
-	@author Eike Welk <eike.welk@post.rwth-aachen.de>
+    @author Eike Welk <eike.welk@post.rwth-aachen.de>
 */
 class error_generator{
 public:
-    error_generator(std::string error_message, CmCodeRepository* repository);
+//     error_generator(std::string error_message, CmCodeRepository* repository);
+    error_generator(std::string error_message, CmErrorDescriptor& error);
 
     ~error_generator();
 
@@ -43,19 +44,29 @@ public:
     error_generator const&
     operator()(IteratorT first, IteratorT const& last) const
     {
-        add_error(std::string(), std::string(), 0);
+        add_error(first, last);
         return *this;
     }
 
     //!Add error to repository
-    void add_error(std::string offending_code, std::string file, uint line) const;
+    void add_error(char const * offending_code_first, char const * offending_code_last) const;
 
     protected:
     //!The eror message
     std::string m_error_message;
 
     //!The code repository where the error will be put.
-    CmCodeRepository* m_repository;
+//     CmCodeRepository* m_repository;
+
+    //!Storage for the generated error
+    CmErrorDescriptor&  m_error;
+};
+
+//!create an error_generator object.
+inline
+error_generator make_error(std::string error_message, CmErrorDescriptor& error)
+{
+    return error_generator(error_message, error);
 };
 
 }
