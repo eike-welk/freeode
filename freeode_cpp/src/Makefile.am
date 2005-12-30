@@ -3,8 +3,8 @@ INCLUDES = $(all_includes)
 
 # these are the headers for your project
 noinst_HEADERS = parser.h siml_skip_grammar.h siml_name_grammar.h \
-				siml_model_grammar.h siml_code_model.h siml_python_generator.h siml_ps_process.h \
-		siml_ps_toplevel.h siml_error_generator.h
+	siml_code_model.h siml_python_generator.h siml_ps_process.h siml_ps_toplevel.h \
+	siml_error_generator.h siml_ps_model.h
 
 # let automoc handle all of the meta source files (moc)
 METASOURCES = AUTO

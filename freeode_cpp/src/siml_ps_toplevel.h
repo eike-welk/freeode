@@ -24,7 +24,7 @@
 
 #include "siml_code_model.h"
 // #include "siml_name_grammar.h"
-#include "siml_model_grammar.h"
+#include "siml_ps_model.h"
 #include "siml_ps_process.h"
 
 #include <boost/spirit/core.hpp>
@@ -74,7 +74,7 @@ namespace siml {
         {
             temp_store_toplevel::parse_result_storage = parse_storage;
             //initialize the result storage pointers for all other grammars
-            model_grammar::set_result_storage(parse_storage);
+            ps_model::set_result_storage(parse_storage);
             ps_process::set_result_storage(parse_storage);
         }
 
@@ -105,7 +105,7 @@ namespace siml {
             //!Rules that are defined here
             spirit::rule<ScannerT> toplevel_definition;
             //!Grammar that describes a model
-            model_grammar model;
+            ps_model model;
             //!Grammar that describes a process
             ps_process process;
         };

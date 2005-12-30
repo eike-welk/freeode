@@ -23,7 +23,7 @@
 #include "parser.h"
 #include "siml_skip_grammar.h"
 // #include "siml_name_grammar.h"
-// #include "siml_model_grammar.h"
+// #include "siml_ps_model.h"
 #include "siml_ps_toplevel.h"
 #include "siml_python_generator.h"
 
@@ -98,7 +98,7 @@ void Parser::doParse()
 
     shared_ptr<CmCodeRepository> parse_result(new CmCodeRepository);
 //     CmCodeRepository* parse_result_ptr = parse_result;
-//     model_grammar model(parse_result.get());
+//     ps_model model(parse_result.get());
     ps_toplevel toplevel_grammar(parse_result.get());
     skip_grammar skip;
     parse_info<> info;
