@@ -162,13 +162,13 @@ example see: /usr/include/boost/spirit/symbols/symbols.hpp
 The temporary varibles and the semantic actions reside in the namespace
 "temp_store_model".
 */
-struct model_grammar : public spirit::grammar<model_grammar>
+struct ps_model : public spirit::grammar<ps_model>
 {
     //!Construct the grammar
     /*!Before using the grammar it must have a pointer to the global result storage.
     Therefore the function set_result_storage (...) must be called. (once for all
-    model_grammar instances)*/
-    model_grammar() {}
+    ps_model instances)*/
+    ps_model() {}
 
     //!Give the grammar a pointer to the global storage for parse results.
     static void set_result_storage(CmCodeRepository* result_storage)
@@ -181,7 +181,7 @@ struct model_grammar : public spirit::grammar<model_grammar>
     struct definition
     {
         //!The grammar's rules.
-        definition(model_grammar const& self)
+        definition(ps_model const& self)
         {
             using namespace temp_store_model;
             using spirit::str_p; using spirit::ch_p;
