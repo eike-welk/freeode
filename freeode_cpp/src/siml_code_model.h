@@ -53,7 +53,7 @@ typedef std::vector<CmErrorDescriptor> CmErrorTable;
 This is the parsing result for one line of the PARAMETER section. The code
 generator will later use this information.
 @todo A pair of pointers: char const * where_first, where_last; instead of std::string definition_text would be a good idea, to aid the generation of code generator errors.
-@todo maybe CmParameterDescriptor and CmVariableDescriptor should be merged.
+@todo merge CmParameterDescriptor and CmVariableDescriptor into CmValueStore.
 */
 struct CmParameterDescriptor
 {
@@ -81,7 +81,9 @@ typedef std::vector<CmParameterDescriptor> CmParameterTable;
 
 This is the parsing result for one line of the VARIABLE section. The code
 generator will later use this information.
-*/
+
+@todo merge CmParameterDescriptor and CmVariableDescriptor into CmValueStore.
+ */
 struct CmVariableDescriptor
 {
     //!identifier name
@@ -161,7 +163,8 @@ struct CmModelDescriptor
 {
     //!The model's name
     std::string name;
-    //!Container for parameters. See: @see CmParameterDescriptor
+
+    //!Container for parameters. ("PARAMETER") See: @see CmParameterDescriptor
     CmParameterTable parameter;
     //!Container for the sub models ("UNIT") @see CmSubModelDescriptor
     CmSubModelTable subModel;
@@ -171,40 +174,24 @@ struct CmModelDescriptor
     CmEquationTable parameterAssignment;
     //!Container for the eqations. See: @see CmEquationDescriptor
     CmEquationTable equation;
+    //!Container for initializations of integrated variables. ("INITIAL" section) See: @see CmEquationDescriptor
+    CmEquationTable initialExpression;
+    //!Some simulation options
+    CmSolutionParameterDescriptor solutionParameters;
+
+    //!If true: the model is really a "PROCESS"; else: it is a "MODEL"
+    bool isProcess;
     //!There are errors
     bool errorsDetected;
 
     //!Constructor
-    CmModelDescriptor(): errorsDetected(false) {};
+    CmModelDescriptor(): isProcess(false), errorsDetected(false) {};
     //!Display the model's contents (for debuging)
     void display() const;
 };
 struct CmModelDescriptor;
 //!container for models.
 typedef std::vector<CmModelDescriptor> CmModelTable;
-
-
-/*!
-@short Descripion of a "PROCESS"
-This is the parsing result of a process: "PROCESS ... END"
-
-Processes and models are very similar. Processes contain aditional simulation
-execution features and code generation features.
-In a process models are instantiated.
-@see CmModelDescriptor
-*/
-struct CmProcessDescriptor: public CmModelDescriptor
-{
-    //!Container for initializations of integrated variables. ("INITIAL" section) See: @see CmEquationDescriptor
-    CmEquationTable initialExpression;
-    //!Some simulation options
-    CmSolutionParameterDescriptor solutionParameters;
-
-    //!Display the process' contents (for debuging)
-    void display() const;
-};
-//!container for processes.
-typedef std::vector<CmProcessDescriptor> CmProcessTable;
 
 
 /*!
@@ -222,7 +209,7 @@ struct CmCodeRepository
     //!List of models
     CmModelTable model;
     //!List of processes
-    CmProcessTable process;
+    CmModelTable process;
     //!list of recognized errors
     CmErrorTable error;
 

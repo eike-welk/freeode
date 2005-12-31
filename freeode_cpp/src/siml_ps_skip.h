@@ -41,7 +41,6 @@ This grammar specifies what part of the text are thrown away because they are
 whitespace or comments.
 Comments start with "#" and go to the end of the line.
 Comment can be between curly brackets "{" .... "}". These comments can be nested.
-@todo The end of line handling must be improved! The '\n' is not considered as whitespace because it is used to end statements.
 */
 struct ps_skip : spirit::grammar<ps_skip>
 {

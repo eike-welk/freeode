@@ -25,7 +25,8 @@
 #include "siml_code_model.h"
 // #include "siml_ps_name.h"
 #include "siml_ps_model.h"
-#include "siml_ps_process.h"
+// #include "siml_ps_process.h"
+#include "siml_error_generator.h"
 
 #include <boost/spirit/core.hpp>
 #include <boost/spirit/symbols/symbols.hpp>
@@ -47,6 +48,15 @@ using namespace std;
 //!pointer to the central storage of parse results
 CmCodeRepository* parse_result_storage;
 
+//!error that is maybe detected.
+CmErrorDescriptor err_temp;
+
+//!add an error to the code repository
+void add_error(char const * /*first*/, char const * /*last*/)
+{
+    cout << "Error at toplevel!" << endl;
+    parse_result_storage->error.push_back(err_temp);
+}
 
 } //namespace temp_store_toplevel
 
@@ -75,7 +85,7 @@ namespace siml {
             temp_store_toplevel::parse_result_storage = parse_storage;
             //initialize the result storage pointers for all other grammars
             ps_model::set_result_storage(parse_storage);
-            ps_process::set_result_storage(parse_storage);
+//             ps_process::set_result_storage(parse_storage);
         }
 
         //!When the grammar is used the framework creates this struct. All rules are defined here.
@@ -86,15 +96,19 @@ namespace siml {
             {
                 using namespace temp_store_toplevel;
                 using spirit::str_p; using spirit::ch_p;
-                using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
+                using spirit::eps_p; using spirit::nothing_p;
+                using spirit::print_p; using spirit::anychar_p;
                 using spirit::assign_a;
 
                 //The start rule. Parses a complete file.
                 toplevel_definition
-                        = *(
-                                model
-                            |   process
-                           );
+                    = *( model
+//                        |   parameter_estimation
+                        | ( ( print_p - "MODEL" - "PROCESS" )  [make_error("Expecting MODEL or PROCESS definition.", err_temp)]
+                                                                [&add_error] >>
+                              nothing_p
+                          )
+                        );
             }
 
             //!The start rule of the model grammar.
@@ -107,7 +121,7 @@ namespace siml {
             //!Grammar that describes a model
             ps_model model;
             //!Grammar that describes a process
-            ps_process process;
+//             ps_process process;
         };
     };
 

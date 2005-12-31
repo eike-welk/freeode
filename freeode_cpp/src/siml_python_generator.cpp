@@ -396,7 +396,7 @@ void siml::PyGenerator::gen_simulate_function()
             "        This function performs the simulation.\n"
             "        \"\"\"\n"
             "        \n"
-            "        self.time = linspace(0, 20, 100)\n" ///@todo prameters for duration and stepsize required
+            "        self.time = linspace(0, 20, 100)\n" ///@todo respect SOLUTIONPARAMETERS
             "        y = integrate.odeint(self._diffStateT, self.y0, self.time)\n"
             "        self._outputEquations(y)\n"
             "        \n";
@@ -431,8 +431,7 @@ void siml::PyGenerator::gen_access_function()
 
 /*!
 Display graphs
-@todo add displaying multiple variables at once
- */
+*/
 void siml::PyGenerator::gen_graph_function()
 {
     m_py_file <<

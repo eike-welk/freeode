@@ -29,7 +29,11 @@ using std::endl;
 void
 siml::CmModelDescriptor::display() const
 {
-    cout << "model: " << name << endl;
+    if( isProcess ) { cout << "PROCESS -------------" << endl; }
+    else            { cout << "MODEL -------------" << endl; }
+
+    cout << "name: " << name << endl;
+
     cout << "parameters:" << endl;
     for(uint i=0; i<parameter.size(); ++i) {
         cout << "|  " << parameter[i].name << ", " << parameter[i].type << ", " << parameter[i].default_expr << endl;
@@ -52,6 +56,12 @@ siml::CmModelDescriptor::display() const
         cout << "  :=  " << parameterAssignment[i].rhs << endl;
     }
 
+    cout << "initial expressions:" << endl;
+    for(uint i=0; i<initialExpression.size(); ++i) {
+        cout << "|  "    << initialExpression[i].lhs;
+        cout << "  :=  " << initialExpression[i].rhs << endl;
+    }
+
     cout << "equations:" << endl;
 //     uint es=equation.size();
     for(uint i=0; i<equation.size(); ++i) {
@@ -67,19 +77,14 @@ siml::CmModelDescriptor::display() const
 }
 
 
-/*!Iterate through all lists and display their contents.*/
-void
-siml::CmProcessDescriptor::display() const
-{
-    cout << "process ";
-    CmModelDescriptor::display();
-
-    cout << "initial expressions:" << endl;
-    for(uint i=0; i<initialExpression.size(); ++i) {
-        cout << "|  "    << initialExpression[i].lhs;
-        cout << "  :=  " << initialExpression[i].rhs << endl;
-    }
-}
+// /*!Iterate through all lists and display their contents.*/
+// void
+// siml::CmProcessDescriptor::display() const
+// {
+//     cout << "process ";
+//     CmModelDescriptor::display();
+//
+// }
 
 
 /*!Iterate through all lists and display their contents.*/
