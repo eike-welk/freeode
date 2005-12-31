@@ -74,14 +74,6 @@ This is the parsing action
 */
 void Parser::doParse()
 {
-//     char const * inputCStr =
-//             "MODEL mo1\n"
-//             "PARAMETER\n max_mu DEFAULT 0.32; Ks DEFAULT 0.1; Yxs DEFAULT 0.5; \n"
-//             "VARIABLE\n  mu; X INITIAL 0.2; S INITIAL 10;\n"
-// //             "SET\n p1:=5; p2:=6;\n"
-//             "EQUATION\n mu := max_mu*S/(S+Ks); $X := mu*X; $S := 1/Yxs*mu*X;\n"
-//             "END";
-
     std::ifstream inputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/test.siml");
     std::istreambuf_iterator<char> itBegin(inputStream);
     std::istreambuf_iterator<char> itEnd;

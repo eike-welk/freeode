@@ -74,14 +74,16 @@ CmVariableDescriptor v_temp;
 //!Clear the temporary storage for the CmVariableDescriptor objects
 void start_variable(char const *, char const *) { v_temp = CmVariableDescriptor(); }
 //!Add a variable definition to the model.
-/*!See add_parameter*/
+/*!@todo make this a member function of the model
+See add_parameter*/
 void add_variable(char const * first, char const * const last)
 {
     v_temp.definition_text = string(first, last);
     model.variable.push_back(v_temp);
 }
 //!Mark one variable inside model as a state variable.
-/*!If the variable does not exist nothing will happen.*/
+/*!@todo make this a member function of the model
+If the variable does not exist nothing will happen.*/
 void set_variable_integrated(char const * first, char const * const last)
 {
     string stateVarName(first, last);
@@ -105,21 +107,20 @@ CmEquationDescriptor e_temp;
 //!Clear the temporary storage for the CmEquationDescriptor objects
 void start_equation(char const *, char const *) { e_temp = CmEquationDescriptor(); }
 //!Add an assignment to a algebraic variable to the model. (a:=p2*c)
-void add_algebraic_assignment(char const * first, char const * const last)
+/*!@todo make this a member function of the model*/
+void add_equation(char const * first, char const * const last)
 {
     e_temp.definition_text = string(first, last);
-    e_temp.is_assignment = true;
-    e_temp.is_ode_assignment = false; //this is algebraic
     model.equation.push_back(e_temp);
 }
 //!Add an assignment to the derivative of an integrated variable to the model. ($c:=p1*c)
-void add_assignment_time_derivative(char const * first, char const * const last)
-{
-    e_temp.definition_text = string(first, last);
-    e_temp.is_assignment = true;
-    e_temp.is_ode_assignment = true; //this is an ODE
-    model.equation.push_back(e_temp);
-}
+// void add_assignment_time_derivative(char const * first, char const * const last)
+// {
+//     e_temp.definition_text = string(first, last);
+//     e_temp.is_assignment = true;
+//     e_temp.is_ode_assignment = true; //this is an ODE
+//     model.equation.push_back(e_temp);
+// }
 
 //!pointer to the central storage of parse results
 CmCodeRepository* parse_result_storage;
@@ -252,17 +253,21 @@ struct ps_model : public spirit::grammar<ps_model>
                     | (eps_p[make_error("Error in EQUATION section!", err_temp)] >> nothing_p)
                  );
             assignment_variable
-                = ( eps_p                           [&start_equation] >>
-                    (name >> eps_p)             [assign_a(e_temp.lhs)] >>
+                = ( eps_p                           [&start_equation]
+                                                    [assign_a(e_temp.is_assignment, true)] >>
+                    name                            [assign_a(e_temp.lhs)] >>
                     ":=" >> rough_math_expression   [assign_a(e_temp.rhs)] >>
-                    +(ch_p('\n') | ';')
-                  )                                 [&add_algebraic_assignment];
+                    +ch_p(';')
+                  )                                 [&add_equation];
             assignment_time_derivative
-                = ( eps_p                           [&start_equation] >>
-                    '$' >> (name >> eps_p)      [assign_a(e_temp.lhs)] [&set_variable_integrated]>>
+                = ( eps_p                           [&start_equation]
+                                                    [assign_a(e_temp.is_assignment, true)] >>
+                    '$' >> name                     [assign_a(e_temp.lhs)]
+                                                    [assign_a(e_temp.is_ode_assignment, true)]
+                                                    [&set_variable_integrated] >>
                     ":=" >> rough_math_expression   [assign_a(e_temp.rhs)] >>
-                    +(ch_p('\n') | ';')
-                  )                                 [&add_assignment_time_derivative];
+                    +ch_p(';')
+                  )                                 [&add_equation];
 
             //very bad parser for mathematical expressions
             rough_math_expression
