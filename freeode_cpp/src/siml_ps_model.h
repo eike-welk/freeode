@@ -67,9 +67,9 @@ void test_model_name_unique(char const *, char const *)
 
 //parameter---------------------------------------------------------------------
 //!temporary storage while a parameter definition is parsed
-CmParameterDescriptor p_temp;
+CmMemoryDescriptor p_temp;
 //!Clear the temporary storage for parsing parameters
-void start_parameter(char const *, char const *) { p_temp = CmParameterDescriptor(); }
+void start_parameter(char const *, char const *) { p_temp = CmMemoryDescriptor(); }
 //!Add a parameter definition to the model.
 /*!@todo make this a member function of the model
 The function takes "p_temp" and puts it into "model.parameter"; the container for
@@ -97,9 +97,9 @@ void add_sub_model(char const * first, char const * const last)
 
 //variable----------------------------------------------------------------------
 //!temporary storage while a variable definition is parsed
-CmVariableDescriptor v_temp;
+CmMemoryDescriptor v_temp;
 //!Clear the temporary storage for the CmVariableDescriptor objects
-void start_variable(char const *, char const *) { v_temp = CmVariableDescriptor(); }
+void start_variable(char const *, char const *) { v_temp = CmMemoryDescriptor(); }
 //!Add a variable definition to the model.
 /*!@todo make this a member function of the model
 See add_parameter*/
@@ -117,10 +117,10 @@ void set_variable_integrated(char const * first, char const * const last)
     string stateVarName(first, last);
 
     //loop over all variables to find the variable that will be marked
-    CmVariableTable::iterator it;
+    CmMemoryTable::iterator it;
     for( it = model.variable.begin(); it != model.variable.end(); ++it )
     {
-        CmVariableDescriptor& varD = *it;
+        CmMemoryDescriptor& varD = *it;
         if( varD.name == stateVarName )
         {
             varD.is_state_variable = true;

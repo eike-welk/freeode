@@ -55,7 +55,7 @@ generator will later use this information.
 @todo A pair of pointers: char const * where_first, where_last; instead of std::string definition_text would be a good idea, to aid the generation of code generator errors.
 @todo merge CmParameterDescriptor and CmVariableDescriptor into CmValueStore.
 */
-struct CmParameterDescriptor
+struct CmMemoryDescriptor
 {
     //!parameter name
     std::string name;
@@ -63,48 +63,23 @@ struct CmParameterDescriptor
     std::string name_program;
     //!REAL or INT
     std::string type;
-    //!the default value, relevant if no value is set.
+    //!the default value, relevant if no value is set. (parameter)
     std::string default_expr;
-    //!mathematical expression from the set section.
+    //!mathematical expression from the set section. (parameter)
     std::string set_expr;
+    //!expression for assignment of an initial value. (variable)
+    std::string initial_expr;
     //!text that was parsed to gather the information in this object.
     std::string definition_text;
 
-    CmParameterDescriptor() : type("REAL"), default_expr("") {};
-};
-//!container for the parameter descriptors of a model. See: @see CmParameterDescriptor
-typedef std::vector<CmParameterDescriptor> CmParameterTable;
-
-
-/*!
-@short All data of a single variable
-
-This is the parsing result for one line of the VARIABLE section. The code
-generator will later use this information.
-
-@todo merge CmParameterDescriptor and CmVariableDescriptor into CmValueStore.
- */
-struct CmVariableDescriptor
-{
-    //!identifier name
-    std::string name;
-    //!identifier name in generated program
-    std::string name_program;
-    //!User defined type
-    std::string type;
-    //!expression for assignment of an initial value.
-    std::string initial_expr;
     //!true if variable is an integrated variable
     bool is_state_variable;
-    //!Index into the state vector e.g.: 1; 1:10
-    std::string state_vec_index;
-    //!text that was parsed to gather the information in this object.
-    std::string definition_text;
 
-    CmVariableDescriptor() : type("ANY"), is_state_variable(false) {};
+    CmMemoryDescriptor() : type("ANY"), default_expr(""), is_state_variable(false) {};
+
 };
-//!container for the variable descriptors of a model. See: @see CmVariableDescriptor
-typedef std::vector<CmVariableDescriptor> CmVariableTable;
+//!container for the parameter descriptors of a model. See: @see CmParameterDescriptor
+typedef std::vector<CmMemoryDescriptor> CmMemoryTable;
 
 
 /*!
@@ -165,11 +140,11 @@ struct CmModelDescriptor
     std::string name;
 
     //!Container for parameters. ("PARAMETER") See: @see CmParameterDescriptor
-    CmParameterTable parameter;
+    CmMemoryTable parameter;
     //!Container for the sub models ("UNIT") @see CmSubModelDescriptor
     CmSubModelTable subModel;
     //!Container for variables. See: @see CmVariableDescriptor
-    CmVariableTable variable;
+    CmMemoryTable variable;
     //!Container for parameter initializations. ("SET section") See: @see CmEquationDescriptor
     CmEquationTable parameterAssignment;
     //!Container for the eqations. See: @see CmEquationDescriptor

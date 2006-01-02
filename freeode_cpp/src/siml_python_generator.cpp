@@ -141,10 +141,10 @@ void siml::PyGenerator::gen_constructor()
 
     //Assign values to the parameters (and create them)
     m_py_file << format("%|8t|#Assign values to the parameters (and create them)") << endl;
-    CmParameterTable::const_iterator it;
+    CmMemoryTable::const_iterator it;
     for( it = parameter.begin(); it != parameter.end(); ++it )
     {
-        CmParameterDescriptor paramD = *it;
+        CmMemoryDescriptor paramD = *it;
         string pName = paramD.name;
         string pVal  = paramD.default_expr;
         string pType = paramD.type;
@@ -155,10 +155,10 @@ void siml::PyGenerator::gen_constructor()
     //Set initial values of the state variables.
     m_py_file << format("%|8t|#Set the initial values (of the state variables).") << endl;
     m_py_file << format("%|8t|self.y0 = zeros(%1%, Float)") % state_vector_size << endl;
-    CmVariableTable::const_iterator itV;
+    CmMemoryTable::const_iterator itV;
     for( itV = variable.begin(); itV != variable.end(); ++itV )
     {
-        CmVariableDescriptor varD = *itV;
+        CmMemoryDescriptor varD = *itV;
         if( varD.is_state_variable == false ) { continue; }
 
         string varName = varD.name;
@@ -206,20 +206,20 @@ void siml::PyGenerator::gen_ODE_function()
 
     //Create local variables for the parameters.
     m_py_file << format("%|8t|#Create local variables for the parameters.") << endl;
-    CmParameterTable::const_iterator itP;
+    CmMemoryTable::const_iterator itP;
     for( itP = parameter.begin(); itP != parameter.end(); ++itP )
     {
-        CmParameterDescriptor paramD = *itP;
+        CmMemoryDescriptor paramD = *itP;
         m_py_file << format("%|8t|%1% = self.%1%") % paramD.name << endl;
     }
     m_py_file << endl;
 
     //Dissect the state vector into individual, local state variables.
     m_py_file << format("%|8t|#Dissect the state vector into individual, local state variables.") << endl;
-    CmVariableTable::const_iterator itV;
+    CmMemoryTable::const_iterator itV;
     for( itV = variable.begin(); itV != variable.end(); ++itV )
     {
-        CmVariableDescriptor varD = *itV;
+        CmMemoryDescriptor varD = *itV;
         if( varD.is_state_variable == false ) { continue; }
 
         string varName = varD.name;
@@ -284,11 +284,11 @@ void siml::PyGenerator::layout_arrays()
 
     //loop over all variables and assign indices for the state variables
     //each state variable gets a unique index in both arrays: state vector, result array.
-    CmVariableTable::const_iterator itV;
+    CmMemoryTable::const_iterator itV;
     uint currIndex=0;
     for( itV = variable.begin(); itV != variable.end(); ++itV )
     {
-        CmVariableDescriptor varD = *itV;
+        CmMemoryDescriptor varD = *itV;
         if( varD.is_state_variable == false ) { continue; }
 
         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
@@ -304,7 +304,7 @@ void siml::PyGenerator::layout_arrays()
     //Each algebraic variable gets a unique index in the result array.
     for( itV = variable.begin(); itV != variable.end(); ++itV )
     {
-        CmVariableDescriptor varD = *itV;
+        CmMemoryDescriptor varD = *itV;
         if( varD.is_state_variable == true ) { continue; }
 
         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
@@ -345,20 +345,20 @@ void siml::PyGenerator::gen_output_equations()
 
     //Create local variables for the parameters.
     m_py_file << format("%|8t|#Create local variables for the parameters.") << endl;
-    CmParameterTable::const_iterator itP;
+    CmMemoryTable::const_iterator itP;
     for( itP = parameter.begin(); itP != parameter.end(); ++itP )
     {
-        CmParameterDescriptor paramD = *itP;
+        CmMemoryDescriptor paramD = *itP;
         m_py_file << format("%|8t|%1% = self.%1%") % paramD.name << endl;
     }
     m_py_file << endl;
 
     //Create local state variables - take them from the result array.
     m_py_file << format("%|8t|#Create local state variables - take them from the result array.") << endl;
-    CmVariableTable::const_iterator itV;
+    CmMemoryTable::const_iterator itV;
     for( itV = variable.begin(); itV != variable.end(); ++itV )
     {
-        CmVariableDescriptor varD = *itV;
+        CmMemoryDescriptor varD = *itV;
         if( varD.is_state_variable == false ) { continue; }
 
         string varName = varD.name;

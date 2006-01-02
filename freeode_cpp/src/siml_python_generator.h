@@ -66,9 +66,9 @@ public:
     std::ostream& m_err_file;
 
     //!All parameters of the procedure
-    CmParameterTable parameter;
+    CmMemoryTable parameter;
     //!All variables of the procedure
-    CmVariableTable variable;
+    CmMemoryTable variable;
     //!All equations of the procedure
     CmEquationTable equation;
 
