@@ -21,9 +21,189 @@
 #include "siml_code_model.h"
 
 #include <iostream>
+#include <boost/format.hpp>
 
 using std::cout;
 using std::endl;
+using std::string;
+using boost::shared_ptr;
+using boost::format;
+
+
+/*!Add the descriptor and see if name is unique.
+
+@return pointer to error if an error happened, or null pointer otherwise.
+*/
+shared_ptr<siml::CmErrorDescriptor>
+siml::CmModelDescriptor::addParameter(CmMemoryDescriptor inPar)
+{
+    //check if name is unique
+    if( !isIdentifierUnique(inPar.name) )
+    {
+        string msg =
+                (format("The name %1% does already exist! \n"
+                        "The names of sub-models, variables and parameters must be unique "
+                        "within a model.") % inPar.name
+                ).str();
+        shared_ptr<CmErrorDescriptor> err(new CmErrorDescriptor(msg));
+        return err;
+    }
+
+    //add the parameter
+    parameter.push_back(inPar);
+    //return no error
+    return shared_ptr<CmErrorDescriptor> ();
+}
+
+
+/*!
+Add the descriptor and see if name is unique.
+
+@return pointer to error if an error happened, or null pointer otherwise.
+*/
+boost::shared_ptr<siml::CmErrorDescriptor>
+siml::CmModelDescriptor::addSubModel(CmSubModelDescriptor inSub)
+{
+    ///@todo check if type exists
+
+    //check if name is unique
+    if( !isIdentifierUnique(inSub.name) )
+    {
+        string msg =
+                (format("The name %1% does already exist! \n"
+                "The names of sub-models, variables and parameters must be unique "
+                "within a model.") % inSub.name
+                ).str();
+        shared_ptr<CmErrorDescriptor> err(new CmErrorDescriptor(msg));
+        return err;
+    }
+
+    //add the parameter
+    subModel.push_back(inSub);
+    //return no error
+    return shared_ptr<CmErrorDescriptor> ();
+}
+
+
+/*!Add the descriptor and see if name is unique.
+
+@return pointer to error if an error happened, or null pointer otherwise.
+*/
+shared_ptr<siml::CmErrorDescriptor>
+siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
+{
+    //check if name is unique
+    if( !isIdentifierUnique(inVar.name) )
+    {
+        string msg =
+                (format("The name %1% does already exist! \n"
+                "The names of sub-models, variables and parameters must be unique "
+                "within a model.") % inVar.name
+                ).str();
+        shared_ptr<CmErrorDescriptor> err(new CmErrorDescriptor(msg));
+        return err;
+    }
+
+     //add the variable
+    variable.push_back(inVar);
+    //return no error
+    return shared_ptr<CmErrorDescriptor> ();
+}
+
+/*!
+
+@return pointer to error if an error happened, or null pointer otherwise.
+*/
+boost::shared_ptr<siml::CmErrorDescriptor>
+siml::CmModelDescriptor::setVariableIntegrated(std::string stateVarName)
+{
+    //loop over all variables to find the variable that will be marked
+    CmMemoryTable::iterator it;
+    for( it = variable.begin(); it != variable.end(); ++it )
+    {
+        CmMemoryDescriptor& varD = *it;
+        if( varD.name == stateVarName )
+        {
+            varD.is_state_variable = true;
+            break;
+        }
+    }
+    //variable does not exist: generate error
+    if( it == variable.end())
+    {
+        string msg =
+                (format("No variable with name %1% exists! "
+                        "You used the symbol %1% as a state variable.") % stateVarName
+                ).str();
+        shared_ptr<CmErrorDescriptor> err(new CmErrorDescriptor(msg));
+        return err;
+    }
+
+    //return no error
+    return shared_ptr<CmErrorDescriptor> ();
+}
+
+
+/*!
+Loop over all sub model, all parameters, and all variables, and see if the name
+already exists.
+
+If the name already exists return false, otherwise return true.
+
+@param name the name that is checked for uniqueness.
+*/
+bool
+siml::CmModelDescriptor::isIdentifierUnique(std::string const & name) const
+{
+    //loop over all unit names
+    CmSubModelTable::const_iterator itSub;
+    for( itSub = subModel.begin(); itSub != subModel.end(); ++itSub )
+    {
+        CmSubModelDescriptor const& subD = *itSub;
+        if( subD.name == name )
+        {
+            return false;
+        }
+    }
+
+    //loop over all parameters to see if the name already exists
+    CmMemoryTable::const_iterator itM;
+    for( itM = parameter.begin(); itM != parameter.end(); ++itM )
+    {
+        CmMemoryDescriptor const& memD = *itM;
+        if( memD.name == name )
+        {
+            return false;
+        }
+    }
+
+    //loop over all variables to see if the name already exists
+    for( itM = variable.begin(); itM != variable.end(); ++itM )
+    {
+        CmMemoryDescriptor const& varD = *itM;
+        if( varD.name == name )
+        {
+            return false;
+        }
+    }
+
+    //OK the name is unique
+    return true;
+}
+
+
+/*!
+The name of the descriptor for a variable or a parameter is checked for uniqueness.
+If the name already exists return false, otherwise return true.
+
+@param varOrPar the descriptor that is checked for uniqueness of the name.
+ */
+// bool
+// siml::CmModelDescriptor::isIdentifierUnique(CmMemoryDescriptor const & varOrPar) const
+// {
+//     return isIdentifierUnique( varOrPar.name );
+// }
+
 
 /*!Iterate through all lists and display their contents.*/
 void

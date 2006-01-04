@@ -23,6 +23,8 @@
 
 #include <string>
 #include <vector>
+#include <boost/shared_ptr.hpp>
+
 
 namespace siml {
 
@@ -41,7 +43,8 @@ struct CmErrorDescriptor
     //!End of the sequence that contains the error.
 //     char const * where_last;
 
-    CmErrorDescriptor() /*: where_first(0), where_last(0)*/ {};
+    CmErrorDescriptor() {};
+    CmErrorDescriptor(std::string const & inMessage): error_message(inMessage) {};
 };
 //!container for Errors. See: @see CmErrorDescriptor
 typedef std::vector<CmErrorDescriptor> CmErrorTable;
@@ -53,7 +56,6 @@ typedef std::vector<CmErrorDescriptor> CmErrorTable;
 This is the parsing result for one line of the PARAMETER section. The code
 generator will later use this information.
 @todo A pair of pointers: char const * where_first, where_last; instead of std::string definition_text would be a good idea, to aid the generation of code generator errors.
-@todo merge CmParameterDescriptor and CmVariableDescriptor into CmValueStore.
 */
 struct CmMemoryDescriptor
 {
@@ -77,6 +79,7 @@ struct CmMemoryDescriptor
 
     CmMemoryDescriptor() : type("ANY"), default_expr(""), is_state_variable(false) {};
 
+    ///@todo add check if variable name is valid (!=""; !=" "; !="123")
 };
 //!container for the parameter descriptors of a model. See: @see CmParameterDescriptor
 typedef std::vector<CmMemoryDescriptor> CmMemoryTable;
@@ -163,6 +166,21 @@ struct CmModelDescriptor
     CmModelDescriptor(): isProcess(false), errorsDetected(false) {};
     //!Display the model's contents (for debuging)
     void display() const;
+
+    //!Add a parameter descriptor to the model
+    boost::shared_ptr<CmErrorDescriptor> addParameter(CmMemoryDescriptor inPar);
+    //!Add a sub-model descriptor to the model
+    boost::shared_ptr<CmErrorDescriptor> addSubModel(CmSubModelDescriptor inSub);
+    //!Add a variable descriptor to the model
+    boost::shared_ptr<CmErrorDescriptor> addVariable(CmMemoryDescriptor inVar);
+
+    //!Mark variable as state variable
+    boost::shared_ptr<CmErrorDescriptor> setVariableIntegrated(std::string stateVarName);
+
+    //!Check if name already exists
+    bool isIdentifierUnique(std::string const & name) const;
+    //!Check if name already exists
+//     bool isIdentifierUnique(CmMemoryDescriptor const & varOrPar) const;
 };
 struct CmModelDescriptor;
 //!container for models.

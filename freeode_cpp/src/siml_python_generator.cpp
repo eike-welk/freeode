@@ -49,14 +49,14 @@ siml::PyGenerator::~PyGenerator()
 
 
 /*!
- Create python objects for all procedures in parse_result.
+ Create python objects for all processs in parse_result.
  */
 void siml::PyGenerator::generate_all()
 {
     gen_file_start();
-    //loop over all procedures and generate a python object for each.
-    ///@todo procedure list and procedure object in code model
-    gen_procedure_object();
+    //loop over all processs and generate a python object for each.
+    ///@todo process list and process object in code model
+    gen_process_object();
 }
 
 
@@ -89,9 +89,9 @@ void siml::PyGenerator::gen_file_start()
 
 
 /*!
-Create a single procedure
+Create a single process
  */
-void siml::PyGenerator::gen_procedure_object()
+void siml::PyGenerator::gen_process_object()
 {
     //collect parameters, variables and equations from all models and put them in big global tables
     ///@todo multi model capabilities and recursion into sub-models
@@ -99,21 +99,20 @@ void siml::PyGenerator::gen_procedure_object()
     variable = m_parse_result->model[0].variable;
     equation = m_parse_result->model[0].equation;
 
-    ///@todo combine the parameters
     ///@todo create identifier names that are compatible with python
 
     //allocate space for each state variable in the state vector. Changes: state_vector_layout, state_vector_size
     layout_arrays();
 
-    string procedure_name("TestProcedure");
+    string process_name("TestProcess");
 
-    m_py_file << format("class %1%:") % procedure_name << endl;
-//     m_py_file << format("    \"\"\" object to simulate procedure %1% \"\"\"") % procedure_name << endl;
-    m_py_file << format("%|4t|\"\"\" object to simulate procedure %1% \"\"\"") % procedure_name << endl;
+    m_py_file << format("class %1%:") % process_name << endl;
+//     m_py_file << format("    \"\"\" object to simulate process %1% \"\"\"") % process_name << endl;
+    m_py_file << format("%|4t|\"\"\" object to simulate process %1% \"\"\"") % process_name << endl;
     m_py_file << endl;
 
     //Generate some infrastructure functions
-    ///@todo these functions should later go into a common base class of all procedures
+    ///@todo these functions should later go into a common base class of all processs
     gen_access_function();
     gen_graph_function();
 

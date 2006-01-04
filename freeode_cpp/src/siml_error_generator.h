@@ -44,12 +44,13 @@ public:
     error_generator const&
     operator()(IteratorT first, IteratorT const& last) const
     {
-        add_error(first, last);
+        m_error.error_message = m_error_message;
+        add_error_context(m_error, first, last);
         return *this;
     }
 
     //!Add error to repository
-    void add_error(char const * offending_code_first, char const * offending_code_last) const;
+//     void add_error(char const * offending_code_first, char const * offending_code_last) const;
 
     protected:
     //!The eror message
@@ -68,6 +69,10 @@ error_generator make_error(std::string error_message, CmErrorDescriptor& error)
 {
     return error_generator(error_message, error);
 };
+
+//!Extend error message.
+void
+add_error_context(CmErrorDescriptor&  inOutError, char const * offending_code_first, char const * offending_code_last);
 
 }
 

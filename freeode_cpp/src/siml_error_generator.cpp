@@ -35,10 +35,42 @@ siml::error_generator::~error_generator()
 /*!
 Add an error to the repository
 */
+// void
+// siml::error_generator::add_error(char const * offending_code_first, char const * offending_code_last) const
+// {
+//     //offending_code_first, offending_code_last point usually to the same byte
+//     uint i, newlines;
+//
+//     //go one line up
+//     for( i=0, newlines=0; i<200 && newlines<2; ++i, --offending_code_first )
+//     {
+//         if( *offending_code_first == '\n' ) { ++newlines; }
+//     }
+//     ++ ++offending_code_first;
+//
+//     //go to next newline
+//     for( i=0, offending_code_last; i<200 && *offending_code_last != '\n'; ++i, ++offending_code_last ) {}
+//
+//     //create error message
+//     std::string offending_code(offending_code_first, offending_code_last);
+//     CmErrorDescriptor the_error;
+//     the_error.error_message = offending_code + "\n" + m_error_message + "\n";
+//
+// //     m_repository->error.push_back(the_error);
+//     m_error = the_error;
+// }
+
+
+/*!
+Add some pieces of the program to the error message. This should show where the
+error happened.
+So the error can be located and understood more easyly.
+*/
 void
-siml::error_generator::add_error(char const * offending_code_first, char const * offending_code_last) const
+siml::add_error_context(CmErrorDescriptor&  inOutError,
+                        char const * offending_code_first, char const * offending_code_last)
 {
-    //offending_code_first, offending_code_last point usually to the same byte
+    //offending_code_first, offending_code_last point often to the same byte
     uint i, newlines;
 
     //go one line up
@@ -51,11 +83,8 @@ siml::error_generator::add_error(char const * offending_code_first, char const *
     //go to next newline
     for( i=0, offending_code_last; i<200 && *offending_code_last != '\n'; ++i, ++offending_code_last ) {}
 
-    //create error message
+    //create new error message
     std::string offending_code(offending_code_first, offending_code_last);
-    CmErrorDescriptor the_error;
-    the_error.error_message = offending_code + "\n" + m_error_message + "\n";
-
-//     m_repository->error.push_back(the_error);
-    m_error = the_error;
+    std::string oldMsg = inOutError.error_message;
+    inOutError.error_message = offending_code + "\n" + oldMsg + "\n";
 }

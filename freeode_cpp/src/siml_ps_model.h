@@ -27,7 +27,7 @@
 #include <boost/spirit/core.hpp>
 #include <boost/spirit/symbols/symbols.hpp>
 // #include <boost/spirit/actor/actors.hpp>
-// #include <boost/shared_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <string>
 // #include <vector>
@@ -39,7 +39,7 @@ The namespace is named for easier access in KDevelop. */
 namespace temp_store_model {
 using namespace siml;
 using namespace std;
-// using boost::shared_ptr;
+using boost::shared_ptr;
 
 //!pointer to the central storage of parse results
 CmCodeRepository* parse_result_storage;
@@ -62,7 +62,7 @@ void start_model(char const * /*first*/, char const * /*last*/)
 void test_model_name_unique(char const *, char const *)
 {
 ///@todo implement test_model_name_unique
-///@todo make this a member function of the model
+///@todo make this a member function of the CmCodeRepository
 }
 
 //parameter---------------------------------------------------------------------
@@ -71,15 +71,22 @@ CmMemoryDescriptor p_temp;
 //!Clear the temporary storage for parsing parameters
 void start_parameter(char const *, char const *) { p_temp = CmMemoryDescriptor(); }
 //!Add a parameter definition to the model.
-/*!@todo make this a member function of the model
+/*!
 The function takes "p_temp" and puts it into "model.parameter"; the container for
 parsed parameters. The chunk of text that led to the new parameter desciptor
 is stored too*/
 void add_parameter(char const * first, char const * const last)
 {
     p_temp.definition_text = string(first, last);
-    ///@todo check if name is unique
-    model.parameter.push_back(p_temp);
+
+    shared_ptr<CmErrorDescriptor> err = model.addParameter(p_temp);
+
+    if( err )
+    {
+        model.errorsDetected = true;  //remember: there were errors in this model.
+        add_error_context(*err, first, last);  //make error look better
+        parse_result_storage->error.push_back(*err); //add error to parsing store
+    }
 }
 
 //unit (sub-model)--------------------------------------------------------------
@@ -90,9 +97,16 @@ void start_sub_model(char const *, char const *) { submod_temp = CmSubModelDescr
 //!Add a parameter definition to the model.
 void add_sub_model(char const * first, char const * const last)
 {
-    string definition_text(first, last);
-    ///@todo check if name is unique, check if model type exists
-    model.subModel.push_back(submod_temp);
+//     string definition_text(first, last);
+
+    shared_ptr<CmErrorDescriptor> err = model.addSubModel(submod_temp);
+
+    if( err )
+    {
+        model.errorsDetected = true;  //remember: there were errors in this model.
+        add_error_context(*err, first, last);  //make error look better
+        parse_result_storage->error.push_back(*err); //add error to parsing store
+    }
 }
 
 //variable----------------------------------------------------------------------
@@ -101,31 +115,34 @@ CmMemoryDescriptor v_temp;
 //!Clear the temporary storage for the CmVariableDescriptor objects
 void start_variable(char const *, char const *) { v_temp = CmMemoryDescriptor(); }
 //!Add a variable definition to the model.
-/*!@todo make this a member function of the model
-See add_parameter*/
+/*!@see add_parameter*/
 void add_variable(char const * first, char const * const last)
 {
     v_temp.definition_text = string(first, last);
-    ///@todo check if name is unique
-    model.variable.push_back(v_temp);
+
+    shared_ptr<CmErrorDescriptor> err = model.addVariable(v_temp);
+
+    if( err )
+    {
+        model.errorsDetected = true;
+        add_error_context(*err, first, last);
+        parse_result_storage->error.push_back(*err);
+    }
 }
 //!Mark one variable inside model as a state variable.
-/*!@todo make this a member function of the model
+/*!
 If the variable does not exist nothing will happen.*/
 void set_variable_integrated(char const * first, char const * const last)
 {
     string stateVarName(first, last);
 
-    //loop over all variables to find the variable that will be marked
-    CmMemoryTable::iterator it;
-    for( it = model.variable.begin(); it != model.variable.end(); ++it )
+    shared_ptr<CmErrorDescriptor> err = model.setVariableIntegrated(stateVarName);
+
+    if( err )
     {
-        CmMemoryDescriptor& varD = *it;
-        if( varD.name == stateVarName )
-        {
-            varD.is_state_variable = true;
-            break;
-        }
+        model.errorsDetected = true;
+        add_error_context(*err, first, last);
+        parse_result_storage->error.push_back(*err);
     }
 }
 

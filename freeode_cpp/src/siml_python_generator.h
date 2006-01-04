@@ -48,7 +48,7 @@ public:
     ~PyGenerator();
     void generate_all();
     void gen_file_start();
-    void gen_procedure_object();
+    void gen_process_object();
     void gen_constructor();
     void gen_ODE_function();
     //!Define which variable is at what index in various arrays
@@ -65,11 +65,11 @@ public:
     //!The erors are stored here.
     std::ostream& m_err_file;
 
-    //!All parameters of the procedure
+    //!All parameters of the process
     CmMemoryTable parameter;
-    //!All variables of the procedure
+    //!All variables of the process
     CmMemoryTable variable;
-    //!All equations of the procedure
+    //!All equations of the process
     CmEquationTable equation;
 
     //!Mapping between variable name and index in state vector.
