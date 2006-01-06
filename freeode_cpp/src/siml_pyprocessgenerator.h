@@ -17,8 +17,8 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#ifndef SIMLSIML_PYTHON_GENERATOR_H
-#define SIMLSIML_PYTHON_GENERATOR_H
+#ifndef SIML_PYPROCESSGENERATOR_H
+#define SIML_PYPROCESSGENERATOR_H
 
 #include "siml_code_model.h"
 
@@ -39,47 +39,47 @@ The main object to generate a python program.
 
 @author Eike Welk
 */
-class PyGenerator{
+class PyProcessGenerator{
 public:
-    PyGenerator(   boost::shared_ptr<CmCodeRepository> in_parse_result,
-                        std::ostream& in_py_file,
-                        std::ostream& in_err_file  );
+    PyProcessGenerator( boost::shared_ptr<CmCodeRepository> inParseResult,
+                        std::ostream& inPyFile,
+                        std::ostream& inErrFile  );
 
-    ~PyGenerator();
-    void generate_all();
-    void gen_file_start();
-    void gen_process_object();
-    void gen_constructor();
-    void gen_ODE_function();
+    ~PyProcessGenerator();
+    void generateAll();
+    void genFileStart();
+    void genProcessObject();
+    void genConstructor();
+    void genOdeFunction();
     //!Define which variable is at what index in various arrays
-    void layout_arrays();
-    void gen_output_equations();
-    void gen_simulate_function();
-    void gen_access_function();
-    void gen_graph_function();
+    void layoutArrays();
+    void genOutputEquations();
+    void genSimulateFunction();
+    void genAccessFunction();
+    void genGraphFunction();
 
     //!The parsed siml program in binary form.
-    boost::shared_ptr<CmCodeRepository> m_parse_result;
+    boost::shared_ptr<CmCodeRepository> m_ParseResult;
     //!The generateed python program is stored here
-    std::ostream& m_py_file;
+    std::ostream& m_PyFile;
     //!The erors are stored here.
-    std::ostream& m_err_file;
+    std::ostream& m_ErrFile;
 
     //!All parameters of the process
-    CmMemoryTable parameter;
+    CmMemoryTable m_Parameter;
     //!All variables of the process
-    CmMemoryTable variable;
+    CmMemoryTable m_Variable;
     //!All equations of the process
-    CmEquationTable equation;
+    CmEquationTable m_Equation;
 
     //!Mapping between variable name and index in state vector.
     /*!The variable name is the key. So the contents are pairs: var_name, index) e.g: ("S", "1")*/
-    std::map<std::string, std::string> state_vector_map;
+    std::map<std::string, std::string> m_StateVectorMap;
     //!State variable names in order of ascending index
     /*!Only needed to produce good looking code since state_vector_map is ordered alphabeticaly*/
 //     std::vector<std::string> state_vector_ordering;
     //!The state vector's number of rows.
-    uint state_vector_size;
+    uint m_StateVectorSize;
 
     //!Mapping between variable name and index in result array.
     /*!The variable name is the key. So the contents are pairs: var_name, index) e.g: ("mu", "5")
@@ -87,14 +87,14 @@ public:
     The result array keeps the time series of all variables (state and algebraic) after the simulation
     is finished for easy retrieval. The first index is the time axis, the collumns (second index) are
     different variables. */
-    std::map<std::string, std::string> result_array_map;
+    std::map<std::string, std::string> m_ResultArrayMap;
     //!All variable names in order of ascending collumn index in result array.
     /*!Only needed to produce good looking code since result_vector_map is ordered alphabeticaly*/
 //     std::vector<std::string> result_array_ordering;
     //!Number of collumns (2nd index) of the result array.
-    uint result_array_colls;
+    uint m_ResultArrayColls;
 };
 
 }
 
-#endif
+#endif //SIML_PYPROCESSGENERATOR_H

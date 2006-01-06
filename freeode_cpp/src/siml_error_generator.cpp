@@ -73,14 +73,15 @@ siml::add_error_context(CmErrorDescriptor&  inOutError,
     //offending_code_first, offending_code_last point often to the same byte
     uint i, newlines;
 
-    //go one line up
+    ///@todo protect against moving the iterator before the beginning or past the end of the buffer.
+    //go one line up (move max 200 chars)
     for( i=0, newlines=0; i<200 && newlines<2; ++i, --offending_code_first )
     {
         if( *offending_code_first == '\n' ) { ++newlines; }
     }
     ++ ++offending_code_first;
 
-    //go to next newline
+    //go to next newline (move max 200 chars)
     for( i=0, offending_code_last; i<200 && *offending_code_last != '\n'; ++i, ++offending_code_last ) {}
 
     //create new error message

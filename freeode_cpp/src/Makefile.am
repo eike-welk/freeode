@@ -22,8 +22,8 @@ KDE_ICON = AUTO
 bin_PROGRAMS = sim_lang
 
 # the application source, library search path, and link libraries
-sim_lang_SOURCES = main.cpp parser.cpp siml_python_generator.cpp \
-		siml_code_model.cpp siml_error_generator.cpp
+sim_lang_SOURCES = main.cpp parser.cpp siml_code_model.cpp \
+	siml_error_generator.cpp siml_pyprocessgenerator.cpp
 sim_lang_LDFLAGS = $(KDE_RPATH) $(all_libraries)
 sim_lang_LDADD = $(LIB_KDEUI)
 
