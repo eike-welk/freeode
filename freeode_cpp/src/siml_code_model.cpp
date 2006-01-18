@@ -62,7 +62,7 @@ Add the descriptor and see if name is unique.
 @return pointer to error if an error happened, or null pointer otherwise.
 */
 boost::shared_ptr<siml::CmErrorDescriptor>
-siml::CmModelDescriptor::addSubModel(CmSubModelDescriptor inSub)
+siml::CmModelDescriptor::addSubModel(CmSubModelLink inSub)
 {
     ///@todo check if type exists
 
@@ -159,7 +159,7 @@ siml::CmModelDescriptor::isIdentifierUnique(std::string const & name) const
     CmSubModelTable::const_iterator itSub;
     for( itSub = subModel.begin(); itSub != subModel.end(); ++itSub )
     {
-        CmSubModelDescriptor const& subD = *itSub;
+        CmSubModelLink const& subD = *itSub;
         if( subD.name == name )
         {
             return false;

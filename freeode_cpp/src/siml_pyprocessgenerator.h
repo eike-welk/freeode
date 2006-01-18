@@ -34,7 +34,7 @@
 namespace siml {
 
 /**
-The main object to generate a python program.
+@short The main object to generate a python program.
 
 
 @author Eike Welk
@@ -46,9 +46,11 @@ public:
                         std::ostream& inErrFile  );
 
     ~PyProcessGenerator();
+    //!generate python code for all processes
     void generateAll();
     void genFileStart();
-    void genProcessObject();
+    //!generate python code for one process
+    void genProcessObject(int iProcess);
     void genConstructor();
     void genOdeFunction();
     //!Define which variable is at what index in various arrays

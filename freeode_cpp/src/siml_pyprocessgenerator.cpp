@@ -17,8 +17,9 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#include "siml_pyprocessgenerator.h"
 #include "config.h"
+#include "siml_pyprocessgenerator.h"
+#include "siml_code_transformations.h"
 
 #include <boost/format.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -29,6 +30,8 @@ using std::map;
 using std::vector;
 using boost::format;
 using boost::tie;
+using boost::shared_ptr;
+
 
 /*!Construct and initialize the object, but do not generate codee.*/
 siml::PyProcessGenerator::PyProcessGenerator(   boost::shared_ptr<CmCodeRepository> inParseResult,
@@ -56,8 +59,11 @@ void siml::PyProcessGenerator::generateAll()
 {
     genFileStart();
     //loop over all processs and generate a python object for each.
-    ///@todo process list and process object in code model
-    genProcessObject();
+    genProcessObject(0); ///@TODO generate all processes
+/*    for( int i=0; i< m_ParseResult->process.size(); ++i)
+    {
+        genProcessObject(i);
+    }*/
 }
 
 
@@ -92,8 +98,14 @@ void siml::PyProcessGenerator::genFileStart()
 /*!
 Create a single process
  */
-void siml::PyProcessGenerator::genProcessObject()
+void siml::PyProcessGenerator::genProcessObject(int iProcess)
 {
+    shared_ptr<CmModelDescriptor> procFinal;
+    procFinal = createFlatModel( &m_ParseResult->process[iProcess], m_ParseResult.get());
+    procFinal->display();
+
+    return;
+
     //collect parameters, variables and equations from all models and put them in big global tables
     ///@todo multi model capabilities and recursion into sub-models
     m_Parameter = m_ParseResult->model[0].parameter;

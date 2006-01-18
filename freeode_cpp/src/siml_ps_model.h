@@ -91,9 +91,9 @@ void add_parameter(char const * first, char const * const last)
 
 //unit (sub-model)--------------------------------------------------------------
 //!temporary storage while a unit definition is parsed
-CmSubModelDescriptor submod_temp;
+CmSubModelLink submod_temp;
 //!Clear the temporary storage for parsing parameters
-void start_sub_model(char const *, char const *) { submod_temp = CmSubModelDescriptor(); }
+void start_sub_model(char const *, char const *) { submod_temp = CmSubModelLink(); }
 //!Add a parameter definition to the model.
 void add_sub_model(char const * first, char const * const last)
 {

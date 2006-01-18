@@ -112,7 +112,7 @@ typedef std::vector<CmEquationDescriptor> CmEquationTable;
 
 Represents one line of the "UNIT" section
 */
-struct CmSubModelDescriptor
+struct CmSubModelLink
 {
     //!The sub-model's name in the parent model.
     std::string name;
@@ -120,7 +120,7 @@ struct CmSubModelDescriptor
     std::string type;
 };
 //!container for model references.
-typedef std::vector<CmSubModelDescriptor> CmSubModelTable;
+typedef std::vector<CmSubModelLink> CmSubModelTable;
 
 
 /*!
@@ -144,7 +144,7 @@ struct CmModelDescriptor
 
     //!Container for parameters. ("PARAMETER") See: @see CmParameterDescriptor
     CmMemoryTable parameter;
-    //!Container for the sub models ("UNIT") @see CmSubModelDescriptor
+    //!Container for the sub models ("UNIT") @see CmSubModelLink
     CmSubModelTable subModel;
     //!Container for variables. See: @see CmVariableDescriptor
     CmMemoryTable variable;
@@ -170,7 +170,7 @@ struct CmModelDescriptor
     //!Add a parameter descriptor to the model
     boost::shared_ptr<CmErrorDescriptor> addParameter(CmMemoryDescriptor inPar);
     //!Add a sub-model descriptor to the model
-    boost::shared_ptr<CmErrorDescriptor> addSubModel(CmSubModelDescriptor inSub);
+    boost::shared_ptr<CmErrorDescriptor> addSubModel(CmSubModelLink inSub);
     //!Add a variable descriptor to the model
     boost::shared_ptr<CmErrorDescriptor> addVariable(CmMemoryDescriptor inVar);
 

@@ -3,7 +3,8 @@ INCLUDES = $(all_includes)
 
 # these are the headers for your project
 noinst_HEADERS = parser.h siml_code_model.h siml_python_generator.h \
-	siml_ps_toplevel.h siml_error_generator.h siml_ps_model.h siml_ps_name.h siml_ps_skip.h
+		siml_ps_toplevel.h siml_error_generator.h siml_ps_model.h siml_ps_name.h siml_ps_skip.h \
+	siml_code_transformations.h
 
 # let automoc handle all of the meta source files (moc)
 METASOURCES = AUTO
@@ -23,7 +24,7 @@ bin_PROGRAMS = sim_lang
 
 # the application source, library search path, and link libraries
 sim_lang_SOURCES = main.cpp parser.cpp siml_code_model.cpp \
-	siml_error_generator.cpp siml_pyprocessgenerator.cpp
+		siml_error_generator.cpp siml_pyprocessgenerator.cpp siml_code_transformations.cpp
 sim_lang_LDFLAGS = $(KDE_RPATH) $(all_libraries)
 sim_lang_LDADD = $(LIB_KDEUI)
 
