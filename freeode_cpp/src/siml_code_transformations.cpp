@@ -34,7 +34,7 @@ This is the first step in generating code for a procedure.
 */
 shared_ptr<CmModelDescriptor>
 siml::createFlatModel(    CmModelDescriptor const * compositeModel,
-                          CmCodeRepository  const * repo )
+                          CmCodeRepository * repo )
 {
     shared_ptr<CmModelDescriptor> sFlatModel( new CmModelDescriptor); //the result
 
@@ -44,11 +44,13 @@ siml::createFlatModel(    CmModelDescriptor const * compositeModel,
     //copy the features that are not copied recursively
     flatModel->name = compositeModel->name;
     flatModel->isProcess = compositeModel->isProcess;
+    flatModel->initialExpression = compositeModel->initialExpression;
     flatModel->solutionParameters = compositeModel->solutionParameters;
 
     //copy the recursive features
-    string recursionLevel;
-    flattenModelRecursive(compositeModel, recursionLevel, repo, flatModel);
+    int recursionLevel = 0;
+    string variablePrefix;
+    flattenModelRecursive(compositeModel, variablePrefix, recursionLevel, repo, flatModel);
 
     return sFlatModel;
 }
@@ -59,11 +61,96 @@ copy parameters, variables and equations for createFlatModel
 */
 void
 siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
-                                std::string const inRecursionLevel,
-                                CmCodeRepository  const * inRepo,
-                                CmModelDescriptor * outFlatModel)
+                                std::string const inVariablePrefix,
+                                uint const inRecursionLevel,
+                                CmCodeRepository * inRepo,
+                                CmModelDescriptor * outFlatModel )
 {
-    //copy the recursive entities of inCompositeModel
+    //copy the recursive entities -------------------------------------
+    //copy parameters
+    CmMemoryTable::const_iterator itM;
+    for(    itM = inCompositeModel->parameter.begin();
+            itM != inCompositeModel->parameter.end();
+            ++itM )
+    {
+        CmMemoryDescriptor mem = *itM;
+//         mem.name.addPrefix(inVariablePrefix);
+        shared_ptr<CmErrorDescriptor> err;
+        err = outFlatModel->addParameter(mem);
+        if( err )
+        {
+            inRepo->error.push_back(*err);
+            outFlatModel->errorsDetected = true;
+        }
+    }
+
+    //copy variables
+    for(    itM = inCompositeModel->variable.begin();
+            itM != inCompositeModel->variable.end();
+            ++itM )
+    {
+        CmMemoryDescriptor mem = *itM;
+//         mem.name.addPrefix(inVariablePrefix);
+        shared_ptr<CmErrorDescriptor> err;
+        err = outFlatModel->addVariable(mem);
+        if( err )
+        {
+            inRepo->error.push_back(*err);
+            outFlatModel->errorsDetected = true;
+        }
+    }
+
+    //copy parameter assignments
+    CmEquationTable::const_iterator itE;
+    for(    itE = inCompositeModel->parameterAssignment.begin();
+            itE != inCompositeModel->parameterAssignment.end();
+            ++itE )
+    {
+        CmEquationDescriptor equ = *itE;
+        //TODO go through the equation and add the prefix at all variable names
+        shared_ptr<CmErrorDescriptor> err;
+//         err = outFlatModel->addParameterAssignment(mem);
+        if( err )
+        {
+            inRepo->error.push_back(*err);
+            outFlatModel->errorsDetected = true;
+        }
+    }
+
+    //copy equations
+    for(    itE = inCompositeModel->equation.begin();
+            itE != inCompositeModel->equation.end();
+            ++itE )
+    {
+        CmEquationDescriptor equ = *itE;
+        //TODO go through the equation and add the prefix at all variable names
+        shared_ptr<CmErrorDescriptor> err;
+//         err = outFlatModel->addEquation(mem);
+        if( err )
+        {
+            inRepo->error.push_back(*err);
+            outFlatModel->errorsDetected = true;
+        }
+    }
     //special handling for the error flag
+    if( inCompositeModel->errorsDetected )
+    {
+        outFlatModel->errorsDetected = true;
+    }
+
     //recursively call this function for each submodel
+    uint newRecursionLevel = inRecursionLevel+1;
+    CmSubModelTable::const_iterator itS;
+    for(    itS = inCompositeModel->subModel.begin();
+            itS != inCompositeModel->subModel.end();
+            ++itS )
+    {
+        CmModelDescriptor * submodel = 0;
+        ///@todo implement CmCodeRepository::findModel
+        submodel = inRepo->findModel(itS->type);
+        string newPrefix;
+//         newPrefix.addSuffix(itS->name );
+        flattenModelRecursive(    submodel, newPrefix, newRecursionLevel,
+                                  inRepo, outFlatModel );
+    }
 }
