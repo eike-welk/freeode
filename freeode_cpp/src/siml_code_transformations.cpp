@@ -63,4 +63,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
                                 CmCodeRepository  const * inRepo,
                                 CmModelDescriptor * outFlatModel)
 {
+    //copy the recursive entities of inCompositeModel
+    //special handling for the error flag
+    //recursively call this function for each submodel
 }
