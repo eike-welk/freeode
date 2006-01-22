@@ -30,7 +30,7 @@ using boost::shared_ptr;
 using boost::format;
 
 
-/*!Add the descriptor and see if name is unique.
+/*!Add the descriptor if it has a unique name.
 
 @return pointer to error if an error happened, or null pointer otherwise.
 */
@@ -153,7 +153,7 @@ If the name already exists return false, otherwise return true.
 @param name the name that is checked for uniqueness.
 */
 bool
-siml::CmModelDescriptor::isIdentifierUnique(std::string const & name) const
+siml::CmModelDescriptor::isIdentifierUnique(CmPath const & name) const
 {
     //loop over all unit names
     CmSubModelTable::const_iterator itSub;

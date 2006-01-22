@@ -23,6 +23,7 @@
 
 #include <string>
 #include <list>
+#include <iostream>
 
 
 namespace siml {
@@ -34,18 +35,38 @@ Long variable or paramer name with dots.
 */
 class CmPath{
 public:
+    //!create empty path
     CmPath();
+    //!Initialize with one component
+    CmPath(std::string const & contentsNew);
+    //!Initialize with one component
+    /*!No parsing is done.*/
+    template <class InputIterator> CmPath(InputIterator first, InputIterator last)
+    { set(std::string(first, last)); }
 
     ~CmPath();
 
+    //!compare with string        @todo Marshal Cline says: the function should be private
+    bool isEqual(std::string const & inString) const;
+    //!compare with CmPath        @todo Marshal Cline says: the function should go away
+    bool isEqual(CmPath const & inPath) const;
+    //!compare with CmPath
+    bool operator==(CmPath const & inPath) const { return isEqual(inPath); }
+
+    //!remove all components
+    CmPath & clear();
+    //!Let path contain one single string
+    CmPath & set(std::string const & contentsNew);
+    //!Copy all components
+    CmPath & set(CmPath const & contentsNew);
     //!Add string at begining
-    void prepend(std::string const & compo);
+    CmPath & prepend(std::string const & compo);
     //!Add path at begining
-    void prepend(CmPath const & inPath);
+    CmPath & prepend(CmPath const & inPath);
     //!Add string at end
-    void append(std::string const & compo);
+    CmPath & append(std::string const & compo);
     //!Add path at end
-    void append(CmPath const & inPath);
+    CmPath & append(CmPath const & inPath);
 
     //!Convert to string
     std::string toString(std::string const separatorStr = ".") const;
@@ -56,6 +77,14 @@ private:
     //!List of components
     StringList m_Component;
 };
+
+//!compare with string
+inline bool operator==(std::string const & p1, CmPath const & p2) { return p2.isEqual(p1); }
+//!compare with string
+inline bool operator==(CmPath const & p1, std::string const & p2) { return p1.isEqual(p2); }
+
+//!printing
+std::ostream& operator<<(std::ostream& out, siml::CmPath const & path);
 
 }
 

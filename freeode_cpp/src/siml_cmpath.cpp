@@ -26,8 +26,17 @@ using std::string;
 using std::list;
 using std::ostringstream;
 
+/*!Default constructor*/
 siml::CmPath::CmPath()
 {
+}
+/*!
+Initialize with one component.
+No parsing is done.
+*/
+siml::CmPath::CmPath(std::string const & contentsNew)
+{
+    set(contentsNew);
 }
 
 
@@ -36,31 +45,80 @@ siml::CmPath::~CmPath()
 }
 
 
-/*!Add string at begining*/
-void siml::CmPath::prepend(std::string const & compo)
+/*!
+Convert the path to a string (with toString(".") ) and compare with inString.
+The separator for the conversion is ".";
+@return true if equal, false otherwise.
+*/
+bool  siml::CmPath::isEqual(std::string const & inString) const
 {
-    m_Component.push_front(compo);
+    if( m_Component.size() == 1 )
+    {   //shortcut for one component paths.
+        return m_Component.front() == inString;
+    }
+    else
+    {   //the normal case
+        string pathStr = toString(".");
+        return pathStr == inString;
+    }
+}
+/*!Compare all components.
+@return true if all components are equal, false otherwise.
+*/
+bool siml::CmPath::isEqual(CmPath const & inPath) const
+{
+    return m_Component == inPath.m_Component;
 }
 
 
+/*!remove all components*/
+siml::CmPath & siml::CmPath::clear()
+{
+    m_Component.clear();
+    return *this;
+}
+
+
+/*!Let path contain one single string*/
+siml::CmPath & siml::CmPath::set(std::string const & contentsNew)
+{
+    clear();
+    append(contentsNew);
+    return *this;
+}
+/*!Copy all components*/
+siml::CmPath & siml::CmPath::set(CmPath const & contentsNew)
+{
+    m_Component = contentsNew.m_Component;
+    return *this;
+}
+
+
+/*!Add string at begining*/
+siml::CmPath & siml::CmPath::prepend(std::string const & compo)
+{
+    m_Component.push_front(compo);
+    return *this;
+}
 /*!Add path at begining*/
-void siml::CmPath::prepend(CmPath const & inPath)
+siml::CmPath & siml::CmPath::prepend(CmPath const & inPath)
 {
     m_Component.insert(m_Component.begin(), inPath.m_Component.begin(), inPath.m_Component.end());
+    return *this;
 }
 
 
 /*!Add string at end*/
-void siml::CmPath::append(std::string const & compo)
+siml::CmPath & siml::CmPath::append(std::string const & compo)
 {
     m_Component.push_back(compo);
+    return *this;
 }
-
-
 /*!Add path at end*/
-void siml::CmPath::append(CmPath const & inPath)
+siml::CmPath & siml::CmPath::append(CmPath const & inPath)
 {
     m_Component.insert(m_Component.end(), inPath.m_Component.begin(), inPath.m_Component.end());
+    return *this;
 }
 
 
@@ -90,5 +148,12 @@ std::string siml::CmPath::toString(std::string const separatorStr) const
     return outputStream.str();
 }
 
-
+/*!convert the oject to string (using "." as cmponent separator) and then put
+the string into the stream*/
+std::ostream& siml::operator<<(std::ostream& out, siml::CmPath const & path)
+{
+    string strPath = path.toString();
+    out << strPath;
+    return out;
+}
 

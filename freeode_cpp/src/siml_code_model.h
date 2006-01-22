@@ -63,7 +63,8 @@ generator will later use this information.
 struct CmMemoryDescriptor
 {
     //!parameter name
-    std::string name;
+    CmPath name;
+//     std::string name;
     //!identifier name in generated program
     std::string name_program;
     //!REAL or INT
@@ -181,7 +182,7 @@ struct CmModelDescriptor
     boost::shared_ptr<CmErrorDescriptor> setVariableIntegrated(std::string stateVarName);
 
     //!Check if name already exists
-    bool isIdentifierUnique(std::string const & name) const;
+    bool isIdentifierUnique(CmPath const & name) const;
     //!Check if name already exists
 //     bool isIdentifierUnique(CmMemoryDescriptor const & varOrPar) const;
 };

@@ -21,13 +21,16 @@
 #include "siml_pyprocessgenerator.h"
 #include "siml_code_transformations.h"
 
+#include <iostream>
 #include <boost/format.hpp>
 #include <boost/tuple/tuple.hpp>
+
 
 using std::string;
 using std::endl;
 using std::map;
 using std::vector;
+using std::cout;
 using boost::format;
 using boost::tie;
 using boost::shared_ptr;
@@ -57,13 +60,15 @@ siml::PyProcessGenerator::~PyProcessGenerator()
  */
 void siml::PyProcessGenerator::generateAll()
 {
+    cout << "Start generating Python code --------------------------\n";
     genFileStart();
     //loop over all processs and generate a python object for each.
-    genProcessObject(0); ///@TODO generate all processes
-/*    for( int i=0; i< m_ParseResult->process.size(); ++i)
+    //genProcessObject(0); ///@TODO generate all processes
+    cout << "Number of processes: " << m_ParseResult->process.size() << "\n";
+    for( uint i=0; i< m_ParseResult->process.size(); ++i)
     {
         genProcessObject(i);
-    }*/
+    }
 }
 
 
@@ -119,9 +124,8 @@ void siml::PyProcessGenerator::genProcessObject(int iProcess)
 
     string process_name("TestProcess");
 
-    m_PyFile << format("class %1%:") % process_name << endl;
-//     m_PyFile << format("    \"\"\" object to simulate process %1% \"\"\"") % process_name << endl;
-    m_PyFile << format("%|4t|\"\"\" object to simulate process %1% \"\"\"") % process_name << endl;
+    m_PyFile << format("class %1%:\n") % process_name;
+    m_PyFile << format("%|4t|\"\"\" object to simulate process %1% \"\"\"\n") % process_name;
     m_PyFile << endl;
 
     //Generate some infrastructure functions
@@ -157,7 +161,7 @@ void siml::PyProcessGenerator::genConstructor()
     for( it = m_Parameter.begin(); it != m_Parameter.end(); ++it )
     {
         CmMemoryDescriptor paramD = *it;
-        string pName = paramD.name;
+        string pName = paramD.name.toString();
         string pVal  = paramD.default_expr;
         string pType = paramD.type;
         m_PyFile << format("%|8t|self.%1% %|25t|= %2% #%3%") % pName % pVal % pType << endl;
@@ -173,7 +177,7 @@ void siml::PyProcessGenerator::genConstructor()
         CmMemoryDescriptor varD = *itV;
         if( varD.is_state_variable == false ) { continue; }
 
-        string varName = varD.name;
+        string varName = varD.name.toString();
         string index = m_StateVectorMap[varName]; //look up m_Variable's index in the state vector.
         string initExpression = varD.initial_expr;
         m_PyFile << format("%|8t|self.y0[%1%] = %2% # %3%") % index % initExpression % varName << endl;
@@ -234,7 +238,7 @@ void siml::PyProcessGenerator::genOdeFunction()
         CmMemoryDescriptor varD = *itV;
         if( varD.is_state_variable == false ) { continue; }
 
-        string varName = varD.name;
+        string varName = varD.name.toString();
         string index = m_StateVectorMap[varName]; //look up variable's index in the state vector.
         m_PyFile << format("%|8t|%1% = y[%2%]") % varName % index << endl;
     }
@@ -304,8 +308,9 @@ void siml::PyProcessGenerator::layoutArrays()
         if( varD.is_state_variable == false ) { continue; }
 
         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
-        m_StateVectorMap[varD.name] = currIndexStr;
-        m_ResultArrayMap[varD.name] = currIndexStr;
+        string varNameStr = varD.name.toString();
+        m_StateVectorMap[varNameStr] = currIndexStr;
+        m_ResultArrayMap[varNameStr] = currIndexStr;
 /*        state_vector_ordering.push_back(varD.name);
         result_array_ordering.push_back(varD.name);*/
         ++currIndex;
@@ -320,7 +325,8 @@ void siml::PyProcessGenerator::layoutArrays()
         if( varD.is_state_variable == true ) { continue; }
 
         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
-        m_ResultArrayMap[varD.name] = currIndexStr;
+        string varNameStr = varD.name.toString();
+        m_ResultArrayMap[varNameStr] = currIndexStr;
 /*        result_array_ordering.push_back(varD.name);*/
         ++currIndex;
     }
@@ -373,7 +379,7 @@ void siml::PyProcessGenerator::genOutputEquations()
         CmMemoryDescriptor varD = *itV;
         if( varD.is_state_variable == false ) { continue; }
 
-        string varName = varD.name;
+        string varName = varD.name.toString();
         string index = m_ResultArrayMap[varName]; //look up variable's index
         m_PyFile << format("%|8t|%1% = self.resultArray[:,%2%]") % varName % index << endl;
     }
