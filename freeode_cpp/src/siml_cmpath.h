@@ -17,37 +17,46 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#ifndef SIML_CODE_TRANSFORMATIONS_H
-#define SIML_CODE_TRANSFORMATIONS_H
+#ifndef SIML_CMPATH_H
+#define SIML_CMPATH_H
 
 
-#include "siml_code_model.h"
-#include "siml_cmpath.h"
-
-#include <boost/shared_ptr.hpp>
-
-// #include <iostream>
-// #include <vector>
-// #include <string>
-// #include <fstream>
-// #include <map>
+#include <string>
+#include <list>
 
 
 namespace siml {
 
-//!create model without sub-models
-boost::shared_ptr<CmModelDescriptor>
-createFlatModel(    CmModelDescriptor const * compositeModel,
-                    CmCodeRepository * repo );
+/**
+Long variable or paramer name with dots.
 
-//!copy parameters, variables and equations for createFlatModel
-void
-flattenModelRecursive(  CmModelDescriptor const * inCompositeModel,
-                        CmPath const inPathPrefix,
-                        uint const inRecursionLevel,
-                        CmCodeRepository * inRepo,
-                        CmModelDescriptor * outFlatModel );
+    @author Eike Welk <eike.welk@post.rwth-aachen.de>
+*/
+class CmPath{
+public:
+    CmPath();
+
+    ~CmPath();
+
+    //!Add string at begining
+    void prepend(std::string const & compo);
+    //!Add path at begining
+    void prepend(CmPath const & inPath);
+    //!Add string at end
+    void append(std::string const & compo);
+    //!Add path at end
+    void append(CmPath const & inPath);
+
+    //!Convert to string
+    std::string toString(std::string const separatorStr = ".") const;
+
+private:
+    ///maybe use deque instead?
+    typedef std::list<std::string> StringList;
+    //!List of components
+    StringList m_Component;
+};
 
 }
 
-#endif //SIML_CODE_TRANSFORMATIONS_H
+#endif // SIML_CMPATH_H

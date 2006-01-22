@@ -292,3 +292,38 @@ siml::CmCodeRepository::display() const
     }
     cout << "------------------------------------" << endl;
 }
+
+/*!
+Search for a model declaration with this name in the repository.
+
+@param name Name of the model declaration.
+@return     Pointer to the declaration or 0 if no declaration with this name exists.
+ */
+siml::CmModelDescriptor *
+        siml::CmCodeRepository::findModel(std::string const & name)
+{
+    //copy parameter assignments
+    CmModelTable::iterator itM;
+    for(    itM = model.begin();
+            itM != model.end();
+            ++itM )
+    {
+        if( itM->name == name ) { return &(*itM); }
+    }
+
+    return 0;
+}
+
+/*!
+Search for a model declaration with this name in the repository.
+Version where the object can be manipulated
+
+@param name Name of the model declaration.
+@return     Pointer to the declaration or 0 if no declaration with this name exists.
+ */
+// siml::CmModelDescriptor const *
+//         siml::CmCodeRepository::findModel(std::string const & name) const
+// {
+//     CmModelDescriptor const * mc = findModel(name);
+//     return mc;
+// }

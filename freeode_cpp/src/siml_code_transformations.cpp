@@ -49,7 +49,7 @@ siml::createFlatModel(    CmModelDescriptor const * compositeModel,
 
     //copy the recursive features
     int recursionLevel = 0;
-    string variablePrefix;
+    CmPath variablePrefix;
     flattenModelRecursive(compositeModel, variablePrefix, recursionLevel, repo, flatModel);
 
     return sFlatModel;
@@ -57,11 +57,17 @@ siml::createFlatModel(    CmModelDescriptor const * compositeModel,
 
 /*!
 copy parameters, variables and equations for createFlatModel
+
+@param  inCompositeModel the model that will be converted.
+@param  inPathPrefix this is put in front of all variable and parameter names.
+@param  inRecursionLevel depth of recursion to avoid enless loops
+@param  inRepo the place where we search for the sub-models
+@param  outFlatModel the result. The converted entities are put here.
 @internal
 */
 void
 siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
-                                std::string const inVariablePrefix,
+                                siml::CmPath const inPathPrefix,
                                 uint const inRecursionLevel,
                                 CmCodeRepository * inRepo,
                                 CmModelDescriptor * outFlatModel )
@@ -74,7 +80,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itM )
     {
         CmMemoryDescriptor mem = *itM;
-//         mem.name.addPrefix(inVariablePrefix);
+//         mem.name.addPrefix(inPathPrefix);
         shared_ptr<CmErrorDescriptor> err;
         err = outFlatModel->addParameter(mem);
         if( err )
@@ -90,7 +96,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itM )
     {
         CmMemoryDescriptor mem = *itM;
-//         mem.name.addPrefix(inVariablePrefix);
+//         mem.name.addPrefix(inPathPrefix);
         shared_ptr<CmErrorDescriptor> err;
         err = outFlatModel->addVariable(mem);
         if( err )
@@ -138,18 +144,19 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
         outFlatModel->errorsDetected = true;
     }
 
-    //recursively call this function for each submodel
+    //recursively call this function for each submodel----------------------------
+    //increase recursion level
     uint newRecursionLevel = inRecursionLevel+1;
+    //add the current model's name to the prefix.
+    CmPath newPrefix = inPathPrefix;
+    newPrefix.append(inCompositeModel->name);
+
     CmSubModelTable::const_iterator itS;
     for(    itS = inCompositeModel->subModel.begin();
             itS != inCompositeModel->subModel.end();
             ++itS )
     {
-        CmModelDescriptor * submodel = 0;
-        ///@todo implement CmCodeRepository::findModel
-        submodel = inRepo->findModel(itS->type);
-        string newPrefix;
-//         newPrefix.addSuffix(itS->name );
+        CmModelDescriptor * submodel = inRepo->findModel(itS->type);
         flattenModelRecursive(    submodel, newPrefix, newRecursionLevel,
                                   inRepo, outFlatModel );
     }

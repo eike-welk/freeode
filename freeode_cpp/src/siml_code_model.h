@@ -21,6 +21,9 @@
 #ifndef SIML_CODE_MODEL_HPP
 #define SIML_CODE_MODEL_HPP
 
+
+#include "siml_cmpath.h"
+
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>
@@ -51,7 +54,7 @@ typedef std::vector<CmErrorDescriptor> CmErrorTable;
 
 
 /*!
-@short All data of a single parameter
+@short Data of parameter or variable
 
 This is the parsing result for one line of the PARAMETER section. The code
 generator will later use this information.
@@ -208,6 +211,10 @@ struct CmCodeRepository
 
     //!Display the repositorie's contents (for debuging)
     void display() const;
+    //!Find a model declaration by name
+    CmModelDescriptor * findModel(std::string const & name);
+//     CmModelDescriptor const * findModel(std::string const & name) const;
+
 };
 
 } //namespace siml
