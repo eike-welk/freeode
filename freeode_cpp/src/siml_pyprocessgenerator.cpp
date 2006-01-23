@@ -153,53 +153,53 @@ Generate Constuctor which creates the parameters as member variables
  */
 void siml::PyProcessGenerator::genConstructor()
 {
-    m_PyFile << format("%|4t|def __init__(self):") << endl;
-
-    //Assign values to the parameters (and create them)
-    m_PyFile << format("%|8t|#Assign values to the parameters (and create them)") << endl;
-    CmMemoryTable::const_iterator it;
-    for( it = m_Parameter.begin(); it != m_Parameter.end(); ++it )
-    {
-        CmMemoryDescriptor paramD = *it;
-        string pName = paramD.name.toString();
-        string pVal  = paramD.default_expr;
-        string pType = paramD.type;
-        m_PyFile << format("%|8t|self.%1% %|25t|= %2% #%3%") % pName % pVal % pType << endl;
-    }
-    m_PyFile << endl;
-
-    //Set initial values of the state variables.
-    m_PyFile << format("%|8t|#Set the initial values (of the state variables).") << endl;
-    m_PyFile << format("%|8t|self.y0 = zeros(%1%, Float)") % m_StateVectorSize << endl;
-    CmMemoryTable::const_iterator itV;
-    for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
-    {
-        CmMemoryDescriptor varD = *itV;
-        if( varD.is_state_variable == false ) { continue; }
-
-        string varName = varD.name.toString();
-        string index = m_StateVectorMap[varName]; //look up m_Variable's index in the state vector.
-        string initExpression = varD.initial_expr;
-        m_PyFile << format("%|8t|self.y0[%1%] = %2% # %3%") % index % initExpression % varName << endl;
-    }
-    m_PyFile << endl;
-
-    //Map for converting m_Variable names to indices or slices
-    //necessary for later m_Parameter access
-    m_PyFile << format("%|8t|#Map for converting variable names to indices or slices.") << endl;
-    m_PyFile << format("%|8t|self.resultArrayMap = { ");
-    map<string, string>::const_iterator itMa;
-    for( itMa = m_ResultArrayMap.begin(); itMa != m_ResultArrayMap.end(); ++itMa )
-    {
-        string varName, index;
-        tie(varName, index) = *itMa;
-        m_PyFile << format(" '%1%':%2%, ") % varName % index;
-    }
-    m_PyFile << " }" << endl << endl;
-
-/*    m_PyFile << format("%|8t|#List of diagrams.") << endl;
-    m_PyFile << format("%|8t|self.graphList = []") << endl;
-    m_PyFile << endl;*/
+//     m_PyFile << format("%|4t|def __init__(self):") << endl;
+//
+//     //Assign values to the parameters (and create them)
+//     m_PyFile << format("%|8t|#Assign values to the parameters (and create them)") << endl;
+//     CmMemoryTable::const_iterator it;
+//     for( it = m_Parameter.begin(); it != m_Parameter.end(); ++it )
+//     {
+//         CmMemoryDescriptor paramD = *it;
+//         string pName = paramD.name.toString();
+//         string pVal  = paramD.default_expr;
+//         string pType = paramD.type;
+//         m_PyFile << format("%|8t|self.%1% %|25t|= %2% #%3%") % pName % pVal % pType << endl;
+//     }
+//     m_PyFile << endl;
+//
+//     //Set initial values of the state variables.
+//     m_PyFile << format("%|8t|#Set the initial values (of the state variables).") << endl;
+//     m_PyFile << format("%|8t|self.y0 = zeros(%1%, Float)") % m_StateVectorSize << endl;
+//     CmMemoryTable::const_iterator itV;
+//     for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
+//     {
+//         CmMemoryDescriptor varD = *itV;
+//         if( varD.is_state_variable == false ) { continue; }
+//
+//         string varName = varD.name.toString();
+//         string index = m_StateVectorMap[varName]; //look up m_Variable's index in the state vector.
+//         string initExpression = varD.initial_expr;
+//         m_PyFile << format("%|8t|self.y0[%1%] = %2% # %3%") % index % initExpression % varName << endl;
+//     }
+//     m_PyFile << endl;
+//
+//     //Map for converting m_Variable names to indices or slices
+//     //necessary for later m_Parameter access
+//     m_PyFile << format("%|8t|#Map for converting variable names to indices or slices.") << endl;
+//     m_PyFile << format("%|8t|self.resultArrayMap = { ");
+//     map<string, string>::const_iterator itMa;
+//     for( itMa = m_ResultArrayMap.begin(); itMa != m_ResultArrayMap.end(); ++itMa )
+//     {
+//         string varName, index;
+//         tie(varName, index) = *itMa;
+//         m_PyFile << format(" '%1%':%2%, ") % varName % index;
+//     }
+//     m_PyFile << " }" << endl << endl;
+//
+// /*    m_PyFile << format("%|8t|#List of diagrams.") << endl;
+//     m_PyFile << format("%|8t|self.graphList = []") << endl;
+//     m_PyFile << endl;*/
 }
 
 
@@ -210,73 +210,73 @@ the simulation library routine.
  */
 void siml::PyProcessGenerator::genOdeFunction()
 {
-    //y: state vector, time current time
-    m_PyFile <<
-            "    def _diffStateT(self, y, time):\n"
-            "        \"\"\"\n"
-            "        Compute the time derivatives of the state variables.\n"
-            "        This function will be called repeatedly by the integration algorithm.\n"
-            "        y: state vector,  time: current time\n"
-            "        \"\"\"\n"
-            "        \n";
-
-    //Create local variables for the parameters.
-    m_PyFile << format("%|8t|#Create local variables for the parameters.") << endl;
-    CmMemoryTable::const_iterator itP;
-    for( itP = m_Parameter.begin(); itP != m_Parameter.end(); ++itP )
-    {
-        CmMemoryDescriptor paramD = *itP;
-        m_PyFile << format("%|8t|%1% = self.%1%") % paramD.name << endl;
-    }
-    m_PyFile << endl;
-
-    //Dissect the state vector into individual, local state variables.
-    m_PyFile << format("%|8t|#Dissect the state vector into individual, local state variables.") << endl;
-    CmMemoryTable::const_iterator itV;
-    for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
-    {
-        CmMemoryDescriptor varD = *itV;
-        if( varD.is_state_variable == false ) { continue; }
-
-        string varName = varD.name.toString();
-        string index = m_StateVectorMap[varName]; //look up variable's index in the state vector.
-        m_PyFile << format("%|8t|%1% = y[%2%]") % varName % index << endl;
-    }
-    m_PyFile << endl;
-
-    //Create the return vector
-    m_PyFile << format("%|8t|#Create the return vector (the time derivatives dy/dt).") << endl;
-    m_PyFile << format("%|8t|y_t = zeros(%1%, Float)") % m_StateVectorSize << endl;
-    m_PyFile << endl;
-
-    //write a line to compute each algebraic variable
-    m_PyFile << format("%|8t|#Compute the algebraic variables.") << endl;
-    CmEquationTable::const_iterator itE;
-    for( itE = m_Equation.begin(); itE != m_Equation.end(); ++itE )
-    {
-        CmEquationDescriptor equnD = *itE;
-        if( equnD.is_ode_assignment ) { continue; }
-        string algebVar = equnD.lhs;
-        string mathExpr = equnD.rhs;
-        m_PyFile << format("%|8t|%1% = %2%") % algebVar % mathExpr << endl;
-    }
-
-    //write a line to compute the time derivative of each integrated variable
-    m_PyFile << format("%|8t|#Compute the state variables. (Really the time derivatives.)") << endl;
-    for( itE = m_Equation.begin(); itE != m_Equation.end(); ++itE )
-    {
-        CmEquationDescriptor equnD = *itE;
-        if( !equnD.is_ode_assignment ) { continue; }
-        string stateVar = equnD.lhs;
-        string mathExpr = equnD.rhs;
-        string index = m_StateVectorMap[stateVar]; //look up variable's index in state vector
-        m_PyFile << format("%|8t|y_t[%1%] = %2% # = d %3% /dt ") % index % mathExpr % stateVar << endl;
-    }
-    m_PyFile << endl;
-
-    //return the result
-    m_PyFile << format("%|8t|return y_t") << endl;
-    m_PyFile << endl;
+//     //y: state vector, time current time
+//     m_PyFile <<
+//             "    def _diffStateT(self, y, time):\n"
+//             "        \"\"\"\n"
+//             "        Compute the time derivatives of the state variables.\n"
+//             "        This function will be called repeatedly by the integration algorithm.\n"
+//             "        y: state vector,  time: current time\n"
+//             "        \"\"\"\n"
+//             "        \n";
+//
+//     //Create local variables for the parameters.
+//     m_PyFile << format("%|8t|#Create local variables for the parameters.") << endl;
+//     CmMemoryTable::const_iterator itP;
+//     for( itP = m_Parameter.begin(); itP != m_Parameter.end(); ++itP )
+//     {
+//         CmMemoryDescriptor paramD = *itP;
+//         m_PyFile << format("%|8t|%1% = self.%1%") % paramD.name << endl;
+//     }
+//     m_PyFile << endl;
+//
+//     //Dissect the state vector into individual, local state variables.
+//     m_PyFile << format("%|8t|#Dissect the state vector into individual, local state variables.") << endl;
+//     CmMemoryTable::const_iterator itV;
+//     for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
+//     {
+//         CmMemoryDescriptor varD = *itV;
+//         if( varD.is_state_variable == false ) { continue; }
+//
+//         string varName = varD.name.toString();
+//         string index = m_StateVectorMap[varName]; //look up variable's index in the state vector.
+//         m_PyFile << format("%|8t|%1% = y[%2%]") % varName % index << endl;
+//     }
+//     m_PyFile << endl;
+//
+//     //Create the return vector
+//     m_PyFile << format("%|8t|#Create the return vector (the time derivatives dy/dt).") << endl;
+//     m_PyFile << format("%|8t|y_t = zeros(%1%, Float)") % m_StateVectorSize << endl;
+//     m_PyFile << endl;
+//
+//     //write a line to compute each algebraic variable
+//     m_PyFile << format("%|8t|#Compute the algebraic variables.") << endl;
+//     CmEquationTable::const_iterator itE;
+//     for( itE = m_Equation.begin(); itE != m_Equation.end(); ++itE )
+//     {
+//         CmEquationDescriptor equnD = *itE;
+//         if( equnD.is_ode_assignment ) { continue; }
+//         string algebVar = equnD.lhs;
+//         string mathExpr = equnD.rhs;
+//         m_PyFile << format("%|8t|%1% = %2%") % algebVar % mathExpr << endl;
+//     }
+//
+//     //write a line to compute the time derivative of each integrated variable
+//     m_PyFile << format("%|8t|#Compute the state variables. (Really the time derivatives.)") << endl;
+//     for( itE = m_Equation.begin(); itE != m_Equation.end(); ++itE )
+//     {
+//         CmEquationDescriptor equnD = *itE;
+//         if( !equnD.is_ode_assignment ) { continue; }
+//         string stateVar = equnD.lhs;
+//         string mathExpr = equnD.rhs;
+//         string index = m_StateVectorMap[stateVar]; //look up variable's index in state vector
+//         m_PyFile << format("%|8t|y_t[%1%] = %2% # = d %3% /dt ") % index % mathExpr % stateVar << endl;
+//     }
+//     m_PyFile << endl;
+//
+//     //return the result
+//     m_PyFile << format("%|8t|return y_t") << endl;
+//     m_PyFile << endl;
 }
 
 
@@ -295,42 +295,42 @@ m_ResultArrayColls is number of collumns in result array.
  */
 void siml::PyProcessGenerator::layoutArrays()
 {
-    m_StateVectorMap.clear(); /*state_vector_ordering.clear();*/ m_StateVectorSize=0;
-    m_ResultArrayMap.clear(); /*result_array_ordering.clear();*/ m_ResultArrayColls=0;
-
-    //loop over all variables and assign indices for the state variables
-    //each state variable gets a unique index in both arrays: state vector, result array.
-    CmMemoryTable::const_iterator itV;
-    uint currIndex=0;
-    for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
-    {
-        CmMemoryDescriptor varD = *itV;
-        if( varD.is_state_variable == false ) { continue; }
-
-        string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
-        string varNameStr = varD.name.toString();
-        m_StateVectorMap[varNameStr] = currIndexStr;
-        m_ResultArrayMap[varNameStr] = currIndexStr;
-/*        state_vector_ordering.push_back(varD.name);
-        result_array_ordering.push_back(varD.name);*/
-        ++currIndex;
-    }
-    m_StateVectorSize = currIndex;
-
-    //Loop over all variables again and assign indices for the algebraic variables.
-    //Each algebraic variable gets a unique index in the result array.
-    for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
-    {
-        CmMemoryDescriptor varD = *itV;
-        if( varD.is_state_variable == true ) { continue; }
-
-        string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
-        string varNameStr = varD.name.toString();
-        m_ResultArrayMap[varNameStr] = currIndexStr;
-/*        result_array_ordering.push_back(varD.name);*/
-        ++currIndex;
-    }
-    m_ResultArrayColls = currIndex;
+//     m_StateVectorMap.clear(); /*state_vector_ordering.clear();*/ m_StateVectorSize=0;
+//     m_ResultArrayMap.clear(); /*result_array_ordering.clear();*/ m_ResultArrayColls=0;
+//
+//     //loop over all variables and assign indices for the state variables
+//     //each state variable gets a unique index in both arrays: state vector, result array.
+//     CmMemoryTable::const_iterator itV;
+//     uint currIndex=0;
+//     for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
+//     {
+//         CmMemoryDescriptor varD = *itV;
+//         if( varD.is_state_variable == false ) { continue; }
+//
+//         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
+//         string varNameStr = varD.name.toString();
+//         m_StateVectorMap[varNameStr] = currIndexStr;
+//         m_ResultArrayMap[varNameStr] = currIndexStr;
+// /*        state_vector_ordering.push_back(varD.name);
+//         result_array_ordering.push_back(varD.name);*/
+//         ++currIndex;
+//     }
+//     m_StateVectorSize = currIndex;
+//
+//     //Loop over all variables again and assign indices for the algebraic variables.
+//     //Each algebraic variable gets a unique index in the result array.
+//     for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
+//     {
+//         CmMemoryDescriptor varD = *itV;
+//         if( varD.is_state_variable == true ) { continue; }
+//
+//         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
+//         string varNameStr = varD.name.toString();
+//         m_ResultArrayMap[varNameStr] = currIndexStr;
+// /*        result_array_ordering.push_back(varD.name);*/
+//         ++currIndex;
+//     }
+//     m_ResultArrayColls = currIndex;
 }
 
 
@@ -340,7 +340,7 @@ so they can be examined too. Only state variables are stored doring ODE simulati
 */
 void siml::PyProcessGenerator::genOutputEquations()
 {
-    m_PyFile <<
+/*    m_PyFile <<
             "    def _outputEquations(self, y):\n"
             "        \"\"\"\n"
             "        Compute (again) the algebraic variables as functions of the state \n"
@@ -399,7 +399,7 @@ void siml::PyProcessGenerator::genOutputEquations()
         m_PyFile << format("%|8t|self.resultArray[:,%1%] = %2% # %3%") % index % mathExpr % algebVar << endl;
     }
 
-    m_PyFile << endl;
+    m_PyFile << endl;*/
 }
 
 
