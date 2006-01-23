@@ -35,7 +35,7 @@
 MODEL mo2
 
 PARAMETER
-#mu_max DEFAULT 0.32;
+mu_max DEFAULT 0.32;
 Ks     DEFAULT 0.1;
 Yxs    DEFAULT 0.5;
 

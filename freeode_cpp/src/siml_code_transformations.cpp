@@ -19,10 +19,14 @@
  ***************************************************************************/
 
 #include "siml_code_transformations.h"
+#include <boost/format.hpp>
+
 
 using namespace siml;
 using boost::shared_ptr;
+using boost::format;
 using std::string;
+
 
 /*!
 Transfor a model with sub-models into an equivalent model without sub-models.
@@ -80,7 +84,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itM )
     {
         CmMemoryDescriptor mem = *itM;
-//         mem.name.addPrefix(inPathPrefix);
+        mem.name.prepend(inPathPrefix);
         shared_ptr<CmErrorDescriptor> err;
         err = outFlatModel->addParameter(mem);
         if( err )
@@ -96,7 +100,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itM )
     {
         CmMemoryDescriptor mem = *itM;
-//         mem.name.addPrefix(inPathPrefix);
+        mem.name.prepend(inPathPrefix);
         shared_ptr<CmErrorDescriptor> err;
         err = outFlatModel->addVariable(mem);
         if( err )
@@ -157,6 +161,14 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itS )
     {
         CmModelDescriptor * submodel = inRepo->findModel(itS->type);
+        if( !submodel )
+        {
+            string msg = ( format(
+                    "The model %1% does not exist!" ) % itS->type ).str();
+            inRepo->error.push_back(CmErrorDescriptor(msg) );
+            outFlatModel->errorsDetected = true;
+        }
+
         flattenModelRecursive(    submodel, newPrefix, newRecursionLevel,
                                   inRepo, outFlatModel );
     }

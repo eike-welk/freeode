@@ -58,11 +58,18 @@ void start_model(char const * /*first*/, char const * /*last*/)
 }
 
 //model name--------------------------------------------------------------------
-///See if the model or process name is unique
+//!See if the model or process name is unique
 void test_model_name_unique(char const *, char const *)
 {
 ///@todo implement test_model_name_unique
 ///@todo make this a member function of the CmCodeRepository
+}
+
+//set to process----------------------------------------------------------------
+//!Store that the model is really a process
+void set_process(char const *, char const *)
+{
+    model.isProcess = true;
 }
 
 //parameter---------------------------------------------------------------------
@@ -199,13 +206,13 @@ void add_sol_parms(char const * /*first*/, char const * const /*last*/)
 }
 
 //return model------------------------------------------------------------------
-int isProcessTemp;
+// int isProcessTemp;
 //!add the correctly parsed model to the global code repository.
 void return_model(char const * /*first*/, char const * const /*last*/)
 {
     cout << "Parsing model or process " << model.name << " finished correctly." << endl;
     cout << "model.isProcess: " << model.isProcess << endl;
-    cout << "isProcessTemp: " << isProcessTemp << endl;
+//     cout << "isProcessTemp: " << isProcessTemp << endl;
 
     if( model.isProcess ) { parse_result_storage->process.push_back(model); }
     else                  { parse_result_storage->model.push_back(model); }
@@ -277,11 +284,9 @@ struct ps_model : public spirit::grammar<ps_model>
             //The start rule. Parses the complete model: MODEL ... END
             model_definition
                 = ( str_p("MODEL")          [&start_model]  //clear all temporary storage
-                                            //[assign_a(model.isProcess, false)] ///@todo investigate why this does not work.
-                                            [assign_a(isProcessTemp, int(0))]
                   | str_p("PROCESS")        [&start_model]
-                                            //[assign_a(model.isProcess, true)] //the model is really a process
-                                            [assign_a(isProcessTemp, int(1))] //the model is really a process
+                                            ///[assign_a(model.isProcess, true)] @todo investigate why this does not work.
+                                            [&set_process] //the model is really a process
                   ) >>
                   //model or process body
                   ( ( name                  [assign_a(model.name)]
