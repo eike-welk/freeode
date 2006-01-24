@@ -49,7 +49,7 @@ using boost::shared_ptr;
 Parser::Parser()
 {
 
-    //The keywords. TODO put this into the definition of ps_name
+    ///The keywords. @todo put this into the definition of ps_name
     char const * const keywords[] = {
         "MODEL","PARAMETER", "VARIABLE", "SET", "EQUATION", "AS", "DEFAULT",
         "ASSIGN", "IF", "ELSE",

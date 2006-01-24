@@ -45,7 +45,8 @@ The keyword rejection can be turned on and off in the constructor.
 For rejection of keywords the ps_name contains a static member
 reserved_keywords (a symbol table), where keywords should be added at the start
 of the program.
-*/
+@author Eike Welk <eike.welk@post.rwth-aachen.de>
+ */
 class ps_name : public spirit::grammar<ps_name>
 {
     spirit::symbols<char> dummy_reserved_keywords;
@@ -79,6 +80,7 @@ public:
                   - self.keywords;
         }
 
+        //!Returns the start symbol. Called by spirit's internal magic.
         spirit::rule<ScannerT> const &
         start() const { return name; }
 

@@ -60,7 +60,7 @@ siml::createFlatModel(    CmModelDescriptor const * compositeModel,
 }
 
 /*!
-copy parameters, variables and equations for createFlatModel
+Copy parameters, variables and equations for createFlatModel(...).
 
 @param  inCompositeModel the model that will be converted.
 @param  inPathPrefix this is put in front of all variable and parameter names.
@@ -76,6 +76,19 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
                                 CmCodeRepository * inRepo,
                                 CmModelDescriptor * outFlatModel )
 {
+    //protect against circular dependencies ------------------------------
+    uint const recursionLevelMax =10;
+    if( inRecursionLevel > 10 )
+    {
+        string msg = ( format(
+                "The maximum recursion level (%1%) has been reached!\n"
+                "Procedure: %2%; Submodel at toplevel: %3%. Maybe there are circular dependencies."
+                ) % recursionLevelMax % outFlatModel->name % inCompositeModel->name ).str();
+        inRepo->error.push_back(CmErrorDescriptor(msg) );
+        outFlatModel->errorsDetected = true;
+        return;
+    }
+
     //copy the recursive entities -------------------------------------
     //copy parameters
     CmMemoryTable::const_iterator itM;
@@ -151,24 +164,28 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
     //recursively call this function for each submodel----------------------------
     //increase recursion level
     uint newRecursionLevel = inRecursionLevel+1;
-    //add the current model's name to the prefix.
-    CmPath newPrefix = inPathPrefix;
-    newPrefix.append(inCompositeModel->name);
 
     CmSubModelTable::const_iterator itS;
     for(    itS = inCompositeModel->subModel.begin();
             itS != inCompositeModel->subModel.end();
             ++itS )
     {
+        //Search model definition in repository.
         CmModelDescriptor * submodel = inRepo->findModel(itS->type);
+        //Error: Null pointer - model does not exist!
         if( !submodel )
         {
             string msg = ( format(
                     "The model %1% does not exist!" ) % itS->type ).str();
             inRepo->error.push_back(CmErrorDescriptor(msg) );
             outFlatModel->errorsDetected = true;
+            continue;
         }
 
+        //add the submodel's name to the prefix.
+        CmPath newPrefix = inPathPrefix;
+        newPrefix.append(itS->name);
+        //copy entities of submodel
         flattenModelRecursive(    submodel, newPrefix, newRecursionLevel,
                                   inRepo, outFlatModel );
     }

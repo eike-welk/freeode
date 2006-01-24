@@ -22,6 +22,7 @@
 
 #include "siml_code_model.h"
 #include "siml_ps_name.h"
+#include "siml_ps_path.h"
 #include "siml_error_generator.h"
 
 #include <boost/spirit/core.hpp>
@@ -254,7 +255,8 @@ The temporary varibles and the semantic actions reside in the namespace
 "temp_store_model".
 
 @todo With functors no global variables nor global functions were necessary.
-*/
+@author Eike Welk <eike.welk@post.rwth-aachen.de>
+ */
 struct ps_model : public spirit::grammar<ps_model>
 {
     //!Construct the grammar
@@ -416,7 +418,8 @@ struct ps_model : public spirit::grammar<ps_model>
                     = +(path | real_p | '+' | '-' | '*' | '/' | '(' | ')');
 
             //parser for a variable or a parameter path "mo1.X"
-            path = name >> *("." >> name);
+//             path = (name >> *("." >> name));
+            path = path_test;
         }
 
         //!The start rule of the model grammar.
@@ -438,6 +441,8 @@ struct ps_model : public spirit::grammar<ps_model>
             rough_math_expression, path;
         //!Grammar that describes all names (model, parameter, variable)
         ps_name name;
+        //!grammar for paths
+        ps_path path_test;
         //!symbol table for the known parmeter names.
 //         spirit::symbols<> param_name;
         //!symbol table for the known variable names.

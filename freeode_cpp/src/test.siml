@@ -59,6 +59,7 @@ mu_max;
 
 UNIT
 reactor AS mo2;
+#reactor2 AS mo2;
 
 SET
 mu_max := 0.5;

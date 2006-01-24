@@ -29,9 +29,9 @@
 namespace siml {
 
 /**
-Long variable or paramer name with dots.
+Long variable or parameter name with dots.
 
-    @author Eike Welk <eike.welk@post.rwth-aachen.de>
+@author Eike Welk <eike.welk@post.rwth-aachen.de>
 */
 class CmPath{
 public:
