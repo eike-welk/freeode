@@ -16,13 +16,21 @@
  *   along with this program; if not, write to the                         *
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************
+ *   This file is based on the calculator/v_machine example from the       *
+ *   spirit documentation. Published under the Boost Software License.     *
+ *   Copyright (c) 1998-2003 Joel de Guzman                                *
+ *   Thank you for this usefull example!                                   *
+ *   URL:                                                                  *
+ *   http://www.boost.org/libs/spirit/example/fundamental/\                *
+ *   more_calculators/vmachine_calc.cpp                                    *
  ***************************************************************************/
-#ifndef SIML_PS_PATH_H
-#define SIML_PS_PATH_H
+#ifndef SIML_PS_FORMULA_H
+#define SIML_PS_FORMULA_H
 
 
-#include "siml_cmpath.h"
-#include "siml_ps_name.h"
+// #include "siml_cmpath.h"
+#include "siml_ps_path.h"
 #include "siml_error_generator.h"
 
 #include <boost/spirit.hpp>
@@ -34,95 +42,60 @@
 // #include <vector>
 #include <iostream>
 
+
 ///use these definitions?
 // typedef char                    char_t;
 // typedef file_iterator <char_t>  iterator_t;
 // typedef scanner<iterator_t>     scanner_t;
 // typedef rule <scanner_t>        rule_t;
 
+
 namespace siml {
 
 namespace spirit = boost::spirit;
 
 /**
-@short parse paths
-Parser for a variable or a parameter path e.g: "mo1.X"
-The parsed path (the result) is in the member m_path.
-A refference or pointer to it can be passed to a functor's constructor
-in semantic action. e.g.:
-@code
-struct my_functor{
-    my_functor(CmPath const & inPath) : m_InPath(inPath) {}
+@short parse formulas
+Parser for mathematical expressions.
 
-    template <typename IteratorT>
-    void operator()(IteratorT first, IteratorT last) const {...do someting...}
-}
-@endcode
-
-With functor_parser it is possible to pass the path directly to the semantic action.
-The existing grammar could be mostly reused.
-An other alternative are closures.
-
-See functor_parser in the docs. It does just that. Below is an example whose
-result_t is a std::string.
-@code
-struct QS
-{
-   typedef std::string result_t;
-
-   template< typename ScannerT >
-   int operator()
-   ( ScannerT const& scan, result_t& result )const
-   {
-      match<> m = ( lexeme_d[( '"'
-                    >> !( (*(c_escape_ch_p-'"'))[assign(result)] ) >> '"' )]
-                  ).parse( scan );
-
-      return m? m.length() : -1;
-   }
-};
-
-const functor_parser<QS> QS_p;
-@endcode
+Usage ? Hmm.
 
 @author Eike Welk <eike.welk@post.rwth-aachen.de>
-*/
-struct ps_path : public spirit::grammar<ps_path>
+ */
+struct ps_formula : public spirit::grammar<ps_formula>
 {
-    ps_path(){}
+    ps_formula(){}
 
-    ~ps_path(){}
+    ~ps_formula(){}
 
-    //!The parsed path.
-    CmPath m_path;
-
-    /*! Functor that assigns a string to a path. = 1.clear path; 2.append string*/
-    struct assign_str
+    struct push_path
     {
-        CmPath & m_path;
+        CmPath const & m_InPath;
 
-        assign_str(CmPath const & path) : m_path(const_cast<CmPath &>(path)) {}
+        push_path(CmPath const & inPath) : m_InPath(inPath) {}
 
         template <typename IteratorT>
         void operator()(IteratorT first, IteratorT last) const
         {
-            m_path.assign(std::string(first, last));
+            std::string p1 = m_InPath.toString("::");
+            std::string p2 = std::string(first, last);
+            std::cout   << "push_path: m_InPath: " << p1
+                        << ", string(first, last): " << p2 << std::endl;
         }
     };
-
-    /*! Functor that adds a string to the end of a path.*/
-    struct append_str
-    {
-        CmPath & m_path;
-
-        append_str(CmPath const & path) : m_path(const_cast<CmPath &>(path)) {}
-
-        template <typename IteratorT>
-        void operator()(IteratorT first, IteratorT last) const
-        {
-            m_path.append(std::string(first, last));
-        }
-    };
+//
+//     struct append_str
+//     {
+//         CmPath & m_path;
+//
+//         append_str(CmPath const & path) : m_path(const_cast<CmPath &>(path)) {}
+//
+//         template <typename IteratorT>
+//                 void operator()(IteratorT first, IteratorT last) const
+//         {
+//             m_path.append(std::string(first, last));
+//         }
+//     };
 
     //!When the grammar is used the framework creates this struct. All rules are defined here.
     template <typename ScannerT>
@@ -142,31 +115,48 @@ struct ps_path : public spirit::grammar<ps_path>
         typedef typename ScannerT::iterator_t IteratorT;
 
         //!The grammar's rules.
-        definition(ps_path const& self)
+        definition(ps_formula const& self)
         {
-//             using spirit::str_p; using spirit::ch_p; using spirit::alnum_p;
-//             using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
+            using spirit::str_p; using spirit::ch_p; using spirit::alnum_p; using spirit::real_p;
+            using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
 //             using spirit::assign_a;
-            using spirit::lexeme_d;
+//             using spirit::lexeme_d;
 
-            path = lexeme_d
-                    [
-                        name                [assign_str(self.m_path)] >>
-                        *("." >> name       [append_str(self.m_path)]
-                         )
-                    ];
-            //             path = lexeme_d[name >> *("." >> name) >> eps_p-(alnum_p | '_')]; //maybe better because then we know when the rule is finished
+//             number =
+//                     (real_p >> eps_p)/*[push_int(self.code)]*/
+//                     ;
+
+            factor =
+                    path[push_path(path.m_path)]
+                    |   (real_p >> eps_p)/*[push_number(self.code)]*/
+                    |   ('(' >> expression >> ')')/*[push_bracket(self.code)]*/
+                    |   ('-' >> factor)/*[push_op("-", 1, self.code)]*/
+                    |   ('+' >> factor)
+                    ;
+
+            term =
+                    factor
+                    >> *(   ('*' >> factor)/*[push_op("*", 2, self.code)]*/
+                        |   ('/' >> factor)/*[push_op(OP_DIV, self.code)]*/
+                        )
+                    ;
+
+            expression =
+                    term
+                    >> *(   ('+' >> term)/*[push_op(OP_ADD, self.code)]*/
+                        |   ('-' >> term)/*[push_op(OP_SUB, self.code)]*/
+                        )
+                    ;
         }
 
         //!The start rule of the grammar. Called by spirit's internal magic.
         spirit::rule<ScannerT> const &
-        start() const { return path; }
+                start() const { return expression; }
 
-        private:
         //!Rules that are defined here
-        spirit::rule<ScannerT> path;
+        spirit::rule<ScannerT> expression, term, factor, number;
         //!Grammar that describes all names (model, parameter, variable)
-        ps_name name;
+        ps_path path;
     };
 };
 

@@ -47,7 +47,7 @@ S INITIAL 25;  # Sugar
 EQUATION
 mu := mu_max * S/(S+Ks);
 $X := mu*X;
-$S := -1/Yxs*mu*X;
+$S := -1/Yxs*mu*X + a.b.c;
 
 END
 
