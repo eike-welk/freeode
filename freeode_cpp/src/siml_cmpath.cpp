@@ -36,7 +36,7 @@ No parsing is done.
 */
 siml::CmPath::CmPath(std::string const & contentsNew)
 {
-    set(contentsNew);
+    assign(contentsNew);
 }
 
 
@@ -80,14 +80,14 @@ siml::CmPath & siml::CmPath::clear()
 
 
 /*!Let path contain one single string*/
-siml::CmPath & siml::CmPath::set(std::string const & contentsNew)
+siml::CmPath & siml::CmPath::assign(std::string const & contentsNew)
 {
     clear();
     append(contentsNew);
     return *this;
 }
 /*!Copy all components*/
-siml::CmPath & siml::CmPath::set(CmPath const & contentsNew)
+siml::CmPath & siml::CmPath::assign(CmPath const & contentsNew)
 {
     m_Component = contentsNew.m_Component;
     return *this;
@@ -148,8 +148,8 @@ std::string siml::CmPath::toString(std::string const separatorStr) const
     return outputStream.str();
 }
 
-/*!convert the oject to string (using "." as cmponent separator) and then put
-the string into the stream*/
+/*!For printing: convert the object to a string (using "." as cmponent separator), then put
+the string into the stream.*/
 std::ostream& siml::operator<<(std::ostream& out, siml::CmPath const & path)
 {
     string strPath = path.toString();

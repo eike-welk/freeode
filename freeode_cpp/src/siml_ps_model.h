@@ -283,6 +283,8 @@ struct ps_model : public spirit::grammar<ps_model>
             using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
             using spirit::assign_a;
 
+            ///@todo evaluate "distinct_parser" as an alternative to "str_p" - http://www.boost.org/libs/spirit/doc/distinct.html
+            ///@todo very nice were a parser generator keyw_p("MODEL") that inserted the keyword into the table of keywords.
             //The start rule. Parses the complete model: MODEL ... END
             model_definition
                 = ( str_p("MODEL")          [&start_model]  //clear all temporary storage
@@ -419,7 +421,7 @@ struct ps_model : public spirit::grammar<ps_model>
 
             //parser for a variable or a parameter path "mo1.X"
 //             path = (name >> *("." >> name));
-            path = path_test;
+//             path = path_test;
         }
 
         //!The start rule of the model grammar.
@@ -438,11 +440,11 @@ struct ps_model : public spirit::grammar<ps_model>
             equation_section, assignment_variable, assignment_time_derivative,
             initial_section, initial_assignment,
             solutionparameters_section, solutionparameters_assignment,
-            rough_math_expression, path;
+            rough_math_expression/*, path*/;
         //!Grammar that describes all names (model, parameter, variable)
         ps_name name;
-        //!grammar for paths
-        ps_path path_test;
+        //!grammar for paths ("reactor.v1.p")
+        ps_path path;
         //!symbol table for the known parmeter names.
 //         spirit::symbols<> param_name;
         //!symbol table for the known variable names.

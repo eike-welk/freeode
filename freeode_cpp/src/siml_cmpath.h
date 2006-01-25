@@ -40,15 +40,15 @@ public:
     //!Initialize with one component
     CmPath(std::string const & contentsNew);
     //!Initialize with one component
-    /*!No parsing is done.*/
+    /*!No parsing is done. CmPath can replace std::string for storing a string of chars.*/
     template <class InputIterator> CmPath(InputIterator first, InputIterator last)
-    { set(std::string(first, last)); }
+    { assign(std::string(first, last)); }
 
     ~CmPath();
 
     //!compare with string        @todo Marshal Cline says: the function should be private
     bool isEqual(std::string const & inString) const;
-    //!compare with CmPath        @todo Marshal Cline says: the function should go away
+    //!compare with CmPath        @todo Marshal Cline says: the function should go away only operator== should be used
     bool isEqual(CmPath const & inPath) const;
     //!compare with CmPath
     bool operator==(CmPath const & inPath) const { return isEqual(inPath); }
@@ -56,9 +56,9 @@ public:
     //!remove all components
     CmPath & clear();
     //!Let path contain one single string
-    CmPath & set(std::string const & contentsNew);
+    CmPath & assign(std::string const & contentsNew);
     //!Copy all components
-    CmPath & set(CmPath const & contentsNew);
+    CmPath & assign(CmPath const & contentsNew);
     //!Add string at begining
     CmPath & prepend(std::string const & compo);
     //!Add path at begining

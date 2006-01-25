@@ -46,6 +46,7 @@ namespace spirit = boost::spirit;
 
 /**
 @short parse paths
+Parser for a variable or a parameter path e.g: "mo1.X"
 
 Usage ? Hmm.
 
@@ -54,13 +55,43 @@ Usage ? Hmm.
 class ps_path : public spirit::grammar<ps_path>
 {
 public:
-    ps_path(){};
+    ps_path(){}
 
-    ~ps_path(){};
+    ~ps_path(){}
+
+    CmPath path() const { return m_path; }
 
 private:
     //!The parsed path.
     CmPath m_path;
+
+    /*! Functor that assigns a string to a path.*/
+    struct assign_str
+    {
+        CmPath & m_path;
+
+        assign_str(CmPath const & path) : m_path(const_cast<CmPath &>(path)) {}
+
+        template <typename IteratorT>
+                void operator()(IteratorT first, IteratorT last) const
+        {
+            m_path = std::string(first, last);
+        }
+    };
+
+    /*! Functor that adds a string to the end of a path.*/
+    struct append_str
+    {
+        CmPath & m_path;
+
+        append_str(CmPath const & path) : m_path(const_cast<CmPath &>(path)) {}
+
+        template <typename IteratorT>
+                void operator()(IteratorT first, IteratorT last) const
+        {
+            m_path.append(std::string(first, last));
+        }
+    };
 
 public:
     //!When the grammar is used the framework creates this struct. All rules are defined here.
@@ -80,18 +111,21 @@ public:
         */
         typedef typename ScannerT::iterator_t IteratorT;
 
-        ///@todo Implement the functors
-
         //!The grammar's rules.
         definition(ps_path const& self)
         {
-            using spirit::str_p; using spirit::ch_p;
-            using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
-            using spirit::assign_a;
+//             using spirit::str_p; using spirit::ch_p; using spirit::alnum_p;
+//             using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
+//             using spirit::assign_a;
+            using spirit::lexeme_d;
 
-//             CmPath test=self.m_path; //access to the grammars private members is possible.
-
-            path = (name >> *("." >> name));
+            path = lexeme_d
+                    [
+                        name                [assign_str(self.m_path)] >>
+                        *("." >> name       [append_str(self.m_path)]
+                         )
+                    ];
+            //             path = lexeme_d[name >> *("." >> name) >> eps_p-(alnum_p | '_')]; //maybe better because then we know when the rule is finished
         }
 
         //!The start rule of the grammar. Called by spirit's internal magic.
