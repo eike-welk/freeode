@@ -17,8 +17,8 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#ifndef SIMLCMFORMULA_H
-#define SIMLCMFORMULA_H
+#ifndef SIML_CMFORMULA_H
+#define SIML_CMFORMULA_H
 
 
 #include <string>
@@ -55,20 +55,21 @@ public:
         MathOperator(std::string const & inSymbol, uint inOps): FormulaItem(inOps), symbol(inSymbol) {};
         std::string toString() const { return symbol; }
     };
-    //!A number in the formula
+    //!A number
     struct Number: public FormulaItem {
         std::string const number;
         //!Specify number as string
         Number(std::string const & inNumber): FormulaItem(0), number(inNumber) {};
         std::string toString() const { return number; }
     };
-    //!A path; refference to a variable in the formula
+    //!A path; refference to a variable
     struct Path: public FormulaItem {
         CmPath const path;
         //!Specify parsed path
         Path(std::string const & inPath): FormulaItem(0), path(inPath) {};
         std::string toString() const { return path.toString(); }
     };
+    ///@todo Pair of brackets
     typedef boost::shared_ptr<FormulaItem> ItemPtr;
     typedef std::list<ItemPtr> ItemContainer;
 
