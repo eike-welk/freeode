@@ -110,6 +110,27 @@ siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
     return shared_ptr<CmErrorDescriptor> ();
 }
 
+
+/*!Add an expression to set a value to a parameter.
+Also sets the right options.*/
+void siml::CmModelDescriptor::addParameterAssignment( CmEquationDescriptor inEqu)
+{
+    //set the right options
+    inEqu.is_assignment = true;
+    inEqu.is_ode_assignment = false;
+    //add to model
+    parameterAssignment.push_back( inEqu);
+}
+
+
+/*!Add an equation. Options must be set before calling this function!*/
+void siml::CmModelDescriptor::addEquation( CmEquationDescriptor inEqu)
+{
+    //add to model
+    equation.push_back( inEqu);
+}
+
+
 /*!
 
 @return pointer to error if an error happened, or null pointer otherwise.
@@ -117,6 +138,7 @@ siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
 boost::shared_ptr<siml::CmErrorDescriptor>
 siml::CmModelDescriptor::setVariableIntegrated(std::string stateVarName)
 {
+    ///@todo replace by findVariable(...)
     //loop over all variables to find the variable that will be marked
     CmMemoryTable::iterator it;
     for( it = variable.begin(); it != variable.end(); ++it )

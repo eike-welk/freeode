@@ -96,7 +96,7 @@ typedef std::vector<CmMemoryDescriptor> CmMemoryTable;
 struct CmEquationDescriptor
 {
     //!the equation's left hand side
-    std::string lhs;
+    CmPath lhs;
     //!the equation's right hand side
     CmFormula rhs;
     //!if true the equation is really an assignment ":=" otherwise it's a true equation "="
@@ -178,6 +178,10 @@ struct CmModelDescriptor
     boost::shared_ptr<CmErrorDescriptor> addSubModel(CmSubModelLink inSub);
     //!Add a variable descriptor to the model
     boost::shared_ptr<CmErrorDescriptor> addVariable(CmMemoryDescriptor inVar);
+    //!Add an expression to set a value to a parameter
+    void addParameterAssignment( CmEquationDescriptor inEqu);
+    //!Add an equation to the model
+    void addEquation( CmEquationDescriptor inEqu);
 
     //!Mark variable as state variable
     boost::shared_ptr<CmErrorDescriptor> setVariableIntegrated(std::string stateVarName);

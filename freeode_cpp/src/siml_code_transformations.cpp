@@ -29,13 +29,18 @@ using std::string;
 
 
 /*!
-Transfor a model with sub-models into an equivalent model without sub-models.
+Transform a model with sub-models into an equivalent model without sub-models.
+This can also be seen as allocating memory for the (sub-)models.
 
 All parameters, variables and equations of the submodels are (recursively)
 copied to the flat model. Parmeters and variables get unique long names.
 
 This is the first step in generating code for a procedure.
-*/
+
+@param  compositeModel the model that will be converted.
+@param  repo the place where we search for the sub-models
+@return The generated equivalent model without submodels.
+ */
 shared_ptr<CmModelDescriptor>
 siml::createFlatModel(    CmModelDescriptor const * compositeModel,
                           CmCodeRepository * repo )
@@ -82,7 +87,8 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
     {
         string msg = ( format(
                 "The maximum recursion level (%1%) has been reached!\n"
-                "Procedure: %2%; Submodel at toplevel: %3%. Maybe there are circular dependencies."
+                "Procedure: %2%; Submodel where the error happened: %3%.\n"
+                "(Maybe there are circular dependencies.)"
                 ) % recursionLevelMax % outFlatModel->name % inCompositeModel->name ).str();
         inRepo->error.push_back(CmErrorDescriptor(msg) );
         outFlatModel->errorsDetected = true;
@@ -97,9 +103,9 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itM )
     {
         CmMemoryDescriptor mem = *itM;
-        mem.name.prepend(inPathPrefix);
+        mem.name.prepend(inPathPrefix);//put prefix in front of parameter name
         shared_ptr<CmErrorDescriptor> err;
-        err = outFlatModel->addParameter(mem);
+        err = outFlatModel->addParameter(mem);// add to model
         if( err )
         {
             inRepo->error.push_back(*err);
@@ -113,9 +119,9 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itM )
     {
         CmMemoryDescriptor mem = *itM;
-        mem.name.prepend(inPathPrefix);
+        mem.name.prepend(inPathPrefix); //put prefix in front of variable name
         shared_ptr<CmErrorDescriptor> err;
-        err = outFlatModel->addVariable(mem);
+        err = outFlatModel->addVariable(mem); // add to model
         if( err )
         {
             inRepo->error.push_back(*err);
@@ -123,21 +129,18 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
         }
     }
 
-    //copy parameter assignments
+    //copy parameter assignments (SET)
     CmEquationTable::const_iterator itE;
     for(    itE = inCompositeModel->parameterAssignment.begin();
             itE != inCompositeModel->parameterAssignment.end();
             ++itE )
     {
         CmEquationDescriptor equ = *itE;
-        //TODO go through the equation and add the prefix at all variable names
-        shared_ptr<CmErrorDescriptor> err;
-//         err = outFlatModel->addParameterAssignment(mem);
-        if( err )
-        {
-            inRepo->error.push_back(*err);
-            outFlatModel->errorsDetected = true;
-        }
+        //go through the equation and add the prefix at all variable names
+        equ.lhs.prepend( inPathPrefix);
+        equ.rhs.prependPaths( inPathPrefix);
+        //add updated equation to the model
+        outFlatModel->addParameterAssignment(equ);
     }
 
     //copy equations
@@ -146,16 +149,13 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itE )
     {
         CmEquationDescriptor equ = *itE;
-        //TODO go through the equation and add the prefix at all variable names
-        shared_ptr<CmErrorDescriptor> err;
-//         err = outFlatModel->addEquation(mem);
-        if( err )
-        {
-            inRepo->error.push_back(*err);
-            outFlatModel->errorsDetected = true;
-        }
+        //go through the equation and add the prefix at all variable names
+        equ.lhs.prepend( inPathPrefix);
+        equ.rhs.prependPaths( inPathPrefix);
+        //add updated equation to the model
+        outFlatModel->addEquation(equ);
     }
-    //special handling for the error flag
+    //special handling for the error flag - errors were maybe detected. don't stop, we want to find more
     if( inCompositeModel->errorsDetected )
     {
         outFlatModel->errorsDetected = true;

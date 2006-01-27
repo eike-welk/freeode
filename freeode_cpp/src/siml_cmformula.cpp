@@ -60,17 +60,17 @@ siml::CmFormula & siml::CmFormula::clear()
 
 
 /*!Put formula item at end of list list*/
-siml::CmFormula & siml::CmFormula::append( ItemPtr inItem)
-{
-    m_items.push_back( inItem);
-    return *this;
-}
+// siml::CmFormula & siml::CmFormula::append( ItemPtr inItem)
+// {
+//     m_items.push_back( inItem);
+//     return *this;
+// }
 
 
 //!Put operator item into list
 siml::CmFormula & siml::CmFormula::appendMathOperator( std::string const & inSymbol, uint inOps)
 {
-    ItemPtr item( new MathOperator(inSymbol, inOps));
+    ItemPtr item( new MathOperatorItem(inSymbol, inOps));
     m_items.push_back( item);
     return *this;
 }
@@ -79,7 +79,7 @@ siml::CmFormula & siml::CmFormula::appendMathOperator( std::string const & inSym
 //!Put number item into list
 siml::CmFormula & siml::CmFormula::appendNumber( std::string const & inString)
 {
-    ItemPtr item( new Number( inString));
+    ItemPtr item( new NumberItem( inString));
     m_items.push_back( item);
     return *this;
 }
@@ -88,7 +88,7 @@ siml::CmFormula & siml::CmFormula::appendNumber( std::string const & inString)
 //!Put path item into list
 siml::CmFormula & siml::CmFormula::appendPath(CmPath const & inPath)
 {
-    ItemPtr item( new Path( inPath));
+    ItemPtr item( new PathItem( inPath));
     m_items.push_back( item);
     return *this;
 }
@@ -97,9 +97,32 @@ siml::CmFormula & siml::CmFormula::appendPath(CmPath const & inPath)
 //!Put bracket item into list
 siml::CmFormula & siml::CmFormula::appendBrackets()
 {
-    ItemPtr item( new BracketPair());
+    ItemPtr item( new BracketPairItem());
     m_items.push_back(item);
     return *this;
+}
+
+
+/*!Iterate through the equation and add the prefix at all variable and
+parameter names*/
+void siml::CmFormula::prependPaths(CmPath const & inPrefix)
+{
+    ItemContainer::iterator itI;
+
+    for( itI = m_items.begin(); itI != m_items.end(); ++itI)
+    {
+        //try it current item is a path
+        PathItem * oldItem = dynamic_cast<PathItem *>((*itI).get());
+        if( !oldItem ) { continue; }
+
+        //put prefix in front of old path
+        CmPath path = oldItem->path;
+        path.prepend( inPrefix);
+        //replace with new item that has extended path
+        ItemPtr newItem( new PathItem(path));
+        *itI = newItem;
+    }
+
 }
 
 

@@ -166,9 +166,7 @@ void start_param_assign(char const *, char const *) { param_assign_temp = CmEqua
 void add_param_assign(char const * first, char const * const last)
 {
     param_assign_temp.definition_text = string(first, last);
-    param_assign_temp.is_assignment = true;
-    param_assign_temp.is_ode_assignment = false;
-    model.parameterAssignment.push_back(param_assign_temp);
+    model.addParameterAssignment( param_assign_temp);
 }
 
 //equation----------------------------------------------------------------------
@@ -180,8 +178,8 @@ void start_equation(char const *, char const *) { e_temp = CmEquationDescriptor(
 /*!@todo make this a member function of the model*/
 void add_equation(char const * first, char const * const last)
 {
-    e_temp.definition_text = string(first, last);
-    model.equation.push_back(e_temp);
+    e_temp.definition_text = string( first, last);
+    model.addEquation( e_temp);
 }
 
 //initial value assignment (INITIAL)----------------------------------------------------------------
@@ -317,8 +315,7 @@ struct ps_model : public spirit::grammar<ps_model>
                      );
             parameter_definition ///@TODO units
                 = ( eps_p                                [&start_parameter] >> //clear temporary storage
-                    (name /*- param_name*/)                  /*[param_name.add]*/ //store in symbol table + check if name is already taken
-                                                         [assign_a( p_temp.name)] >>  //store name in temporary storage
+                    name                                 [assign_a( p_temp.name)] >>  //store name in temporary storage
                     !("AS" >> str_p("REAL")              [assign_a( p_temp.type)]) >> //store parameter type
                     !("DEFAULT" >> formula               [assign_a( p_temp.default_expr, formula.formula)]) >> //store default value
                     +ch_p(';')
@@ -345,8 +342,7 @@ struct ps_model : public spirit::grammar<ps_model>
                  );
             variable_definition ///@TODO add upper and lower bounds; units;
                 = ( eps_p                                [&start_variable] >> //clear temporary storage
-                    (name /*- param_name - var_name*/)       /*[var_name.add]*/       //store in symbol table + check if name is already taken
-                                                         [assign_a(v_temp.name)] >>
+                    name                                 [assign_a(v_temp.name)] >>
                     !("AS" >> str_p("ANY")               [assign_a(v_temp.type)]) >>
                     !("INITIAL" >> formula               [assign_a( v_temp.initial_expr, formula.formula)]) >> //store initial value
                     +ch_p(';')
@@ -372,6 +368,8 @@ struct ps_model : public spirit::grammar<ps_model>
                     | assignment_time_derivative
                     | (eps_p[make_error( "Error in EQUATION section!", err_temp)] >> nothing_p)
                  );
+            ///@todo change lhs to formula for film.X(0:20)
+            ///@todo introduce a general equuation grammar
             assignment_variable
                 = ( eps_p                           [&start_equation]
                                                     [assign_a( e_temp.is_assignment, true)] >>

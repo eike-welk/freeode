@@ -38,7 +38,7 @@ namespace siml {
 This is a list of commands that represents the formula in RPN.
 The commands for a hirarchy with abstract base class.
 
-	@author Eike Welk <eike.welk@post.rwth-aachen.de>
+    @author Eike Welk <eike.welk@post.rwth-aachen.de>
 */
 class CmFormula{
 public:
@@ -51,33 +51,33 @@ public:
         virtual std::string toString() const =0;
     };
     //!Operator: + - * / ^
-    struct MathOperator: public FormulaItem {
+    struct MathOperatorItem: public FormulaItem {
         std::string const symbol;
         //!Specify formula symbol and number of operands.
         /*! @param inSymbol   Formula symbbol for operator e.g. "+".
             @param inOps      Number of operands (2: infix "+"; 1: only sensible for "-", prefix, sign). */
-        MathOperator(std::string const & inSymbol, uint inOps): FormulaItem(inOps), symbol(inSymbol) {};
+        MathOperatorItem(std::string const & inSymbol, uint inOps): FormulaItem(inOps), symbol(inSymbol) {};
         std::string toString() const { return symbol; }
     };
     //!A number
-    struct Number: public FormulaItem {
+    struct NumberItem: public FormulaItem {
         std::string const number;
         //!Specify number as string
-        Number(std::string const & inNumber): FormulaItem(0), number(inNumber) {};
+        NumberItem(std::string const & inNumber): FormulaItem(0), number(inNumber) {};
         std::string toString() const { return number; }
     };
     //!A path; refference to a variable
-    struct Path: public FormulaItem {
+    struct PathItem: public FormulaItem {
         CmPath const path;
         //!Specify parsed path
-        Path(CmPath const & inPath): FormulaItem(0), path(inPath) {};
+        PathItem(CmPath const & inPath): FormulaItem(0), path(inPath) {};
         std::string toString() const { return path.toString(); }
     };
     //! Pair of brackets
-    struct BracketPair: public FormulaItem {
+    struct BracketPairItem: public FormulaItem {
         CmPath const path;
         //!Specify parsed path
-        BracketPair(): FormulaItem(1) {};
+        BracketPairItem(): FormulaItem(1) {};
         std::string toString() const { return std::string("()"); }
     };
     typedef boost::shared_ptr<FormulaItem> ItemPtr;
@@ -97,7 +97,7 @@ public:
     CmFormula & clear();
 
     //!Put any formula item into list
-    CmFormula & append(ItemPtr inItem);
+//     CmFormula & append(ItemPtr inItem);
     //!Put operator item into list
     CmFormula & appendMathOperator(std::string const & inSymbol, uint inOps);
     //!Put number item into list
@@ -106,6 +106,9 @@ public:
     CmFormula & appendPath(CmPath const & inPath);
     //!Put bracket item into list
     CmFormula & appendBrackets();
+
+    //!Put prefix in front of all paths
+    void prependPaths(CmPath const & inPrefix);
 
     //!Simplistic string conversion
     std::string toString() const;
