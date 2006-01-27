@@ -23,6 +23,8 @@
 
 #include <string>
 #include <list>
+#include <iostream>
+
 #include <boost/shared_ptr.hpp>
 
 #include "siml_cmpath.h"
@@ -43,15 +45,17 @@ public:
     //!Base class of formula commands
     struct FormulaItem {
         //!number of operands
-        uint const ops;
-        FormulaItem(uint inOps): ops(inOps) {}
+        uint const numOps;
+        FormulaItem(uint inOps): numOps(inOps) {}
         virtual ~FormulaItem() {}
         virtual std::string toString() const =0;
     };
     //!Operator: + - * / ^
     struct MathOperator: public FormulaItem {
         std::string const symbol;
-        //!Specify formula symbol e.g. "+" and number of operands. inOps==1 means prefix (sign) e.g.- 2
+        //!Specify formula symbol and number of operands.
+        /*! @param inSymbol   Formula symbbol for operator e.g. "+".
+            @param inOps      Number of operands (2: infix "+"; 1: only sensible for "-", prefix, sign). */
         MathOperator(std::string const & inSymbol, uint inOps): FormulaItem(inOps), symbol(inSymbol) {};
         std::string toString() const { return symbol; }
     };
@@ -66,19 +70,42 @@ public:
     struct Path: public FormulaItem {
         CmPath const path;
         //!Specify parsed path
-        Path(std::string const & inPath): FormulaItem(0), path(inPath) {};
+        Path(CmPath const & inPath): FormulaItem(0), path(inPath) {};
         std::string toString() const { return path.toString(); }
     };
-    ///@todo Pair of brackets
+    //! Pair of brackets
+    struct BracketPair: public FormulaItem {
+        CmPath const path;
+        //!Specify parsed path
+        BracketPair(): FormulaItem(1) {};
+        std::string toString() const { return std::string("()"); }
+    };
     typedef boost::shared_ptr<FormulaItem> ItemPtr;
     typedef std::list<ItemPtr> ItemContainer;
 
+    //!Default constructor
     CmFormula();
+    //!Copy constructor
+    CmFormula( CmFormula const & inFormula);
 
     ~CmFormula();
 
-    //!Put formula item into list
+    //!Assignment operator
+    CmFormula & operator= ( CmFormula const & inFormula);
+
+    //!Remove all elements from the list
+    CmFormula & clear();
+
+    //!Put any formula item into list
     CmFormula & append(ItemPtr inItem);
+    //!Put operator item into list
+    CmFormula & appendMathOperator(std::string const & inSymbol, uint inOps);
+    //!Put number item into list
+    CmFormula & appendNumber(std::string const & inString);
+    //!Put path item into list
+    CmFormula & appendPath(CmPath const & inPath);
+    //!Put bracket item into list
+    CmFormula & appendBrackets();
 
     //!Simplistic string conversion
     std::string toString() const;
@@ -86,6 +113,10 @@ public:
 private:
     ItemContainer m_items;
 };
+
+
+//!printing
+std::ostream& operator<<(std::ostream& out, siml::CmFormula const & formula);
 
 }
 

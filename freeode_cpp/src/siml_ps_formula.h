@@ -58,8 +58,9 @@ namespace spirit = boost::spirit;
 /**
 @short parse formulas
 Parser for mathematical expressions.
-
-Usage ? Hmm.
+The parsed formula (the result) is in the member formula.
+A refference or pointer to the member formula can be passed to a functor's
+constructor in a semantic action.
 
 @author Eike Welk <eike.welk@post.rwth-aachen.de>
  */
@@ -69,36 +70,93 @@ struct ps_formula : public spirit::grammar<ps_formula>
 
     ~ps_formula(){}
 
-    CmFormula m_formula;
+    CmFormula formula;
 
-    struct push_path
+    /*!Functor to delete the formula's contents*/
+    struct clear_formula
     {
-        CmPath const & m_InPath;
         CmFormula & m_OutFormula;
 
-        push_path(CmPath const & inPath, CmFormula const & outFormula):
-            m_InPath(inPath), m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+        clear_formula(CmFormula const & outFormula): m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
 
         template <typename IteratorT>
         void operator()(IteratorT, IteratorT) const
         {
-            std::cout   << "push_path: m_InPath: " << m_InPath.toString(".") << std::endl;
-//             m_OutFormula.appendPath(m_InPath);
+//             std::cout << "clear_formula" << std::endl;
+            m_OutFormula.clear();
         }
     };
-//
-//     struct append_str
-//     {
-//         CmPath & m_path;
-//
-//         append_str(CmPath const & path) : m_path(const_cast<CmPath &>(path)) {}
-//
-//         template <typename IteratorT>
-//                 void operator()(IteratorT first, IteratorT last) const
-//         {
-//             m_path.append(std::string(first, last));
-//         }
-//     };
+
+    /*!Functor to add a path to the end of the formula.*/
+    struct append_path
+    {
+        CmPath const & m_InPath;
+        CmFormula & m_OutFormula;
+
+        append_path(CmPath const & inPath, CmFormula const & outFormula):
+                m_InPath(inPath), m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+
+        template <typename IteratorT>
+        void operator()(IteratorT, IteratorT) const
+        {
+//             std::cout << "append_path: m_InPath: " << m_InPath.toString(".") << std::endl;
+            m_OutFormula.appendPath(m_InPath);
+        }
+    };
+
+    /*!Functor to add a number to the end of the formula.*/
+    struct append_number
+    {
+        CmFormula & m_OutFormula;
+
+        append_number( CmFormula const & outFormula):
+                m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+
+        template <typename IteratorT>
+        void operator()(IteratorT begin, IteratorT end) const
+        {
+//             std::cout << "append_number: " << std::string( begin, end) << std::endl;
+            m_OutFormula.appendNumber( std::string( begin, end));
+        }
+    };
+
+    /*!Functor to add a mathematical operator to the end of the formula.*/
+    struct append_operator
+    {
+        std::string m_Symbol;
+        uint m_Ops;
+        CmFormula & m_OutFormula;
+
+        /*!@param inSymbol   Formula symbbol for operator e.g. "+".
+           @param inOps      Number of operands (2, 1 possible for "-").
+           @param outFormula Reference to the formula object where the operator will be stored.
+        */
+        append_operator(std::string inSymbol, uint inOps, CmFormula const & outFormula):
+                m_Symbol(inSymbol), m_Ops(inOps), m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+
+        template <typename IteratorT>
+        void operator()(IteratorT, IteratorT) const
+        {
+//             std::cout << "append_operator: m_Symbol: " << m_Symbol << ", m_Ops: " << m_Ops << std::endl;
+            m_OutFormula.appendMathOperator( m_Symbol, m_Ops);
+        }
+    };
+
+    /*!Functor to add a pair of brackets to the end of the formula.*/
+    struct append_brackets
+    {
+        CmFormula & m_OutFormula;
+
+        append_brackets( CmFormula const & outFormula):
+                m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+
+        template <typename IteratorT>
+        void operator()(IteratorT, IteratorT) const
+        {
+//             std::cout << "append_brackets" << std::endl;
+            m_OutFormula.appendBrackets();
+        }
+    };
 
     //!When the grammar is used the framework creates this struct. All rules are defined here.
     template <typename ScannerT>
@@ -107,39 +165,35 @@ struct ps_formula : public spirit::grammar<ps_formula>
         //!The grammar's rules.
         definition(ps_formula const& self)
         {
-            using spirit::str_p; using spirit::ch_p; using spirit::alnum_p; using spirit::real_p;
-            using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
+//             using spirit::str_p; using spirit::ch_p; using spirit::alnum_p;
+//             using spirit::nothing_p; using spirit::anychar_p;
 //             using spirit::assign_a;
 //             using spirit::lexeme_d;
+            using spirit::real_p; using spirit::eps_p;
 
-//             number =
-//                     (real_p >> eps_p)/*[push_int(self.code)]*/
-//                     ;
-
-            factor =
-                    path[push_path(path.m_path, self.m_formula)]
-                    |   (real_p >> eps_p)/*[push_number(self.code)]*/
-                    |   ('(' >> expression >> ')')/*[push_bracket(self.code)]*/
-                    |   ('-' >> factor)/*[push_op("-", 1, self.code)]*/
+            ///@todo add exponential rule (binding stronger than sign)
+            factor  =   path                        [append_path( path.path, self.formula)]
+                    |   (real_p >> eps_p)           [append_number( self.formula)]
+                    |   ('(' >> expression >> ')')  [append_brackets( self.formula)]
+                    |   ('-' >> factor)             [append_operator( "-", 1, self.formula)]
                     |   ('+' >> factor)
                     ;
 
-            term =
-                    factor
-                    >> *(   ('*' >> factor)/*[push_op("*", 2, self.code)]*/
-                        |   ('/' >> factor)/*[push_op(OP_DIV, self.code)]*/
+            term    =  factor
+                    >> *(   ('*' >> factor) [append_operator( "*", 2, self.formula)]
+                        |   ('/' >> factor) [append_operator( "/", 2, self.formula)]
                         )
                     ;
 
-            expression =
-                    term
-                    >> *(   ('+' >> term)/*[push_op(OP_ADD, self.code)]*/
-                        |   ('-' >> term)/*[push_op(OP_SUB, self.code)]*/
+            expression
+                    =  term
+                    >> *(   ('+' >> term)   [append_operator( "+", 2, self.formula)]
+                        |   ('-' >> term)   [append_operator( "-", 2, self.formula)]
                         )
                     ;
 
             formula =
-                eps_p/*[clear_formula(self.m_formula)]*/
+                eps_p                       [clear_formula( self.formula)]
                 >> expression
                 ;
         }

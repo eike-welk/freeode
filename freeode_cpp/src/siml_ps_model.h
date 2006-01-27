@@ -318,9 +318,9 @@ struct ps_model : public spirit::grammar<ps_model>
             parameter_definition ///@TODO units
                 = ( eps_p                                [&start_parameter] >> //clear temporary storage
                     (name /*- param_name*/)                  /*[param_name.add]*/ //store in symbol table + check if name is already taken
-                                                         [assign_a(p_temp.name)] >>  //store name in temporary storage
-                    !("AS" >> str_p("REAL")              [assign_a(p_temp.type)]) >> //store parameter type
-                    !("DEFAULT" >> formula [assign_a(p_temp.default_expr)]) >> //store default value
+                                                         [assign_a( p_temp.name)] >>  //store name in temporary storage
+                    !("AS" >> str_p("REAL")              [assign_a( p_temp.type)]) >> //store parameter type
+                    !("DEFAULT" >> formula               [assign_a( p_temp.default_expr, formula.formula)]) >> //store default value
                     +ch_p(';')
                   )                                      [&add_parameter]; //add parameter definition to model
 
@@ -332,8 +332,8 @@ struct ps_model : public spirit::grammar<ps_model>
                      );
             unit_definition
                 = ( eps_p                                [&start_sub_model] >> //clear temporary storage
-                    name                                 [assign_a(submod_temp.name)] >>  //store name in temporary storage
-                    !("AS" >> name                       [assign_a(submod_temp.type)]) >> //store sub model type
+                    name                                 [assign_a( submod_temp.name)] >>  //store name in temporary storage
+                    !("AS" >> name                       [assign_a( submod_temp.type)]) >> //store sub model type
                     +ch_p(';')
                   )                                      [&add_sub_model]; //add sub-model definition to model
 
@@ -348,7 +348,7 @@ struct ps_model : public spirit::grammar<ps_model>
                     (name /*- param_name - var_name*/)       /*[var_name.add]*/       //store in symbol table + check if name is already taken
                                                          [assign_a(v_temp.name)] >>
                     !("AS" >> str_p("ANY")               [assign_a(v_temp.type)]) >>
-                    !("INITIAL" >> formula [assign_a(v_temp.initial_expr)]) >> //store initial value
+                    !("INITIAL" >> formula               [assign_a( v_temp.initial_expr, formula.formula)]) >> //store initial value
                     +ch_p(';')
                   )                                      [&add_variable]; //add variable definition to model
 
@@ -360,8 +360,8 @@ struct ps_model : public spirit::grammar<ps_model>
                  );
             parameter_assignment
                 = ( path                                [&start_param_assign]
-                                                        [assign_a(param_assign_temp.lhs)] >>
-                    ":=" >> formula       [assign_a(param_assign_temp.rhs)] >>
+                                                        [assign_a( param_assign_temp.lhs)] >>
+                    ":=" >> formula                     [assign_a( param_assign_temp.rhs, formula.formula)] >>
                     +ch_p(';')
                   )                                     [&add_param_assign];
 
@@ -370,22 +370,22 @@ struct ps_model : public spirit::grammar<ps_model>
                 = str_p("EQUATION") >>
                 *(    assignment_variable
                     | assignment_time_derivative
-                    | (eps_p[make_error("Error in EQUATION section!", err_temp)] >> nothing_p)
+                    | (eps_p[make_error( "Error in EQUATION section!", err_temp)] >> nothing_p)
                  );
             assignment_variable
                 = ( eps_p                           [&start_equation]
-                                                    [assign_a(e_temp.is_assignment, true)] >>
-                    path                            [assign_a(e_temp.lhs)] >>
-                    ":=" >> formula   [assign_a(e_temp.rhs)] >>
+                                                    [assign_a( e_temp.is_assignment, true)] >>
+                    path                            [assign_a( e_temp.lhs)] >>
+                    ":=" >> formula                 [assign_a( e_temp.rhs, formula.formula)] >>
                     +ch_p(';')
                   )                                 [&add_equation];
             assignment_time_derivative
                 = ( eps_p                           [&start_equation]
-                                                    [assign_a(e_temp.is_assignment, true)] >>
-                    '$' >> path                     [assign_a(e_temp.lhs)]
-                                                    [assign_a(e_temp.is_ode_assignment, true)]
+                                                    [assign_a( e_temp.is_assignment, true)] >>
+                    '$' >> path                     [assign_a( e_temp.lhs)]
+                                                    [assign_a( e_temp.is_ode_assignment, true)]
                                                     [&set_variable_integrated] >>
-                    ":=" >> formula   [assign_a(e_temp.rhs)] >>
+                    ":=" >> formula                 [assign_a( e_temp.rhs, formula.formula)] >>
                     +ch_p(';')
                   )                                 [&add_equation];
 
@@ -398,7 +398,7 @@ struct ps_model : public spirit::grammar<ps_model>
             initial_assignment
                 = ( path                                [&start_init_expr]
                                                         [assign_a(init_expr_temp.lhs)] >>
-                    ":=" >> formula       [assign_a(init_expr_temp.rhs)] >>
+                    ":=" >> formula                     [assign_a( init_expr_temp.rhs, formula.formula)] >>
                     +(ch_p('\n') | ';')
                   )                                     [&add_init_expr];
 
@@ -417,10 +417,6 @@ struct ps_model : public spirit::grammar<ps_model>
                     (real_p  >> eps_p)                  [assign_a(sol_parms_temp.simulationTime)] >>
                     +ch_p(';')
                   );
-
-//             //very bad parser for mathematical expressions
-//             formula
-//                     = +(path | real_p | '+' | '-' | '*' | '/' | '(' | ')');
         }
 
         //!The start rule of the model grammar.
@@ -439,7 +435,6 @@ struct ps_model : public spirit::grammar<ps_model>
             equation_section, assignment_variable, assignment_time_derivative,
             initial_section, initial_assignment,
             solutionparameters_section, solutionparameters_assignment;
-//             formula/*, path*/;
         //!Grammar that describes all names (model, parameter, variable) e.g.: "reactor"
         ps_name name;
         //!grammar for paths e.g.: "reactor.v1.p"

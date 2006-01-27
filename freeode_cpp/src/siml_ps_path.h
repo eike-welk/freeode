@@ -34,11 +34,6 @@
 // #include <vector>
 #include <iostream>
 
-///use these definitions?
-// typedef char                    char_t;
-// typedef file_iterator <char_t>  iterator_t;
-// typedef scanner<iterator_t>     scanner_t;
-// typedef rule <scanner_t>        rule_t;
 
 namespace siml {
 
@@ -47,16 +42,21 @@ namespace spirit = boost::spirit;
 /**
 @short parse paths
 Parser for a variable or a parameter path e.g: "mo1.X"
-The parsed path (the result) is in the member m_path.
+The parsed path (the result) is in the member path.
 A refference or pointer to it can be passed to a functor's constructor
 in semantic action. e.g.:
 @code
+//The functor
 struct my_functor{
     my_functor(CmPath const & inPath) : m_InPath(inPath) {}
 
     template <typename IteratorT>
     void operator()(IteratorT first, IteratorT last) const {...do someting...}
 }
+
+//use the functor
+ps_path p1;
+my_rule=p1[my_functor(p1.path);
 @endcode
 
 With functor_parser it is possible to pass the path directly to the semantic action.
@@ -94,7 +94,7 @@ struct ps_path : public spirit::grammar<ps_path>
     ~ps_path(){}
 
     //!The parsed path.
-    CmPath m_path;
+    CmPath path;
 
     /*! Functor that assigns a string to a path. = 1.clear path; 2.append string*/
     struct assign_str
@@ -151,8 +151,8 @@ struct ps_path : public spirit::grammar<ps_path>
 
             path = lexeme_d
                     [
-                        name                [assign_str(self.m_path)] >>
-                        *("." >> name       [append_str(self.m_path)]
+                        name                [assign_str(self.path)] >>
+                        *("." >> name       [append_str(self.path)]
                          )
                     ];
             //             path = lexeme_d[name >> *("." >> name) >> eps_p-(alnum_p | '_')]; //maybe better because then we know when the rule is finished

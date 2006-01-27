@@ -23,6 +23,7 @@
 
 
 #include "siml_cmpath.h"
+#include "siml_cmformula.h"
 
 #include <string>
 #include <vector>
@@ -70,18 +71,18 @@ struct CmMemoryDescriptor
     //!REAL or INT
     std::string type;
     //!the default value, relevant if no value is set. (parameter)
-    std::string default_expr;
+    CmFormula default_expr;
     //!mathematical expression from the set section. (parameter)
-    std::string set_expr;
+    CmFormula set_expr;
     //!expression for assignment of an initial value. (variable)
-    std::string initial_expr;
+    CmFormula initial_expr;
     //!text that was parsed to gather the information in this object.
     std::string definition_text;
 
     //!true if variable is an integrated variable
     bool is_state_variable;
 
-    CmMemoryDescriptor() : type("ANY"), default_expr(""), is_state_variable(false) {};
+    CmMemoryDescriptor() : type("ANY"), is_state_variable(false) {};
 
     ///@todo add check if variable name is valid (!=""; !=" "; !="123")
 };
@@ -97,7 +98,7 @@ struct CmEquationDescriptor
     //!the equation's left hand side
     std::string lhs;
     //!the equation's right hand side
-    std::string rhs;
+    CmFormula rhs;
     //!if true the equation is really an assignment ":=" otherwise it's a true equation "="
     bool is_assignment;
     //!if true the lhs is the time differential of a variable: $v1 := a*b*v1 + v2;

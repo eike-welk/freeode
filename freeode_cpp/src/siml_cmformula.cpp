@@ -28,15 +28,77 @@ siml::CmFormula::CmFormula()
 }
 
 
+/*!Do a shallow copy. Only the list of pointers is copied, not the formula items.*/
+siml::CmFormula::CmFormula( CmFormula const & inFormula)
+{
+    m_items = inFormula.m_items;
+}
+
+
 siml::CmFormula::~CmFormula()
 {
 }
 
 
-/*!Put formula item at end of list list*/
-siml::CmFormula & siml::CmFormula::append(ItemPtr inItem)
+/*!Do a shallow copy. Only the list of pointers is copied, not the formula items.*/
+siml::CmFormula & siml::CmFormula::operator= ( CmFormula const & inFormula)
 {
-    m_items.push_back(inItem);
+    if( this != &inFormula ) {
+        m_items = inFormula.m_items;
+    }
+    return *this;
+}
+
+
+/*!Remove all elements from the list*/
+siml::CmFormula & siml::CmFormula::clear()
+{
+    //the smart pointers will delete the stored objects if necessary.
+    m_items.clear();
+    return *this;
+}
+
+
+/*!Put formula item at end of list list*/
+siml::CmFormula & siml::CmFormula::append( ItemPtr inItem)
+{
+    m_items.push_back( inItem);
+    return *this;
+}
+
+
+//!Put operator item into list
+siml::CmFormula & siml::CmFormula::appendMathOperator( std::string const & inSymbol, uint inOps)
+{
+    ItemPtr item( new MathOperator(inSymbol, inOps));
+    m_items.push_back( item);
+    return *this;
+}
+
+
+//!Put number item into list
+siml::CmFormula & siml::CmFormula::appendNumber( std::string const & inString)
+{
+    ItemPtr item( new Number( inString));
+    m_items.push_back( item);
+    return *this;
+}
+
+
+//!Put path item into list
+siml::CmFormula & siml::CmFormula::appendPath(CmPath const & inPath)
+{
+    ItemPtr item( new Path( inPath));
+    m_items.push_back( item);
+    return *this;
+}
+
+
+//!Put bracket item into list
+siml::CmFormula & siml::CmFormula::appendBrackets()
+{
+    ItemPtr item( new BracketPair());
+    m_items.push_back(item);
     return *this;
 }
 
@@ -55,5 +117,14 @@ std::string siml::CmFormula::toString() const
     return resSting;
 }
 
+
+/*!For printing: convert the object to a string (using "." as cmponent separator), then put
+the string into the stream.*/
+std::ostream& siml::operator<<(std::ostream& out, siml::CmFormula const & formula)
+{
+    string strFormula = formula.toString();
+    out << strFormula;
+    return out;
+}
 
 
