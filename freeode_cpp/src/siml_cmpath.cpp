@@ -27,14 +27,16 @@ using std::list;
 using std::ostringstream;
 
 /*!Default constructor*/
-siml::CmPath::CmPath()
+siml::CmPath::CmPath():
+        m_TimeDerivative(false)
 {
 }
 /*!
 Initialize with one component.
 No parsing is done.
 */
-siml::CmPath::CmPath(std::string const & contentsNew)
+siml::CmPath::CmPath(std::string const & contentsNew):
+        m_TimeDerivative(false)
 {
     assign(contentsNew);
 }
@@ -48,6 +50,7 @@ siml::CmPath::~CmPath()
 /*!
 Convert the path to a string (with toString(".") ) and compare with inString.
 The separator for the conversion is ".";
+@todo think about time derivative, will it be respected?
 @return true if equal, false otherwise.
 */
 bool  siml::CmPath::isEqual(std::string const & inString) const
@@ -58,7 +61,7 @@ bool  siml::CmPath::isEqual(std::string const & inString) const
     }
     else
     {   //the normal case
-        string pathStr = toString(".");
+        string pathStr = toString(".", "");
         return pathStr == inString;
     }
 }
@@ -67,7 +70,8 @@ bool  siml::CmPath::isEqual(std::string const & inString) const
 */
 bool siml::CmPath::isEqual(CmPath const & inPath) const
 {
-    return m_Component == inPath.m_Component;
+    return  (m_Component == inPath.m_Component) &&
+            (m_TimeDerivative == inPath.m_TimeDerivative);
 }
 
 
@@ -75,6 +79,7 @@ bool siml::CmPath::isEqual(CmPath const & inPath) const
 siml::CmPath & siml::CmPath::clear()
 {
     m_Component.clear();
+    m_TimeDerivative = false;
     return *this;
 }
 
@@ -122,17 +127,32 @@ siml::CmPath & siml::CmPath::append(CmPath const & inPath)
 }
 
 
+/*!If true the path is a time derivative e.g: "$x" otherwise "x"*/
+siml::CmPath & siml::CmPath::setTimeDerivative( bool deriv)
+{
+    m_TimeDerivative = deriv;
+    return *this;
+}
+
+
 /*!
 Convert the path object to a string that looks like: "plant.reactor1.p".
 The separator string (the "." in this example) can be chosen.
+@todo think about time derivative, can printingof it be switched off?
 
 @param  separatorStr separator between the path's components. (Default ".")
 @return String representation of path.
 */
-std::string siml::CmPath::toString(std::string const separatorStr) const
+std::string siml::CmPath::toString(
+        std::string const & separatorStr,
+        std::string const & derivativeMark ) const
 {
     ostringstream   outputStream;
     StringList::const_iterator itS;
+
+    //print the indicator for time derivation
+//     string const derivativeMark("$");
+    if( isTimeDerivative() ) { outputStream << derivativeMark; }
 
     //special handling for first component: no "." in front of it.
     itS = m_Component.begin();

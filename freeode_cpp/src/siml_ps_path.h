@@ -85,6 +85,8 @@ struct QS
 const functor_parser<QS> QS_p;
 @endcode
 
+@todo integrate subscripts: "film.X(0:20)"
+
 @author Eike Welk <eike.welk@post.rwth-aachen.de>
 */
 struct ps_path : public spirit::grammar<ps_path>
@@ -96,17 +98,31 @@ struct ps_path : public spirit::grammar<ps_path>
     //!The parsed path.
     CmPath path;
 
-    /*! Functor that assigns a string to a path. = 1.clear path; 2.append string*/
-    struct assign_str
+    /*! Functor that makes the path to be a time derivative.*/
+    struct set_time_derivative_true
     {
         CmPath & m_path;
 
-        assign_str(CmPath const & path) : m_path(const_cast<CmPath &>(path)) {}
+        set_time_derivative_true(CmPath & path) : m_path( path) {}
 
         template <typename IteratorT>
-        void operator()(IteratorT first, IteratorT last) const
+        void operator()(IteratorT, IteratorT) const
         {
-            m_path.assign(std::string(first, last));
+            m_path.setTimeDerivative( true);
+        }
+    };
+
+    /*! Functor that deletes all components and sets derivative to false.*/
+    struct clear_path
+    {
+        CmPath & m_path;
+
+        clear_path(CmPath & path) : m_path( path) {}
+
+        template <typename IteratorT>
+        void operator()(IteratorT, IteratorT) const
+        {
+            m_path.clear();
         }
     };
 
@@ -115,7 +131,7 @@ struct ps_path : public spirit::grammar<ps_path>
     {
         CmPath & m_path;
 
-        append_str(CmPath const & path) : m_path(const_cast<CmPath &>(path)) {}
+        append_str(CmPath & path) : m_path( path) {}
 
         template <typename IteratorT>
         void operator()(IteratorT first, IteratorT last) const
@@ -147,13 +163,18 @@ struct ps_path : public spirit::grammar<ps_path>
 //             using spirit::str_p; using spirit::ch_p; using spirit::alnum_p;
 //             using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
 //             using spirit::assign_a;
+            using spirit::str_p; using spirit::eps_p;
             using spirit::lexeme_d;
+
+            //we need a mutable self for the semantic actions
+            ps_path & selfm = const_cast<ps_path &>(self);
 
             path = lexeme_d
                     [
-                        name                [assign_str(self.path)] >>
-                        *("." >> name       [append_str(self.path)]
-                         )
+                        eps_p               [clear_path(selfm.path)]
+                        >> !(str_p("$")     [set_time_derivative_true(selfm.path)] )
+                        >> name             [append_str(selfm.path)]
+                        >> *("." >> name    [append_str(selfm.path)] )
                     ];
             //             path = lexeme_d[name >> *("." >> name) >> eps_p-(alnum_p | '_')]; //maybe better because then we know when the rule is finished
         }

@@ -53,7 +53,7 @@ siml::createFlatModel(    CmModelDescriptor const * compositeModel,
     //copy the features that are not copied recursively
     flatModel->name = compositeModel->name;
     flatModel->isProcess = compositeModel->isProcess;
-    flatModel->initialExpression = compositeModel->initialExpression;
+    flatModel->initialEquation = compositeModel->initialEquation;
     flatModel->solutionParameters = compositeModel->solutionParameters;
 
     //copy the recursive features

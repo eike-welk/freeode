@@ -29,7 +29,12 @@
 namespace siml {
 
 /**
+@short long name with dots
 Long variable or parameter name with dots.
+Also the time derivation operator $ is integrated.
+e.g.: "$r001.X"
+
+@todo integrate subscripts: "film.X(0:20)"
 
 @author Eike Welk <eike.welk@post.rwth-aachen.de>
 */
@@ -46,6 +51,8 @@ public:
 
     ~CmPath();
 
+    //!If true the path is a time derivative e.g: "$x" otherwise "x"
+    bool isTimeDerivative() const { return m_TimeDerivative; }
     //!compare with string        @todo Marshal Cline says: the function should be private
     bool isEqual(std::string const & inString) const;
     //!compare with CmPath        @todo Marshal Cline says: the function should go away only operator== should be used
@@ -55,10 +62,12 @@ public:
 
     //!remove all components
     CmPath & clear();
+
     //!Let path contain one single string
     CmPath & assign(std::string const & contentsNew);
     //!Copy all components
     CmPath & assign(CmPath const & contentsNew);
+
     //!Add string at begining
     CmPath & prepend(std::string const & compo);
     //!Add path at begining
@@ -68,14 +77,20 @@ public:
     //!Add path at end
     CmPath & append(CmPath const & inPath);
 
+    //!If true the path is a time derivative e.g: "$x" otherwise "x"
+    CmPath & setTimeDerivative( bool deriv);
+
     //!Convert to string
-    std::string toString(std::string const separatorStr = ".") const;
+    std::string toString(   std::string const & separatorStr = ".",
+                            std::string const & derivativeMark = "$"      ) const;
 
 private:
     ///maybe use deque instead?
     typedef std::list<std::string> StringList;
     //!List of components
     StringList m_Component;
+    //!Path is time derivative "$path"
+    bool m_TimeDerivative;
 };
 
 //!compare with string

@@ -25,6 +25,7 @@
 #include "siml_ps_name.h"
 #include "siml_ps_path.h"
 #include "siml_ps_formula.h"
+#include "siml_ps_equation.h"
 #include "siml_error_generator.h"
 
 #include <boost/spirit/core.hpp>
@@ -143,58 +144,70 @@ void add_variable(char const * first, char const * const last)
 //!Mark one variable inside model as a state variable.
 /*!
 If the variable does not exist nothing will happen.*/
-void set_variable_integrated(char const * first, char const * const last)
-{
-    string stateVarName(first, last);
-
-    shared_ptr<CmErrorDescriptor> err = model.setVariableIntegrated(stateVarName);
-
-    if( err )
-    {
-        model.errorsDetected = true;
-        add_error_context(*err, first, last);
-        parse_result_storage->error.push_back(*err);
-    }
-}
+// void set_variable_integrated(char const * first, char const * const last)
+// {
+//     string stateVarName(first, last);
+//
+//     shared_ptr<CmErrorDescriptor> err = model.setVariableIntegrated(stateVarName);
+//
+//     if( err )
+//     {
+//         model.errorsDetected = true;
+//         add_error_context(*err, first, last);
+//         parse_result_storage->error.push_back(*err);
+//     }
+// }
 
 //parameter assignment (SET)----------------------------------------------------
 //!temporary storage while a variable definition is parsed
-CmEquationDescriptor param_assign_temp;
+// CmEquationDescriptor param_assign_temp;
 //!Clear the temporary storage for the CmEquationDescriptor objects
-void start_param_assign(char const *, char const *) { param_assign_temp = CmEquationDescriptor(); }
+// void start_param_assign(char const *, char const *) { param_assign_temp = CmEquationDescriptor(); }
 //!Add an assignment to a algebraic variable to the model. (a:=p2*c)
-void add_param_assign(char const * first, char const * const last)
-{
-    param_assign_temp.definition_text = string(first, last);
-    model.addParameterAssignment( param_assign_temp);
-}
+// void add_param_assign(char const * first, char const * const last)
+// {
+//     param_assign_temp.definition_text = string(first, last);
+//     model.addParameterAssignment( param_assign_temp);
+// }
 
 //equation----------------------------------------------------------------------
 //!temporary storage while a variable definition is parsed
-CmEquationDescriptor e_temp;
+// CmEquationDescriptor e_temp;
 //!Clear the temporary storage for the CmEquationDescriptor objects
-void start_equation(char const *, char const *) { e_temp = CmEquationDescriptor(); }
+// void start_equation(char const *, char const *) { e_temp = CmEquationDescriptor(); }
 //!Add an equation (realy an asignment) to the model. (a:=p2*c)
-/*!@todo make this a member function of the model*/
-void add_equation(char const * first, char const * const last)
-{
-    e_temp.definition_text = string( first, last);
-    model.addEquation( e_temp);
-}
+// void add_equation(char const * first, char const * const last)
+// {
+//     e_temp.definition_text = string( first, last);
+//
+//     ///@todo the decision if a variable is integrated should be done at code generation time
+//     ///@todo the lhs can always contain a path. when the model is flattened it is more easy to look up variables that reside in different sub-models.
+//     /*test if ode assignment and [&set_variable_integrated]*/
+// //     shared_ptr<CmErrorDescriptor> err = model.setVariableIntegrated(stateVarName);
+// //
+// //     if( err )
+// //     {
+// //         model.errorsDetected = true;
+// //         add_error_context(*err, first, last);
+// //         parse_result_storage->error.push_back(*err);
+// //     }
+//
+//     model.addEquation( e_temp);
+// }
 
 //initial value assignment (INITIAL)----------------------------------------------------------------
 //!temporary storage while a variable definition is parsed
-CmEquationDescriptor init_expr_temp;
+// CmEquationDescriptor init_expr_temp;
 //!Clear the temporary storage for the CmEquationDescriptor objects
-void start_init_expr(char const *, char const *) { init_expr_temp = CmEquationDescriptor(); }
+// void start_init_expr(char const *, char const *) { init_expr_temp = CmEquationDescriptor(); }
 //!Add an assignment to a algebraic variable to the model. (a:=p2*c)
-void add_init_expr(char const * first, char const * const last)
-{
-    init_expr_temp.definition_text = string(first, last);
-    init_expr_temp.is_assignment = true;
-    init_expr_temp.is_ode_assignment = false;
-    model.initialExpression.push_back(init_expr_temp);
-}
+// void add_init_expr(char const * first, char const * const last)
+// {
+//     init_expr_temp.definition_text = string(first, last);
+// //     init_expr_temp.is_assignment = true;
+// //     init_expr_temp.is_ode_assignment = false;
+//     model.initialEquation.push_back(init_expr_temp);
+// }
 
 //SOLUTIONPARAMETERS----------------------------------------------------------------
 //!temporary storage while a variable definition is parsed
@@ -272,20 +285,74 @@ struct ps_model : public spirit::grammar<ps_model>
         temp_store_model::parse_result_storage = result_storage;
     }
 
+    /*!Functor that adds a parameter assignment to a model*/
+    struct add_param_assignment
+    {
+        CmModelDescriptor & m_model;
+        CmEquationDescriptor & m_equation;
+
+        add_param_assignment( CmModelDescriptor & model, CmEquationDescriptor & equation):
+            m_model(model), m_equation( equation) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT, IteratorT ) const
+        {
+            m_model.addParameterAssignment( m_equation);
+        }
+    };
+
+    /*!Functor that adds an equation to a model*/
+    struct add_equation
+    {
+        CmModelDescriptor & m_model;
+        CmEquationDescriptor & m_equation;
+
+        add_equation( CmModelDescriptor & model, CmEquationDescriptor & equation):
+            m_model(model), m_equation( equation) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT, IteratorT ) const
+        {
+            m_model.addEquation( m_equation);
+            ///@todo the decision if a variable is integrated should be done at code generation time
+            ///@todo the lhs can always contain a path. when the model is flattened it is more easy to look up variables that reside in different sub-models.
+        }
+    };
+
+    /*!Functor that adds a parameter assignment to a model*/
+    struct add_init_equation
+    {
+        CmModelDescriptor & m_model;
+        CmEquationDescriptor & m_equation;
+
+        add_init_equation( CmModelDescriptor & model, CmEquationDescriptor & equation):
+        m_model(model), m_equation( equation) {}
+
+        template <typename IteratorT>
+            void operator()( IteratorT, IteratorT ) const
+        {
+            m_model.addInitialEquation( m_equation);
+        }
+    };
+
     //!When the grammar is used the framework creates this struct. All rules are defined here.
     template <typename ScannerT>
     struct definition
     {
         //!The grammar's rules.
-        definition(ps_model const& self)
+        definition(ps_model const & self)
         {
             using namespace temp_store_model;
             using spirit::str_p; using spirit::ch_p;
             using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
             using spirit::assign_a;
 
+            //we need a mutable self for the semantic actions
+//             ps_model & selfm = const_cast<ps_model &>(self);
+
             ///@todo evaluate "distinct_parser" as an alternative to "str_p" - http://www.boost.org/libs/spirit/doc/distinct.html
             ///@todo very nice were a parser generator keyw_p("MODEL") that inserted the keyword into the table of keywords.
+
             //The start rule. Parses the complete model: MODEL ... END
             model_definition
                 = ( str_p("MODEL")          [&start_model]  //clear all temporary storage
@@ -350,55 +417,27 @@ struct ps_model : public spirit::grammar<ps_model>
 
             //parse the SET section where values are assigned to the parameters: SET p1=2.5; p2:=3.1;
             set_section
-                = str_p("SET") >>
-                *(    parameter_assignment
-                    | (eps_p[make_error("Error in SET section!", err_temp)] >> nothing_p)
-                 );
-            parameter_assignment
-                = ( path                                [&start_param_assign]
-                                                        [assign_a( param_assign_temp.lhs)] >>
-                    ":=" >> formula                     [assign_a( param_assign_temp.rhs, formula.formula)] >>
-                    +ch_p(';')
-                  )                                     [&add_param_assign];
+                = str_p("SET")
+                >> *(   equation_pars   [add_param_assignment( model, equation_pars.equation)]
+                    | ( eps_p           [make_error( "Error in SET section!", err_temp)] >> nothing_p)
+                    )
+                ;
 
             //Parse the EQUATION section: EQUATION v1 := 2*v2 + v3; $v2 := v2/v1;
             equation_section
-                = str_p("EQUATION") >>
-                *(    assignment_variable
-                    | assignment_time_derivative
-                    | (eps_p[make_error( "Error in EQUATION section!", err_temp)] >> nothing_p)
-                 );
-            ///@todo change lhs to formula for film.X(0:20)
-            ///@todo introduce a general equuation grammar
-            assignment_variable
-                = ( eps_p                           [&start_equation]
-                                                    [assign_a( e_temp.is_assignment, true)] >>
-                    path                            [assign_a( e_temp.lhs)] >>
-                    ":=" >> formula                 [assign_a( e_temp.rhs, formula.formula)] >>
-                    +ch_p(';')
-                  )                                 [&add_equation];
-            assignment_time_derivative
-                = ( eps_p                           [&start_equation]
-                                                    [assign_a( e_temp.is_assignment, true)] >>
-                    '$' >> path                     [assign_a( e_temp.lhs)]
-                                                    [assign_a( e_temp.is_ode_assignment, true)]
-                                                    [&set_variable_integrated] >>
-                    ":=" >> formula                 [assign_a( e_temp.rhs, formula.formula)] >>
-                    +ch_p(';')
-                  )                                 [&add_equation];
+                =  str_p("EQUATION")
+                >> *(   equation_pars   [add_equation( model, equation_pars.equation)]
+                    | ( eps_p           [make_error( "Error in EQUATION section!", err_temp)] >> nothing_p)
+                    )
+                ;
 
             //parse the INITIAL section where start values are assigned to the integrated variables: INITAIL v1=2.5; v2:=3.1;
             initial_section
-                = str_p("INITIAL") >>
-                  *(    initial_assignment
-                    |   (eps_p[make_error("Error in INITIAL section!", err_temp)] >> nothing_p)
-                   );
-            initial_assignment
-                = ( path                                [&start_init_expr]
-                                                        [assign_a(init_expr_temp.lhs)] >>
-                    ":=" >> formula                     [assign_a( init_expr_temp.rhs, formula.formula)] >>
-                    +(ch_p('\n') | ';')
-                  )                                     [&add_init_expr];
+                =  str_p("INITIAL")
+                >> *(   equation_pars   [add_init_equation( model, equation_pars.equation)]
+                    |   (eps_p          [make_error( "Error in INITIAL section!", err_temp)] >> nothing_p)
+                    )
+                ;
 
             //parse the SOLUTIONPARAMETERS section
             solutionparameters_section
@@ -429,21 +468,14 @@ struct ps_model : public spirit::grammar<ps_model>
             parameter_section, parameter_definition,
             unit_section, unit_definition,
             variable_section, variable_definition,
-            set_section, parameter_assignment,
-            equation_section, assignment_variable, assignment_time_derivative,
-            initial_section, initial_assignment,
+            set_section, equation_section, initial_section,
             solutionparameters_section, solutionparameters_assignment;
         //!Grammar that describes all names (model, parameter, variable) e.g.: "reactor"
         ps_name name;
-        //!grammar for paths e.g.: "reactor.v1.p"
-        ps_path path;
         //!parser for formulas
         ps_formula formula;
-
-        //!symbol table for the known parmeter names.
-//         spirit::symbols<> param_name;
-        //!symbol table for the known variable names.
-//         spirit::symbols<> var_name;
+        //!parser for equations
+        ps_equation equation_pars;
     };
 };
 

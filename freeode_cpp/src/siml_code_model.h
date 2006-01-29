@@ -37,6 +37,7 @@ namespace siml {
 
 This object contains data about an error. It is used to generate nicely
 formated error message.
+@todo we need a central error storage that is independent of the code repository.
 */
 struct CmErrorDescriptor
 {
@@ -99,14 +100,14 @@ struct CmEquationDescriptor
     CmPath lhs;
     //!the equation's right hand side
     CmFormula rhs;
-    //!if true the equation is really an assignment ":=" otherwise it's a true equation "="
-    bool is_assignment;
-    //!if true the lhs is the time differential of a variable: $v1 := a*b*v1 + v2;
-    bool is_ode_assignment;
+    //!if true the equation is really an assignment ":=" otherwise it's a true equation "=" (unused)
+//     bool is_assignment;
+    //!Is lhs a time differential?
+    bool isOdeAssignment() const;
     //!text that was parsed to gather the information in this object.
     std::string definition_text;
 
-    CmEquationDescriptor() : is_assignment(false), is_ode_assignment(false) {};
+    CmEquationDescriptor() /*: is_assignment(false), is_ode_assignment(false)*/ {};
 };
 //!container for the equation descriptors of a model. See: @see CmEquationDescriptor
 typedef std::vector<CmEquationDescriptor> CmEquationTable;
@@ -158,7 +159,7 @@ struct CmModelDescriptor
     //!Container for the eqations. See: @see CmEquationDescriptor
     CmEquationTable equation;
     //!Container for initializations of integrated variables. ("INITIAL" section) See: @see CmEquationDescriptor
-    CmEquationTable initialExpression;
+    CmEquationTable initialEquation;
     //!Some simulation options
     CmSolutionParameterDescriptor solutionParameters;
 
@@ -178,10 +179,12 @@ struct CmModelDescriptor
     boost::shared_ptr<CmErrorDescriptor> addSubModel(CmSubModelLink inSub);
     //!Add a variable descriptor to the model
     boost::shared_ptr<CmErrorDescriptor> addVariable(CmMemoryDescriptor inVar);
-    //!Add an expression to set a value to a parameter
+    //!Set a value to a parameter
     void addParameterAssignment( CmEquationDescriptor inEqu);
     //!Add an equation to the model
     void addEquation( CmEquationDescriptor inEqu);
+    //!Set an initial value to a state variable
+    void addInitialEquation( CmEquationDescriptor inEqu);
 
     //!Mark variable as state variable
     boost::shared_ptr<CmErrorDescriptor> setVariableIntegrated(std::string stateVarName);

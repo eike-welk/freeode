@@ -77,7 +77,7 @@ struct ps_formula : public spirit::grammar<ps_formula>
     {
         CmFormula & m_OutFormula;
 
-        clear_formula(CmFormula const & outFormula): m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+        clear_formula(CmFormula & outFormula): m_OutFormula( outFormula) {}
 
         template <typename IteratorT>
         void operator()(IteratorT, IteratorT) const
@@ -93,8 +93,8 @@ struct ps_formula : public spirit::grammar<ps_formula>
         CmPath const & m_InPath;
         CmFormula & m_OutFormula;
 
-        append_path(CmPath const & inPath, CmFormula const & outFormula):
-                m_InPath(inPath), m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+        append_path(CmPath const & inPath, CmFormula & outFormula):
+                m_InPath(inPath), m_OutFormula( outFormula) {}
 
         template <typename IteratorT>
         void operator()(IteratorT, IteratorT) const
@@ -109,11 +109,10 @@ struct ps_formula : public spirit::grammar<ps_formula>
     {
         CmFormula & m_OutFormula;
 
-        append_number( CmFormula const & outFormula):
-                m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+        append_number( CmFormula & outFormula): m_OutFormula( outFormula) {}
 
         template <typename IteratorT>
-        void operator()(IteratorT begin, IteratorT end) const
+        void operator()( IteratorT begin, IteratorT end) const
         {
 //             std::cout << "append_number: " << std::string( begin, end) << std::endl;
             m_OutFormula.appendNumber( std::string( begin, end));
@@ -131,8 +130,8 @@ struct ps_formula : public spirit::grammar<ps_formula>
            @param inOps      Number of operands (2, 1 possible for "-").
            @param outFormula Reference to the formula object where the operator will be stored.
         */
-        append_operator(std::string inSymbol, uint inOps, CmFormula const & outFormula):
-                m_Symbol(inSymbol), m_Ops(inOps), m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+        append_operator( std::string inSymbol, uint inOps, CmFormula & outFormula):
+                m_Symbol(inSymbol), m_Ops(inOps), m_OutFormula( outFormula) {}
 
         template <typename IteratorT>
         void operator()(IteratorT, IteratorT) const
@@ -147,8 +146,7 @@ struct ps_formula : public spirit::grammar<ps_formula>
     {
         CmFormula & m_OutFormula;
 
-        append_brackets( CmFormula const & outFormula):
-                m_OutFormula(const_cast<CmFormula&>(outFormula)) {}
+        append_brackets( CmFormula & outFormula): m_OutFormula(outFormula) {}
 
         template <typename IteratorT>
         void operator()(IteratorT, IteratorT) const
@@ -171,31 +169,36 @@ struct ps_formula : public spirit::grammar<ps_formula>
 //             using spirit::lexeme_d;
             using spirit::real_p; using spirit::eps_p;
 
-            ///@todo add exponential rule (binding stronger than sign)
-            factor  =   path                        [append_path( path.path, self.formula)]
-                    |   (real_p >> eps_p)           [append_number( self.formula)]
-                    |   ('(' >> expression >> ')')  [append_brackets( self.formula)]
-                    |   ('-' >> factor)             [append_operator( "-", 1, self.formula)]
-                    |   ('+' >> factor)
-                    ;
+            //we need a mutable self for the semantic actions
+            ps_formula & selfm = const_cast<ps_formula &>(self);
 
-            term    =  factor
-                    >> *(   ('*' >> factor) [append_operator( "*", 2, self.formula)]
-                        |   ('/' >> factor) [append_operator( "/", 2, self.formula)]
-                        )
-                    ;
+            formula =
+                eps_p                       [clear_formula( selfm.formula)]
+                >> expression
+                ;
 
             expression
                     =  term
-                    >> *(   ('+' >> term)   [append_operator( "+", 2, self.formula)]
-                        |   ('-' >> term)   [append_operator( "-", 2, self.formula)]
+                    >> *(   ('+' >> term)   [append_operator( "+", 2, selfm.formula)]
+                        |   ('-' >> term)   [append_operator( "-", 2, selfm.formula)]
                         )
                     ;
 
-            formula =
-                eps_p                       [clear_formula( self.formula)]
-                >> expression
-                ;
+            term
+                    =  factor
+                    >> *(   ('*' >> factor) [append_operator( "*", 2, selfm.formula)]
+                        |   ('/' >> factor) [append_operator( "/", 2, selfm.formula)]
+                        )
+                    ;
+
+            ///@todo add exponential rule (binding stronger than sign)
+            factor
+                    =   path                        [append_path( path.path, selfm.formula)]
+                    |   (real_p >> eps_p)           [append_number( selfm.formula)]
+                    |   ('(' >> expression >> ')')  [append_brackets( selfm.formula)]
+                    |   ('-' >> factor)             [append_operator( "-", 1, selfm.formula)]
+                    |   ('+' >> factor)
+                    ;
         }
 
         //!The start rule of the grammar. Called by spirit's internal magic.

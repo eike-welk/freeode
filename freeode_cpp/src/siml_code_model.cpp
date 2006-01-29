@@ -30,6 +30,15 @@ using boost::shared_ptr;
 using boost::format;
 
 
+/*!
+@return True if the lhs is the time differential of a variable: $v1 := a*b*v1 + v2; otherwise false
+*/
+bool siml::CmEquationDescriptor::isOdeAssignment() const
+{
+    return lhs.isTimeDerivative();
+}
+
+
 /*!Add the descriptor if it has a unique name.
 
 @return pointer to error if an error happened, or null pointer otherwise.
@@ -112,12 +121,14 @@ siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
 
 
 /*!Add an expression to set a value to a parameter.
-Also sets the right options.*/
+Also sets the right options.
+@todo test if lhs is a parameter, test if lhs has no $ (!isTimeDerivative())
+*/
 void siml::CmModelDescriptor::addParameterAssignment( CmEquationDescriptor inEqu)
 {
     //set the right options
-    inEqu.is_assignment = true;
-    inEqu.is_ode_assignment = false;
+//     inEqu.is_assignment = true;
+//     inEqu.is_ode_assignment = false;
     //add to model
     parameterAssignment.push_back( inEqu);
 }
@@ -131,8 +142,16 @@ void siml::CmModelDescriptor::addEquation( CmEquationDescriptor inEqu)
 }
 
 
-/*!
+/*!Add an equation to set the initial value to a parameter.
+@todo test if lhs is a state variable, test if lhs has no $ (!isTimeDerivative())
+ */
+void siml::CmModelDescriptor::addInitialEquation( CmEquationDescriptor inEqu)
+{
+    initialEquation.push_back( inEqu);
+}
 
+
+/*!
 @return pointer to error if an error happened, or null pointer otherwise.
 */
 boost::shared_ptr<siml::CmErrorDescriptor>
@@ -258,10 +277,10 @@ siml::CmModelDescriptor::display() const
         cout << "  :=  " << parameterAssignment[i].rhs << endl;
     }
 
-    cout << "initial expressions:" << endl;
-    for(uint i=0; i<initialExpression.size(); ++i) {
-        cout << "|  "    << initialExpression[i].lhs;
-        cout << "  :=  " << initialExpression[i].rhs << endl;
+    cout << "initial equations:" << endl;
+    for(uint i=0; i<initialEquation.size(); ++i) {
+        cout << "|  "    << initialEquation[i].lhs;
+        cout << "  :=  " << initialEquation[i].rhs << endl;
     }
 
     cout << "equations:" << endl;
@@ -270,23 +289,13 @@ siml::CmModelDescriptor::display() const
 //         cout << equation[i].definition_text << endl;
         cout << "|  "    << equation[i].lhs;
         cout << "  :=  " << equation[i].rhs;
-        if( equation[i].is_ode_assignment ) { cout << "  - ODE" << endl; }
+        if( equation[i].isOdeAssignment() ) { cout << "  - ODE" << endl; }
         else                                { cout << "  - algebraic" << endl; }
     }
 
     if( errorsDetected ) { cout << "Errors detected!" << endl; }
     else                 { cout << "No Errors." << endl; }
 }
-
-
-// /*!Iterate through all lists and display their contents.*/
-// void
-// siml::CmProcessDescriptor::display() const
-// {
-//     cout << "process ";
-//     CmModelDescriptor::display();
-//
-// }
 
 
 /*!Iterate through all lists and display their contents.*/
@@ -322,7 +331,7 @@ Search for a model declaration with this name in the repository.
 @return     Pointer to the declaration or 0 if no declaration with this name exists.
  */
 siml::CmModelDescriptor *
-        siml::CmCodeRepository::findModel(std::string const & name)
+siml::CmCodeRepository::findModel(std::string const & name)
 {
     //copy parameter assignments
     CmModelTable::iterator itM;
