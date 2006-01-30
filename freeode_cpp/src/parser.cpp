@@ -53,7 +53,7 @@ Parser::Parser()
     char const * const keywords[] = {
         "MODEL","PARAMETER", "VARIABLE", "SET", "EQUATION", "AS", "DEFAULT",
         "ASSIGN", "IF", "ELSE",
-        "TYPICAL", "ANY"
+        "TYPICAL",
         "END"
     };
     std::size_t const keywords_size = sizeof(keywords) / sizeof(keywords[0]);

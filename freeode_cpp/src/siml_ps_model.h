@@ -25,6 +25,7 @@
 #include "siml_ps_name.h"
 #include "siml_ps_path.h"
 #include "siml_ps_formula.h"
+#include "siml_ps_memory_definition.h"
 #include "siml_ps_equation.h"
 #include "siml_error_generator.h"
 
@@ -50,97 +51,97 @@ using boost::shared_ptr;
 CmCodeRepository* parse_result_storage;
 
 //!The data gathered while parsing the model is stored here
-CmModelDescriptor model;
+// CmModelDescriptor model;
 
 //!error that is maybe detected.
-CmErrorDescriptor err_temp;
+// CmErrorDescriptor err_temp;
 
 //!Clear the temporary storage
-void start_model(char const * /*first*/, char const * /*last*/)
-{
-    model = CmModelDescriptor();
-    err_temp = CmErrorDescriptor();
-}
+// void start_model(char const * /*first*/, char const * /*last*/)
+// {
+//     model = CmModelDescriptor();
+//     err_temp = CmErrorDescriptor();
+// }
 
 //model name--------------------------------------------------------------------
 //!See if the model or process name is unique
-void test_model_name_unique(char const *, char const *)
-{
+// void test_model_name_unique(char const *, char const *)
+// {
 ///@todo implement test_model_name_unique
 ///@todo make this a member function of the CmCodeRepository
-}
+// }
 
 //set to process----------------------------------------------------------------
 //!Store that the model is really a process
-void set_process(char const *, char const *)
-{
-    model.isProcess = true;
-}
+// void set_process(char const *, char const *)
+// {
+//     model.isProcess = true;
+// }
 
 //parameter---------------------------------------------------------------------
 //!temporary storage while a parameter definition is parsed
-CmMemoryDescriptor p_temp;
+// CmMemoryDescriptor p_temp;
 //!Clear the temporary storage for parsing parameters
-void start_parameter(char const *, char const *) { p_temp = CmMemoryDescriptor(); }
+// void start_parameter(char const *, char const *) { p_temp = CmMemoryDescriptor(); }
 //!Add a parameter definition to the model.
 /*!
 The function takes "p_temp" and puts it into "model.parameter"; the container for
 parsed parameters. The chunk of text that led to the new parameter desciptor
 is stored too*/
-void add_parameter(char const * first, char const * const last)
-{
-    p_temp.definition_text = string(first, last);
-
-    shared_ptr<CmErrorDescriptor> err = model.addParameter(p_temp);
-
-    if( err )
-    {
-        model.errorsDetected = true;  //remember: there were errors in this model.
-        add_error_context(*err, first, last);  //make error look better
-        parse_result_storage->error.push_back(*err); //add error to parsing store
-    }
-}
+// void add_parameter(char const * first, char const * const last)
+// {
+//     p_temp.definition_text = string(first, last);
+//
+//     shared_ptr<CmErrorDescriptor> err = model.addParameter(p_temp);
+//
+//     if( err )
+//     {
+//         model.errorsDetected = true;  //remember: there were errors in this model.
+//         add_error_context(*err, first, last);  //make error look better
+//         parse_result_storage->error.push_back(*err); //add error to parsing store
+//     }
+// }
 
 //unit (sub-model)--------------------------------------------------------------
 //!temporary storage while a unit definition is parsed
-CmSubModelLink submod_temp;
+// CmSubModelLink submod_temp;
 //!Clear the temporary storage for parsing parameters
-void start_sub_model(char const *, char const *) { submod_temp = CmSubModelLink(); }
+// void start_sub_model(char const *, char const *) { submod_temp = CmSubModelLink(); }
 //!Add a parameter definition to the model.
-void add_sub_model(char const * first, char const * const last)
-{
-//     string definition_text(first, last);
-
-    shared_ptr<CmErrorDescriptor> err = model.addSubModel(submod_temp);
-
-    if( err )
-    {
-        model.errorsDetected = true;  //remember: there were errors in this model.
-        add_error_context(*err, first, last);  //make error look better
-        parse_result_storage->error.push_back(*err); //add error to parsing store
-    }
-}
+// void add_sub_model(char const * first, char const * const last)
+// {
+// //     string definition_text(first, last);
+//
+//     shared_ptr<CmErrorDescriptor> err = model.addSubModel(submod_temp);
+//
+//     if( err )
+//     {
+//         model.errorsDetected = true;  //remember: there were errors in this model.
+//         add_error_context(*err, first, last);  //make error look better
+//         parse_result_storage->error.push_back(*err); //add error to parsing store
+//     }
+// }
 
 //variable----------------------------------------------------------------------
 //!temporary storage while a variable definition is parsed
-CmMemoryDescriptor v_temp;
+// CmMemoryDescriptor v_temp;
 //!Clear the temporary storage for the CmVariableDescriptor objects
-void start_variable(char const *, char const *) { v_temp = CmMemoryDescriptor(); }
+// void start_variable(char const *, char const *) { v_temp = CmMemoryDescriptor(); }
 //!Add a variable definition to the model.
 /*!@see add_parameter*/
-void add_variable(char const * first, char const * const last)
-{
-    v_temp.definition_text = string(first, last);
-
-    shared_ptr<CmErrorDescriptor> err = model.addVariable(v_temp);
-
-    if( err )
-    {
-        model.errorsDetected = true;
-        add_error_context(*err, first, last);
-        parse_result_storage->error.push_back(*err);
-    }
-}
+// void add_variable(char const * first, char const * const last)
+// {
+//     v_temp.definition_text = string(first, last);
+//
+//     shared_ptr<CmErrorDescriptor> err = model.addVariable(v_temp);
+//
+//     if( err )
+//     {
+//         model.errorsDetected = true;
+//         add_error_context(*err, first, last);
+//         parse_result_storage->error.push_back(*err);
+//     }
+// }
 //!Mark one variable inside model as a state variable.
 /*!
 If the variable does not exist nothing will happen.*/
@@ -211,39 +212,39 @@ If the variable does not exist nothing will happen.*/
 
 //SOLUTIONPARAMETERS----------------------------------------------------------------
 //!temporary storage while a variable definition is parsed
-CmSolutionParameterDescriptor sol_parms_temp;
+// CmSolutionParameterDescriptor sol_parms_temp;
 //!Clear the temporary storage for the CmEquationDescriptor objects
-void start_sol_parms(char const *, char const *) { sol_parms_temp = CmSolutionParameterDescriptor(); }
+// void start_sol_parms(char const *, char const *) { sol_parms_temp = CmSolutionParameterDescriptor(); }
 //!Add an assignment to a algebraic variable to the model. (a:=p2*c)
-void add_sol_parms(char const * /*first*/, char const * const /*last*/)
-{
-    model.solutionParameters = sol_parms_temp;
-}
+// void add_sol_parms(char const * /*first*/, char const * const /*last*/)
+// {
+//     model.solutionParameters = sol_parms_temp;
+// }
 
 //return model------------------------------------------------------------------
 // int isProcessTemp;
 //!add the correctly parsed model to the global code repository.
-void return_model(char const * /*first*/, char const * const /*last*/)
-{
-    cout << "Parsing model or process " << model.name << " finished correctly." << endl;
-    cout << "model.isProcess: " << model.isProcess << endl;
-//     cout << "isProcessTemp: " << isProcessTemp << endl;
-
-    if( model.isProcess ) { parse_result_storage->process.push_back(model); }
-    else                  { parse_result_storage->model.push_back(model); }
-}
+// void return_model(char const * /*first*/, char const * const /*last*/)
+// {
+//     cout << "Parsing model or process " << model.name << " finished correctly." << endl;
+//     cout << "model.isProcess: " << model.isProcess << endl;
+// //     cout << "isProcessTemp: " << isProcessTemp << endl;
+//
+//     if( model.isProcess ) { parse_result_storage->process.push_back(model); }
+//     else                  { parse_result_storage->model.push_back(model); }
+// }
 
 //!add error and the partial model to the global code repository.
-void return_error(char const * /*first*/, char const * const /*last*/)
-{
-    cout << "Parsing model or process " << model.name << " failled!" << endl;
-
-    model.errorsDetected = true;
-
-    parse_result_storage->error.push_back(err_temp);
-    if( model.isProcess ) { parse_result_storage->process.push_back(model); }
-    else                  { parse_result_storage->model.push_back(model); }
-}
+// void return_error(char const * /*first*/, char const * const /*last*/)
+// {
+//     cout << "Parsing model or process " << model.name << " failled!" << endl;
+//
+//     model.errorsDetected = true;
+//
+//     parse_result_storage->error.push_back(err_temp);
+//     if( model.isProcess ) { parse_result_storage->process.push_back(model); }
+//     else                  { parse_result_storage->model.push_back(model); }
+// }
 
 } //namespace temp_store_model
 
@@ -273,6 +274,14 @@ The temporary varibles and the semantic actions reside in the namespace
  */
 struct ps_model : public spirit::grammar<ps_model>
 {
+    //!The data gathered while parsing the model is stored here
+    CmModelDescriptor model;
+private:
+    //!temporary storage for a sub-model "UNIT"
+    CmSubModelLink submod_temp;
+    //!error that is maybe detected.
+    CmErrorDescriptor err_temp;
+public:
     //!Construct the grammar
     /*!Before using the grammar it must have a pointer to the global result storage.
     Therefore the function set_result_storage (...) must be called. (once for all
@@ -285,7 +294,117 @@ struct ps_model : public spirit::grammar<ps_model>
         temp_store_model::parse_result_storage = result_storage;
     }
 
-    /*!Functor that adds a parameter assignment to a model*/
+    /*!Functor that clears the temporary storage for model parsing.*/
+    struct start_model
+    {
+        CmModelDescriptor & m_model;
+        CmErrorDescriptor & m_error;
+
+        start_model( CmModelDescriptor & model, CmErrorDescriptor & error):
+            m_model(model), m_error( error) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT, IteratorT) const
+        {
+            m_model = CmModelDescriptor();
+            m_error = CmErrorDescriptor();
+        }
+    };
+//     finish_model_error( model, false_val)
+    /*!Functor that finishes the model. If necessary it puts the temporary
+    error into the list of errors.*/
+    struct finish_model_error
+    {
+        CmModelDescriptor & m_model;
+        CmErrorDescriptor & m_error;
+        bool m_error_detected;
+
+        finish_model_error( CmModelDescriptor & model, CmErrorDescriptor & error, bool error_yes):
+            m_model( model), m_error( error), m_error_detected( error_yes) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT, IteratorT) const
+        {
+            std::string mp_type, ps_result;
+
+            //set the model's error flag
+            m_model.errorsDetected = m_error_detected;
+            //put the model (or process) into the code repository
+            if( m_model.isProcess ) {
+                temp_store_model::parse_result_storage->process.push_back(m_model);
+                mp_type = "process ";
+            }
+            else {
+                temp_store_model::parse_result_storage->model.push_back(m_model);
+                mp_type = "model ";
+            }
+
+            //put error in list if necessary
+            if( m_error_detected ) {
+                temp_store_model::parse_result_storage->error.push_back(m_error);
+                ps_result = " failled!\n";
+            }
+            else {
+                ps_result = " finished correctly.\n";
+            }
+
+            cout << "Parsing " << mp_type << m_model.name << ps_result;
+        }
+    };
+
+    /*!Functor that changes the model's name and tests if it is unique.*/
+    struct set_model_name
+    {
+        CmModelDescriptor & m_model;
+
+        set_model_name( CmModelDescriptor & model):
+            m_model(model) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT begin, IteratorT end) const
+        {
+            m_model.name = std::string( begin, end);
+            ///@todo test if model name is unique
+            ///@todo make "isModelNameUnique" a member function of the CmCodeRepository and/or
+            ///@todo write CmModelDescriptor::setModelName that does the test.
+        }
+    };
+
+    /*!Functor that adds a parameter definition (PARAMETER) to a model*/
+    struct add_parameter
+    {
+        CmModelDescriptor & m_model;
+        CmMemoryDescriptor & m_memory;
+
+        add_parameter( CmModelDescriptor & model, CmMemoryDescriptor & mem):
+            m_model(model), m_memory( mem) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT, IteratorT) const
+        {
+            m_model.addParameter( m_memory);
+            ///@todo errors:  m_model.errorsDetected |= m_model.addParameter( m_memory);
+        }
+    };
+
+    /*!Functor that adds a variable definition (VARIABLE) to a model*/
+    struct add_variable
+    {
+        CmModelDescriptor & m_model;
+        CmMemoryDescriptor & m_memory;
+
+        add_variable( CmModelDescriptor & model, CmMemoryDescriptor & mem):
+            m_model(model), m_memory( mem) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT, IteratorT) const
+        {
+            m_model.addVariable( m_memory);
+            ///@todo errors:  m_model.errorsDetected |= m_model.addVariable( m_memory);
+        }
+    };
+
+    /*!Functor that adds a parameter assignment (SET) to a model*/
     struct add_param_assignment
     {
         CmModelDescriptor & m_model;
@@ -295,13 +414,14 @@ struct ps_model : public spirit::grammar<ps_model>
             m_model(model), m_equation( equation) {}
 
         template <typename IteratorT>
-        void operator()( IteratorT, IteratorT ) const
+        void operator()( IteratorT, IteratorT) const
         {
             m_model.addParameterAssignment( m_equation);
+            ///@todo errors
         }
     };
 
-    /*!Functor that adds an equation to a model*/
+    /*!Functor that adds an equation (EQUATION) to a model*/
     struct add_equation
     {
         CmModelDescriptor & m_model;
@@ -311,11 +431,12 @@ struct ps_model : public spirit::grammar<ps_model>
             m_model(model), m_equation( equation) {}
 
         template <typename IteratorT>
-        void operator()( IteratorT, IteratorT ) const
+        void operator()( IteratorT, IteratorT) const
         {
             m_model.addEquation( m_equation);
             ///@todo the decision if a variable is integrated should be done at code generation time
             ///@todo the lhs can always contain a path. when the model is flattened it is more easy to look up variables that reside in different sub-models.
+            ///@todo errors
         }
     };
 
@@ -329,9 +450,27 @@ struct ps_model : public spirit::grammar<ps_model>
         m_model(model), m_equation( equation) {}
 
         template <typename IteratorT>
-            void operator()( IteratorT, IteratorT ) const
+        void operator()( IteratorT, IteratorT) const
         {
             m_model.addInitialEquation( m_equation);
+            ///@todo errors
+        }
+    };
+
+    /*!Functor that adds a sub-model to a model*/
+    struct add_sub_model
+    {
+        CmModelDescriptor & m_model;
+        CmSubModelLink & m_submod;
+
+        add_sub_model( CmModelDescriptor & model, CmSubModelLink & submod):
+            m_model( model), m_submod( submod) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT, IteratorT) const
+        {
+            m_model.addSubModel( m_submod);
+            ///@todo errors
         }
     };
 
@@ -340,7 +479,8 @@ struct ps_model : public spirit::grammar<ps_model>
     struct definition
     {
         //!The grammar's rules.
-        definition(ps_model const & self)
+        definition(ps_model const & self) :
+                true_val(true), false_val(false)
         {
             using namespace temp_store_model;
             using spirit::str_p; using spirit::ch_p;
@@ -348,110 +488,95 @@ struct ps_model : public spirit::grammar<ps_model>
             using spirit::assign_a;
 
             //we need a mutable self for the semantic actions
-//             ps_model & selfm = const_cast<ps_model &>(self);
+            ps_model & selfm = const_cast<ps_model &>(self);
 
             ///@todo evaluate "distinct_parser" as an alternative to "str_p" - http://www.boost.org/libs/spirit/doc/distinct.html
             ///@todo very nice were a parser generator keyw_p("MODEL") that inserted the keyword into the table of keywords.
 
             //The start rule. Parses the complete model: MODEL ... END
             model_definition
-                = ( str_p("MODEL")          [&start_model]  //clear all temporary storage
-                  | str_p("PROCESS")        [&start_model]
-                                            ///[assign_a(model.isProcess, true)] @todo investigate why this does not work.
-                                            [&set_process] //the model is really a process
-                  ) >>
+                = ( str_p("MODEL")          [start_model( selfm.model, selfm.err_temp)]  //clear all temporary storage
+                  | str_p("PROCESS")        [start_model( selfm.model, selfm.err_temp)]
+                                            [assign_a(selfm.model.isProcess, true_val)] //the model is really a process
+                  )
                   //model or process body
-                  ( ( name                  [assign_a(model.name)]
-                                            [&test_model_name_unique] >>
-                      !parameter_section >> !unit_section >> !variable_section >>
-                      !set_section >> !equation_section >> !initial_section >>
-                      !solutionparameters_section >>
-                      str_p("END")          [&return_model]
-                    )
-                  | ( eps_p                 [&return_error] >>
-                      nothing_p
-                    )
-                  );
+                >> ( (  name                [set_model_name( selfm.model)]
+                        >> !parameter_section >> !unit_section >> !variable_section
+                        >> !set_section >> !equation_section >> !initial_section
+                        >> !solutionparameters_section
+                        >> str_p("END")     [finish_model_error( selfm.model, selfm.err_temp, false)]
+                     )
+                   | (  eps_p               [finish_model_error( selfm.model, selfm.err_temp, true)]
+                        >> nothing_p
+                     )
+                   )
+                ;
 
             //parse block of parameter definitions: PARAMETER p1 AS REAL DEFAULT 1; p2 AS REAL DEFAULT 10; ...
             parameter_section
                 =   str_p("PARAMETER") >>
-                    *(    parameter_definition
-//                     | (eps_p[assign_a(possible_error, "Error in parameter definition!")] >> nothing_p)
-                    | (eps_p[make_error("Error in parameter definition!", err_temp)] >> nothing_p)
-                     );
-            parameter_definition ///@TODO units
-                = ( eps_p                                [&start_parameter] >> //clear temporary storage
-                    name                                 [assign_a( p_temp.name)] >>  //store name in temporary storage
-                    !("AS" >> str_p("REAL")              [assign_a( p_temp.type)]) >> //store parameter type
-                    !("DEFAULT" >> formula               [assign_a( p_temp.default_expr, formula.formula)]) >> //store default value
-                    +ch_p(';')
-                  )                                      [&add_parameter]; //add parameter definition to model
+                    *(  memory_definition   [add_parameter( selfm.model, memory_definition.memory)]
+                     | ( eps_p              [make_error( "Error in parameter definition!", selfm.err_temp)] >> nothing_p )
+                     )
+                ;
 
             //parse block of sub-model definitions: UNIT u1 AS Model1; ...
             unit_section
                 =   str_p("UNIT") >>
-                    *(    unit_definition
-                        | (eps_p[make_error("Error in UNIT (sub-model) definition!", err_temp)] >> nothing_p)
-                     );
+                    *( unit_definition
+                     | (eps_p           [make_error("Error in UNIT (sub-model) definition!", selfm.err_temp)] >> nothing_p)
+                     )
+                ;
             unit_definition
-                = ( eps_p                                [&start_sub_model] >> //clear temporary storage
-                    name                                 [assign_a( submod_temp.name)] >>  //store name in temporary storage
-                    !("AS" >> name                       [assign_a( submod_temp.type)]) >> //store sub model type
-                    +ch_p(';')
-                  )                                      [&add_sub_model]; //add sub-model definition to model
+                =  name                 [assign_a( selfm.submod_temp.name)]   //store name in temporary storage
+                >> !("AS" >> name       [assign_a( selfm.submod_temp.type)])  //store sub model type
+                >> (+ch_p(';'))         [add_sub_model( selfm.model, selfm.submod_temp)] //add sub-model definition to model
+                ;
 
             //parse block of variable definitions: VARIABLE v1 AS ANY; v2 AS ANY; ...
             variable_section
                 = str_p("VARIABLE") >>
-                *(    variable_definition
-                    | (eps_p[make_error("Error in variable definition!", err_temp)] >> nothing_p)
+                *( memory_definition    [add_variable( selfm.model, memory_definition.memory)]
+                 | ( eps_p              [make_error("Error in variable definition!", selfm.err_temp)] >> nothing_p )
                  );
-            variable_definition ///@TODO add upper and lower bounds; units;
-                = ( eps_p                                [&start_variable] >> //clear temporary storage
-                    name                                 [assign_a(v_temp.name)] >>
-                    !("AS" >> str_p("ANY")               [assign_a(v_temp.type)]) >>
-                    !("INITIAL" >> formula               [assign_a( v_temp.initial_expr, formula.formula)]) >> //store initial value
-                    +ch_p(';')
-                  )                                      [&add_variable]; //add variable definition to model
 
             //parse the SET section where values are assigned to the parameters: SET p1=2.5; p2:=3.1;
             set_section
                 = str_p("SET")
-                >> *(   equation_pars   [add_param_assignment( model, equation_pars.equation)]
-                    | ( eps_p           [make_error( "Error in SET section!", err_temp)] >> nothing_p)
+                >> *( equation_pars     [add_param_assignment( selfm.model, equation_pars.equation)]
+                    | ( eps_p           [make_error( "Error in SET section!", selfm.err_temp)] >> nothing_p )
                     )
                 ;
 
             //Parse the EQUATION section: EQUATION v1 := 2*v2 + v3; $v2 := v2/v1;
             equation_section
                 =  str_p("EQUATION")
-                >> *(   equation_pars   [add_equation( model, equation_pars.equation)]
-                    | ( eps_p           [make_error( "Error in EQUATION section!", err_temp)] >> nothing_p)
+                >> *(   equation_pars   [add_equation( selfm.model, equation_pars.equation)]
+                    | ( eps_p           [make_error( "Error in EQUATION section!", selfm.err_temp)] >> nothing_p)
                     )
                 ;
 
             //parse the INITIAL section where start values are assigned to the integrated variables: INITAIL v1=2.5; v2:=3.1;
             initial_section
                 =  str_p("INITIAL")
-                >> *(   equation_pars   [add_init_equation( model, equation_pars.equation)]
-                    |   (eps_p          [make_error( "Error in INITIAL section!", err_temp)] >> nothing_p)
+                >> *(   equation_pars   [add_init_equation( selfm.model, equation_pars.equation)]
+                    |   (eps_p          [make_error( "Error in INITIAL section!", selfm.err_temp)] >> nothing_p)
                     )
                 ;
 
             //parse the SOLUTIONPARAMETERS section
             solutionparameters_section
-                = str_p("SOLUTIONPARAMETERS")           [&start_sol_parms] >>
-                  *(    solutionparameters_assignment   [&add_sol_parms]
-                    |   (eps_p[make_error("Error in SOLUTIONPARAMETERS section!", err_temp)] >> nothing_p)
+                = str_p("SOLUTIONPARAMETERS")           /*[&start_sol_parms]*/ >>
+                  *(    solutionparameters_assignment   /*[&add_sol_parms]*/
+                   |   (eps_p[make_error("Error in SOLUTIONPARAMETERS section!", selfm.err_temp)] >> nothing_p)
                    );
             solutionparameters_assignment
                 = ( str_p("ReportingInterval") >> ":=" >>
-                    (real_p >> eps_p)                   [assign_a(sol_parms_temp.reportingInterval)] >>
+                    (real_p >> eps_p)                   [assign_a(selfm.model.solutionParameters.reportingInterval)] >>
                     +ch_p(';')
                   )
                 | ( str_p("SimulationTime") >> ":=" >>
-                    (real_p  >> eps_p)                  [assign_a(sol_parms_temp.simulationTime)] >>
+                    (real_p  >> eps_p)                  [assign_a(selfm.model.solutionParameters.simulationTime)] >>
                     +ch_p(';')
                   );
         }
@@ -465,9 +590,9 @@ struct ps_model : public spirit::grammar<ps_model>
         //!Rules that are defined here
         spirit::rule<ScannerT>
             model_definition,
-            parameter_section, parameter_definition,
+            parameter_section,/* parameter_definition,*/
             unit_section, unit_definition,
-            variable_section, variable_definition,
+            variable_section, /*variable_definition,*/
             set_section, equation_section, initial_section,
             solutionparameters_section, solutionparameters_assignment;
         //!Grammar that describes all names (model, parameter, variable) e.g.: "reactor"
@@ -476,6 +601,10 @@ struct ps_model : public spirit::grammar<ps_model>
         ps_formula formula;
         //!parser for equations
         ps_equation equation_pars;
+        //!parser for definition of variable or parameter
+        ps_memory_definition memory_definition;
+        //!Constants because assign_a needs references
+        bool const true_val, false_val;
     };
 };
 

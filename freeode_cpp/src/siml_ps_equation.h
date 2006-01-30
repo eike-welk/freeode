@@ -70,20 +70,6 @@ struct ps_equation : public spirit::grammar<ps_equation>
         }
     };
 
-    /*!Functor that sets some options that are not set by the parsers.*/
-//     struct finish_equation
-//     {
-//         CmEquationDescriptor & m_equation;
-//
-//         finish_equation( CmEquationDescriptor & equation): m_equation( equation) {}
-//
-//         template <typename IteratorT>
-//         void operator()( IteratorT, IteratorT) const
-//         {
-//             /*[assign_a( e_temp.is_ode_assignment, true)]*/
-//         }
-//     };
-
     //!When the grammar is used the framework creates this struct. All rules are defined here.
     template <typename ScannerT>
     struct definition

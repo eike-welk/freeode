@@ -35,10 +35,11 @@ siml::CmPath::CmPath():
 Initialize with one component.
 No parsing is done.
 */
-siml::CmPath::CmPath(std::string const & contentsNew):
-        m_TimeDerivative(false)
+siml::CmPath::CmPath(std::string const & contentsNew)/*:
+        m_TimeDerivative(false)*/
 {
-    assign(contentsNew);
+    *this = CmPath();
+    append(contentsNew);
 }
 
 
@@ -78,8 +79,9 @@ bool siml::CmPath::isEqual(CmPath const & inPath) const
 /*!remove all components*/
 siml::CmPath & siml::CmPath::clear()
 {
-    m_Component.clear();
-    m_TimeDerivative = false;
+    *this = CmPath();
+//     m_Component.clear();
+//     m_TimeDerivative = false;
     return *this;
 }
 

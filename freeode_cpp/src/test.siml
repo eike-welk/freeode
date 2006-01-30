@@ -35,14 +35,14 @@
 MODEL mo2
 
 PARAMETER
-mu_max DEFAULT 0.32;
-Ks     DEFAULT 0.1;
-Yxs    DEFAULT 0.5;
+mu_max; #DEFAULT 0.32;
+Ks;     #DEFAULT 0.1;
+Yxs;    #DEFAULT 0.5;
 
 VARIABLE
 mu;
-X INITIAL 0.2; # Biomass
-S INITIAL 25;  # Sugar
+X; #INITIAL 0.2; # Biomass
+S; #INITIAL 25;  # Sugar
 
 EQUATION
 mu := mu_max * S/(S+Ks);
