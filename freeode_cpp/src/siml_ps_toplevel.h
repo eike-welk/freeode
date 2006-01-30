@@ -20,7 +20,6 @@
 #ifndef SIML_PS_TOPLEVEL_H
 #define SIML_PS_TOPLEVEL_H
 
-#define BOOST_SPIRIT_DEBUG
 
 #include "siml_code_model.h"
 // #include "siml_ps_name.h"
@@ -36,94 +35,84 @@
 // #include <vector>
 #include <iostream>
 
-//!Intermediate storage for data aquired while parsing a model.
-/*!Created a new namespace to avoid name clashes since these are all global symbols.
-The namespace is named for easier access in KDevelop. */
-namespace temp_store_toplevel {
-using namespace siml;
-using namespace std;
-// using boost::shared_ptr;
-
-
-//!pointer to the central storage of parse results
-CmCodeRepository* parse_result_storage;
-
-//!error that is maybe detected.
-CmErrorDescriptor err_temp;
-
-//!add an error to the code repository
-void add_error(char const * /*first*/, char const * /*last*/)
-{
-    cout << "Error at toplevel!" << endl;
-    parse_result_storage->error.push_back(err_temp);
-}
-
-} //namespace temp_store_toplevel
-
-
 
 namespace siml {
+namespace spirit = boost::spirit;
 
-    namespace spirit = boost::spirit;
+/*!
+@short Top level parser.
 
+The parser uses global variables to store temporary
+information, during a parsing run.
 
-    /*!
-    @short Top level parser.
+The temporary varibles and the semantic actions reside in the namespace
+"temp_store_toplevel".
+ */
+struct ps_toplevel : public spirit::grammar<ps_toplevel>
+{
+    //!pointer to the central storage of parse results
+    CmCodeRepository* parse_result_storage;
+    //!temporary storage for errors
+    CmErrorDescriptor err_temp;
 
-    The parser uses global variables to store temporary
-    information, during a parsing run.
+    //!Construct the grammar and give it a pointer to the code model
+    ps_toplevel(CmCodeRepository* parse_storage): parse_result_storage( parse_storage) {}
 
-    The temporary varibles and the semantic actions reside in the namespace
-    "temp_store_toplevel".
-     */
-    struct ps_toplevel : public spirit::grammar<ps_toplevel>
+    /*!Functor that adds an error to the error list.*/
+    struct add_error
     {
-        //!Construct the grammar and give it a pointer to the code model
-        /*!Initializes the result storage pointers for all other grammars too.*/
-        ps_toplevel(CmCodeRepository* parse_storage)
+        ps_toplevel & m_grammar;
+
+        add_error( ps_toplevel & grammar): m_grammar( grammar) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT, IteratorT) const
         {
-            temp_store_toplevel::parse_result_storage = parse_storage;
-            //initialize the result storage pointers for all other grammars
-            ps_model::set_result_storage(parse_storage);
-//             ps_process::set_result_storage(parse_storage);
+            cout << "Error at toplevel!" << endl;
+            m_grammar.parse_result_storage->error.push_back(m_grammar.err_temp);
+        }
+    };
+
+    //!When the grammar is used the framework creates this struct. All rules are defined here.
+    template <typename ScannerT> struct definition
+    {
+        //!The grammar's rules.
+        definition(ps_toplevel const& self):
+            model( self.parse_result_storage)
+        {
+            using spirit::str_p; using spirit::ch_p;
+            using spirit::eps_p; using spirit::nothing_p;
+            using spirit::print_p; using spirit::anychar_p;
+            using spirit::assign_a;
+
+            //we need a mutable self for the semantic actions
+            ps_toplevel & selfm = const_cast<ps_toplevel &>(self);
+
+            //The start rule. Parses a complete file.
+            toplevel_definition
+                = *( model
+//                   |   parameter_estimation
+                    | ( ( print_p - "MODEL" - "PROCESS" )   [make_error("Expecting MODEL or PROCESS definition.", selfm.err_temp)]
+                                                            [add_error( selfm)] >>
+                          nothing_p
+                      )
+                    )
+                ;
         }
 
-        //!When the grammar is used the framework creates this struct. All rules are defined here.
-        template <typename ScannerT> struct definition
-        {
-            //!The grammar's rules.
-            definition(ps_toplevel const& self)
-            {
-                using namespace temp_store_toplevel;
-                using spirit::str_p; using spirit::ch_p;
-                using spirit::eps_p; using spirit::nothing_p;
-                using spirit::print_p; using spirit::anychar_p;
-                using spirit::assign_a;
+        //!The start rule of the model grammar.
+        spirit::rule<ScannerT> const &
+        start() const { return toplevel_definition; }
 
-                //The start rule. Parses a complete file.
-                toplevel_definition
-                    = *( model
-//                        |   parameter_estimation
-                        | ( ( print_p - "MODEL" - "PROCESS" )  [make_error("Expecting MODEL or PROCESS definition.", err_temp)]
-                                                                [&add_error] >>
-                              nothing_p
-                          )
-                        );
-            }
-
-            //!The start rule of the model grammar.
-            spirit::rule<ScannerT> const &
-            start() const { return toplevel_definition; }
-
-            private:
-            //!Rules that are defined here
-            spirit::rule<ScannerT> toplevel_definition;
-            //!Grammar that describes a model
-            ps_model model;
-            //!Grammar that describes a process
+        private:
+        //!Rules that are defined here
+        spirit::rule<ScannerT> toplevel_definition;
+        //!Grammar that describes a model
+        ps_model model;
+        //!Grammar that describes a process
 //             ps_process process;
-        };
     };
+};
 
 } // namespace siml
 

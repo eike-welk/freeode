@@ -75,8 +75,8 @@ struct ps_equation : public spirit::grammar<ps_equation>
     struct definition
     {
         //!The grammar's rules.
-        definition(ps_equation const& self):
-                true_val(true), false_val(false)
+        definition(ps_equation const& self)/*:
+                true_val(true), false_val(false)*/
         {
             using spirit::str_p; using spirit::ch_p; using spirit::alnum_p;
             using spirit::eps_p; using spirit::nothing_p; using spirit::anychar_p;
@@ -106,7 +106,7 @@ struct ps_equation : public spirit::grammar<ps_equation>
         //!Grammar that describes a path
         ps_path path;
         //!Constants because assign_a needs references
-        bool const true_val, false_val;
+//         bool const true_val, false_val;
     };
 };
 
