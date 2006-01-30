@@ -18,10 +18,13 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
+
 #include "siml_code_model.h"
+#include "siml_cmerror.h"
 
 #include <iostream>
 #include <boost/format.hpp>
+
 
 using std::cout;
 using std::endl;
@@ -41,9 +44,9 @@ bool siml::CmEquationDescriptor::isOdeAssignment() const
 
 /*!Add the descriptor if it has a unique name.
 
-@return pointer to error if an error happened, or null pointer otherwise.
+@return true if no error happened, false otherwise.
 */
-shared_ptr<siml::CmErrorDescriptor>
+bool
 siml::CmModelDescriptor::addParameter(CmMemoryDescriptor inPar)
 {
     //check if name is unique
@@ -54,23 +57,23 @@ siml::CmModelDescriptor::addParameter(CmMemoryDescriptor inPar)
                         "The names of sub-models, variables and parameters must be unique "
                         "within a model.") % inPar.name
                 ).str();
-        shared_ptr<CmErrorDescriptor> err(new CmErrorDescriptor(msg));
-        return err;
+        CmError::addError( msg, 0); ///@todo add iterator
+        return false;
     }
 
     //add the parameter
     parameter.push_back(inPar);
     //return no error
-    return shared_ptr<CmErrorDescriptor> ();
+    return true;
 }
 
 
 /*!
 Add the descriptor and see if name is unique.
 
-@return pointer to error if an error happened, or null pointer otherwise.
+@return true if no error happened, false otherwise.
 */
-boost::shared_ptr<siml::CmErrorDescriptor>
+bool
 siml::CmModelDescriptor::addSubModel(CmSubModelLink inSub)
 {
     ///@todo check if type exists
@@ -83,23 +86,22 @@ siml::CmModelDescriptor::addSubModel(CmSubModelLink inSub)
                 "The names of sub-models, variables and parameters must be unique "
                 "within a model.") % inSub.name
                 ).str();
-        shared_ptr<CmErrorDescriptor> err(new CmErrorDescriptor(msg));
-        return err;
+        CmError::addError( msg, 0); ///@todo add iterator
+        return false;
     }
 
     //add the parameter
     subModel.push_back(inSub);
     //return no error
-    return shared_ptr<CmErrorDescriptor> ();
+    return true;
 }
 
 
 /*!Add the descriptor and see if name is unique.
 
-@return pointer to error if an error happened, or null pointer otherwise.
+@return true if no error happened, false otherwise.
 */
-shared_ptr<siml::CmErrorDescriptor>
-siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
+bool siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
 {
     //check if name is unique
     if( !isIdentifierUnique(inVar.name) )
@@ -109,14 +111,14 @@ siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
                 "The names of sub-models, variables and parameters must be unique "
                 "within a model.") % inVar.name
                 ).str();
-        shared_ptr<CmErrorDescriptor> err(new CmErrorDescriptor(msg));
-        return err;
+        CmError::addError( msg, 0); ///@todo add iterator
+        return false;
     }
 
      //add the variable
     variable.push_back(inVar);
     //return no error
-    return shared_ptr<CmErrorDescriptor> ();
+    return true;
 }
 
 
@@ -152,10 +154,11 @@ void siml::CmModelDescriptor::addInitialEquation( CmEquationDescriptor inEqu)
 
 
 /*!
-@return pointer to error if an error happened, or null pointer otherwise.
+Set flag so variable is treated as an integrated variable
+
+@return true if no error happened, false otherwise.
 */
-boost::shared_ptr<siml::CmErrorDescriptor>
-siml::CmModelDescriptor::setVariableIntegrated(std::string stateVarName)
+bool siml::CmModelDescriptor::setVariableIntegrated(std::string stateVarName)
 {
     ///@todo replace by findVariable(...)
     //loop over all variables to find the variable that will be marked
@@ -176,12 +179,12 @@ siml::CmModelDescriptor::setVariableIntegrated(std::string stateVarName)
                 (format("No variable with name %1% exists! "
                         "You used the symbol %1% as a state variable.") % stateVarName
                 ).str();
-        shared_ptr<CmErrorDescriptor> err(new CmErrorDescriptor(msg));
-        return err;
+        CmError::addError( msg, 0); ///@todo add iterator
+        return false;
     }
 
     //return no error
-    return shared_ptr<CmErrorDescriptor> ();
+    return true;
 }
 
 
@@ -314,12 +317,6 @@ siml::CmCodeRepository::display() const
     {
         process[i].display();
         cout<<endl;
-    }
-
-    cout << "errors -----------------------------" << endl;
-    for( uint i=0; i < error.size(); ++i )
-    {
-        cout << error[i].error_message << endl;
     }
     cout << "------------------------------------" << endl;
 }

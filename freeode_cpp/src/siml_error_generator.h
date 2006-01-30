@@ -20,7 +20,8 @@
 #ifndef SIMLSIML_ERROR_GENERATOR_H
 #define SIMLSIML_ERROR_GENERATOR_H
 
-#include "siml_code_model.h"
+
+#include "siml_cmerror.h"
 
 #include <string>
 
@@ -28,52 +29,66 @@
 namespace siml {
 
 /**
-functor class to generate an error
+@error generator
+This functor class generates an error and adds it to the central error storage.
+It can be used in semantic actions of the spirit parser framework. e.g.:
+@code >> myrule[add_error("This is bad!", CmError::Warning)] >> @endcode
+When the parse rule matches the spirit framework calles the operator()(T, T) function.
+This function will generate and handle the error.
 
-    @author Eike Welk <eike.welk@post.rwth-aachen.de>
+@author Eike Welk <eike.welk@post.rwth-aachen.de>
 */
-class error_generator{
-public:
-//     error_generator(std::string error_message, CmCodeRepository* repository);
-    error_generator(std::string error_message, CmErrorDescriptor& error);
+struct add_error {
+    //!temporary storage for the error message (until the functor is invoked).
+    std::string m_message;
+    //!temporary storage for the error's type
+    CmError::Severity m_severity;
 
-    ~error_generator();
+    //!Constructor: store information for error generation.
+    add_error(  std::string error_message,
+                CmError::Severity error_severity = CmError::Error ):
+            m_message( error_message), m_severity( error_severity) {}
 
-    //!Create the error.
+    //!Create the error, add it to the central storage.
     template <typename IteratorT>
-    error_generator const&
-    operator()(IteratorT first, IteratorT const& last) const
+    void operator()(IteratorT first, IteratorT) const
     {
-        m_error.error_message = m_error_message;
-        add_error_context(m_error, first, last);
-        return *this;
+        CmError::addError( m_message, first, m_severity);
     }
-
-    //!Add error to repository
-//     void add_error(char const * offending_code_first, char const * offending_code_last) const;
-
-    protected:
-    //!The eror message
-    std::string m_error_message;
-
-    //!The code repository where the error will be put.
-//     CmCodeRepository* m_repository;
-
-    //!Storage for the generated error
-    CmErrorDescriptor&  m_error;
 };
 
-//!create an error_generator object.
-inline
-error_generator make_error(std::string error_message, CmErrorDescriptor& error)
-{
-    return error_generator(error_message, error);
+
+/**
+@error generator
+This functor class generates an error and stores it in a user supplied location.
+It can be used in semantic actions of the spirit parser framework. e.g.:
+@code >> myrule[add_error(temp_error, "This is bad!", CmError::Warning)] >> @endcode
+When the parse rule matches the spirit framework calles the operator()(T, T) function.
+This function will generate and handle the error.
+
+@author Eike Welk <eike.welk@post.rwth-aachen.de>
+ */
+struct create_error {
+    //!object where generated error will be stored
+    CmError & m_error;
+    //!temporary storage for the error message (until the functor is invoked).
+    std::string m_message;
+    //!temporary storage for the error's type
+    CmError::Severity m_severity;
+
+    //!Constructor: store information for error generation.
+    create_error(   CmError & error,
+                    std::string error_message,
+                    CmError::Severity error_severity = CmError::Error ):
+            m_error( error), m_message( error_message), m_severity( error_severity) {}
+
+    //!Create the error, store it.
+    template <typename IteratorT>
+    void operator()(IteratorT first, IteratorT) const
+    {
+        m_error = CmError::createError( m_message, first, m_severity);
+    }
 };
-
-//!Extend error message.
-void
-add_error_context(CmErrorDescriptor&  inOutError, char const * offending_code_first, char const * offending_code_last);
-
 }
 
 #endif

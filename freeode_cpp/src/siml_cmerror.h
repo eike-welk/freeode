@@ -60,7 +60,7 @@ public:
     /*!This function asks the iterator for the file and the line where the eror happened.
        When you don't happen to have an iterator pass in 0 for where. */
     template <typename IteratorT>
-    static void addError(std::string & message, IteratorT const & where, Severity howBad = Error)
+    static void addError(std::string const & message, IteratorT const & where, Severity howBad = Error)
     {
         CmError theError = createError( message, where, howBad);
         theError.addToStorage();
@@ -68,7 +68,7 @@ public:
     //!create error, return it
     /*!This function asks the iterator for the file and the line where the eror happened.*/
     template <typename IteratorT>
-    static CmError createError(std::string & message, IteratorT const & where, Severity howBad = Error)
+    static CmError createError(std::string const & message, IteratorT const & where, Severity howBad = Error)
     {
         std::string file;
         uint line = 0;
@@ -78,10 +78,10 @@ public:
         return createError( message, file, line, howBad);
     }
     //!create error, return it
-    static CmError createError(std::string & message, std::string & file, uint line=0, Severity howBad = Error);
+    static CmError createError(std::string const & message, std::string const & file, uint line=0, Severity howBad = Error);
 
     //!Dump the whole storage into cerr.
-    void printStorageToCerr();
+    static void printStorageToCerr();
 
     //!Error message
     std::string m_message;

@@ -52,26 +52,9 @@ struct ps_toplevel : public spirit::grammar<ps_toplevel>
 {
     //!pointer to the central storage of parse results
     CmCodeRepository* parse_result_storage;
-    //!temporary storage for errors
-    CmErrorDescriptor err_temp;
 
     //!Construct the grammar and give it a pointer to the code model
     ps_toplevel(CmCodeRepository* parse_storage): parse_result_storage( parse_storage) {}
-
-    /*!Functor that adds an error to the error list.*/
-    struct add_error
-    {
-        ps_toplevel & m_grammar;
-
-        add_error( ps_toplevel & grammar): m_grammar( grammar) {}
-
-        template <typename IteratorT>
-        void operator()( IteratorT, IteratorT) const
-        {
-            cout << "Error at toplevel!" << endl;
-            m_grammar.parse_result_storage->error.push_back(m_grammar.err_temp);
-        }
-    };
 
     //!When the grammar is used the framework creates this struct. All rules are defined here.
     template <typename ScannerT> struct definition
@@ -86,15 +69,14 @@ struct ps_toplevel : public spirit::grammar<ps_toplevel>
             using spirit::assign_a;
 
             //we need a mutable self for the semantic actions
-            ps_toplevel & selfm = const_cast<ps_toplevel &>(self);
+//             ps_toplevel & selfm = const_cast<ps_toplevel &>(self);
 
             //The start rule. Parses a complete file.
             toplevel_definition
                 = *( model
 //                   |   parameter_estimation
-                    | ( ( print_p - "MODEL" - "PROCESS" )   [make_error("Expecting MODEL or PROCESS definition.", selfm.err_temp)]
-                                                            [add_error( selfm)] >>
-                          nothing_p
+                    | ( ( print_p - "MODEL" - "PROCESS" )   [add_error("Expecting MODEL or PROCESS definition.")]
+                        >> nothing_p
                       )
                     )
                 ;

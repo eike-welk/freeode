@@ -64,7 +64,7 @@ struct ps_model : public spirit::grammar<ps_model>
     //!temporary storage for a sub-model "UNIT"
     CmSubModelLink submod_temp;
     //!error that is maybe detected.
-    CmErrorDescriptor err_temp;
+    CmError error_temp;
     //!pointer to the central storage of parse results
     CmCodeRepository* code_repository;
 
@@ -85,16 +85,16 @@ struct ps_model : public spirit::grammar<ps_model>
     struct start_model
     {
         CmModelDescriptor & m_model;
-        CmErrorDescriptor & m_error;
+        CmError & m_error;
 
-        start_model( CmModelDescriptor & model, CmErrorDescriptor & error):
+        start_model( CmModelDescriptor & model, CmError & error):
             m_model(model), m_error( error) {}
 
         template <typename IteratorT>
         void operator()( IteratorT, IteratorT) const
         {
             m_model = CmModelDescriptor();
-            m_error = CmErrorDescriptor();
+            m_error = CmError();
         }
     };
 //     finish_model_error( model, false_val)
@@ -103,10 +103,10 @@ struct ps_model : public spirit::grammar<ps_model>
     struct finish_model_error
     {
         ps_model & m_grammar;
-        CmErrorDescriptor & m_error;
+        CmError & m_error;
         bool m_error_detected;
 
-        finish_model_error( ps_model & grammar, CmErrorDescriptor & error, bool error_yes):
+        finish_model_error( ps_model & grammar, CmError & error, bool error_yes):
             m_grammar( grammar), m_error( error), m_error_detected( error_yes) {}
 
         template <typename IteratorT>
@@ -116,6 +116,7 @@ struct ps_model : public spirit::grammar<ps_model>
 
             //set the model's error flag
             m_grammar.model.errorsDetected = m_error_detected;
+
             //put the model (or process) into the code repository
             if( m_grammar.model.isProcess ) {
                 m_grammar.code_repository->process.push_back(m_grammar.model);
@@ -128,7 +129,7 @@ struct ps_model : public spirit::grammar<ps_model>
 
             //put error in list if necessary
             if( m_error_detected ) {
-                m_grammar.code_repository->error.push_back(m_error);
+                m_error.addToStorage();
                 ps_result = " failled!\n";
             }
             else {
@@ -281,8 +282,8 @@ struct ps_model : public spirit::grammar<ps_model>
 
             //The start rule. Parses the complete model: MODEL ... END
             model_definition
-                = ( str_p("MODEL")          [start_model( selfm.model, selfm.err_temp)]  //clear all temporary storage
-                  | str_p("PROCESS")        [start_model( selfm.model, selfm.err_temp)]
+                = ( str_p("MODEL")          [start_model( selfm.model, selfm.error_temp)]  //clear all temporary storage
+                  | str_p("PROCESS")        [start_model( selfm.model, selfm.error_temp)]
                                             [assign_a(selfm.model.isProcess, true_val)] //the model is really a process
                   )
                   //model or process body
@@ -290,9 +291,9 @@ struct ps_model : public spirit::grammar<ps_model>
                         >> !parameter_section >> !unit_section >> !variable_section
                         >> !set_section >> !equation_section >> !initial_section
                         >> !solutionparameters_section
-                        >> str_p("END")     [finish_model_error( selfm, selfm.err_temp, false)]
+                        >> str_p("END")     [finish_model_error( selfm, selfm.error_temp, false)]
                      )
-                   | (  eps_p               [finish_model_error( selfm, selfm.err_temp, true)]
+                   | (  eps_p               [finish_model_error( selfm, selfm.error_temp, true)]
                         >> nothing_p
                      )
                    )
@@ -302,7 +303,7 @@ struct ps_model : public spirit::grammar<ps_model>
             parameter_section
                 =   str_p("PARAMETER") >>
                     *(  memory_definition   [add_parameter( selfm.model, memory_definition.memory)]
-                     | ( eps_p              [make_error( "Error in parameter definition!", selfm.err_temp)] >> nothing_p )
+                     | ( eps_p              [create_error( selfm.error_temp, "Error in parameter definition!")] >> nothing_p )
                      )
                 ;
 
@@ -310,7 +311,7 @@ struct ps_model : public spirit::grammar<ps_model>
             unit_section
                 =   str_p("UNIT") >>
                     *( unit_definition
-                     | (eps_p           [make_error("Error in UNIT (sub-model) definition!", selfm.err_temp)] >> nothing_p)
+                     | (eps_p           [create_error( selfm.error_temp, "Error in UNIT (sub-model) definition!")] >> nothing_p)
                      )
                 ;
             unit_definition
@@ -323,14 +324,14 @@ struct ps_model : public spirit::grammar<ps_model>
             variable_section
                 = str_p("VARIABLE") >>
                 *( memory_definition    [add_variable( selfm.model, memory_definition.memory)]
-                 | ( eps_p              [make_error("Error in variable definition!", selfm.err_temp)] >> nothing_p )
+                 | ( eps_p              [create_error( selfm.error_temp, "Error in variable definition!")] >> nothing_p )
                  );
 
             //parse the SET section where values are assigned to the parameters: SET p1=2.5; p2:=3.1;
             set_section
                 = str_p("SET")
                 >> *( equation_pars     [add_param_assignment( selfm.model, equation_pars.equation)]
-                    | ( eps_p           [make_error( "Error in SET section!", selfm.err_temp)] >> nothing_p )
+                    | ( eps_p           [create_error( selfm.error_temp, "Error in SET section!")] >> nothing_p )
                     )
                 ;
 
@@ -338,7 +339,7 @@ struct ps_model : public spirit::grammar<ps_model>
             equation_section
                 =  str_p("EQUATION")
                 >> *(   equation_pars   [add_equation( selfm.model, equation_pars.equation)]
-                    | ( eps_p           [make_error( "Error in EQUATION section!", selfm.err_temp)] >> nothing_p)
+                    | ( eps_p           [create_error( selfm.error_temp, "Error in EQUATION section!")] >> nothing_p)
                     )
                 ;
 
@@ -346,23 +347,23 @@ struct ps_model : public spirit::grammar<ps_model>
             initial_section
                 =  str_p("INITIAL")
                 >> *(   equation_pars   [add_init_equation( selfm.model, equation_pars.equation)]
-                    |   (eps_p          [make_error( "Error in INITIAL section!", selfm.err_temp)] >> nothing_p)
+                    |   (eps_p          [create_error( selfm.error_temp, "Error in INITIAL section!")] >> nothing_p)
                     )
                 ;
 
             //parse the SOLUTIONPARAMETERS section
             solutionparameters_section
-                = str_p("SOLUTIONPARAMETERS")           /*[&start_sol_parms]*/ >>
-                  *(    solutionparameters_assignment   /*[&add_sol_parms]*/
-                   |   (eps_p[make_error("Error in SOLUTIONPARAMETERS section!", selfm.err_temp)] >> nothing_p)
+                = str_p("SOLUTIONPARAMETERS") >>
+                  *(    solutionparameters_assignment
+                   |   (eps_p               [create_error( selfm.error_temp, "Error in SOLUTIONPARAMETERS section!")] >> nothing_p)
                    );
             solutionparameters_assignment
                 = ( str_p("ReportingInterval") >> ":=" >>
-                    (real_p >> eps_p)                   [assign_a(selfm.model.solutionParameters.reportingInterval)] >>
+                    (real_p >> eps_p)       [assign_a(selfm.model.solutionParameters.reportingInterval)] >>
                     +ch_p(';')
                   )
                 | ( str_p("SimulationTime") >> ":=" >>
-                    (real_p  >> eps_p)                  [assign_a(selfm.model.solutionParameters.simulationTime)] >>
+                    (real_p  >> eps_p)      [assign_a(selfm.model.solutionParameters.simulationTime)] >>
                     +ch_p(';')
                   );
         }

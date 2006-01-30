@@ -26,6 +26,7 @@
 // #include "siml_ps_model.h"
 #include "siml_ps_toplevel.h"
 #include "siml_pyprocessgenerator.h"
+#include "siml_cmerror.h"
 
 //#include <boost/spirit.hpp>
 #include <boost/spirit/core.hpp>
@@ -92,30 +93,19 @@ void Parser::doParse()
     parse_info<> info;
     info = boost::spirit::parse(inputCStr, toplevel_grammar, skip);
 
-    if(info.full) {
-        cout << "parser consumed all input.\n";
-    }
-    else if(info.hit) {
-        cout << "parser consumed input partially.\n";
-    }
-    else
-    {
-        cout << "parsing failed.\n";
-    }
+    if     (info.full){ cout << "parser consumed all input.\n"; }
+    else if(info.hit) { cout << "parser consumed input partially.\n"; }
+    else              { cout << "parsing failed.\n"; }
 
-//     cout << "possible error at:" << info.stop << endl;
-
-//     show_CmCodeRepository(parse_result);
     parse_result->display();
 
     //generate python program from CmCodeRepository
     std::ofstream pyOutputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/testproc.py");
     PyProcessGenerator pyGen(parse_result, pyOutputStream, cerr);
-
     pyGen.generateAll();
-
     pyOutputStream.close();
 
+    CmError::printStorageToCerr();
     return;
 }
 

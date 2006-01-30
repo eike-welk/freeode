@@ -66,7 +66,7 @@ Currently the format is somewhat inspired by gcc's error messages:
 /home/eike/.../src/siml_cmerror.cpp:66: error: syntax error before `}' token
  */
 siml::CmError siml::CmError::createError(
-        std::string & message, std::string & file, uint line, Severity howBad)
+        std::string const & message, std::string const & file, uint line, Severity howBad)
 {
     string fileLineStr;
     if      ( line == 0 )    { fileLineStr = ""; }

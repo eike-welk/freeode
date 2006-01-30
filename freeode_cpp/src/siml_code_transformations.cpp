@@ -18,7 +18,10 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
+
 #include "siml_code_transformations.h"
+#include "siml_cmerror.h"
+
 #include <boost/format.hpp>
 
 
@@ -90,7 +93,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
                 "Procedure: %2%; Submodel where the error happened: %3%.\n"
                 "(Maybe there are circular dependencies.)"
                 ) % recursionLevelMax % outFlatModel->name % inCompositeModel->name ).str();
-        inRepo->error.push_back(CmErrorDescriptor(msg) );
+        CmError::addError( msg, 0); ///@todo add iterator
         outFlatModel->errorsDetected = true;
         return;
     }
@@ -104,13 +107,8 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
     {
         CmMemoryDescriptor mem = *itM;
         mem.name.prepend(inPathPrefix);//put prefix in front of parameter name
-        shared_ptr<CmErrorDescriptor> err;
-        err = outFlatModel->addParameter(mem);// add to model
-        if( err )
-        {
-            inRepo->error.push_back(*err);
-            outFlatModel->errorsDetected = true;
-        }
+        bool ok = outFlatModel->addParameter(mem);// add to model
+        if( !ok ) { outFlatModel->errorsDetected = true; }
     }
 
     //copy variables
@@ -120,13 +118,8 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
     {
         CmMemoryDescriptor mem = *itM;
         mem.name.prepend(inPathPrefix); //put prefix in front of variable name
-        shared_ptr<CmErrorDescriptor> err;
-        err = outFlatModel->addVariable(mem); // add to model
-        if( err )
-        {
-            inRepo->error.push_back(*err);
-            outFlatModel->errorsDetected = true;
-        }
+        bool ok = outFlatModel->addVariable(mem); // add to model
+        if( !ok ) { outFlatModel->errorsDetected = true; }
     }
 
     //copy parameter assignments (SET)
@@ -177,7 +170,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
         {
             string msg = ( format(
                     "The model %1% does not exist!" ) % itS->type ).str();
-            inRepo->error.push_back(CmErrorDescriptor(msg) );
+            CmError::addError( msg, 0); ///@todo add iterator
             outFlatModel->errorsDetected = true;
             continue;
         }
