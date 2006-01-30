@@ -19,17 +19,17 @@
  ***************************************************************************/
 #include "siml_error_generator.h"
 
-siml::error_generator::error_generator(std::string error_message, CmErrorDescriptor& error) :
-        m_error_message(error_message),
-//         m_repository(repository)
-        m_error(error)
-{
-}
-
-
-siml::error_generator::~error_generator()
-{
-}
+// siml::error_generator::error_generator(std::string error_message, CmErrorDescriptor& error) :
+//         m_error_message(error_message),
+// //         m_repository(repository)
+//         m_error(error)
+// {
+// }
+//
+//
+// siml::error_generator::~error_generator()
+// {
+// }
 
 
 /*!
@@ -66,26 +66,26 @@ Add some pieces of the program to the error message. This should show where the
 error happened.
 So the error can be located and understood more easyly.
 */
-void
-siml::add_error_context(CmErrorDescriptor&  inOutError,
-                        char const * offending_code_first, char const * offending_code_last)
-{
-    //offending_code_first, offending_code_last point often to the same byte
-    uint i, newlines;
-
-    ///@todo protect against moving the iterator before the beginning or past the end of the buffer.
-    //go one line up (move max 200 chars)
-    for( i=0, newlines=0; i<200 && newlines<2; ++i, --offending_code_first )
-    {
-        if( *offending_code_first == '\n' ) { ++newlines; }
-    }
-    ++ ++offending_code_first;
-
-    //go to next newline (move max 200 chars)
-    for( i=0, offending_code_last; i<200 && *offending_code_last != '\n'; ++i, ++offending_code_last ) {}
-
-    //create new error message
-    std::string offending_code(offending_code_first, offending_code_last);
-    std::string oldMsg = inOutError.error_message;
-    inOutError.error_message = offending_code + "\n" + oldMsg + "\n";
-}
+// void
+// siml::add_error_context(CmErrorDescriptor&  inOutError,
+//                         char const * offending_code_first, char const * offending_code_last)
+// {
+//     //offending_code_first, offending_code_last point often to the same byte
+//     uint i, newlines;
+//
+//     ///@todo protect against moving the iterator before the beginning or past the end of the buffer.
+//     //go one line up (move max 200 chars)
+//     for( i=0, newlines=0; i<200 && newlines<2; ++i, --offending_code_first )
+//     {
+//         if( *offending_code_first == '\n' ) { ++newlines; }
+//     }
+//     ++ ++offending_code_first;
+//
+//     //go to next newline (move max 200 chars)
+//     for( i=0, offending_code_last; i<200 && *offending_code_last != '\n'; ++i, ++offending_code_last ) {}
+//
+//     //create new error message
+//     std::string offending_code(offending_code_first, offending_code_last);
+//     std::string oldMsg = inOutError.error_message;
+//     inOutError.error_message = offending_code + "\n" + oldMsg + "\n";
+// }
