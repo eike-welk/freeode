@@ -257,7 +257,7 @@ siml::CmModelDescriptor::display() const
 
     cout << "parameters:" << endl;
     for(uint i=0; i<parameter.size(); ++i) {
-        cout << "|  " << parameter[i].name << ", " << parameter[i].type << ", " << parameter[i].default_expr << endl;
+        cout << "|  " << parameter[i].name << ", " << parameter[i].type << "\n";
     }
 
     cout << "sub models:" << endl;

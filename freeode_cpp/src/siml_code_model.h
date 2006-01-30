@@ -69,14 +69,14 @@ struct CmMemoryDescriptor
 //     std::string name;
     //!identifier name in generated program
     std::string name_program;
-    //!REAL or INT
+    //!REAL, INT, ANY (currently unused)
     std::string type;
     //!the default value, relevant if no value is set. (parameter)
-    CmFormula default_expr;
+//     CmFormula default_expr;
     //!mathematical expression from the set section. (parameter)
-    CmFormula set_expr;
+//     CmFormula set_expr;
     //!expression for assignment of an initial value. (variable)
-    CmFormula initial_expr;
+//     CmFormula initial_expr;
     //!text that was parsed to gather the information in this object.
     std::string definition_text;
 
@@ -84,8 +84,6 @@ struct CmMemoryDescriptor
     bool is_state_variable;
 
     CmMemoryDescriptor() : type("ANY"), is_state_variable(false) {};
-
-    ///@todo add check if variable name is valid (!=""; !=" "; !="123")
 };
 //!container for the parameter descriptors of a model. See: @see CmParameterDescriptor
 typedef std::vector<CmMemoryDescriptor> CmMemoryTable;
