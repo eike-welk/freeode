@@ -25,8 +25,8 @@ bin_PROGRAMS = sim_lang
 
 # the application source, library search path, and link libraries
 sim_lang_SOURCES = main.cpp parser.cpp siml_code_model.cpp \
-	siml_pyprocessgenerator.cpp siml_code_transformations.cpp siml_cmpath.cpp siml_cmformula.cpp \
-	siml_cmerror.cpp
+		siml_pyprocessgenerator.cpp siml_code_transformations.cpp siml_cmpath.cpp siml_cmformula.cpp \
+		siml_cmerror.cpp siml_ps_name.cpp
 sim_lang_LDFLAGS = $(KDE_RPATH) $(all_libraries)
 sim_lang_LDADD = $(LIB_KDEUI)
 

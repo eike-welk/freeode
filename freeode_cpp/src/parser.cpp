@@ -50,19 +50,6 @@ using boost::shared_ptr;
 
 Parser::Parser()
 {
-
-    ///The keywords. @todo put this into the definition of ps_name
-    char const * const keywords[] = {
-        "MODEL","PARAMETER", "VARIABLE", "SET", "EQUATION", "AS", "DEFAULT",
-        "ASSIGN", "IF", "ELSE",
-        "TYPICAL",
-        "END"
-    };
-    std::size_t const keywords_size = sizeof(keywords) / sizeof(keywords[0]);
-
-    for (std::size_t i = 0; i < keywords_size; ++i) {
-            ps_name::reserved_keywords.add(keywords[i]);
-    }
 }
 
 

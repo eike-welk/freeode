@@ -24,8 +24,8 @@
  *   under the Boost Software License, Version 1.0.
  ******************************************************************************/
 
-#ifndef SIML_NAME_GRAMMAR_HPP
-#define SIML_NAME_GRAMMAR_HPP
+#ifndef SIML_PS_NAME_HPP
+#define SIML_PS_NAME_HPP
 
 #include <boost/spirit/core.hpp>
 #include <boost/spirit/symbols/symbols.hpp>
@@ -45,39 +45,52 @@ The keyword rejection can be turned on and off in the constructor.
 For rejection of keywords the ps_name contains a static member
 reserved_keywords (a symbol table), where keywords should be added at the start
 of the program.
+
+@todo implement the correct template arguments for the position_iterator.
+@todo see: http://www.boost.org/libs/spirit/doc/symbols.html
 @author Eike Welk <eike.welk@post.rwth-aachen.de>
  */
 class ps_name : public spirit::grammar<ps_name>
 {
-    spirit::symbols<char> dummy_reserved_keywords;
+    public:
+    //The coice of the <char> template agument is arbitrary. We won't look at it.
+    typedef spirit::symbols<char> symbol_table_t;
 
-public:
-    // We are only interested in the names themselves.
-    // char is just the smallest space waster available.
-    static spirit::symbols<char> reserved_keywords;
-    spirit::symbols<char> const & keywords;
+    private:
+    //!empty symbol table
+    static symbol_table_t empty_table;
+    //!symbol table that contains the keywords
+    static symbol_table_t reserved_keywords;
+    //!pointer to one of the static symbol tables
+    symbol_table_t const * keywords;
 
-    //!construct the ps_name
+    //!initialize the symbol table "reserved_keywords" with the language's keywords
+    static symbol_table_t init_reserved_keywords();
+
+    public:
+    //!construct the grammar
     /*! @param check_reserved_keywords if true keywords are rejected, otherwise keywords are accepted too.
     */
     ps_name(bool check_reserved_keywords = true)
-        : keywords(check_reserved_keywords ?
-                   reserved_keywords :
-                   dummy_reserved_keywords)
-    {}
+    {
+        if( check_reserved_keywords )   { keywords = &reserved_keywords; }
+        else                            { keywords = &empty_table; }
+    }
 
     //!When the grammar is used the framework creates this struct.
     template <typename ScannerT>
-    struct definition {
+    struct definition
+    {
         definition(ps_name const & self)
         {
             using spirit::alpha_p;
             using spirit::alnum_p;
             using spirit::lexeme_d;
+            //convert the pointer into a refference (the scanner syntax looks better this way)
+            symbol_table_t const & keywords = *self.keywords;
 
-            name
-                = lexeme_d[ ((alpha_p | '_') >> *(alnum_p | '_')) ]
-                  - self.keywords;
+            name =
+                lexeme_d[ ((alpha_p | '_') >> *(alnum_p | '_')) ] - keywords;
         }
 
         //!Returns the start symbol. Called by spirit's internal magic.
@@ -90,8 +103,13 @@ public:
 };
 
 //Initialize the static symbol table
-spirit::symbols<char> ps_name::reserved_keywords;
+/*ps_name::symbol_table_t ps_name::reserved_keywords;
+ps_name::symbol_table_t ps_name::empty_table;*/
+//     ps_name::reserved_keywords = "MODEL","PARAMETER", "VARIABLE", "SET", "EQUATION", "AS", "DEFAULT",
+//     "ASSIGN", "IF", "ELSE",
+//     "TYPICAL",
+//     "END";
 
 } // namespace siml
 
-#endif // SIML_NAME_GRAMMAR_HPP
+#endif // SIML_PS_NAME_HPP
