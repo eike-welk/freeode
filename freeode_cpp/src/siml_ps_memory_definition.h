@@ -55,18 +55,19 @@ struct ps_memory_definition : public spirit::grammar<ps_memory_definition>
 
     ~ps_memory_definition(){}
 
-    /*!Functor that clears all members of the memory definition*/
-    struct clear_mem_descriptor
+    /*!Functor that initializes all members of the memory definition*/
+    struct start_mem_descriptor
     {
         CmMemoryDescriptor & m_memory;
 
-        clear_mem_descriptor( CmMemoryDescriptor & mem):
+        start_mem_descriptor( CmMemoryDescriptor & mem):
                 m_memory( mem) {}
 
         template <typename IteratorT>
-        void operator()( IteratorT, IteratorT) const
+                void operator()( IteratorT begin, IteratorT) const
         {
             m_memory=CmMemoryDescriptor();
+            m_memory.defBegin = begin;
         }
     };
 
@@ -88,7 +89,7 @@ struct ps_memory_definition : public spirit::grammar<ps_memory_definition>
             ps_memory_definition & selfm = const_cast<ps_memory_definition &>(self);
 
             memory_definition_rule
-                =  name                                 [clear_mem_descriptor( selfm.memory)]  //clear temporary storage
+                =  name                                 [start_mem_descriptor( selfm.memory)]  //clear temporary storage
                                                         [assign_a(selfm.memory.name)]   //store the name
                 >> !("AS" >> ( name | "REAL" )          [assign_a(selfm.memory.type)])  //store the type
                 >> +ch_p(';')

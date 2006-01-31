@@ -33,6 +33,7 @@
 //#include <boost/spirit/actor/push_back_actor.hpp>
 //#include <boost/spirit/phoenix.hpp>
 //#include <boost/spirit/symbols/symbols.hpp>
+#include <boost/spirit/iterator.hpp>
 
 #include <iostream>
 #include <vector>
@@ -78,20 +79,28 @@ void Parser::doParse()
     std::ifstream inputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/test.siml");
     std::istreambuf_iterator<char> itBegin(inputStream);
     std::istreambuf_iterator<char> itEnd;
-    std::string<char> inputStr(itBegin, itEnd);
+    std::string<char> inputStr="\n\n\n"+std::string(itBegin, itEnd)+"\n\n\n"; //protect against iterating beyond begin or end of the string by the error generation function.
     char const * inputCStr = inputStr.c_str();
 
+    ///@todo using different iterators than "char const *" does not work.
+    ///@todo make sure BufferIterator ("siml_code_model.h") is equal to iterator_t
+//     typedef position_iterator<char const *> iterator_t;
+//     iterator_t begin(inputCStr, inputCStr+strlen(inputCStr), "test.file");
+//     iterator_t end;
+    typedef char const * iterator_t;
+    iterator_t begin = inputCStr;
+    iterator_t end = inputCStr+strlen(inputCStr);
+
     cout << "The input: \n";
-    cout << inputCStr;
+    cout << inputStr;
     cout << "-----------------------------------------------------\n\n";
 
     shared_ptr<CmCodeRepository> parse_result(new CmCodeRepository);
-//     CmCodeRepository* parse_result_ptr = parse_result;
-//     ps_model model(parse_result.get());
     ps_toplevel toplevel_grammar(parse_result.get());
     ps_skip skip;
     parse_info<> info;
-    info = boost::spirit::parse(inputCStr, toplevel_grammar, skip);
+//     info = ps_toplevel.parse(begin, end, skip);
+    info = boost::spirit::parse(begin, end, toplevel_grammar, skip);
 
     if     (info.full){ cout << "parser consumed all input.\n"; }
     else if(info.hit) { cout << "parser consumed input partially.\n"; }

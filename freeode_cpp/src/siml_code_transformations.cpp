@@ -93,7 +93,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
                 "Procedure: %2%; Submodel where the error happened: %3%.\n"
                 "(Maybe there are circular dependencies.)"
                 ) % recursionLevelMax % outFlatModel->name % inCompositeModel->name ).str();
-        CmError::addError( msg, 0); ///@todo add iterator
+        CmError::addError( msg, (char const *)0); ///@todo add iterator
         outFlatModel->errorsDetected = true;
         return;
     }
@@ -170,7 +170,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
         {
             string msg = ( format(
                     "The model %1% does not exist!" ) % itS->type ).str();
-            CmError::addError( msg, 0); ///@todo add iterator
+            CmError::addError( msg, (char const *)0); ///@todo add iterator
             outFlatModel->errorsDetected = true;
             continue;
         }

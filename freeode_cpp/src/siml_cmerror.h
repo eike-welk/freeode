@@ -53,32 +53,33 @@ public:
 
     //!Add error to central storage.
     void addToStorage();
-    //!Add error to central storage.
-//     static void addToStorage(CmError const & error);
 
     //!create error, put it into central storage
-    /*!This function asks the iterator for the file and the line where the eror happened.
-       When you don't happen to have an iterator pass in 0 for where. */
+    /*!When you don't happen to have an iterator pass in 0 for where. */
     template <typename IteratorT>
-    static void addError(std::string const & message, IteratorT const & where, Severity howBad = Error)
+    static void addError(std::string const & message, IteratorT where, Severity howBad = Error)
     {
         CmError theError = createError( message, where, howBad);
         theError.addToStorage();
     }
+
     //!create error, return it
     /*!This function asks the iterator for the file and the line where the eror happened.*/
     template <typename IteratorT>
-    static CmError createError(std::string const & message, IteratorT const & where, Severity howBad = Error)
+    static CmError createError(std::string const & message, IteratorT /*where*/, Severity howBad)
     {
+        ///@todo introduce the file line iterator
         std::string file;
         uint line = 0;
-        ///@todo introduce the file line iterator
-        ///@todo test with dynamic cast if the error can be questioned for file and line
-
         return createError( message, file, line, howBad);
     }
-    //!create error, return it
+
+    private:
+    //!create error, return it.
     static CmError createError(std::string const & message, std::string const & file, uint line=0, Severity howBad = Error);
+    //!create error, return it.
+    static CmError createErrorChar(std::string const & message, char const * where, Severity howBad);
+    public:
 
     //!Dump the whole storage into cerr.
     static void printStorageToCerr();
@@ -91,6 +92,18 @@ public:
     //!Central storage for all errors
     static ErrorContainer s_ErrorStorage;
 };
+
+
+//!create error, return it
+/*!
+Template specialization for char const *. Includes some of the errornous code into the error message. See:
+http://www.lrde.epita.fr/cgi-bin/twiki/view/Know/MemberFunctionsTemplateSpecialization
+ */
+template <>
+inline CmError CmError::createError<char const *>(std::string const & message, char const * where, Severity howBad)
+{
+    return createErrorChar( message, where, howBad);
+}
 
 }
 

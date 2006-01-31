@@ -87,33 +87,50 @@ siml::CmError siml::CmError::createError(
 
 
 /*!
+Alternative imlementation for error message generation. This works only with char const *.
+
 Add some pieces of the program to the error message. This should show where the
 error happened.
 So the error can be located and understood more easylie.
- */
-// void siml::CmError::createError(
-//         CmErrorDescriptor&  inOutError,
-//         char const * offending_code_first, char const * offending_code_last)
-// {
-//     //offending_code_first, offending_code_last point often to the same byte
-//     uint i, newlines;
-//
-//     ///@todo protect against moving the iterator before the beginning or past the end of the buffer.
-//     //go one line up (move max 200 chars)
-//     for( i=0, newlines=0; i<200 && newlines<2; ++i, --offending_code_first )
-//     {
-//         if( *offending_code_first == '\n' ) { ++newlines; }
-//     }
-//     ++ ++offending_code_first;
-//
-//     //go to next newline (move max 200 chars)
-//     for( i=0, offending_code_last; i<200 && *offending_code_last != '\n'; ++i, ++offending_code_last ) {}
-//
-//     //create new error message
-//     std::string offending_code(offending_code_first, offending_code_last);
-//     std::string oldMsg = inOutError.error_message;
-//     inOutError.error_message = offending_code + "\n" + oldMsg + "\n";
-// }
+
+@note protect against moving the iterator before the beginning or past the end of the buffer: append some \\n at begining and end
+*/
+siml::CmError siml::CmError::createErrorChar(std::string const & message, char const * where, Severity howBad)
+{
+    //offending_code_first, offending_code_last point often to the same byte
+    uint i, newlines;
+    char const * offending_code_first = where;
+    char const * offending_code_last  = where;
+    std::string offending_code;
+
+    if( where )
+    {
+        //go one line up (move max 200 chars)
+        for( i=0, newlines=0; i<200 && newlines<2; ++i, --offending_code_first )
+        {
+            if( *offending_code_first == '\n' ) { ++newlines; }
+        }
+        ++ ++offending_code_first;
+
+        //go to next newline (move max 200 chars)
+        for( i=0, offending_code_last; i<200 && *offending_code_last != '\n'; ++i, ++offending_code_last ) {}
+
+        //put the two lines of program into a string
+        offending_code = std::string( offending_code_first, offending_code_last);
+    }
+
+    string howBadStr;
+    if     ( howBad == Error )  { howBadStr = "\nerror:\n"; }
+    else if( howBad == Warnig ) { howBadStr = "\nwarnig:\n"; }
+    else                        { howBadStr = "\ninfo:\n"; }
+
+    //create error with nice message
+    CmError theError;
+    theError.m_severity = howBad;
+    theError.m_message = offending_code + howBadStr + message;
+
+    return theError;
+}
 
 
 /*!Dump the whole storage into cerr.*/

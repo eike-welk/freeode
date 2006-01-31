@@ -55,18 +55,19 @@ struct ps_equation : public spirit::grammar<ps_equation>
     //!The parsed equation.
     CmEquationDescriptor equation;
 
-    /*!Functor that clears all members of the equation*/
-    struct clear_equation
+    /*!Functor that initializes all members of the equation.*/
+    struct start_equation
     {
         CmEquationDescriptor & m_equation;
 
-        clear_equation( CmEquationDescriptor & equation):
+        start_equation( CmEquationDescriptor & equation):
                 m_equation( equation) {}
 
         template <typename IteratorT>
-        void operator()( IteratorT, IteratorT) const
+        void operator()( IteratorT begin, IteratorT) const
         {
             m_equation=CmEquationDescriptor();
+            m_equation.defBegin = begin;
         }
     };
 
@@ -87,7 +88,7 @@ struct ps_equation : public spirit::grammar<ps_equation>
             ps_equation & selfm = const_cast<ps_equation &>(self);
 
             equation_rule
-                =  path         [clear_equation(selfm.equation)]
+                =  path         [start_equation(selfm.equation)]
                                 [assign_a(selfm.equation.lhs, path.path)]
                 >> str_p(":=")  /*[assign_a( selfm.equation.is_assignment, true_val)]*/
                 >> formula      [assign_a( selfm.equation.rhs, formula.formula)]

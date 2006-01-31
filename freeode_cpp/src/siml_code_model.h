@@ -32,33 +32,29 @@
 
 namespace siml {
 
+//!Iterator for the parsed text @todo this belongs into some configuration file
+typedef char const * BufferIterator;
+
 /*!
 @short Data of parameter or variable
 
 This is the parsing result for one line of the PARAMETER section. The code
 generator will later use this information.
 @todo A pair of pointers: char const * where_first, where_last; instead of std::string definition_text would be a good idea, to aid the generation of code generator errors.
+@todo A split between syntax tree and code generation structure may be a good idea.
 */
 struct CmMemoryDescriptor
 {
     //!parameter name
+    /*! This is a path (and not a string) because CmMemoryDescriptor represents
+    parsed definitions (variable or parameter) and memory that needs to be allocated. */
     CmPath name;
-//     std::string name;
-    //!identifier name in generated program
-    std::string name_program;
     //!REAL, INT, ANY (currently unused)
     std::string type;
-    //!the default value, relevant if no value is set. (parameter)
-//     CmFormula default_expr;
-    //!mathematical expression from the set section. (parameter)
-//     CmFormula set_expr;
-    //!expression for assignment of an initial value. (variable)
-//     CmFormula initial_expr;
-    //!text that was parsed to gather the information in this object.
-    std::string definition_text;
-
     //!true if variable is an integrated variable
     bool is_state_variable;
+    //!Iterator to the place where the definition started (into the file buffer)
+    BufferIterator defBegin;
 
     CmMemoryDescriptor() : type("ANY"), is_state_variable(false) {};
 };
@@ -79,8 +75,8 @@ struct CmEquationDescriptor
 //     bool is_assignment;
     //!Is lhs a time differential?
     bool isOdeAssignment() const;
-    //!text that was parsed to gather the information in this object.
-    std::string definition_text;
+    //!Iterator to the place where the definition started (into the file buffer)
+    BufferIterator defBegin;
 
     CmEquationDescriptor() /*: is_assignment(false), is_ode_assignment(false)*/ {};
 };
@@ -99,6 +95,8 @@ struct CmSubModelLink
     std::string name;
     //!The sub-model's type.
     std::string type;
+    //!Iterator to the place where the definition started (into the file buffer)
+    BufferIterator defBegin;
 };
 //!container for model references.
 typedef std::vector<CmSubModelLink> CmSubModelTable;
@@ -109,8 +107,12 @@ typedef std::vector<CmSubModelLink> CmSubModelTable;
 */
 struct CmSolutionParameterDescriptor
 {
+    //!The interval between reported time points
     std::string reportingInterval;
+    //!The total simulation time
     std::string simulationTime;
+    //!Iterator to the place where the definition started (into the file buffer)
+    BufferIterator defBegin;
 };
 
 
@@ -137,6 +139,8 @@ struct CmModelDescriptor
     CmEquationTable initialEquation;
     //!Some simulation options
     CmSolutionParameterDescriptor solutionParameters;
+    //!Iterator to the place where the definition started (into the file buffer)
+    BufferIterator defBegin;
 
     //!If true: the model is really a "PROCESS"; else: it is a "MODEL"
     bool isProcess;
@@ -195,6 +199,7 @@ struct CmCodeRepository
     void display() const;
     //!Find a model declaration by name
     CmModelDescriptor * findModel(std::string const & name);
+    ///@todo we need a const version of the function
 //     CmModelDescriptor const * findModel(std::string const & name) const;
 
 };

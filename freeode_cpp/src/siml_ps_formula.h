@@ -44,13 +44,6 @@
 #include <iostream>
 
 
-///use these definitions?
-// typedef char                    char_t;
-// typedef file_iterator <char_t>  iterator_t;
-// typedef scanner<iterator_t>     scanner_t;
-// typedef rule <scanner_t>        rule_t;
-
-
 namespace siml {
 
 namespace spirit = boost::spirit;

@@ -57,7 +57,7 @@ siml::CmModelDescriptor::addParameter(CmMemoryDescriptor inPar)
                         "The names of sub-models, variables and parameters must be unique "
                         "within a model.") % inPar.name
                 ).str();
-        CmError::addError( msg, 0); ///@todo add iterator
+        CmError::addError( msg, (char const *)0); ///@todo add iterator
         return false;
     }
 
@@ -86,7 +86,7 @@ siml::CmModelDescriptor::addSubModel(CmSubModelLink inSub)
                 "The names of sub-models, variables and parameters must be unique "
                 "within a model.") % inSub.name
                 ).str();
-        CmError::addError( msg, 0); ///@todo add iterator
+        CmError::addError( msg, (char const *)0); ///@todo add iterator
         return false;
     }
 
@@ -111,7 +111,7 @@ bool siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
                 "The names of sub-models, variables and parameters must be unique "
                 "within a model.") % inVar.name
                 ).str();
-        CmError::addError( msg, 0); ///@todo add iterator
+        CmError::addError( msg, (char const *)0); ///@todo add iterator
         return false;
     }
 
@@ -179,7 +179,7 @@ bool siml::CmModelDescriptor::setVariableIntegrated(std::string stateVarName)
                 (format("No variable with name %1% exists! "
                         "You used the symbol %1% as a state variable.") % stateVarName
                 ).str();
-        CmError::addError( msg, 0); ///@todo add iterator
+        CmError::addError( msg, (char const *)0); ///@todo add iterator
         return false;
     }
 

@@ -81,7 +81,7 @@ struct ps_model : public spirit::grammar<ps_model>
 //         code_repository = result_storage;
 //     }
 
-    /*!Functor that clears the temporary storage for model parsing.*/
+    /*!Functor that initializes the temporary storage for model parsing.*/
     struct start_model
     {
         CmModelDescriptor & m_model;
@@ -91,13 +91,14 @@ struct ps_model : public spirit::grammar<ps_model>
             m_model(model), m_error( error) {}
 
         template <typename IteratorT>
-        void operator()( IteratorT, IteratorT) const
+        void operator()( IteratorT begin, IteratorT) const
         {
             m_model = CmModelDescriptor();
+            m_model.defBegin = begin;
             m_error = CmError();
         }
     };
-//     finish_model_error( model, false_val)
+
     /*!Functor that finishes the model. If necessary it puts the temporary
     error into the list of errors.*/
     struct finish_model_error
@@ -241,7 +242,22 @@ struct ps_model : public spirit::grammar<ps_model>
         void operator()( IteratorT, IteratorT) const
         {
             m_model.addInitialEquation( m_equation);
-            ///@todo errors
+        }
+    };
+
+    /*!Functor that initializez the sub-model data*/
+    struct start_sub_model
+    {
+        CmSubModelLink & m_submod;
+
+        start_sub_model( CmSubModelLink & submod):
+            m_submod( submod) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT begin, IteratorT) const
+        {
+            m_submod = CmSubModelLink();
+            m_submod.defBegin = begin;
         }
     };
 
@@ -259,6 +275,22 @@ struct ps_model : public spirit::grammar<ps_model>
         {
             m_model.addSubModel( m_submod);
             ///@todo errors
+        }
+    };
+
+    /*!Functor that initializez the "SOLUTIONPARAMETERS" data*/
+    struct start_solution_parameters
+    {
+        ps_model & m_model_grammar;
+
+        start_solution_parameters( ps_model & model_grammar):
+            m_model_grammar( model_grammar) {}
+
+        template <typename IteratorT>
+        void operator()( IteratorT begin, IteratorT) const
+        {
+            m_model_grammar.model.solutionParameters = CmSolutionParameterDescriptor();
+            m_model_grammar.model.solutionParameters.defBegin = begin;
         }
     };
 
@@ -315,7 +347,8 @@ struct ps_model : public spirit::grammar<ps_model>
                      )
                 ;
             unit_definition
-                =  name                 [assign_a( selfm.submod_temp.name)]   //store name in temporary storage
+                =  name                 [start_sub_model( selfm.submod_temp)]
+                                        [assign_a( selfm.submod_temp.name)]   //store name in temporary storage
                 >> !("AS" >> name       [assign_a( selfm.submod_temp.type)])  //store sub model type
                 >> (+ch_p(';'))         [add_sub_model( selfm.model, selfm.submod_temp)] //add sub-model definition to model
                 ;
@@ -353,17 +386,17 @@ struct ps_model : public spirit::grammar<ps_model>
 
             //parse the SOLUTIONPARAMETERS section
             solutionparameters_section
-                = str_p("SOLUTIONPARAMETERS") >>
-                  *(    solutionparameters_assignment
-                   |   (eps_p               [create_error( selfm.error_temp, "Error in SOLUTIONPARAMETERS section!")] >> nothing_p)
+                = str_p("SOLUTIONPARAMETERS")   [start_solution_parameters( selfm)]
+                >>*(    solutionparameters_assignment
+                   |   (eps_p                   [create_error( selfm.error_temp, "Error in SOLUTIONPARAMETERS section!")] >> nothing_p)
                    );
             solutionparameters_assignment
                 = ( str_p("ReportingInterval") >> ":=" >>
-                    (real_p >> eps_p)       [assign_a(selfm.model.solutionParameters.reportingInterval)] >>
+                    (real_p >> eps_p)           [assign_a(selfm.model.solutionParameters.reportingInterval)] >>
                     +ch_p(';')
                   )
                 | ( str_p("SimulationTime") >> ":=" >>
-                    (real_p  >> eps_p)      [assign_a(selfm.model.solutionParameters.simulationTime)] >>
+                    (real_p  >> eps_p)          [assign_a(selfm.model.solutionParameters.simulationTime)] >>
                     +ch_p(';')
                   );
         }
