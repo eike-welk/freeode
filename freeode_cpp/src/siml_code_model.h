@@ -195,15 +195,19 @@ struct CmCodeRepository
     //!List of processes
     CmModelTable process;
 
+    //!Static pointer to the one and only code model
+    static CmCodeRepository * repository;
+
     //!Display the repositorie's contents (for debuging)
     void display() const;
     //!Find a model declaration by name
     CmModelDescriptor * findModel(std::string const & name);
     ///@todo we need a const version of the function
 //     CmModelDescriptor const * findModel(std::string const & name) const;
-
 };
 
+//!Accessor function for the one and only code model
+inline CmCodeRepository * repository() { return CmCodeRepository::repository; };
 } //namespace siml
 
 #endif // SIML_CODE_MODEL_HPP

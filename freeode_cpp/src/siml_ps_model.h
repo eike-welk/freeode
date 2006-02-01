@@ -65,15 +65,13 @@ struct ps_model : public spirit::grammar<ps_model>
     CmSubModelLink submod_temp;
     //!error that is maybe detected.
     CmError error_temp;
-    //!pointer to the central storage of parse results
-    CmCodeRepository* code_repository;
 
     public:
     //!Construct the grammar
     /*!Before using the grammar it must have a pointer to the global result storage.
     Therefore the function set_result_storage (...) must be called. (once for all
     ps_model instances)*/
-    ps_model(CmCodeRepository* result_storage): code_repository(result_storage)  {}
+    ps_model() {}
 
     //!Give the grammar a pointer to the global storage for parse results.
 //     void set_result_storage(CmCodeRepository* result_storage)
@@ -120,11 +118,11 @@ struct ps_model : public spirit::grammar<ps_model>
 
             //put the model (or process) into the code repository
             if( m_grammar.model.isProcess ) {
-                m_grammar.code_repository->process.push_back(m_grammar.model);
+                repository()->process.push_back(m_grammar.model);
                 mp_type = "process ";
             }
             else {
-                m_grammar.code_repository->model.push_back(m_grammar.model);
+                repository()->model.push_back(m_grammar.model);
                 mp_type = "model ";
             }
 

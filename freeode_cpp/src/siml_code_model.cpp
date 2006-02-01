@@ -301,6 +301,10 @@ siml::CmModelDescriptor::display() const
 }
 
 
+/*!Static pointer to the one and only code model*/
+siml::CmCodeRepository * siml::CmCodeRepository::repository = new CmCodeRepository();
+
+
 /*!Iterate through all lists and display their contents.*/
 void
 siml::CmCodeRepository::display() const

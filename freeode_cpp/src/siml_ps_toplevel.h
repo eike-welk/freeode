@@ -50,18 +50,14 @@ The temporary varibles and the semantic actions reside in the namespace
  */
 struct ps_toplevel : public spirit::grammar<ps_toplevel>
 {
-    //!pointer to the central storage of parse results
-    CmCodeRepository* parse_result_storage;
-
     //!Construct the grammar and give it a pointer to the code model
-    ps_toplevel(CmCodeRepository* parse_storage): parse_result_storage( parse_storage) {}
+    ps_toplevel() {}
 
     //!When the grammar is used the framework creates this struct. All rules are defined here.
     template <typename ScannerT> struct definition
     {
         //!The grammar's rules.
-        definition(ps_toplevel const& self):
-            model( self.parse_result_storage)
+        definition(ps_toplevel const& self)
         {
             using spirit::str_p; using spirit::ch_p;
             using spirit::eps_p; using spirit::nothing_p;

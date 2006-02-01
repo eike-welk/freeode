@@ -41,9 +41,7 @@ namespace siml {
 */
 class PyProcessGenerator{
 public:
-    PyProcessGenerator( boost::shared_ptr<CmCodeRepository> inParseResult,
-                        std::ostream& inPyFile,
-                        std::ostream& inErrFile  );
+    PyProcessGenerator( std::ostream& inPyFile );
 
     ~PyProcessGenerator();
     //!generate python code for all processes
@@ -60,12 +58,8 @@ public:
     void genAccessFunction();
     void genGraphFunction();
 
-    //!The parsed siml program in binary form.
-    boost::shared_ptr<CmCodeRepository> m_ParseResult;
     //!The generateed python program is stored here
     std::ostream& m_PyFile;
-    //!The erors are stored here.
-    std::ostream& m_ErrFile;
 
     //!All parameters of the process
     CmMemoryTable m_Parameter;

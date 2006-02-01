@@ -82,8 +82,8 @@ void Parser::doParse()
     cout << inputStr;
     cout << "-----------------------------------------------------\n\n";
 
-    shared_ptr<CmCodeRepository> parse_result(new CmCodeRepository);
-    ps_toplevel toplevel_grammar(parse_result.get());
+//     shared_ptr<CmCodeRepository> parse_result(new CmCodeRepository);
+    ps_toplevel toplevel_grammar;
     ps_skip skip;
     parse_info<> info;
 //     info = ps_toplevel.parse(begin, end, skip);
@@ -93,11 +93,11 @@ void Parser::doParse()
     else if(info.hit) { cout << "parser consumed input partially.\n"; }
     else              { cout << "parsing failed.\n"; }
 
-    parse_result->display();
+    repository()->display();
 
     //generate python program from CmCodeRepository
     std::ofstream pyOutputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/testproc.py");
-    PyProcessGenerator pyGen(parse_result, pyOutputStream, cerr);
+    PyProcessGenerator pyGen( pyOutputStream);
     pyGen.generateAll();
     pyOutputStream.close();
 

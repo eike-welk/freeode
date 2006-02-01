@@ -37,12 +37,8 @@ using boost::shared_ptr;
 
 
 /*!Construct and initialize the object, but do not generate codee.*/
-siml::PyProcessGenerator::PyProcessGenerator(   boost::shared_ptr<CmCodeRepository> inParseResult,
-                                            std::ostream& inPyFile,
-                                            std::ostream& inErrFile  ) :
-        m_ParseResult(inParseResult),
+siml::PyProcessGenerator::PyProcessGenerator( std::ostream& inPyFile ) :
         m_PyFile(inPyFile),
-        m_ErrFile(inErrFile),
         m_StateVectorSize(0),
         m_ResultArrayColls(0)
 {
@@ -64,8 +60,8 @@ void siml::PyProcessGenerator::generateAll()
     genFileStart();
     //loop over all processs and generate a python object for each.
     //genProcessObject(0); ///@TODO generate all processes
-    cout << "Number of processes: " << m_ParseResult->process.size() << "\n";
-    for( uint i=0; i< m_ParseResult->process.size(); ++i)
+    cout << "Number of processes: " << repository()->process.size() << "\n";
+    for( uint i=0; i< repository()->process.size(); ++i)
     {
         genProcessObject(i);
     }
@@ -110,16 +106,16 @@ Create a single process
 void siml::PyProcessGenerator::genProcessObject(int iProcess)
 {
     shared_ptr<CmModelDescriptor> procFinal;
-    procFinal = createFlatModel( &m_ParseResult->process[iProcess], m_ParseResult.get());
+    procFinal = createFlatModel( &repository()->process[iProcess], repository());
     procFinal->display();
 
     return;
 
     //collect parameters, variables and equations from all models and put them in big global tables
     ///@todo multi model capabilities and recursion into sub-models
-    m_Parameter = m_ParseResult->model[0].parameter;
-    m_Variable = m_ParseResult->model[0].variable;
-    m_Equation = m_ParseResult->model[0].equation;
+    m_Parameter = repository()->model[0].parameter;
+    m_Variable = repository()->model[0].variable;
+    m_Equation = repository()->model[0].equation;
 
     ///@todo create identifier names that are compatible with python
 
