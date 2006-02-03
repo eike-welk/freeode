@@ -46,20 +46,32 @@ public:
     ~PyProcessGenerator();
     //!generate python code for all processes
     void generateAll();
+    //!Generate the code for at the file's start
     void genFileStart();
     //!generate python code for one process
     void genProcessObject(int iProcess);
+    //!generate the processe's constructor
     void genConstructor();
+    //!generate the function that conains the equations
     void genOdeFunction();
     //!Define which variable is at what index in various arrays
     void layoutArrays();
+    //!create the function that compotes the algebraic variables for output
     void genOutputEquations();
+    //!generate the simulation's main function @todo put into file's header?
     void genSimulateFunction();
+    //!generate function that returns a single variable from the array of simulation results
     void genAccessFunction();
+    //!create the function that shows results graphically
     void genGraphFunction();
 
-    //!The generateed python program is stored here
+    //!The generated python program is stored here
     std::ostream& m_PyFile;
+
+    //!The process - special format
+    /*!This object contains all memory and all equations that are used in the simulation.
+    The entities from all sub-models were copied into this object, and given unique names.*/
+    CmModelDescriptor m_FlatProcess;
 
     //!All parameters of the process
     CmMemoryTable m_Parameter;

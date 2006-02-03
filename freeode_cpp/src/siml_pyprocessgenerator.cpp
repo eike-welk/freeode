@@ -105,9 +105,9 @@ Create a single process
  */
 void siml::PyProcessGenerator::genProcessObject(int iProcess)
 {
-    shared_ptr<CmModelDescriptor> procFinal;
-    procFinal = createFlatModel( &repository()->process[iProcess], repository());
-    procFinal->display();
+    m_FlatProcess = createFlatModel( repository()->process[iProcess] );
+    propagateParameters( m_FlatProcess );
+    m_FlatProcess.display();
 
     return;
 

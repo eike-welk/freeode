@@ -174,6 +174,8 @@ struct CmModelDescriptor
 //     bool isIdentifierUnique(CmMemoryDescriptor const & varOrPar) const;
 };
 struct CmModelDescriptor;
+//!safe pointer type
+typedef boost::shared_ptr<CmModelDescriptor> ModelPtr;
 //!container for models.
 typedef std::vector<CmModelDescriptor> CmModelTable;
 

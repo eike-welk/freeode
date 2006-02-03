@@ -44,27 +44,23 @@ This is the first step in generating code for a procedure.
 @param  repo the place where we search for the sub-models
 @return The generated equivalent model without submodels.
  */
-shared_ptr<CmModelDescriptor>
-siml::createFlatModel(    CmModelDescriptor const * compositeModel,
-                          CmCodeRepository * repo )
+CmModelDescriptor
+siml::createFlatModel( CmModelDescriptor const & compositeProcess )
 {
-    shared_ptr<CmModelDescriptor> sFlatModel( new CmModelDescriptor); //the result
-
-    //less typing + KDevelop's code completion sucks!
-    CmModelDescriptor * flatModel = sFlatModel.get();
+    CmModelDescriptor flatModel; //the result
 
     //copy the features that are not copied recursively
-    flatModel->name = compositeModel->name;
-    flatModel->isProcess = compositeModel->isProcess;
-    flatModel->initialEquation = compositeModel->initialEquation;
-    flatModel->solutionParameters = compositeModel->solutionParameters;
+    flatModel.name = compositeProcess.name;
+    flatModel.isProcess = compositeProcess.isProcess;
+    flatModel.initialEquation = compositeProcess.initialEquation;
+    flatModel.solutionParameters = compositeProcess.solutionParameters;
 
     //copy the recursive features
     int recursionLevel = 0;
     CmPath variablePrefix;
-    flattenModelRecursive(compositeModel, variablePrefix, recursionLevel, repo, flatModel);
+    flattenModelRecursive(&compositeProcess, variablePrefix, recursionLevel, &flatModel);
 
-    return sFlatModel;
+    return flatModel;
 }
 
 /*!
@@ -73,7 +69,6 @@ Copy parameters, variables and equations for createFlatModel(...).
 @param  inCompositeModel the model that will be converted.
 @param  inPathPrefix this is put in front of all variable and parameter names.
 @param  inRecursionLevel depth of recursion to avoid enless loops
-@param  inRepo the place where we search for the sub-models
 @param  outFlatModel the result. The converted entities are put here.
 @internal
 */
@@ -81,7 +76,6 @@ void
 siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
                                 siml::CmPath const inPathPrefix,
                                 uint const inRecursionLevel,
-                                CmCodeRepository * inRepo,
                                 CmModelDescriptor * outFlatModel )
 {
     //protect against circular dependencies ------------------------------
@@ -164,7 +158,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itS )
     {
         //Search model definition in repository.
-        CmModelDescriptor * submodel = inRepo->findModel(itS->type);
+        CmModelDescriptor * submodel = repository()->findModel(itS->type);
         //Error: Null pointer - model does not exist!
         if( !submodel )
         {
@@ -179,7 +173,20 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
         CmPath newPrefix = inPathPrefix;
         newPrefix.append(itS->name);
         //copy entities of submodel
-        flattenModelRecursive(    submodel, newPrefix, newRecursionLevel,
-                                  inRepo, outFlatModel );
+        flattenModelRecursive( submodel, newPrefix, newRecursionLevel, outFlatModel );
     }
 }
+
+/*!
+The parametre propagation rules say:
+
+Parameters declared high in the hierarchy replace parameters declared lower in the hierarchy,
+that have the same name. (Same name means: last component of the path is the same.)
+*/
+void siml::propagateParameters( CmModelDescriptor & process)
+{
+    ///@todo implement CmPath::isTailOf( CmPath& )
+
+}
+
+

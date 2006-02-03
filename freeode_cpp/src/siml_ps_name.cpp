@@ -39,7 +39,7 @@ namespace siml
             "PROCESS","MONITOR","ASSIGN","PRESET","RESTORE","INITIAL",
             "STEADY_STATE","SOLUTIONPARAMETERS","SCHEDULE",
             "INTEGER","REAL","LOGICAL",
-            "IF","ELSE","INTEGRATE",
+            "IF","ELSE","INTEGRAL",
     //         "TYPICAL",
             "END";
         return keywords;

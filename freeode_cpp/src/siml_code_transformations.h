@@ -36,18 +36,17 @@
 namespace siml {
 
 //!create model without sub-models
-boost::shared_ptr<CmModelDescriptor>
-createFlatModel(    CmModelDescriptor const * compositeModel,
-                    CmCodeRepository * repo );
+CmModelDescriptor createFlatModel( CmModelDescriptor const & compositeProcess);
 
 //!copy parameters, variables and equations for createFlatModel
 void
 flattenModelRecursive(  CmModelDescriptor const * inCompositeModel,
                         CmPath const inPathPrefix,
                         uint const inRecursionLevel,
-                        CmCodeRepository * inRepo,
                         CmModelDescriptor * outFlatModel );
 
+//!Apply the parameter propagation rules
+void propagateParameters( CmModelDescriptor & process);
 }
 
 #endif //SIML_CODE_TRANSFORMATIONS_H
