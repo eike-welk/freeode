@@ -27,6 +27,8 @@
 
 #include <string>
 #include <vector>
+#include <list>
+
 #include <boost/shared_ptr.hpp>
 
 
@@ -59,7 +61,7 @@ struct CmMemoryDescriptor
     CmMemoryDescriptor() : type("ANY"), is_state_variable(false) {};
 };
 //!container for the parameter descriptors of a model. See: @see CmParameterDescriptor
-typedef std::vector<CmMemoryDescriptor> CmMemoryTable;
+typedef std::list<CmMemoryDescriptor> CmMemoryTable;
 
 
 /*!

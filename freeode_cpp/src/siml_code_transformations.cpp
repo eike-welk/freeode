@@ -21,14 +21,24 @@
 
 #include "siml_code_transformations.h"
 #include "siml_cmerror.h"
+// #include "siml_cmpath.h"
 
 #include <boost/format.hpp>
+
+#include <set>
+#include <map>
+// #include <vector>
+#include <list>
 
 
 using namespace siml;
 using boost::shared_ptr;
 using boost::format;
 using std::string;
+using std::set;
+using std::map;
+// using std::vector;
+using std::list;
 
 
 /*!
@@ -182,10 +192,57 @@ The parametre propagation rules say:
 
 Parameters declared high in the hierarchy replace parameters declared lower in the hierarchy,
 that have the same name. (Same name means: last component of the path is the same.)
+
+@note This algorithm assumes that parameters with short names come first.
 */
 void siml::propagateParameters( CmModelDescriptor & process)
 {
-    ///@todo implement CmPath::isTailOf( CmPath& )
+//     list<CmMemoryTable::iterator> deletedParams;
+    map<CmPath, CmPath> replaceParams;
+
+    //find pameters (paths) that should be replaced (by parameters with shorter names)--------------------------------------------------
+    CmMemoryTable::iterator itM1, itM2;
+    //loop over all parameters. Take *itM1 and try to find parameters that will be replaced by *itM1.
+    for( itM1 = process.parameter.begin(); itM1 != process.parameter.end(); ++itM1 )
+    {
+        CmMemoryDescriptor const & m1 = *itM1;
+
+        //see if the parameter is already subject to replaceing. If yes go to next parameter.
+        if( replaceParams.find( m1.name ) != replaceParams.end() ) { continue; }
+
+        //loop over the parameters below *itM1 and see if they can be replaced.
+        itM2 = itM1; ++itM2;
+        for( ; itM2 != process.parameter.end(); ++itM2 )
+        {
+            CmMemoryDescriptor const & m2 = *itM2;
+            if( m1.name.isTailOf( m2.name ) )
+            {
+//                 deletedParams.insert( itM2 );
+                replaceParams[m2.name] = m1.name;
+            }
+        }
+    }
+
+    //delete replaced parameters from the list of parameters. ---------------------------------------------
+    CmMemoryTable::iterator itPar;
+    for( itPar = process.parameter.begin(); itPar != process.parameter.end(); )
+    {
+        CmMemoryDescriptor const & del = *itPar;
+
+        //see if the parameter is subject to replaceing. If yes delete the parameter.
+        if( replaceParams.find( itPar->name ) != replaceParams.end() )
+        {
+            CmMemoryTable::iterator itDel = itPar;
+            ++itPar;
+            process.parameter.erase( itDel );
+        }
+        else
+        {
+            ++itPar;
+        }
+    }
+
+    //rename all references to parameters in the equations---------------------------------------
 
 }
 

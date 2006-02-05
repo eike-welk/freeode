@@ -31,6 +31,8 @@ siml::CmPath::CmPath():
         m_TimeDerivative(false)
 {
 }
+
+
 /*!
 Initialize with one component.
 No parsing is done.
@@ -66,6 +68,8 @@ bool  siml::CmPath::isEqual(std::string const & inString) const
         return pathStr == inString;
     }
 }
+
+
 /*!Compare all components.
 @return true if all components are equal, false otherwise.
 */
@@ -73,6 +77,58 @@ bool siml::CmPath::isEqual(CmPath const & inPath) const
 {
     return  (m_Component == inPath.m_Component) &&
             (m_TimeDerivative == inPath.m_TimeDerivative);
+}
+
+
+/*!
+Test if *this is fully contained in the last some elements of inPath.
+If both paths are equal this function also returns true.
+
+The function compares the paths' components starting from the end.
+*/
+bool siml::CmPath::isTailOf( CmPath const & inPath) const
+{
+    ///@todo use: rbegin, rend
+    //compare the strings starting from the end
+    StringList::const_reverse_iterator itThis, itOther;
+    for(    itThis = m_Component.rbegin(), itOther = inPath.m_Component.rbegin();
+            itThis != m_Component.rend() && itOther != inPath.m_Component.rend();
+            ++itThis, ++itOther )
+    {
+        if( *itThis != *itOther ) { return false; }
+    }
+
+    //here one of the paths is contained in the other
+    //test if all elements of this were compared, otherwise it is not fully contained in inPath
+    if( itThis != m_Component.rend() ) { return false; }
+
+    return true;
+}
+
+
+/*!
+Test if *this is lexicaly smaller than inPath.
+
+Corner case:
+If *this is fully contained in inPath and inPath is longer, then the funcion also returns true.
+*/
+bool siml::CmPath::operator<( CmPath const & inPath) const
+{
+    StringList::const_iterator itThis, itOther;
+    for(    itThis = m_Component.begin(), itOther = inPath.m_Component.begin();
+            itThis != m_Component.end() && itOther != inPath.m_Component.end();
+            ++itThis, ++itOther )
+    {
+        if     ( *itThis < *itOther ) { return true; }
+        else if( *itThis > *itOther ) { return false; }
+        //else { the components are equal: test the next components}
+    }
+
+    //here one of the paths is contained in the other
+    //see if the other path is longer.
+    if( m_Component.size() < inPath.m_Component.size() ) { return true; }
+
+    return false;
 }
 
 
@@ -93,6 +149,8 @@ siml::CmPath & siml::CmPath::assign(std::string const & contentsNew)
     append(contentsNew);
     return *this;
 }
+
+
 /*!Copy all components*/
 siml::CmPath & siml::CmPath::assign(CmPath const & contentsNew)
 {
@@ -107,6 +165,8 @@ siml::CmPath & siml::CmPath::prepend(std::string const & compo)
     m_Component.push_front(compo);
     return *this;
 }
+
+
 /*!Add path at begining*/
 siml::CmPath & siml::CmPath::prepend(CmPath const & inPath)
 {
@@ -121,6 +181,8 @@ siml::CmPath & siml::CmPath::append(std::string const & compo)
     m_Component.push_back(compo);
     return *this;
 }
+
+
 /*!Add path at end*/
 siml::CmPath & siml::CmPath::append(CmPath const & inPath)
 {
@@ -169,6 +231,7 @@ std::string siml::CmPath::toString(
 
     return outputStream.str();
 }
+
 
 /*!For printing: convert the object to a string (using "." as cmponent separator), then put
 the string into the stream.*/

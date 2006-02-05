@@ -258,9 +258,12 @@ siml::CmModelDescriptor::display() const
 
     cout << "name: " << name << endl;
 
+    CmMemoryTable::const_iterator itM;
+
     cout << "parameters:" << endl;
-    for(uint i=0; i<parameter.size(); ++i) {
-        cout << "|  " << parameter[i].name << ", " << parameter[i].type << "\n";
+    for( itM = parameter.begin(); itM != parameter.end(); ++ itM) {
+        CmMemoryDescriptor const & par = *itM; //Kdevelop's completion is bad
+        cout << "|  " << par.name << ", " << par.type << "\n";
     }
 
     cout << "sub models:" << endl;
@@ -269,8 +272,9 @@ siml::CmModelDescriptor::display() const
     }
 
     cout << "variables:" << endl;
-    for(uint i=0; i<variable.size(); ++i) {
-        cout << "|  " << variable[i].name << ", " << variable[i].type << endl;
+    for( itM = parameter.begin(); itM != parameter.end(); ++ itM) {
+        CmMemoryDescriptor const & var = *itM; //Kdevelop's completion is bad
+        cout << "|  " << var.name << ", " << var.type << endl;
     }
 
     cout << "parameter assignments:" << endl;

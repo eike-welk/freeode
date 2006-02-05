@@ -34,7 +34,10 @@ Long variable or parameter name with dots.
 Also the time derivation operator $ is integrated.
 e.g.: "$r001.X"
 
-@todo integrate subscripts: "film.X(0:20)"
+@todo implement operator< ()
+
+@todo implent class CmMemAccess [CmRefference] contains a CmPath and can also express time derivation '$film.X' and subscripts. "film.X(0:20)"
+@todo remove '$' from CmPath again.
 
 @author Eike Welk <eike.welk@post.rwth-aachen.de>
 */
@@ -54,28 +57,32 @@ public:
     //!If true the path is a time derivative e.g: "$x" otherwise "x"
     bool isTimeDerivative() const { return m_TimeDerivative; }
     //!compare with string        @todo Marshal Cline says: the function should be private
-    bool isEqual(std::string const & inString) const;
+    bool isEqual( std::string const & inString) const;
     //!compare with CmPath        @todo Marshal Cline says: the function should go away only operator== should be used
-    bool isEqual(CmPath const & inPath) const;
+    bool isEqual( CmPath const & inPath) const;
     //!compare with CmPath
-    bool operator==(CmPath const & inPath) const { return isEqual(inPath); }
+    bool operator==( CmPath const & inPath) const { return isEqual( inPath); }
+    //!*this is contained in the last some elements of inPath
+    bool isTailOf( CmPath const & inPath) const;
+    //!lexical comparison
+    bool operator<( CmPath const & inPath) const;
 
     //!remove all components
     CmPath & clear();
 
     //!Let path contain one single string
-    CmPath & assign(std::string const & contentsNew);
+    CmPath & assign( std::string const & contentsNew);
     //!Copy all components
-    CmPath & assign(CmPath const & contentsNew);
+    CmPath & assign( CmPath const & contentsNew);
 
     //!Add string at begining
-    CmPath & prepend(std::string const & compo);
+    CmPath & prepend( std::string const & compo);
     //!Add path at begining
-    CmPath & prepend(CmPath const & inPath);
+    CmPath & prepend( CmPath const & inPath);
     //!Add string at end
-    CmPath & append(std::string const & compo);
+    CmPath & append( std::string const & compo);
     //!Add path at end
-    CmPath & append(CmPath const & inPath);
+    CmPath & append( CmPath const & inPath);
 
     //!If true the path is a time derivative e.g: "$x" otherwise "x"
     CmPath & setTimeDerivative( bool deriv);
