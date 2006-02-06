@@ -25,7 +25,7 @@
 // #include "siml_ps_name.h"
 // #include "siml_ps_model.h"
 #include "siml_ps_toplevel.h"
-#include "siml_pyprocessgenerator.h"
+#include "siml_pygenmain.h"
 #include "siml_cmerror.h"
 
 //#include <boost/spirit.hpp>
@@ -97,7 +97,7 @@ void Parser::doParse()
 
     //generate python program from CmCodeRepository
     std::ofstream pyOutputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/testproc.py");
-    PyProcessGenerator pyGen( pyOutputStream);
+    PyGenMain pyGen( pyOutputStream);
     pyGen.generateAll();
     pyOutputStream.close();
 

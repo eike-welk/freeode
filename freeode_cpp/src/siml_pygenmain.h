@@ -21,8 +21,6 @@
 #define SIML_PYGENMAIN_H
 
 
-#include "siml_pyprocessgenerator.h"
-
 // #include <boost/shared_ptr.hpp>
 
 #include <iostream>
@@ -47,6 +45,13 @@ public:
     PyGenMain( std::ostream & inPyFile );
     //!Destuctor
     ~PyGenMain();
+
+    //!generate python code for all processes
+    void generateAll();
+
+protected:
+    //!Generate the code at the file's start
+    void genFileStart();
 
 private:
     //!The generated python program is stored here

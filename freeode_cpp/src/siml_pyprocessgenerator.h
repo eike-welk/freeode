@@ -34,20 +34,18 @@
 namespace siml {
 
 /**
-@short The main object to generate a python program.
+@short Generate a process
 
 
 @author Eike Welk
 */
 class PyProcessGenerator{
 public:
-    PyProcessGenerator( std::ostream& inPyFile );
-
+    //!Constructor
+    PyProcessGenerator( std::ostream & inPyFile );
+    //!Destuctor
     ~PyProcessGenerator();
-    //!generate python code for all processes
-    void generateAll();
-    //!Generate the code for at the file's start
-    void genFileStart();
+
     //!generate python code for one process
     void genProcessObject(int iProcess);
     //!generate the processe's constructor
@@ -65,6 +63,7 @@ public:
     //!create the function that shows results graphically
     void genGraphFunction();
 
+private:
     //!The generated python program is stored here
     std::ostream& m_PyFile;
 
