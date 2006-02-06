@@ -272,7 +272,7 @@ siml::CmModelDescriptor::display() const
     }
 
     cout << "variables:" << endl;
-    for( itM = parameter.begin(); itM != parameter.end(); ++ itM) {
+    for( itM = variable.begin(); itM != variable.end(); ++ itM) {
         CmMemoryDescriptor const & var = *itM; //Kdevelop's completion is bad
         cout << "|  " << var.name << ", " << var.type << endl;
     }

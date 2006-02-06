@@ -50,8 +50,7 @@ copied to the flat model. Parmeters and variables get unique long names.
 
 This is the first step in generating code for a procedure.
 
-@param  compositeModel the model that will be converted.
-@param  repo the place where we search for the sub-models
+@param  compositeProcess the model that will be converted.
 @return The generated equivalent model without submodels.
  */
 CmModelDescriptor
@@ -198,14 +197,15 @@ that have the same name. (Same name means: last component of the path is the sam
 void siml::propagateParameters( CmModelDescriptor & process)
 {
 //     list<CmMemoryTable::iterator> deletedParams;
-    map<CmPath, CmPath> replaceParams;
+//     map<CmPath, CmPath> replaceParams;
+    CmPath::ReplaceMap replaceParams;
 
     //find pameters (paths) that should be replaced (by parameters with shorter names)--------------------------------------------------
     CmMemoryTable::iterator itM1, itM2;
     //loop over all parameters. Take *itM1 and try to find parameters that will be replaced by *itM1.
     for( itM1 = process.parameter.begin(); itM1 != process.parameter.end(); ++itM1 )
     {
-        CmMemoryDescriptor const & m1 = *itM1;
+        CmMemoryDescriptor const & m1 = *itM1; //Kdevelop's completion is bad
 
         //see if the parameter is already subject to replaceing. If yes go to next parameter.
         if( replaceParams.find( m1.name ) != replaceParams.end() ) { continue; }
@@ -214,7 +214,7 @@ void siml::propagateParameters( CmModelDescriptor & process)
         itM2 = itM1; ++itM2;
         for( ; itM2 != process.parameter.end(); ++itM2 )
         {
-            CmMemoryDescriptor const & m2 = *itM2;
+            CmMemoryDescriptor const & m2 = *itM2; //Kdevelop's completion is bad
             if( m1.name.isTailOf( m2.name ) )
             {
 //                 deletedParams.insert( itM2 );
@@ -227,23 +227,57 @@ void siml::propagateParameters( CmModelDescriptor & process)
     CmMemoryTable::iterator itPar;
     for( itPar = process.parameter.begin(); itPar != process.parameter.end(); )
     {
-        CmMemoryDescriptor const & del = *itPar;
-
         //see if the parameter is subject to replaceing. If yes delete the parameter.
         if( replaceParams.find( itPar->name ) != replaceParams.end() )
         {
             CmMemoryTable::iterator itDel = itPar;
-            ++itPar;
+            ++itPar; //increment iterator, deletiong will invalidate it
             process.parameter.erase( itDel );
         }
-        else
+        else //only increment iterator
         {
             ++itPar;
         }
     }
 
-    //rename all references to parameters in the equations---------------------------------------
+     //rename all references to parameters in the set section---------------------------------------
+    CmEquationTable::iterator itE;
+    for( itE = process.parameterAssignment.begin(); itE != process.parameterAssignment.end(); ++itE)
+    {
+        itE->lhs.replace(replaceParams);  //this should never do anything
+        itE->rhs.replacePaths(replaceParams);
+    }
 
+    //rename all references to parameters in the initial equations---------------------------------------
+    for( itE = process.initialEquation.begin(); itE != process.initialEquation.end(); ++itE)
+    {
+        itE->lhs.replace(replaceParams);  //this should never do anything
+        itE->rhs.replacePaths(replaceParams);
+    }
+
+    //rename all references to parameters in the equations---------------------------------------
+    for( itE = process.equation.begin(); itE != process.equation.end(); ++itE)
+    {
+        itE->lhs.replace(replaceParams);  //this should never do anything
+        itE->rhs.replacePaths(replaceParams);
+    }
 }
+
+
+/*!
+Test for semantic errors
+
+set:
+All operands (paths) must be parameters.
+
+Equation:
+lhs must be variable not parameter
+rhs: no $allowed
+*/
+bool checkErrors( CmModelDescriptor & process)
+{
+    return true;
+}
+
 
 

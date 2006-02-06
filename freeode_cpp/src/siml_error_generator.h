@@ -29,7 +29,7 @@
 namespace siml {
 
 /**
-@error generator
+@short error generator
 This functor class generates an error and adds it to the central error storage.
 It can be used in semantic actions of the spirit parser framework. e.g.:
 @code >> myrule[add_error("This is bad!", CmError::Warning)] >> @endcode
@@ -59,7 +59,7 @@ struct add_error {
 
 
 /**
-@error generator
+@short error generator
 This functor class generates an error and stores it in a user supplied location.
 It can be used in semantic actions of the spirit parser framework. e.g.:
 @code >> myrule[add_error(temp_error, "This is bad!", CmError::Warning)] >> @endcode

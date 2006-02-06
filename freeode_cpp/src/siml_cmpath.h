@@ -23,6 +23,7 @@
 
 #include <string>
 #include <list>
+#include <map>
 #include <iostream>
 
 
@@ -34,8 +35,6 @@ Long variable or parameter name with dots.
 Also the time derivation operator $ is integrated.
 e.g.: "$r001.X"
 
-@todo implement operator< ()
-
 @todo implent class CmMemAccess [CmRefference] contains a CmPath and can also express time derivation '$film.X' and subscripts. "film.X(0:20)"
 @todo remove '$' from CmPath again.
 
@@ -43,6 +42,12 @@ e.g.: "$r001.X"
 */
 class CmPath{
 public:
+    //!map for renaming paths
+    /*!The old path is the key, the new path is the value. For use with function replace .
+    Put data into the map like this:
+    @code replaceParams[m2.name] = m1.name;  @endcode */
+    typedef  std::map<CmPath, CmPath> ReplaceMap;
+
     //!create empty path
     CmPath();
     //!Initialize with one component
@@ -83,6 +88,9 @@ public:
     CmPath & append( std::string const & compo);
     //!Add path at end
     CmPath & append( CmPath const & inPath);
+
+    //!Replace contents
+    void replace( ReplaceMap const & inReplacements);
 
     //!If true the path is a time derivative e.g: "$x" otherwise "x"
     CmPath & setTimeDerivative( bool deriv);

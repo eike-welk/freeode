@@ -93,7 +93,7 @@ struct ps_formula : public spirit::grammar<ps_formula>
         void operator()(IteratorT, IteratorT) const
         {
 //             std::cout << "append_path: m_InPath: " << m_InPath.toString(".") << std::endl;
-            m_OutFormula.appendPath(m_InPath);
+            m_OutFormula.pushBackPath(m_InPath);
         }
     };
 
@@ -108,7 +108,7 @@ struct ps_formula : public spirit::grammar<ps_formula>
         void operator()( IteratorT begin, IteratorT end) const
         {
 //             std::cout << "append_number: " << std::string( begin, end) << std::endl;
-            m_OutFormula.appendNumber( std::string( begin, end));
+            m_OutFormula.pushBackNumber( std::string( begin, end));
         }
     };
 
@@ -130,7 +130,7 @@ struct ps_formula : public spirit::grammar<ps_formula>
         void operator()(IteratorT, IteratorT) const
         {
 //             std::cout << "append_operator: m_Symbol: " << m_Symbol << ", m_Ops: " << m_Ops << std::endl;
-            m_OutFormula.appendMathOperator( m_Symbol, m_Ops);
+            m_OutFormula.pushBackMathOperator( m_Symbol, m_Ops);
         }
     };
 
@@ -145,7 +145,7 @@ struct ps_formula : public spirit::grammar<ps_formula>
         void operator()(IteratorT, IteratorT) const
         {
 //             std::cout << "append_brackets" << std::endl;
-            m_OutFormula.appendBrackets();
+            m_OutFormula.pushBackBrackets();
         }
     };
 

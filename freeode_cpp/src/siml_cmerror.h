@@ -46,9 +46,9 @@ public:
 
     ~CmError();
 
-    //!@return the error message
+    /*!@return the error message*/
     std::string const & message() const { return m_message; }
-    //!@return the severity
+    /*!@return the severity*/
     Severity severity() const { return m_severity; }
 
     //!Add error to central storage.

@@ -68,7 +68,7 @@ siml::CmFormula & siml::CmFormula::clear()
 
 
 //!Put operator item into list
-siml::CmFormula & siml::CmFormula::appendMathOperator( std::string const & inSymbol, uint inOps)
+siml::CmFormula & siml::CmFormula::pushBackMathOperator( std::string const & inSymbol, uint inOps)
 {
     ItemPtr item( new MathOperatorItem(inSymbol, inOps));
     m_items.push_back( item);
@@ -77,7 +77,7 @@ siml::CmFormula & siml::CmFormula::appendMathOperator( std::string const & inSym
 
 
 //!Put number item into list
-siml::CmFormula & siml::CmFormula::appendNumber( std::string const & inString)
+siml::CmFormula & siml::CmFormula::pushBackNumber( std::string const & inString)
 {
     ItemPtr item( new NumberItem( inString));
     m_items.push_back( item);
@@ -86,7 +86,7 @@ siml::CmFormula & siml::CmFormula::appendNumber( std::string const & inString)
 
 
 //!Put path item into list
-siml::CmFormula & siml::CmFormula::appendPath(CmPath const & inPath)
+siml::CmFormula & siml::CmFormula::pushBackPath(CmPath const & inPath)
 {
     ItemPtr item( new PathItem( inPath));
     m_items.push_back( item);
@@ -95,7 +95,7 @@ siml::CmFormula & siml::CmFormula::appendPath(CmPath const & inPath)
 
 
 //!Put bracket item into list
-siml::CmFormula & siml::CmFormula::appendBrackets()
+siml::CmFormula & siml::CmFormula::pushBackBrackets()
 {
     ItemPtr item( new BracketPairItem());
     m_items.push_back(item);
@@ -103,15 +103,22 @@ siml::CmFormula & siml::CmFormula::appendBrackets()
 }
 
 
-/*!Iterate through the equation and add the prefix at all variable and
-parameter names*/
+/*!
+Iterate through the equation and add the prefix at all variable and
+parameter names
+
+@note The function makes a deep copy of each path object.
+(More efficient were making a deep copy only if the use count is >1.)
+
+@param inPrefix Partial path that is put in front of all of the formula's paths.
+*/
 void siml::CmFormula::prependPaths(CmPath const & inPrefix)
 {
     ItemContainer::iterator itI;
 
     for( itI = m_items.begin(); itI != m_items.end(); ++itI)
     {
-        //try it current item is a path
+        //try if current item is a path
         PathItem * oldItem = dynamic_cast<PathItem *>((*itI).get());
         if( !oldItem ) { continue; }
 
@@ -122,7 +129,33 @@ void siml::CmFormula::prependPaths(CmPath const & inPrefix)
         ItemPtr newItem( new PathItem(path));
         *itI = newItem;
     }
+}
 
+
+/*!
+Replace some paths by new paths. The replacements are given in the map inReplacements.
+
+@note The function makes a deep copy of each changed path object.
+
+@param inReplacements Map that contains the replacements.
+*/
+void siml::CmFormula::replacePaths( CmPath::ReplaceMap const & inReplacements)
+{
+    ItemContainer::iterator itI;
+
+    for( itI = m_items.begin(); itI != m_items.end(); ++itI)
+    {
+        //try if current item is a path
+        PathItem * oldItem = dynamic_cast<PathItem *>((*itI).get());
+        if( !oldItem ) { continue; }
+
+        //get path and replace it
+        CmPath path = oldItem->path;
+        path.replace( inReplacements);
+        //replace with new item
+        ItemPtr newItem( new PathItem(path));
+        *itI = newItem;
+    }
 }
 
 

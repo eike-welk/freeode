@@ -49,11 +49,9 @@ in semantic action. e.g.:
 //The functor
 struct my_functor{
     my_functor(CmPath const & inPath) : m_InPath(inPath) {}
-
     template <typename IteratorT>
     void operator()(IteratorT first, IteratorT last) const {...do someting...}
 }
-
 //use the functor
 ps_path p1;
 my_rule=p1[my_functor(p1.path);

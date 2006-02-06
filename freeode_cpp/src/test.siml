@@ -56,6 +56,8 @@ PROCESS pr1
 
 PARAMETER
 mu_max;
+Ks;
+Yxs;
 
 UNIT
 reactor AS mo2;
@@ -63,11 +65,14 @@ reactor AS mo2;
 
 SET
 mu_max := 0.5;
+Ks     := 0.01;
+Yxs    := 0.5;
 
 #EQUATION
 
 INITIAL
 reactor.X := 0.1;
+reactor.S := 20;
 
 SOLUTIONPARAMETERS
 ReportingInterval :=1; #[h]

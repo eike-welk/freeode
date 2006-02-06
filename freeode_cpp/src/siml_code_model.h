@@ -60,7 +60,7 @@ struct CmMemoryDescriptor
 
     CmMemoryDescriptor() : type("ANY"), is_state_variable(false) {};
 };
-//!container for the parameter descriptors of a model. See: @see CmParameterDescriptor
+/*!container for the parameter descriptors of a model. See: @see CmParameterDescriptor*/
 typedef std::list<CmMemoryDescriptor> CmMemoryTable;
 
 
@@ -82,7 +82,7 @@ struct CmEquationDescriptor
 
     CmEquationDescriptor() /*: is_assignment(false), is_ode_assignment(false)*/ {};
 };
-//!container for the equation descriptors of a model. See: @see CmEquationDescriptor
+/*!container for the equation descriptors of a model. See: @see CmEquationDescriptor*/
 typedef std::vector<CmEquationDescriptor> CmEquationTable;
 
 
@@ -127,17 +127,17 @@ struct CmModelDescriptor
     //!The model's name
     std::string name;
 
-    //!Container for parameters. ("PARAMETER") See: @see CmParameterDescriptor
+    /*!Container for parameters. ("PARAMETER") See: @see CmParameterDescriptor*/
     CmMemoryTable parameter;
-    //!Container for the sub models ("UNIT") @see CmSubModelLink
+    /*!Container for the sub models ("UNIT") @see CmSubModelLink*/
     CmSubModelTable subModel;
-    //!Container for variables. See: @see CmVariableDescriptor
+    /*!Container for variables. See: @see CmVariableDescriptor*/
     CmMemoryTable variable;
-    //!Container for parameter initializations. ("SET section") See: @see CmEquationDescriptor
+    /*!Container for parameter initializations. ("SET section") See: @see CmEquationDescriptor*/
     CmEquationTable parameterAssignment;
-    //!Container for the eqations. See: @see CmEquationDescriptor
+    /*!Container for the eqations. See: @see CmEquationDescriptor*/
     CmEquationTable equation;
-    //!Container for initializations of integrated variables. ("INITIAL" section) See: @see CmEquationDescriptor
+    /*!Container for initializations of integrated variables. ("INITIAL" section) See: @see CmEquationDescriptor*/
     CmEquationTable initialEquation;
     //!Some simulation options
     CmSolutionParameterDescriptor solutionParameters;

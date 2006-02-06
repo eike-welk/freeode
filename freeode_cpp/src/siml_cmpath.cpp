@@ -17,14 +17,22 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
+
+
 #include "siml_cmpath.h"
 
 // #include <boost/format.hpp>
+#include "boost/tuple/tuple.hpp"
+
 #include <sstream>
+
 
 using std::string;
 using std::list;
 using std::ostringstream;
+using boost::tuples::tie;  // same:  using boost::tie;
+using boost::tuples::ignore;
+
 
 /*!Default constructor*/
 siml::CmPath::CmPath():
@@ -53,7 +61,7 @@ siml::CmPath::~CmPath()
 /*!
 Convert the path to a string (with toString(".") ) and compare with inString.
 The separator for the conversion is ".";
-@todo think about time derivative, will it be respected?
+
 @return true if equal, false otherwise.
 */
 bool  siml::CmPath::isEqual(std::string const & inString) const
@@ -88,7 +96,7 @@ The function compares the paths' components starting from the end.
 */
 bool siml::CmPath::isTailOf( CmPath const & inPath) const
 {
-    ///@todo use: rbegin, rend
+
     //compare the strings starting from the end
     StringList::const_reverse_iterator itThis, itOther;
     for(    itThis = m_Component.rbegin(), itOther = inPath.m_Component.rbegin();
@@ -191,6 +199,20 @@ siml::CmPath & siml::CmPath::append(CmPath const & inPath)
 }
 
 
+/*!Replace contents by a new path if a replacement is found in inReplacements*/
+void siml::CmPath::replace( ReplaceMap const & inReplacements)
+{
+    ReplaceMap::const_iterator it = inReplacements.find( *this );
+
+    //see if this object is in the map
+    if( it == inReplacements.end() ) { return; }
+
+    //replace the contents.
+    CmPath const & newPath = (*it).second;
+    m_Component = newPath.m_Component;
+}
+
+
 /*!If true the path is a time derivative e.g: "$x" otherwise "x"*/
 siml::CmPath & siml::CmPath::setTimeDerivative( bool deriv)
 {
@@ -202,9 +224,9 @@ siml::CmPath & siml::CmPath::setTimeDerivative( bool deriv)
 /*!
 Convert the path object to a string that looks like: "plant.reactor1.p".
 The separator string (the "." in this example) can be chosen.
-@todo think about time derivative, can printingof it be switched off?
 
 @param  separatorStr separator between the path's components. (Default ".")
+@param  derivativeMark character to symbolize derivation.
 @return String representation of path.
 */
 std::string siml::CmPath::toString(
@@ -217,6 +239,8 @@ std::string siml::CmPath::toString(
     //print the indicator for time derivation
 //     string const derivativeMark("$");
     if( isTimeDerivative() ) { outputStream << derivativeMark; }
+
+    if( m_Component.empty() ) { return outputStream.str(); }
 
     //special handling for first component: no "." in front of it.
     itS = m_Component.begin();
