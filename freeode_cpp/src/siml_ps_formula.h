@@ -30,7 +30,8 @@
 
 
 // #include "siml_cmpath.h"
-#include "siml_ps_path.h"
+// #include "siml_ps_path.h"
+#include "siml_ps_mem_access.h"
 #include "siml_cmformula.h"
 // #include "siml_error_generator.h"
 
@@ -81,19 +82,19 @@ struct ps_formula : public spirit::grammar<ps_formula>
     };
 
     /*!Functor to add a path to the end of the formula.*/
-    struct append_path
+    struct append_mem_access
     {
-        CmPath const & m_InPath;
+        CmMemAccess const & m_access;
         CmFormula & m_OutFormula;
 
-        append_path(CmPath const & inPath, CmFormula & outFormula):
-                m_InPath(inPath), m_OutFormula( outFormula) {}
+        append_mem_access( CmMemAccess const & inAccess, CmFormula & outFormula):
+                m_access( inAccess), m_OutFormula( outFormula) {}
 
         template <typename IteratorT>
         void operator()(IteratorT, IteratorT) const
         {
-//             std::cout << "append_path: m_InPath: " << m_InPath.toString(".") << std::endl;
-            m_OutFormula.pushBackPath(m_InPath);
+//             std::cout << "append_mem_access: m_InPath: " << m_InPath.toString(".") << std::endl;
+            m_OutFormula.pushBackMemAccess(m_access);
         }
     };
 
@@ -186,7 +187,7 @@ struct ps_formula : public spirit::grammar<ps_formula>
 
             ///@todo add exponential rule (binding stronger than sign)
             factor
-                    =   path                        [append_path( path.path, selfm.formula)]
+                    =   identifier                  [append_mem_access( identifier.mem_access, selfm.formula)]
                     |   (real_p >> eps_p)           [append_number( selfm.formula)]
                     |   ('(' >> expression >> ')')  [append_brackets( selfm.formula)]
                     |   ('-' >> factor)             [append_operator( "-", 1, selfm.formula)]
@@ -200,8 +201,8 @@ struct ps_formula : public spirit::grammar<ps_formula>
 
         //!Rules that are defined here
         spirit::rule<ScannerT> formula, expression, term, factor, number;
-        //!Grammar that describes all names (model, parameter, variable)
-        ps_path path;
+        //!Grammar that recognizes access to variables and parameters
+        ps_mem_access identifier;
     };
 };
 

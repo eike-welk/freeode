@@ -73,11 +73,11 @@ private:
     CmModelDescriptor m_FlatProcess;
 
     //!All parameters of the process
-    CmMemoryTable m_Parameter;
+//     CmMemoryTable m_Parameter;
     //!All variables of the process
-    CmMemoryTable m_Variable;
+//     CmMemoryTable m_Variable;
     //!All equations of the process
-    CmEquationTable m_Equation;
+//     CmEquationTable m_Equation;
 
     //!Mapping between variable name and index in state vector.
     /*!The variable name is the key. So the contents are pairs: var_name, index) e.g: ("S", "1")*/

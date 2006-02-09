@@ -35,7 +35,6 @@ Long variable or parameter name with dots.
 Also the time derivation operator $ is integrated.
 e.g.: "$r001.X"
 
-@todo implent class CmMemAccess [CmRefference] contains a CmPath and can also express time derivation '$film.X' and subscripts. "film.X(0:20)"
 @todo remove '$' from CmPath again.
 
 @author Eike Welk <eike.welk@post.rwth-aachen.de>
@@ -59,8 +58,6 @@ public:
 
     ~CmPath();
 
-    //!If true the path is a time derivative e.g: "$x" otherwise "x"
-    bool isTimeDerivative() const { return m_TimeDerivative; }
     //!compare with string        @todo Marshal Cline says: the function should be private
     bool isEqual( std::string const & inString) const;
     //!compare with CmPath        @todo Marshal Cline says: the function should go away only operator== should be used
@@ -72,7 +69,7 @@ public:
     //!lexical comparison
     bool operator<( CmPath const & inPath) const;
 
-    //!remove all components
+    //!remove all components @todo is this function really necessary?
     CmPath & clear();
 
     //!Let path contain one single string
@@ -81,31 +78,25 @@ public:
     CmPath & assign( CmPath const & contentsNew);
 
     //!Add string at begining
-    CmPath & prepend( std::string const & compo);
+    CmPath & prepend( std::string const & prefix);
     //!Add path at begining
-    CmPath & prepend( CmPath const & inPath);
+    CmPath & prepend( CmPath const & prefix);
     //!Add string at end
-    CmPath & append( std::string const & compo);
+    CmPath & append( std::string const & suffix);
     //!Add path at end
-    CmPath & append( CmPath const & inPath);
+    CmPath & append( CmPath const & suffix);
 
     //!Replace contents
     void replace( ReplaceMap const & inReplacements);
 
-    //!If true the path is a time derivative e.g: "$x" otherwise "x"
-    CmPath & setTimeDerivative( bool deriv);
-
     //!Convert to string
-    std::string toString(   std::string const & separatorStr = ".",
-                            std::string const & derivativeMark = "$"      ) const;
+    std::string toString( std::string const & separatorStr = ".") const;
 
 private:
     ///maybe use deque instead?
     typedef std::list<std::string> StringList;
     //!List of components
     StringList m_Component;
-    //!Path is time derivative "$path"
-    bool m_TimeDerivative;
 };
 
 //!compare with string
@@ -113,7 +104,7 @@ inline bool operator==(std::string const & p1, CmPath const & p2) { return p2.is
 //!compare with string
 inline bool operator==(CmPath const & p1, std::string const & p2) { return p1.isEqual(p2); }
 
-//!printing
+//!Stream output
 std::ostream& operator<<(std::ostream& out, siml::CmPath const & path);
 
 }

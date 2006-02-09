@@ -23,6 +23,7 @@
 
 
 #include "siml_cmpath.h"
+#include "siml_cmmemaccess.h"
 #include "siml_cmformula.h"
 
 #include <string>
@@ -70,7 +71,7 @@ typedef std::list<CmMemoryDescriptor> CmMemoryTable;
 struct CmEquationDescriptor
 {
     //!the equation's left hand side
-    CmPath lhs;
+    CmMemAccess lhs;
     //!the equation's right hand side
     CmFormula rhs;
     //!if true the equation is really an assignment ":=" otherwise it's a true equation "=" (unused)

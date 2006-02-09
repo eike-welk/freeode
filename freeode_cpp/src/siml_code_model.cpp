@@ -38,7 +38,7 @@ using boost::format;
 */
 bool siml::CmEquationDescriptor::isOdeAssignment() const
 {
-    return lhs.isTimeDerivative();
+    return lhs.timeDerivative();
 }
 
 

@@ -27,7 +27,8 @@
 
 #include <boost/shared_ptr.hpp>
 
-#include "siml_cmpath.h"
+// #include "siml_cmpath.h"
+#include "siml_cmmemaccess.h"
 
 
 namespace siml {
@@ -58,44 +59,44 @@ class CmFormula{
 public:
     //!Base class of formula commands
     /*!Important: all data members of derived classes should be const to make the objects immutable!*/
-    struct FormulaItem {
+    struct FormulaCmd {
         //!number of operands
         uint const numOps;
-        FormulaItem(uint inOps): numOps(inOps) {}
-        virtual ~FormulaItem() {}
+        FormulaCmd(uint inOps): numOps(inOps) {}
+        virtual ~FormulaCmd() {}
         virtual std::string toString() const =0;
     };
     //!Operator: + - * / ^
-    struct MathOperatorItem: public FormulaItem {
+    struct MathOperatorCmd: public FormulaCmd {
         std::string const symbol;
         //!Specify formula symbol and number of operands.
         /*! @param inSymbol   Formula symbbol for operator e.g. "+".
             @param inOps      Number of operands (2: infix "+"; 1: only sensible for "-", prefix, sign). */
-        MathOperatorItem(std::string const & inSymbol, uint inOps): FormulaItem(inOps), symbol(inSymbol) {};
+        MathOperatorCmd(std::string const & inSymbol, uint inOps): FormulaCmd(inOps), symbol(inSymbol) {};
         std::string toString() const { return symbol; }
     };
     //!A number
-    struct NumberItem: public FormulaItem {
+    struct NumberCmd: public FormulaCmd {
         std::string const number;
         //!Specify number as string
-        NumberItem(std::string const & inNumber): FormulaItem(0), number(inNumber) {};
+        NumberCmd(std::string const & inNumber): FormulaCmd(0), number(inNumber) {};
         std::string toString() const { return number; }
     };
     //!A path; refference to a variable
-    struct PathItem: public FormulaItem {
-        CmPath const path;
+    struct MemAccessCmd: public FormulaCmd {
+        CmMemAccess const access;
         //!Specify parsed path
-        PathItem(CmPath const & inPath): FormulaItem(0), path(inPath) {};
-        std::string toString() const { return path.toString(); }
+        MemAccessCmd(CmMemAccess const & inAccess): FormulaCmd(0), access(inAccess) {};
+        std::string toString() const { return access.toString(); }
     };
     //! Pair of brackets
-    struct BracketPairItem: public FormulaItem {
+    struct BracketPairCmd: public FormulaCmd {
         CmPath const path;
         //!Specify parsed path
-        BracketPairItem(): FormulaItem(1) {};
+        BracketPairCmd(): FormulaCmd(1) {};
         std::string toString() const { return std::string("()"); }
     };
-    typedef boost::shared_ptr<FormulaItem> ItemPtr;
+    typedef boost::shared_ptr<FormulaCmd> ItemPtr;
     typedef std::list<ItemPtr> ItemContainer;
 
     //!Default constructor
@@ -118,7 +119,7 @@ public:
     //!Put number item into list
     CmFormula & pushBackNumber(std::string const & inString);
     //!Put path item into list
-    CmFormula & pushBackPath(CmPath const & inPath);
+    CmFormula & pushBackMemAccess(CmMemAccess const & inAccess);
     //!Put bracket item into list
     CmFormula & pushBackBrackets();
 

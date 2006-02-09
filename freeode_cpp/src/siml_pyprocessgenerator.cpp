@@ -19,7 +19,9 @@
  ***************************************************************************/
 // #include "config.h"
 #include "siml_pyprocessgenerator.h"
+
 #include "siml_code_transformations.h"
+#include "siml_cmerror.h"
 
 #include <iostream>
 #include <boost/format.hpp>
@@ -56,36 +58,36 @@ Create a single process
  */
 void siml::PyProcessGenerator::genProcessObject(int iProcess)
 {
+    //collect parameters, variables and equations from all models and put them into one big model
     m_FlatProcess = createFlatModel( repository()->process[iProcess] );
+    //parameters high in the hierarchy replace parameters low in the hierarchy
     propagateParameters( m_FlatProcess );
-    m_FlatProcess.display();
+    //find errors
+    bool ok = checkErrors( m_FlatProcess );
 
-    return;
-
-    //collect parameters, variables and equations from all models and put them in big global tables
-    ///@todo multi model capabilities and recursion into sub-models
-    m_Parameter = repository()->model[0].parameter;
-    m_Variable = repository()->model[0].variable;
-    m_Equation = repository()->model[0].equation;
-
-    ///@todo create identifier names that are compatible with python
+    m_FlatProcess.display();       //show the final process
+    CmError::printStorageToCerr(); //print the errors up to here
 
     //allocate space for each state m_Variable in the state vector. Changes: state_vector_layout, m_StateVectorSize
     layoutArrays();
 
-    string process_name("TestProcess");
-
-    m_PyFile << format("class %1%:\n") % process_name;
-    m_PyFile << format("%|4t|\"\"\" object to simulate process %1% \"\"\"\n") % process_name;
+    //generate the start of the simulation object's definition
+    m_PyFile << format("class %1%:\n") % m_FlatProcess.name;
+    m_PyFile << format("%|4t|\"\"\" object to simulate process %1% \"\"\"\n") % m_FlatProcess.name;
     m_PyFile << endl;
 
     //Generate some infrastructure functions
-    ///@todo these functions should later go into a common base class of all processs
+    ///@todo these functions should later go into a common base class of all processes - put them into PyGenMain
     genAccessFunction();
     genGraphFunction();
 
     //Generate Constuctor which creates the parameters as member variables.
     genConstructor();
+
+    ///@todo generate the SET function where parameter values are assigned.
+//     genSetFunction();
+    ///@todo changing parameters from Python requires a matching partial set function.
+    ///@todo therefore implement gen1SetLine(...) which generates one line of the set function.
 
     //Generate the function that contains the equations.
     genOdeFunction();

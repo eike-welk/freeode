@@ -170,7 +170,7 @@ struct ps_path : public spirit::grammar<ps_path>
             path = lexeme_d
                     [
                         eps_p               [clear_path(selfm.path)]
-                        >> !(str_p("$")     [set_time_derivative_true(selfm.path)] )
+//                         >> !(str_p("$")     [set_time_derivative_true(selfm.path)] )
                         >> name             [append_str(selfm.path)]
                         >> *("." >> name    [append_str(selfm.path)] )
                     ];

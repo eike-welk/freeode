@@ -133,7 +133,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
     {
         CmEquationDescriptor equ = *itE;
         //go through the equation and add the prefix at all variable names
-        equ.lhs.prepend( inPathPrefix);
+        equ.lhs.prependPath( inPathPrefix);
         equ.rhs.prependPaths( inPathPrefix);
         //add updated equation to the model
         outFlatModel->addParameterAssignment(equ);
@@ -146,7 +146,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
     {
         CmEquationDescriptor equ = *itE;
         //go through the equation and add the prefix at all variable names
-        equ.lhs.prepend( inPathPrefix);
+        equ.lhs.prependPath( inPathPrefix);
         equ.rhs.prependPaths( inPathPrefix);
         //add updated equation to the model
         outFlatModel->addEquation(equ);
@@ -244,21 +244,21 @@ void siml::propagateParameters( CmModelDescriptor & process)
     CmEquationTable::iterator itE;
     for( itE = process.parameterAssignment.begin(); itE != process.parameterAssignment.end(); ++itE)
     {
-        itE->lhs.replace(replaceParams);  //this should never do anything
+        itE->lhs.replacePath(replaceParams);  //this should never do anything
         itE->rhs.replacePaths(replaceParams);
     }
 
     //rename all references to parameters in the initial equations---------------------------------------
     for( itE = process.initialEquation.begin(); itE != process.initialEquation.end(); ++itE)
     {
-        itE->lhs.replace(replaceParams);  //this should never do anything
+        itE->lhs.replacePath(replaceParams);  //this should never do anything
         itE->rhs.replacePaths(replaceParams);
     }
 
     //rename all references to parameters in the equations---------------------------------------
     for( itE = process.equation.begin(); itE != process.equation.end(); ++itE)
     {
-        itE->lhs.replace(replaceParams);  //this should never do anything
+        itE->lhs.replacePath(replaceParams);  //this should never do anything
         itE->rhs.replacePaths(replaceParams);
     }
 }
@@ -273,8 +273,9 @@ All operands (paths) must be parameters.
 Equation:
 lhs must be variable not parameter
 rhs: no $allowed
+All memory access must go to declared parameters and variables
 */
-bool checkErrors( CmModelDescriptor & process)
+bool siml::checkErrors( CmModelDescriptor & process)
 {
     return true;
 }

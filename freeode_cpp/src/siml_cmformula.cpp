@@ -70,7 +70,7 @@ siml::CmFormula & siml::CmFormula::clear()
 //!Put operator item into list
 siml::CmFormula & siml::CmFormula::pushBackMathOperator( std::string const & inSymbol, uint inOps)
 {
-    ItemPtr item( new MathOperatorItem(inSymbol, inOps));
+    ItemPtr item( new MathOperatorCmd(inSymbol, inOps));
     m_items.push_back( item);
     return *this;
 }
@@ -79,16 +79,16 @@ siml::CmFormula & siml::CmFormula::pushBackMathOperator( std::string const & inS
 //!Put number item into list
 siml::CmFormula & siml::CmFormula::pushBackNumber( std::string const & inString)
 {
-    ItemPtr item( new NumberItem( inString));
+    ItemPtr item( new NumberCmd( inString));
     m_items.push_back( item);
     return *this;
 }
 
 
 //!Put path item into list
-siml::CmFormula & siml::CmFormula::pushBackPath(CmPath const & inPath)
+siml::CmFormula & siml::CmFormula::pushBackMemAccess(CmMemAccess const & inAccess)
 {
-    ItemPtr item( new PathItem( inPath));
+    ItemPtr item( new MemAccessCmd( inAccess));
     m_items.push_back( item);
     return *this;
 }
@@ -97,7 +97,7 @@ siml::CmFormula & siml::CmFormula::pushBackPath(CmPath const & inPath)
 //!Put bracket item into list
 siml::CmFormula & siml::CmFormula::pushBackBrackets()
 {
-    ItemPtr item( new BracketPairItem());
+    ItemPtr item( new BracketPairCmd());
     m_items.push_back(item);
     return *this;
 }
@@ -119,14 +119,14 @@ void siml::CmFormula::prependPaths(CmPath const & inPrefix)
     for( itI = m_items.begin(); itI != m_items.end(); ++itI)
     {
         //try if current item is a path
-        PathItem * oldItem = dynamic_cast<PathItem *>((*itI).get());
+        MemAccessCmd * oldItem = dynamic_cast<MemAccessCmd *>((*itI).get());
         if( !oldItem ) { continue; }
 
         //put prefix in front of old path
-        CmPath path = oldItem->path;
-        path.prepend( inPrefix);
+        CmMemAccess access = oldItem->access;
+        access.prependPath( inPrefix);
         //replace with new item that has extended path
-        ItemPtr newItem( new PathItem(path));
+        ItemPtr newItem( new MemAccessCmd( access));
         *itI = newItem;
     }
 }
@@ -146,14 +146,14 @@ void siml::CmFormula::replacePaths( CmPath::ReplaceMap const & inReplacements)
     for( itI = m_items.begin(); itI != m_items.end(); ++itI)
     {
         //try if current item is a path
-        PathItem * oldItem = dynamic_cast<PathItem *>((*itI).get());
+        MemAccessCmd * oldItem = dynamic_cast<MemAccessCmd *>((*itI).get());
         if( !oldItem ) { continue; }
 
         //get path and replace it
-        CmPath path = oldItem->path;
-        path.replace( inReplacements);
+        CmMemAccess access = oldItem->access;
+        access.replacePath( inReplacements);
         //replace with new item
-        ItemPtr newItem( new PathItem(path));
+        ItemPtr newItem( new MemAccessCmd( access));
         *itI = newItem;
     }
 }

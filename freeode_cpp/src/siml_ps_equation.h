@@ -22,7 +22,8 @@
 
 
 #include "siml_code_model.h"
-#include "siml_cmpath.h"
+// #include "siml_cmpath.h"
+#include "siml_ps_mem_access.h"
 #include "siml_cmformula.h"
 #include "siml_ps_path.h"
 #include "siml_ps_formula.h"
@@ -88,11 +89,11 @@ struct ps_equation : public spirit::grammar<ps_equation>
             ps_equation & selfm = const_cast<ps_equation &>(self);
 
             equation_rule
-                =  path         [start_equation(selfm.equation)]
-                                [assign_a(selfm.equation.lhs, path.path)]
-                >> str_p(":=")  /*[assign_a( selfm.equation.is_assignment, true_val)]*/
-                >> formula      [assign_a( selfm.equation.rhs, formula.formula)]
-                >> (+ch_p(';')) /*[finish_equation(selfm.equation)]*/
+                =   mem_access  [start_equation(selfm.equation)]
+                                [assign_a(selfm.equation.lhs, mem_access.mem_access)]
+                >>  str_p(":=")  /*[assign_a( selfm.equation.is_assignment, true_val)]*/
+                >>  formula     [assign_a( selfm.equation.rhs, formula.formula)]
+                >>  (+ch_p(';')) /*[finish_equation(selfm.equation)]*/
                 ;
         }
 
@@ -104,8 +105,8 @@ struct ps_equation : public spirit::grammar<ps_equation>
         spirit::rule<ScannerT> equation_rule;
         //!Grammar that describes a formula
         ps_formula formula;
-        //!Grammar that describes a path
-        ps_path path;
+        //!Grammar that describes a memory access (generalized path)
+        ps_mem_access mem_access;
         //!Constants because assign_a needs references
 //         bool const true_val, false_val;
     };

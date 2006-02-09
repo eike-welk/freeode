@@ -22,7 +22,7 @@
 #include "siml_cmpath.h"
 
 // #include <boost/format.hpp>
-#include "boost/tuple/tuple.hpp"
+// #include "boost/tuple/tuple.hpp"
 
 #include <sstream>
 
@@ -30,13 +30,12 @@
 using std::string;
 using std::list;
 using std::ostringstream;
-using boost::tuples::tie;  // same:  using boost::tie;
-using boost::tuples::ignore;
+// using boost::tuples::tie;  // same:  using boost::tie;
+// using boost::tuples::ignore;
 
 
 /*!Default constructor*/
-siml::CmPath::CmPath():
-        m_TimeDerivative(false)
+siml::CmPath::CmPath()
 {
 }
 
@@ -72,7 +71,7 @@ bool  siml::CmPath::isEqual(std::string const & inString) const
     }
     else
     {   //the normal case
-        string pathStr = toString(".", "");
+        string pathStr = toString(".");
         return pathStr == inString;
     }
 }
@@ -83,8 +82,7 @@ bool  siml::CmPath::isEqual(std::string const & inString) const
 */
 bool siml::CmPath::isEqual(CmPath const & inPath) const
 {
-    return  (m_Component == inPath.m_Component) &&
-            (m_TimeDerivative == inPath.m_TimeDerivative);
+    return  m_Component == inPath.m_Component;
 }
 
 
@@ -168,33 +166,33 @@ siml::CmPath & siml::CmPath::assign(CmPath const & contentsNew)
 
 
 /*!Add string at begining*/
-siml::CmPath & siml::CmPath::prepend(std::string const & compo)
+siml::CmPath & siml::CmPath::prepend(std::string const & prefix)
 {
-    m_Component.push_front(compo);
+    m_Component.push_front(prefix);
     return *this;
 }
 
 
 /*!Add path at begining*/
-siml::CmPath & siml::CmPath::prepend(CmPath const & inPath)
+siml::CmPath & siml::CmPath::prepend(CmPath const & prefix)
 {
-    m_Component.insert(m_Component.begin(), inPath.m_Component.begin(), inPath.m_Component.end());
+    m_Component.insert(m_Component.begin(), prefix.m_Component.begin(), prefix.m_Component.end());
     return *this;
 }
 
 
 /*!Add string at end*/
-siml::CmPath & siml::CmPath::append(std::string const & compo)
+siml::CmPath & siml::CmPath::append(std::string const & suffix)
 {
-    m_Component.push_back(compo);
+    m_Component.push_back(suffix);
     return *this;
 }
 
 
 /*!Add path at end*/
-siml::CmPath & siml::CmPath::append(CmPath const & inPath)
+siml::CmPath & siml::CmPath::append(CmPath const & suffix)
 {
-    m_Component.insert(m_Component.end(), inPath.m_Component.begin(), inPath.m_Component.end());
+    m_Component.insert(m_Component.end(), suffix.m_Component.begin(), suffix.m_Component.end());
     return *this;
 }
 
@@ -213,14 +211,6 @@ void siml::CmPath::replace( ReplaceMap const & inReplacements)
 }
 
 
-/*!If true the path is a time derivative e.g: "$x" otherwise "x"*/
-siml::CmPath & siml::CmPath::setTimeDerivative( bool deriv)
-{
-    m_TimeDerivative = deriv;
-    return *this;
-}
-
-
 /*!
 Convert the path object to a string that looks like: "plant.reactor1.p".
 The separator string (the "." in this example) can be chosen.
@@ -229,18 +219,12 @@ The separator string (the "." in this example) can be chosen.
 @param  derivativeMark character to symbolize derivation.
 @return String representation of path.
 */
-std::string siml::CmPath::toString(
-        std::string const & separatorStr,
-        std::string const & derivativeMark ) const
+std::string siml::CmPath::toString( std::string const & separatorStr ) const
 {
+    if( m_Component.empty() ) { return string(); }
+
     ostringstream   outputStream;
     StringList::const_iterator itS;
-
-    //print the indicator for time derivation
-//     string const derivativeMark("$");
-    if( isTimeDerivative() ) { outputStream << derivativeMark; }
-
-    if( m_Component.empty() ) { return outputStream.str(); }
 
     //special handling for first component: no "." in front of it.
     itS = m_Component.begin();
