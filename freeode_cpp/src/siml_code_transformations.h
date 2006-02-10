@@ -49,7 +49,7 @@ flattenModelRecursive(  CmModelDescriptor const * inCompositeModel,
 void propagateParameters( CmModelDescriptor & process);
 
 //!Test for semantic errors
-bool checkErrors( CmModelDescriptor & process);
+void checkErrors( CmModelDescriptor & process);
 }
 
 #endif //SIML_CODE_TRANSFORMATIONS_H

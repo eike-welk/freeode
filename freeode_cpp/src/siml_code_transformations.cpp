@@ -109,9 +109,8 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
             ++itM )
     {
         CmMemoryDescriptor mem = *itM;
-        mem.name.prepend(inPathPrefix);//put prefix in front of parameter name
-        bool ok = outFlatModel->addParameter(mem);// add to model
-        if( !ok ) { outFlatModel->errorsDetected = true; }
+        mem.name.prepend(inPathPrefix); //put prefix in front of parameter name
+        outFlatModel->addParameter(mem);// add to model
     }
 
     //copy variables
@@ -121,8 +120,7 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
     {
         CmMemoryDescriptor mem = *itM;
         mem.name.prepend(inPathPrefix); //put prefix in front of variable name
-        bool ok = outFlatModel->addVariable(mem); // add to model
-        if( !ok ) { outFlatModel->errorsDetected = true; }
+        outFlatModel->addVariable(mem); // add to model
     }
 
     //copy parameter assignments (SET)
@@ -264,20 +262,32 @@ void siml::propagateParameters( CmModelDescriptor & process)
 }
 
 
+
+
 /*!
 Test for semantic errors
 
 set:
-All operands (paths) must be parameters.
+-All operands (paths) must be parameters.
+- no $ allowed.
+-All parameters must be initialized.
 
 Equation:
-lhs must be variable not parameter
-rhs: no $allowed
-All memory access must go to declared parameters and variables
+-lhs must be variable not parameter.
+-rhs: no $ allowed.
+-All memory access must go to declared parameters and variables.
+-No assignment to state variables.
+-No assignment to parameters.
+-All state variables must have '$x =' assignments.
+-All algebraic variables must have assignments.
+
+@note The result will be (or-ed into) process.errorsDetected;
 */
-bool siml::checkErrors( CmModelDescriptor & process)
+void siml::checkErrors( CmModelDescriptor & process)
 {
-    return true;
+    //SET section ----------------------------------------------
+    //all operands must be parameters
+    return;
 }
 
 

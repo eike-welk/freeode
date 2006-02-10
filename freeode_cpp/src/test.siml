@@ -38,16 +38,20 @@ PARAMETER
 mu_max; #DEFAULT 0.32;
 Ks;     #DEFAULT 0.1;
 Yxs;    #DEFAULT 0.5;
+#Ks;
 
 VARIABLE
 mu;
 X; #INITIAL 0.2; # Biomass
 S; #INITIAL 25;  # Sugar
+#mu;
+#Ks;
 
 EQUATION
 mu := mu_max * S/(S+Ks);
 $X := mu*X;
 $S := -1/Yxs*mu*X + a.b.c;
+#$o := 5;
 
 END
 
@@ -62,6 +66,9 @@ Yxs;
 UNIT
 reactor AS mo2;
 #reactor2 AS mo2;
+
+#VARIABLE
+#reactor;
 
 SET
 mu_max := 0.5;

@@ -42,14 +42,18 @@ public:
     //!Container for errors
     typedef std::list<CmError> ErrorContainer;
 
+    /*!Constructor*/
     CmError();
-
-    ~CmError();
+    /*!Destructor*/
+   ~CmError();
 
     /*!@return the error message*/
     std::string const & message() const { return m_message; }
     /*!@return the severity*/
     Severity severity() const { return m_severity; }
+
+    //!Dump the whole storage into cerr.
+    static void printStorageToCerr();
 
     //!Add error to central storage.
     void addToStorage();
@@ -71,18 +75,14 @@ public:
         ///@todo introduce the file line iterator
         std::string file;
         uint line = 0;
-        return createError( message, file, line, howBad);
+        return createErrorFileLine( message, file, line, howBad);
     }
 
     private:
     //!create error, return it.
-    static CmError createError(std::string const & message, std::string const & file, uint line=0, Severity howBad = Error);
+    static CmError createErrorFileLine(std::string const & message, std::string const & file, uint line=0, Severity howBad = Error);
     //!create error, return it.
     static CmError createErrorChar(std::string const & message, char const * where, Severity howBad);
-    public:
-
-    //!Dump the whole storage into cerr.
-    static void printStorageToCerr();
 
     //!Error message
     std::string m_message;

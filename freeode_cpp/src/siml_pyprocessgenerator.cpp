@@ -62,13 +62,24 @@ void siml::PyProcessGenerator::genProcessObject(int iProcess)
     m_FlatProcess = createFlatModel( repository()->process[iProcess] );
     //parameters high in the hierarchy replace parameters low in the hierarchy
     propagateParameters( m_FlatProcess );
+    //look throug the equations, and find all state variables
+    m_FlatProcess.markStateVariables();
+
     //find errors
-    bool ok = checkErrors( m_FlatProcess );
+    checkErrors( m_FlatProcess );
 
     m_FlatProcess.display();       //show the final process
-    CmError::printStorageToCerr(); //print the errors up to here
+//     CmError::printStorageToCerr(); //print the errors up to here
 
-    //allocate space for each state m_Variable in the state vector. Changes: state_vector_layout, m_StateVectorSize
+    //Don't generate code when there are errors.
+    if( m_FlatProcess.errorsDetected )
+    {
+        format msg = format("Process %1%: No Python object generated due to Errors.") % m_FlatProcess.name;
+        CmError::addError( msg.str(), (char const *) 0);
+        return;
+    }
+
+    //allocate space for the state variables in the state vector. Alocate space for all variables in the output array.
     layoutArrays();
 
     //generate the start of the simulation object's definition
@@ -81,13 +92,18 @@ void siml::PyProcessGenerator::genProcessObject(int iProcess)
     genAccessFunction();
     genGraphFunction();
 
-    //Generate Constuctor which creates the parameters as member variables.
+    //Generate Constuctor which creates the maps for later access to variables (and some day parameters)
     genConstructor();
 
-    ///@todo generate the SET function where parameter values are assigned.
+    ///@todo generate the SET function where parameter values are assigned (as member variables).
+    ///@todo some code is in "genConstructor()"
 //     genSetFunction();
-    ///@todo changing parameters from Python requires a matching partial set function.
+    ///@todo changing parameters from Python requires a special set function.
     ///@todo therefore implement gen1SetLine(...) which generates one line of the set function.
+
+    ///@todo Write function to Set initial values of the state variables.
+    ///@todo some code is in "genConstructor()"
+//     genInitialFunction();
 
     //Generate the function that contains the equations.
     genOdeFunction();
@@ -95,6 +111,7 @@ void siml::PyProcessGenerator::genProcessObject(int iProcess)
     //Function to compute the algebraic variables after the simulation.
     genOutputEquations();
 
+    ///@todo these functions should later go into a common base class of all processes - put them into PyGenMain
     //Generate the function that performs the simulation.
     genSimulateFunction();
 }
@@ -106,8 +123,8 @@ Generate Constuctor which creates the parameters as member variables
  */
 void siml::PyProcessGenerator::genConstructor()
 {
-//     m_PyFile << format("%|4t|def __init__(self):") << endl;
-//
+    m_PyFile << format("%|4t|def __init__(self):") << endl;
+
 //     //Assign values to the parameters (and create them)
 //     m_PyFile << format("%|8t|#Assign values to the parameters (and create them)") << endl;
 //     CmMemoryTable::const_iterator it;
@@ -120,7 +137,7 @@ void siml::PyProcessGenerator::genConstructor()
 //         m_PyFile << format("%|8t|self.%1% %|25t|= %2% #%3%") % pName % pVal % pType << endl;
 //     }
 //     m_PyFile << endl;
-//
+
 //     //Set initial values of the state variables.
 //     m_PyFile << format("%|8t|#Set the initial values (of the state variables).") << endl;
 //     m_PyFile << format("%|8t|self.y0 = zeros(%1%, Float)") % m_StateVectorSize << endl;
@@ -136,23 +153,25 @@ void siml::PyProcessGenerator::genConstructor()
 //         m_PyFile << format("%|8t|self.y0[%1%] = %2% # %3%") % index % initExpression % varName << endl;
 //     }
 //     m_PyFile << endl;
-//
-//     //Map for converting m_Variable names to indices or slices
-//     //necessary for later m_Parameter access
-//     m_PyFile << format("%|8t|#Map for converting variable names to indices or slices.") << endl;
-//     m_PyFile << format("%|8t|self.resultArrayMap = { ");
-//     map<string, string>::const_iterator itMa;
-//     for( itMa = m_ResultArrayMap.begin(); itMa != m_ResultArrayMap.end(); ++itMa )
-//     {
-//         string varName, index;
-//         tie(varName, index) = *itMa;
-//         m_PyFile << format(" '%1%':%2%, ") % varName % index;
-//     }
-//     m_PyFile << " }" << endl << endl;
-//
-// /*    m_PyFile << format("%|8t|#List of diagrams.") << endl;
-//     m_PyFile << format("%|8t|self.graphList = []") << endl;
-//     m_PyFile << endl;*/
+
+    //Map for converting m_Variable names to indices or slices
+    //necessary for later m_Parameter access
+    m_PyFile << format("%|8t|#Map for converting variable names to indices or slices.") << endl;
+    m_PyFile << format("%|8t|self.resultArrayMap = { ");
+    map<string, string>::const_iterator itMa;
+    for( itMa = m_ResultArrayMap.begin(); itMa != m_ResultArrayMap.end(); ++itMa )
+    {
+        string varName, index;
+        tie(varName, index) = *itMa;
+        m_PyFile << format(" '%1%':%2%, ") % varName % index; ///@todo the algo writes one comma too much (after the last element)
+    }
+    m_PyFile << " }" << endl << endl;
+
+    ///@todo initialize resultArray with the right dimensions
+
+/*    m_PyFile << format("%|8t|#List of diagrams.") << endl;
+    m_PyFile << format("%|8t|self.graphList = []") << endl;
+    m_PyFile << endl;*/
 }
 
 
@@ -248,42 +267,42 @@ m_ResultArrayColls is number of collumns in result array.
  */
 void siml::PyProcessGenerator::layoutArrays()
 {
-//     m_StateVectorMap.clear(); /*state_vector_ordering.clear();*/ m_StateVectorSize=0;
-//     m_ResultArrayMap.clear(); /*result_array_ordering.clear();*/ m_ResultArrayColls=0;
-//
-//     //loop over all variables and assign indices for the state variables
-//     //each state variable gets a unique index in both arrays: state vector, result array.
-//     CmMemoryTable::const_iterator itV;
-//     uint currIndex=0;
-//     for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
-//     {
-//         CmMemoryDescriptor varD = *itV;
-//         if( varD.is_state_variable == false ) { continue; }
-//
-//         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
-//         string varNameStr = varD.name.toString();
-//         m_StateVectorMap[varNameStr] = currIndexStr;
-//         m_ResultArrayMap[varNameStr] = currIndexStr;
-// /*        state_vector_ordering.push_back(varD.name);
-//         result_array_ordering.push_back(varD.name);*/
-//         ++currIndex;
-//     }
-//     m_StateVectorSize = currIndex;
-//
-//     //Loop over all variables again and assign indices for the algebraic variables.
-//     //Each algebraic variable gets a unique index in the result array.
-//     for( itV = m_Variable.begin(); itV != m_Variable.end(); ++itV )
-//     {
-//         CmMemoryDescriptor varD = *itV;
-//         if( varD.is_state_variable == true ) { continue; }
-//
-//         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
-//         string varNameStr = varD.name.toString();
-//         m_ResultArrayMap[varNameStr] = currIndexStr;
-// /*        result_array_ordering.push_back(varD.name);*/
-//         ++currIndex;
-//     }
-//     m_ResultArrayColls = currIndex;
+    m_StateVectorMap.clear(); /*state_vector_ordering.clear();*/ m_StateVectorSize=0;
+    m_ResultArrayMap.clear(); /*result_array_ordering.clear();*/ m_ResultArrayColls=0;
+
+    //loop over all variables and assign indices for the state variables
+    //each state variable gets a unique index in both arrays: state vector, result array.
+    CmMemoryTable::const_iterator itV;
+    uint currIndex=0;
+    for( itV = m_FlatProcess.variable.begin(); itV != m_FlatProcess.variable.end(); ++itV )
+    {
+        CmMemoryDescriptor varD = *itV;
+        if( varD.is_state_variable == false ) { continue; }
+
+        string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
+        string varNameStr = varD.name.toString();
+        m_StateVectorMap[varNameStr] = currIndexStr;
+        m_ResultArrayMap[varNameStr] = currIndexStr;
+/*        state_vector_ordering.push_back(varD.name);
+        result_array_ordering.push_back(varD.name);*/
+        ++currIndex;
+    }
+    m_StateVectorSize = currIndex;
+
+    //Loop over all variables again and assign indices for the algebraic variables.
+    //Each algebraic variable gets a unique index in the result array.
+    for( itV = m_FlatProcess.variable.begin(); itV != m_FlatProcess.variable.end(); ++itV )
+    {
+        CmMemoryDescriptor varD = *itV;
+        if( varD.is_state_variable == true ) { continue; }
+
+        string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
+        string varNameStr = varD.name.toString();
+        m_ResultArrayMap[varNameStr] = currIndexStr;
+/*        result_array_ordering.push_back(varD.name);*/
+        ++currIndex;
+    }
+    m_ResultArrayColls = currIndex;
 }
 
 
@@ -358,7 +377,8 @@ void siml::PyProcessGenerator::genOutputEquations()
 
 /*!
 Generate the function that will perform the simulation.
-*/
+@todo this function should later go into a common base class of all processes - put it into PyGenMain
+ */
 void siml::PyProcessGenerator::genSimulateFunction()
 {
     m_PyFile <<
@@ -378,7 +398,8 @@ void siml::PyProcessGenerator::genSimulateFunction()
 /*!
 Access variables by name.
 @todo add returning multiple variables at once
-*/
+@todo this function should later go into a common base class of all processes - put it into PyGenMain
+ */
 void siml::PyProcessGenerator::genAccessFunction()
 {
     m_PyFile <<
@@ -402,7 +423,8 @@ void siml::PyProcessGenerator::genAccessFunction()
 
 /*!
 Display graphs
-*/
+@todo this function should later go into a common base class of all processes - put it into PyGenMain
+ */
 void siml::PyProcessGenerator::genGraphFunction()
 {
     m_PyFile <<

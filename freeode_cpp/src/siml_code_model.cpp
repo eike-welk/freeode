@@ -46,25 +46,25 @@ bool siml::CmEquationDescriptor::isOdeAssignment() const
 
 @return true if no error happened, false otherwise.
 */
-bool
-siml::CmModelDescriptor::addParameter(CmMemoryDescriptor inPar)
+void siml::CmModelDescriptor::addParameter(CmMemoryDescriptor inPar)
 {
     //check if name is unique
-    if( !isIdentifierUnique(inPar.name) )
+    if( isIdentifierExisting(inPar.name) )
     {
         string msg =
-                (format("The name %1% does already exist! \n"
+                (format("The name '%1%' does already exist! \n"
                         "The names of sub-models, variables and parameters must be unique "
                         "within a model.") % inPar.name
                 ).str();
-        CmError::addError( msg, (char const *)0); ///@todo add iterator
-        return false;
+        CmError::addError( msg, inPar.defBegin);
+        errorsDetected = true;
+        return /*false*/;
     }
 
     //add the parameter
     parameter.push_back(inPar);
     //return no error
-    return true;
+    return /*true*/;
 }
 
 
@@ -73,27 +73,33 @@ Add the descriptor and see if name is unique.
 
 @return true if no error happened, false otherwise.
 */
-bool
-siml::CmModelDescriptor::addSubModel(CmSubModelLink inSub)
+void siml::CmModelDescriptor::addSubModel(CmSubModelLink inSub)
 {
-    ///@todo check if type exists
+    // check if type exists
+    CmModelDescriptor const * theType = repository()->findModel( inSub.type);
+    if( theType == 0 )
+    {
+        string msg = ( format( "The model '%1%' does not exist!") % inSub.type ).str();
+        CmError::addError( msg, inSub.defBegin);
+        errorsDetected = true;
+        return/* false*/;
+    }
 
     //check if name is unique
-    if( !isIdentifierUnique(inSub.name) )
+    if( isIdentifierExisting(inSub.name) )
     {
-        string msg =
-                (format("The name %1% does already exist! \n"
-                "The names of sub-models, variables and parameters must be unique "
-                "within a model.") % inSub.name
-                ).str();
-        CmError::addError( msg, (char const *)0); ///@todo add iterator
-        return false;
+        string msg = ( format(  "The name '%1%' does already exist! \n"
+                                "The names of sub-models, variables and parameters must be unique "
+                                "within a model.") % inSub.name ).str();
+        CmError::addError( msg, inSub.defBegin);
+        errorsDetected = true;
+        return;
     }
 
     //add the parameter
     subModel.push_back(inSub);
     //return no error
-    return true;
+    return/* true*/;
 }
 
 
@@ -101,30 +107,30 @@ siml::CmModelDescriptor::addSubModel(CmSubModelLink inSub)
 
 @return true if no error happened, false otherwise.
 */
-bool siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
+void siml::CmModelDescriptor::addVariable(CmMemoryDescriptor inVar)
 {
     //check if name is unique
-    if( !isIdentifierUnique(inVar.name) )
+    if( isIdentifierExisting(inVar.name) )
     {
         string msg =
-                (format("The name %1% does already exist! \n"
+                (format("The name '%1%' does already exist! \n"
                 "The names of sub-models, variables and parameters must be unique "
                 "within a model.") % inVar.name
                 ).str();
-        CmError::addError( msg, (char const *)0); ///@todo add iterator
-        return false;
+        CmError::addError( msg, inVar.defBegin);
+        errorsDetected = true;
+        return /*false*/;
     }
 
      //add the variable
     variable.push_back(inVar);
     //return no error
-    return true;
+    return /*true*/;
 }
 
 
 /*!Add an expression to set a value to a parameter.
 Also sets the right options.
-@todo test if lhs is a parameter, test if lhs has no $ (!isTimeDerivative())
 */
 void siml::CmModelDescriptor::addParameterAssignment( CmEquationDescriptor inEqu)
 {
@@ -144,9 +150,7 @@ void siml::CmModelDescriptor::addEquation( CmEquationDescriptor inEqu)
 }
 
 
-/*!Add an equation to set the initial value to a parameter.
-@todo test if lhs is a state variable, test if lhs has no $ (!isTimeDerivative())
- */
+/*!Add an equation to set the initial value to a parameter.*/
 void siml::CmModelDescriptor::addInitialEquation( CmEquationDescriptor inEqu)
 {
     initialEquation.push_back( inEqu);
@@ -158,33 +162,133 @@ Set flag so variable is treated as an integrated variable
 
 @return true if no error happened, false otherwise.
 */
-bool siml::CmModelDescriptor::setVariableIntegrated(std::string stateVarName)
+// void siml::CmModelDescriptor::setVariableIntegrated(CmPath const & stateVarName)
+// {
+//     CmMemoryTable::iterator itV = findVariable( stateVarName);
+//
+//     //variable does not exist: generate error
+//     if( itV != variable.end() )
+//     {
+//         itV->is_state_variable = true;
+//     }
+//     else
+//     {
+//         string msg = ( format( "Compiler internal Error! No variable with name %1% exists! "
+//                                "You use the symbol %1% as a state variable.") % stateVarName ).str();
+//         CmError::addError( msg, (char const *)0);
+//         errorsDetected = true;
+//     }
+// }
+
+
+/*!
+Look through the list of equations.
+Find all time derivatives (uses of '$'), mark the variables in the list of variables.
+
+Currently time derivatives can only occour on the lhs.
+
+@todo move to special class for code generation
+ */
+void siml::CmModelDescriptor::markStateVariables()
 {
-    ///@todo replace by findVariable(...)
-    //loop over all variables to find the variable that will be marked
-    CmMemoryTable::iterator it;
-    for( it = variable.begin(); it != variable.end(); ++it )
+    //loop over all equations
+    CmEquationTable::const_iterator itE;
+    for( itE = equation.begin(); itE != equation.end(); ++itE )
     {
-        CmMemoryDescriptor& varD = *it;
-        if( varD.name == stateVarName )
-        {
-            varD.is_state_variable = true;
-            break;
+        CmEquationDescriptor const & equn = *itE;
+        //See if lhs is time derivative (no time derivatives are legal on rhs)
+        if( !equn.lhs.timeDerivative() ) { continue; }
+
+        //try to find the variable's definition
+        CmMemoryTable::iterator itVar = findVariable( equn.lhs.path());
+        if( itVar != variable.end() )
+        {   //mark variable as state variable
+            itVar->is_state_variable = true;
+        }
+        else
+        {   //error
+            string msg = ( format(  "No variable with name '%1%' exists! "
+                                    "You use the symbol '%1%' as a state variable.")
+                                    % equn.lhs.path().toString() ).str();
+            CmError::addError( msg, equn.defBegin);
+            errorsDetected = true;
         }
     }
-    //variable does not exist: generate error
-    if( it == variable.end())
-    {
-        string msg =
-                (format("No variable with name %1% exists! "
-                        "You used the symbol %1% as a state variable.") % stateVarName
-                ).str();
-        CmError::addError( msg, (char const *)0); ///@todo add iterator
-        return false;
-    }
+}
 
-    //return no error
-    return true;
+
+/*!Find parmeter by name, return the definition.
+@return Iteratetor that points to the parameter's CmMemoryDescriptor if the parameter exists, or parameter.end() otherwise
+*/
+siml::CmMemoryTable::const_iterator siml::CmModelDescriptor::findParameter( CmPath const & name) const
+{
+    ///@note An 'iterator' can be converted to a 'const_iterator', but not viceversa.
+    CmModelDescriptor * self = const_cast<CmModelDescriptor *>(this);
+    return self->findParameter( name);
+}
+/*!Find parmeter by name, return the definition.
+@return Iteratetor that points to the parameter's CmMemoryDescriptor if the parameter exists, or parameter.end() otherwise
+*/
+siml::CmMemoryTable::iterator siml::CmModelDescriptor::findParameter( CmPath const & name)
+{
+    //loop over all parameters and compare the names
+    CmMemoryTable::iterator itM;
+    for( itM = parameter.begin(); itM != parameter.end(); ++itM )
+    {
+        if( itM->name == name ) { return itM; }
+    }
+    //no parameter with that name exists.
+    return parameter.end();
+}
+
+
+/*!Find submodel by name, return the definition.
+@return Iteratetor that points to the parameter's CmMemoryDescriptor if the parameter exists, or subModel.end() otherwise
+ */
+siml::CmSubModelTable::const_iterator siml::CmModelDescriptor::findSubModel(CmPath const & name) const
+{
+    ///@note An 'iterator' can be converted to a 'const_iterator', but not viceversa.
+    CmModelDescriptor * self = const_cast<CmModelDescriptor *>(this);
+    return self->findSubModel( name);
+}
+/*!Find submodel by name, return the definition.
+@return Iteratetor that points to the parameter's CmMemoryDescriptor if the parameter exists, or subModel.end() otherwise
+ */
+siml::CmSubModelTable::iterator siml::CmModelDescriptor::findSubModel(CmPath const & name)
+{
+    //loop over all parameters and compare the names
+    CmSubModelTable::iterator itS;
+    for( itS = subModel.begin(); itS != subModel.end(); ++itS )
+    {
+        if( itS->name == name ) { return itS; }
+    }
+    //no parameter with that name exists.
+    return subModel.end();
+}
+
+
+/*!Find variable by name, return the definition.
+@return Iteratetor that points to the parameter's CmMemoryDescriptor if the parameter exists, or variable.end() otherwise
+ */
+siml::CmMemoryTable::const_iterator siml::CmModelDescriptor::findVariable(CmPath const & name) const
+{
+    ///@note An 'iterator' can be converted to a 'const_iterator', but not viceversa.
+    CmModelDescriptor * self = const_cast<CmModelDescriptor *>(this);
+    return self->findVariable( name);
+}
+/*!Find variable by name, return the definition.
+@return Iteratetor that points to the parameter's CmMemoryDescriptor if the parameter exists, or variable.end() otherwise
+ */
+siml::CmMemoryTable::iterator siml::CmModelDescriptor::findVariable(CmPath const & name)
+{
+    //loop over all parameters and compare the names
+    CmMemoryTable::iterator itM;
+    for( itM = variable.begin(); itM != variable.end(); ++itM )
+    {
+        if( itM->name == name ) { return itM; }
+    }
+    //no parameter with that name exists.
+    return variable.end();
 }
 
 
@@ -192,61 +296,20 @@ bool siml::CmModelDescriptor::setVariableIntegrated(std::string stateVarName)
 Loop over all sub model, all parameters, and all variables, and see if the name
 already exists.
 
-If the name already exists return false, otherwise return true.
-
 @param name the name that is checked for uniqueness.
+
+@return false if the name already exists, otherwise return true.
 */
 bool
-siml::CmModelDescriptor::isIdentifierUnique(CmPath const & name) const
+siml::CmModelDescriptor::isIdentifierExisting(CmPath const & name) const
 {
-    //loop over all unit names
-    CmSubModelTable::const_iterator itSub;
-    for( itSub = subModel.begin(); itSub != subModel.end(); ++itSub )
-    {
-        CmSubModelLink const& subD = *itSub;
-        if( subD.name == name )
-        {
-            return false;
-        }
-    }
-
-    //loop over all parameters to see if the name already exists
-    CmMemoryTable::const_iterator itM;
-    for( itM = parameter.begin(); itM != parameter.end(); ++itM )
-    {
-        CmMemoryDescriptor const& memD = *itM;
-        if( memD.name == name )
-        {
-            return false;
-        }
-    }
-
-    //loop over all variables to see if the name already exists
-    for( itM = variable.begin(); itM != variable.end(); ++itM )
-    {
-        CmMemoryDescriptor const& varD = *itM;
-        if( varD.name == name )
-        {
-            return false;
-        }
-    }
+    if( findParameter( name ) != parameter.end() ) { return true; }
+    if( findSubModel( name )  != subModel.end() )  { return true; }
+    if( findVariable( name )  != variable.end() )  { return true; }
 
     //OK the name is unique
-    return true;
+    return false;
 }
-
-
-/*!
-The name of the descriptor for a variable or a parameter is checked for uniqueness.
-If the name already exists return false, otherwise return true.
-
-@param varOrPar the descriptor that is checked for uniqueness of the name.
- */
-// bool
-// siml::CmModelDescriptor::isIdentifierUnique(CmMemoryDescriptor const & varOrPar) const
-// {
-//     return isIdentifierUnique( varOrPar.name );
-// }
 
 
 /*!Iterate through all lists and display their contents.*/

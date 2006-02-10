@@ -156,11 +156,11 @@ struct CmModelDescriptor
     void display() const;
 
     //!Add a parameter descriptor to the model
-    bool addParameter(CmMemoryDescriptor inPar);
+    void addParameter(CmMemoryDescriptor inPar);
     //!Add a sub-model descriptor to the model
-    bool addSubModel(CmSubModelLink inSub);
+    void addSubModel(CmSubModelLink inSub);
     //!Add a variable descriptor to the model
-    bool addVariable(CmMemoryDescriptor inVar);
+    void addVariable(CmMemoryDescriptor inVar);
     //!Set a value to a parameter
     void addParameterAssignment( CmEquationDescriptor inEqu);
     //!Add an equation to the model
@@ -169,12 +169,25 @@ struct CmModelDescriptor
     void addInitialEquation( CmEquationDescriptor inEqu);
 
     //!Mark variable as state variable
-    bool setVariableIntegrated(std::string stateVarName);
+//     void setVariableIntegrated(CmPath const & stateVarName);
+    //!Find all state variables, mark them in variable definition
+    void markStateVariables();
+
+    //!Find parmeter by name, return the definition.
+    CmMemoryTable::const_iterator   findParameter(CmPath const & name) const;
+    //!Find parmeter by name, return the definition.
+    CmMemoryTable::iterator         findParameter(CmPath const & name);
+    //!Find submodel by name, return the definition.
+    CmSubModelTable::const_iterator findSubModel(CmPath const & name) const;
+    //!Find submodel by name, return the definition.
+    CmSubModelTable::iterator       findSubModel(CmPath const & name);
+    //!Find variable by name, return the definition.
+    CmMemoryTable::const_iterator   findVariable(CmPath const & name) const;
+    //!Find variable by name, return the definition.
+    CmMemoryTable::iterator         findVariable(CmPath const & name);
 
     //!Check if name already exists
-    bool isIdentifierUnique(CmPath const & name) const;
-    //!Check if name already exists
-//     bool isIdentifierUnique(CmMemoryDescriptor const & varOrPar) const;
+    bool isIdentifierExisting(CmPath const & name) const;
 };
 struct CmModelDescriptor;
 //!safe pointer type

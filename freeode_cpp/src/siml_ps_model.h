@@ -113,8 +113,8 @@ struct ps_model : public spirit::grammar<ps_model>
         {
             std::string mp_type, ps_result;
 
-            //set the model's error flag
-            m_grammar.model.errorsDetected = m_error_detected;
+            //set the model's error flag - maybe there are already errors stored in the model.
+            m_grammar.model.errorsDetected = m_error_detected || m_grammar.model.errorsDetected;
 
             //put the model (or process) into the code repository
             if( m_grammar.model.isProcess ) {

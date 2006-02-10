@@ -39,7 +39,7 @@ siml::CmMemAccess::~CmMemAccess()
 }
 
 /*!
-Convert the CmMemAccess object to a string that looks like: "plant.reactor1.p".
+Convert the CmMemAccess object to a string that looks like: "$plant.reactor1.p".
 The separator string (the "." in this example) and the derivation operator can be chosen.
 
 @param  separatorStr separator between the path's components. (Default ".")

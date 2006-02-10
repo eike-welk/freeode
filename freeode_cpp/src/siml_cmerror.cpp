@@ -65,7 +65,7 @@ The function can cope with missing arguments, only message must always be given.
 Currently the format is somewhat inspired by gcc's error messages:
 /home/eike/.../src/siml_cmerror.cpp:66: error: syntax error before `}' token
  */
-siml::CmError siml::CmError::createError(
+siml::CmError siml::CmError::createErrorFileLine(
         std::string const & message, std::string const & file, uint line, Severity howBad)
 {
     string fileLineStr;
@@ -97,13 +97,12 @@ So the error can be located and understood more easylie.
 */
 siml::CmError siml::CmError::createErrorChar(std::string const & message, char const * where, Severity howBad)
 {
-    //offending_code_first, offending_code_last point often to the same byte
     uint i, newlines;
     char const * offending_code_first = where;
     char const * offending_code_last  = where;
     std::string offending_code;
 
-    if( where )
+    if( where ) //protect aginst 0 pointer
     {
         //go one line up (move max 200 chars)
         for( i=0, newlines=0; i<200 && newlines<2; ++i, --offending_code_first )
