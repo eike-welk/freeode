@@ -122,6 +122,8 @@ struct CmSolutionParameterDescriptor
 /*!
 @short Descripion of a "MODEL"
 This is the parsing result of a model: "MODEL ... END"
+
+@todo write a class CmModelCodeGen that contians the operatins of siml_code_transformations.
 */
 struct CmModelDescriptor
 {

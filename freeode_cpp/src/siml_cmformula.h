@@ -96,8 +96,8 @@ public:
         BracketPairCmd(): FormulaCmd(1) {};
         std::string toString() const { return std::string("()"); }
     };
-    typedef boost::shared_ptr<FormulaCmd> ItemPtr;
-    typedef std::list<ItemPtr> ItemContainer;
+    typedef boost::shared_ptr<FormulaCmd> CommandPtr;
+    typedef std::list<CommandPtr> CommandContainer;
 
     //!Default constructor
     CmFormula();
@@ -113,7 +113,7 @@ public:
     CmFormula & clear();
 
     //!Put any formula item into list
-//     CmFormula & append(ItemPtr inItem);
+//     CmFormula & append(CommandPtr inItem);
     //!Put operator item into list
     CmFormula & pushBackMathOperator(std::string const & inSymbol, uint inOps);
     //!Put number item into list
@@ -131,8 +131,11 @@ public:
     //!Simplistic string conversion
     std::string toString() const;
 
+    //!Get container with commands
+    CommandContainer const & commands() const { return m_commands; };
+
 private:
-    ItemContainer m_items;
+    CommandContainer m_commands;
 };
 
 

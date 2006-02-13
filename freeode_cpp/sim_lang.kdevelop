@@ -3,7 +3,7 @@
   <general>
     <author>Eike Welk</author>
     <email>eike.welk@post.rwth-aachen.de</email>
-    <version>0.1</version>
+    <version>0.1.0</version>
     <projectmanagement>KDevKDEAutoProject</projectmanagement>
     <primarylanguage>C++</primarylanguage>
     <keywords>
@@ -15,8 +15,9 @@
     <ignoreparts/>
     <projectdirectory>.</projectdirectory>
     <absoluteprojectpath>false</absoluteprojectpath>
-    <description/>
-    <versioncontrol/>
+    <description>Siml is a language to express differential equations. 
+This progam is a compiler for the Siml language. The Siml program is compiled into a Python program, that solves the differential equation numerically.</description>
+    <versioncontrol>kdevsubversion</versioncontrol>
   </general>
   <kdevautoproject>
     <general>
@@ -78,6 +79,7 @@
     <tree>
       <hidepatterns>*.o,*.lo,CVS</hidepatterns>
       <hidenonprojectfiles>false</hidenonprojectfiles>
+      <showvcsfields>false</showvcsfields>
     </tree>
   </kdevfileview>
   <kdevdoctreeview>

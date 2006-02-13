@@ -29,9 +29,9 @@ siml::CmFormula::CmFormula()
 
 
 /*!Do a shallow copy. Only the list of pointers is copied, not the formula items.*/
-siml::CmFormula::CmFormula( CmFormula const & inFormula)
+siml::CmFormula::CmFormula( CmFormula const & inFormula):
+        m_commands( inFormula.m_commands)
 {
-    m_items = inFormula.m_items;
 }
 
 
@@ -44,7 +44,7 @@ siml::CmFormula::~CmFormula()
 siml::CmFormula & siml::CmFormula::operator= ( CmFormula const & inFormula)
 {
     if( this != &inFormula ) {
-        m_items = inFormula.m_items;
+        m_commands = inFormula.m_commands;
     }
     return *this;
 }
@@ -54,15 +54,15 @@ siml::CmFormula & siml::CmFormula::operator= ( CmFormula const & inFormula)
 siml::CmFormula & siml::CmFormula::clear()
 {
     //the smart pointers will delete the stored objects if necessary.
-    m_items.clear();
+    m_commands.clear();
     return *this;
 }
 
 
 /*!Put formula item at end of list list*/
-// siml::CmFormula & siml::CmFormula::append( ItemPtr inItem)
+// siml::CmFormula & siml::CmFormula::append( CommandPtr inItem)
 // {
-//     m_items.push_back( inItem);
+//     m_commands.push_back( inItem);
 //     return *this;
 // }
 
@@ -70,8 +70,8 @@ siml::CmFormula & siml::CmFormula::clear()
 //!Put operator item into list
 siml::CmFormula & siml::CmFormula::pushBackMathOperator( std::string const & inSymbol, uint inOps)
 {
-    ItemPtr item( new MathOperatorCmd(inSymbol, inOps));
-    m_items.push_back( item);
+    CommandPtr item( new MathOperatorCmd(inSymbol, inOps));
+    m_commands.push_back( item);
     return *this;
 }
 
@@ -79,8 +79,8 @@ siml::CmFormula & siml::CmFormula::pushBackMathOperator( std::string const & inS
 //!Put number item into list
 siml::CmFormula & siml::CmFormula::pushBackNumber( std::string const & inString)
 {
-    ItemPtr item( new NumberCmd( inString));
-    m_items.push_back( item);
+    CommandPtr item( new NumberCmd( inString));
+    m_commands.push_back( item);
     return *this;
 }
 
@@ -88,8 +88,8 @@ siml::CmFormula & siml::CmFormula::pushBackNumber( std::string const & inString)
 //!Put path item into list
 siml::CmFormula & siml::CmFormula::pushBackMemAccess(CmMemAccess const & inAccess)
 {
-    ItemPtr item( new MemAccessCmd( inAccess));
-    m_items.push_back( item);
+    CommandPtr item( new MemAccessCmd( inAccess));
+    m_commands.push_back( item);
     return *this;
 }
 
@@ -97,8 +97,8 @@ siml::CmFormula & siml::CmFormula::pushBackMemAccess(CmMemAccess const & inAcces
 //!Put bracket item into list
 siml::CmFormula & siml::CmFormula::pushBackBrackets()
 {
-    ItemPtr item( new BracketPairCmd());
-    m_items.push_back(item);
+    CommandPtr item( new BracketPairCmd());
+    m_commands.push_back(item);
     return *this;
 }
 
@@ -114,9 +114,9 @@ parameter names
 */
 void siml::CmFormula::prependPaths(CmPath const & inPrefix)
 {
-    ItemContainer::iterator itI;
+    CommandContainer::iterator itI;
 
-    for( itI = m_items.begin(); itI != m_items.end(); ++itI)
+    for( itI = m_commands.begin(); itI != m_commands.end(); ++itI)
     {
         //try if current item is a path
         MemAccessCmd * oldItem = dynamic_cast<MemAccessCmd *>((*itI).get());
@@ -126,7 +126,7 @@ void siml::CmFormula::prependPaths(CmPath const & inPrefix)
         CmMemAccess access = oldItem->access;
         access.prependPath( inPrefix);
         //replace with new item that has extended path
-        ItemPtr newItem( new MemAccessCmd( access));
+        CommandPtr newItem( new MemAccessCmd( access));
         *itI = newItem;
     }
 }
@@ -141,9 +141,9 @@ Replace some paths by new paths. The replacements are given in the map inReplace
 */
 void siml::CmFormula::replacePaths( CmPath::ReplaceMap const & inReplacements)
 {
-    ItemContainer::iterator itI;
+    CommandContainer::iterator itI;
 
-    for( itI = m_items.begin(); itI != m_items.end(); ++itI)
+    for( itI = m_commands.begin(); itI != m_commands.end(); ++itI)
     {
         //try if current item is a path
         MemAccessCmd * oldItem = dynamic_cast<MemAccessCmd *>((*itI).get());
@@ -153,7 +153,7 @@ void siml::CmFormula::replacePaths( CmPath::ReplaceMap const & inReplacements)
         CmMemAccess access = oldItem->access;
         access.replacePath( inReplacements);
         //replace with new item
-        ItemPtr newItem( new MemAccessCmd( access));
+        CommandPtr newItem( new MemAccessCmd( access));
         *itI = newItem;
     }
 }
@@ -163,9 +163,9 @@ void siml::CmFormula::replacePaths( CmPath::ReplaceMap const & inReplacements)
 std::string siml::CmFormula::toString() const
 {
     string resSting;
-    ItemContainer::const_iterator itI;
+    CommandContainer::const_iterator itI;
 
-    for( itI = m_items.begin(); itI != m_items.end(); ++itI)
+    for( itI = m_commands.begin(); itI != m_commands.end(); ++itI)
     {
         resSting += ((*itI)->toString() + " ");
     }

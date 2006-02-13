@@ -20,13 +20,16 @@
 #ifndef SIML_PYPROCESSGENERATOR_H
 #define SIML_PYPROCESSGENERATOR_H
 
+
 #include "siml_code_model.h"
+// #include "siml_cmpath.h"
+#include "siml_pyformulaconverter.h"
 
 #include <boost/shared_ptr.hpp>
 
 #include <iostream>
 // #include <vector>
- #include <string>
+#include <string>
 // #include <fstream>
 #include <map>
 
@@ -48,12 +51,13 @@ public:
 
     //!generate python code for one process
     void genProcessObject(int iProcess);
+
+private:
+    //text generating functions
     //!generate the processe's constructor
     void genConstructor();
     //!generate the function that conains the equations
     void genOdeFunction();
-    //!Define which variable is at what index in various arrays
-    void layoutArrays();
     //!create the function that compotes the algebraic variables for output
     void genOutputEquations();
     //!generate the simulation's main function @todo put into file's header?
@@ -63,7 +67,12 @@ public:
     //!create the function that shows results graphically
     void genGraphFunction();
 
-private:
+    //creation of internal data structures
+    //!Define which variable is at what index in various arrays
+    void layoutArrays();
+    //!create maping between path and Python variable name
+    void createPyVarNames();
+
     //!The generated python program is stored here
     std::ostream& m_PyFile;
 
@@ -80,26 +89,35 @@ private:
 //     CmEquationTable m_Equation;
 
     //!Mapping between variable name and index in state vector.
-    /*!The variable name is the key. So the contents are pairs: var_name, index) e.g: ("S", "1")*/
-    std::map<std::string, std::string> m_StateVectorMap;
+    /*!The variable name is the key. So the contents are pairs: var_name, index) e.g: ("S", "1")
+    @todo make map into CmPath --> string */
+    std::map<CmPath, std::string> m_StateVectorMap;
     //!State variable names in order of ascending index
     /*!Only needed to produce good looking code since state_vector_map is ordered alphabeticaly*/
 //     std::vector<std::string> state_vector_ordering;
     //!The state vector's number of rows.
-    uint m_StateVectorSize;
+    uint m_StateVectorSize; ///@todo remove; use m_StateVectorMap.size() instead.
 
     //!Mapping between variable name and index in result array.
     /*!The variable name is the key. So the contents are pairs: var_name, index) e.g: ("mu", "5")
-
-    The result array keeps the time series of all variables (state and algebraic) after the simulation
-    is finished for easy retrieval. The first index is the time axis, the collumns (second index) are
-    different variables. */
-    std::map<std::string, std::string> m_ResultArrayMap;
+     *
+     * The result array keeps the time series of all variables (state and algebraic) after the simulation
+     * is finished for easy retrieval. The first index is the time axis, the collumns (second index) are
+     * different variables.
+     * @todo make map into CmPath --> string */
+    std::map<CmPath, std::string> m_ResultArrayMap;
     //!All variable names in order of ascending collumn index in result array.
     /*!Only needed to produce good looking code since result_vector_map is ordered alphabeticaly*/
 //     std::vector<std::string> result_array_ordering;
     //!Number of collumns (2nd index) of the result array.
-    uint m_ResultArrayColls;
+    uint m_ResultArrayColls; ///@todo remove; use m_ResultArrayMap.size() instead.
+
+    //!Python names for all variables and parameters.
+    /*! Mapping between siml path ("a.b.c") and Python expression to access this object ("self.a_b_c") */
+    std::map<CmPath, std::string> m_PythonName;
+
+    //!create Python expressions from CmFormula objects.
+    PyFormulaConverter m_toPy;
 };
 
 }
