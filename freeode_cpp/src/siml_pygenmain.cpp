@@ -91,6 +91,7 @@ void siml::PyGenMain::genFileStart()
             "\n"
             "\n"
             ;
+    ///@todo insert definition of simulation base class here. #include method would be most elegant.
 }
 
 

@@ -56,11 +56,17 @@ private:
     //text generating functions
     //!generate the processe's constructor
     void genConstructor();
+    //! Generate the (SET) function where values are assigned to the parameters.
+    void genSetFunction();
+    //!Generate function to Set INITIAL values of the state variables.
+    void genInitialFunction();
     //!generate the function that conains the equations
     void genOdeFunction();
     //!create the function that compotes the algebraic variables for output
     void genOutputEquations();
-    //!generate the simulation's main function @todo put into file's header?
+
+    ///@todo put these functions into PyGenMain
+    //!generate the simulation's main function
     void genSimulateFunction();
     //!generate function that returns a single variable from the array of simulation results
     void genAccessFunction();
@@ -81,16 +87,9 @@ private:
     The entities from all sub-models were copied into this object, and given unique names.*/
     CmModelDescriptor m_FlatProcess;
 
-    //!All parameters of the process
-//     CmMemoryTable m_Parameter;
-    //!All variables of the process
-//     CmMemoryTable m_Variable;
-    //!All equations of the process
-//     CmEquationTable m_Equation;
-
     //!Mapping between variable name and index in state vector.
     /*!The variable name is the key. So the contents are pairs: var_name, index) e.g: ("S", "1")
-    @todo make map into CmPath --> string */
+    */
     std::map<CmPath, std::string> m_StateVectorMap;
     //!State variable names in order of ascending index
     /*!Only needed to produce good looking code since state_vector_map is ordered alphabeticaly*/
@@ -104,7 +103,7 @@ private:
      * The result array keeps the time series of all variables (state and algebraic) after the simulation
      * is finished for easy retrieval. The first index is the time axis, the collumns (second index) are
      * different variables.
-     * @todo make map into CmPath --> string */
+     */
     std::map<CmPath, std::string> m_ResultArrayMap;
     //!All variable names in order of ascending collumn index in result array.
     /*!Only needed to produce good looking code since result_vector_map is ordered alphabeticaly*/
