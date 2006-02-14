@@ -155,7 +155,7 @@ struct CmModelDescriptor
     bool errorsDetected;
 
     //!Constructor
-    CmModelDescriptor(): isProcess(false), errorsDetected(false) {};
+    CmModelDescriptor(): defBegin(0), isProcess(false), errorsDetected(false) {};
     //!Display the model's contents (for debuging)
     void display() const;
 

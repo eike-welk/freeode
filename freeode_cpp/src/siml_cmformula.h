@@ -128,6 +128,22 @@ public:
     //!Change some paths
     void replacePaths( CmPath::ReplaceMap const & inReplacements);
 
+    //!Apply a functor to all MemAccessCmd objects.
+    /*! The functor's operator()( MemAccessCmd const &) is called. Therefore it
+    can not change the memory accessor, it can only inspect it.
+    (e.g. generate error messages.) */
+    template< typename FunctorT>
+    void applyToMemAccessConst( FunctorT & funct) const
+    {
+        CommandContainer::const_iterator it;
+        for( it = m_commands.begin(); it != m_commands.end(); ++it)
+        {
+            MemAccessCmd const * ma = dynamic_cast<MemAccessCmd *>((*it).get());//convert to memory acces command
+            if( !ma ) { continue; } //if conversion impossible: go to next command
+            funct(ma->access);      //else: apply the functor
+        }
+    }
+
     //!Simplistic string conversion
     std::string toString() const;
 

@@ -114,12 +114,12 @@ parameter names
 */
 void siml::CmFormula::prependPaths(CmPath const & inPrefix)
 {
-    CommandContainer::iterator itI;
+    CommandContainer::iterator it;
 
-    for( itI = m_commands.begin(); itI != m_commands.end(); ++itI)
+    for( it = m_commands.begin(); it != m_commands.end(); ++it)
     {
         //try if current item is a path
-        MemAccessCmd * oldItem = dynamic_cast<MemAccessCmd *>((*itI).get());
+        MemAccessCmd * oldItem = dynamic_cast<MemAccessCmd *>((*it).get());
         if( !oldItem ) { continue; }
 
         //put prefix in front of old path
@@ -127,7 +127,7 @@ void siml::CmFormula::prependPaths(CmPath const & inPrefix)
         access.prependPath( inPrefix);
         //replace with new item that has extended path
         CommandPtr newItem( new MemAccessCmd( access));
-        *itI = newItem;
+        *it = newItem;
     }
 }
 
@@ -141,12 +141,12 @@ Replace some paths by new paths. The replacements are given in the map inReplace
 */
 void siml::CmFormula::replacePaths( CmPath::ReplaceMap const & inReplacements)
 {
-    CommandContainer::iterator itI;
+    CommandContainer::iterator it;
 
-    for( itI = m_commands.begin(); itI != m_commands.end(); ++itI)
+    for( it = m_commands.begin(); it != m_commands.end(); ++it)
     {
         //try if current item is a path
-        MemAccessCmd * oldItem = dynamic_cast<MemAccessCmd *>((*itI).get());
+        MemAccessCmd * oldItem = dynamic_cast<MemAccessCmd *>((*it).get());
         if( !oldItem ) { continue; }
 
         //get path and replace it
@@ -154,7 +154,7 @@ void siml::CmFormula::replacePaths( CmPath::ReplaceMap const & inReplacements)
         access.replacePath( inReplacements);
         //replace with new item
         CommandPtr newItem( new MemAccessCmd( access));
-        *itI = newItem;
+        *it = newItem;
     }
 }
 
@@ -163,11 +163,11 @@ void siml::CmFormula::replacePaths( CmPath::ReplaceMap const & inReplacements)
 std::string siml::CmFormula::toString() const
 {
     string resSting;
-    CommandContainer::const_iterator itI;
+    CommandContainer::const_iterator it;
 
-    for( itI = m_commands.begin(); itI != m_commands.end(); ++itI)
+    for( it = m_commands.begin(); it != m_commands.end(); ++it)
     {
-        resSting += ((*itI)->toString() + " ");
+        resSting += ((*it)->toString() + " ");
     }
 
     return resSting;

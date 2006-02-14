@@ -63,6 +63,7 @@ siml::createFlatModel( CmModelDescriptor const & compositeProcess )
     flatModel.isProcess = compositeProcess.isProcess;
     flatModel.initialEquation = compositeProcess.initialEquation;
     flatModel.solutionParameters = compositeProcess.solutionParameters;
+    flatModel.defBegin = compositeProcess.defBegin;
 
     //copy the recursive features
     int recursionLevel = 0;
@@ -261,32 +262,71 @@ void siml::propagateParameters( CmModelDescriptor & process)
     }
 }
 
+namespace siml
+{
+//!check if an identifier in the parameter is using the correct semantics.
+/*!Curent checks: all operands must be parameters;  no $ allowed.*/
+struct TestIsParameter
+{
+    CmModelDescriptor & process;
+    CmEquationDescriptor const & equation;
 
+        TestIsParameter( CmModelDescriptor & inProcess, CmEquationDescriptor const & inEquation):
+                process( inProcess), equation( inEquation) {}
 
+        void operator() ( CmMemAccess const & mem) const
+        {
+            if( process.findParameter( mem.path()) == process.parameter.end() )
+            {   //all operands must be parameters
+                string msg = ( format( "Undefined parameter: %1%!" ) % mem.path()).str();
+                CmError::addError( msg, equation.defBegin);
+                process.errorsDetected = true;
+            }
+            else if( mem.timeDerivative() )
+            {   //no $ allowed.
+                string msg = ( format( "Parameters can not be differentiated! See: %1%!" ) % mem).str();
+                CmError::addError( msg, equation.defBegin);
+                process.errorsDetected = true;
+            }
+        }
+};
+}
 
 /*!
 Test for semantic errors
 
-set:
--All operands (paths) must be parameters.
-- no $ allowed.
--All parameters must be initialized.
+SET:
+        - All operands (paths) must be parameters.
+        - No $ allowed.
+@todo   - All parameters must be initialized.
 
-Equation:
--lhs must be variable not parameter.
--rhs: no $ allowed.
--All memory access must go to declared parameters and variables.
--No assignment to state variables.
--No assignment to parameters.
--All state variables must have '$x =' assignments.
--All algebraic variables must have assignments.
+EQUATION:
+        - lhs must be variable not parameter.
+        - rhs: no $ allowed.
+        - All memory access must go to declared parameters and variables.
+        - No assignment to state variables.
+        - No assignment to parameters.
+        - All state variables must have '$x =' assignments. - superflouus state variables are implicitly declared this way (CmModelDescriptor::markStateVariables()).
+        - All algebraic variables must have assignments.
 
-@note The result will be (or-ed into) process.errorsDetected;
+Function Result:
+        - Errors will be generated and put imto the global storage.
+        - The variable process.errorsDetected will be set to true, if errors are detected.
 */
 void siml::checkErrors( CmModelDescriptor & process)
 {
     //SET section ----------------------------------------------
-    //all operands must be parameters
+    //all operands must be parameters;  no $ allowed.
+    CmEquationTable::const_iterator itEqu;
+    for( itEqu = process.parameterAssignment.begin(); itEqu != process.parameterAssignment.end(); ++itEqu)
+    {
+        CmEquationDescriptor const & equ = *itEqu;
+        TestIsParameter inspectMem( process, equ);
+        inspectMem( equ.lhs);
+        equ.rhs.applyToMemAccessConst( inspectMem); // inspect all identifiers of the RHS
+    }
+
+
     return;
 }
 
