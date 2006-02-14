@@ -8,3 +8,6 @@ from testproc import *
 sim = SimBio()
 sim.simulate()
 sim.graph('r.X r.S')
+
+##sim.simulate()
+##sim.graph('r.X r.S')

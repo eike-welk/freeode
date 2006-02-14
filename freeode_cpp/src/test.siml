@@ -33,42 +33,36 @@
 
 
 MODEL BioReactor
+    PARAMETER #Define  values that stay constant during the simulation.
+        mu_max; Ks; Yxs;
 
-PARAMETER
-mu_max; Ks; Yxs;
+    VARIABLE #Define values that change during the simulation.
+        mu; X; S;
 
-VARIABLE
-mu; X; S;
-
-EQUATION
-mu := mu_max * S/(S+Ks);
-$X := mu*X;
-$S := -1/Yxs*mu*X;
-
+    EQUATION #Specify the equations
+        mu := mu_max * S/(S+Ks);
+        $X := mu*X;
+        $S := -1/Yxs*mu*X;
 END
 
 
 PROCESS SimBio
+    PARAMETER #Define the constant values again.
+        mu_max; Ks; Yxs;
 
-PARAMETER
-mu_max; Ks; Yxs;
+    UNIT #Say which model will be used.
+        r AS BioReactor;
 
-UNIT
-r AS BioReactor;
+    SET #Set values to the parameters. The values will be copied int the BioReactor model
+        mu_max := 0.32;
+        Ks     := 0.01;
+        Yxs    := 0.5;
 
-SET
-mu_max := 0.32;
-Ks     := 0.01;
-Yxs    := 0.5;
+    INITIAL #Set initial values to the state variables. Note: the full path has to be specified here.
+        r.X := 0.1;
+        r.S := 20;
 
-#EQUATION
-
-INITIAL
-r.X := 0.1;
-r.S := 20;
-
-SOLUTIONPARAMETERS
-ReportingInterval :=1; #[h]
-SimulationTime    :=20; #[h]
-
+    SOLUTIONPARAMETERS #Specify options for the simulation algorithm.
+        ReportingInterval :=0.5; #[h]
+        SimulationTime    :=20; #[h]
 END

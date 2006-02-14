@@ -49,8 +49,13 @@ class SimulatorBase:
         This function performs the simulation.
         """
 
+        #Compute the initial values. (They are overwritten by integrate.odeint)
+        initialValues = self.setInitialValues()
+        #create the array of output time points
         self.time = linspace(0.0, self.simulationTime, self.simulationTime/self.reportingInterval + 1) #note: no rounding is better, linspace is quite smart.
-        y = integrate.odeint(self._diffStateT, self.initialValues, self.time)
+        #compute the numerical solution
+        y = integrate.odeint(self._diffStateT, initialValues, self.time)
+        #compute the algebraic variables for a second time, so they can be shown in graphs.
         self._outputEquations(y)
 
 

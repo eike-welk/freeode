@@ -143,9 +143,9 @@ void siml::PyProcessGenerator::genConstructor()
     m_PyFile << format("%|8t|#Compute parameter values.\n");
     m_PyFile << format("%|8t|self.setParameters()\n");
 
-    //Compute the initial values
-    m_PyFile << format("%|8t|#Compute the initial values.\n");
-    m_PyFile << format("%|8t|self.setInitialValues()\n");
+//     //Compute the initial values
+//     m_PyFile << format("%|8t|#Compute the initial values.\n");
+//     m_PyFile << format("%|8t|self.setInitialValues()\n");
 
     m_PyFile << '\n';
 
@@ -185,7 +185,7 @@ void siml::PyProcessGenerator::genSetFunction()
         string simlName = equnD.lhs.toString();
         string pyName = m_PythonName[ equnD.lhs.path()];
         string pyMathExpr  = m_toPy.convert( equnD.rhs);
-        m_PyFile << format("%|8t|%1% %|25t|= %2% # = %3%") % pyName % pyMathExpr % simlName << '\n';
+        m_PyFile << format("%|8t|%1% %|25t|= float(%2%) # = %3%") % pyName % pyMathExpr % simlName << '\n';
     }
     m_PyFile << '\n';
 }
@@ -205,8 +205,8 @@ void siml::PyProcessGenerator::genInitialFunction()
             ;
 
     //Assign initial values to the state variables
-    m_PyFile << format("%|8t|#Assign initial values to the state variables and store them in a vector.") << '\n';
-    m_PyFile << format("%|8t|self.initialValues = zeros(%1%, Float)") % m_StateVectorSize << '\n';
+    m_PyFile << format("%|8t|#Assign initial values to the state variables and store them in a vector.\n");
+    m_PyFile << format("%|8t|initialValues = zeros(%1%, Float)\n") % m_StateVectorSize;
     CmEquationTable::const_iterator it;
     for( it = m_FlatProcess.initialEquation.begin(); it != m_FlatProcess.initialEquation.end(); ++it )
     {
@@ -214,8 +214,10 @@ void siml::PyProcessGenerator::genInitialFunction()
         string simlName = equnD.lhs.toString();
         string index = m_StateVectorMap[equnD.lhs.path()]; //look up m_Variable's index in the state vector.
         string pyMathExpr  = m_toPy.convert( equnD.rhs);
-        m_PyFile << format("%|8t|self.initialValues[%1%] = %2% # = %3%\n") % index % pyMathExpr % simlName;
+        m_PyFile << format("%|8t|initialValues[%1%] = %2% # = %3%\n") % index % pyMathExpr % simlName;
     }
+    m_PyFile << '\n';
+    m_PyFile << format("%|8t|return initialValues\n");
     m_PyFile << '\n';
 }
 

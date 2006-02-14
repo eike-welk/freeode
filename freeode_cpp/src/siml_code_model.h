@@ -116,6 +116,8 @@ struct CmSolutionParameterDescriptor
     std::string simulationTime;
     //!Iterator to the place where the definition started (into the file buffer)
     BufferIterator defBegin;
+
+    CmSolutionParameterDescriptor(): reportingInterval("1"), simulationTime("10") {}
 };
 
 
