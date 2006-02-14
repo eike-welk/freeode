@@ -68,6 +68,7 @@ Generate the first few lines of the python file
 @todo find out how to insert time and date.
 For time and date see:
 http://www.boost.org/doc/html/date_time/examples/general_usage_examples.html
+@todo change from Gnuplot to a more standard plotting library
  */
 void siml::PyGenMain::genFileStart()
 {
@@ -86,12 +87,15 @@ void siml::PyGenMain::genFileStart()
             "#------------------------------------------------------------------------------#\n"
             "\n"
             "\n"
-            "from scipy import * # Also includes Numeric.\n"
-            "import Gnuplot, Gnuplot.funcutils\n" ///@todo change from Gnuplot to a more standard plotting library
-            "\n"
-            "\n"
+//             "from scipy import * # Also includes Numeric.\n"
+//             "import Gnuplot, Gnuplot.funcutils\n"
+//             "\n"
+//             "\n"
             ;
-    ///@todo insert definition of simulation base class here. #include method would be most elegant.
+    //insert the defion of the base class for all simulators
+    m_PyFile <<
+#include "simulatorbase.h"
+            ;
 }
 
 

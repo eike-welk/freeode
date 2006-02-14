@@ -32,60 +32,43 @@
 # END
 
 
-MODEL mo2
+MODEL BioReactor
 
 PARAMETER
-mu_max; #DEFAULT 0.32;
-Ks;     #DEFAULT 0.1;
-Yxs;    #DEFAULT 0.5;
-#Ks;
+mu_max; Ks; Yxs;
 
 VARIABLE
-mu;
-X; #INITIAL 0.2; # Biomass
-S; #INITIAL 25;  # Sugar
-#mu;
-#Ks;
+mu; X; S;
 
 EQUATION
 mu := mu_max * S/(S+Ks);
 $X := mu*X;
-$S := -1/Yxs*mu*X + a.b.c;
-#$o := 5;
+$S := -1/Yxs*mu*X;
 
 END
 
 
-PROCESS pr1
+PROCESS SimBio
 
 PARAMETER
-mu_max;
-Ks;
-Yxs;
+mu_max; Ks; Yxs;
 
 UNIT
-reactor AS mo2;
-#reactor2 AS mo2;
-
-#VARIABLE
-#reactor;
+r AS BioReactor;
 
 SET
-mu_max := 0.5;
+mu_max := 0.32;
 Ks     := 0.01;
 Yxs    := 0.5;
 
 #EQUATION
 
 INITIAL
-reactor.X := 0.1;
-reactor.S := 20;
+r.X := 0.1;
+r.S := 20;
 
 SOLUTIONPARAMETERS
 ReportingInterval :=1; #[h]
 SimulationTime    :=20; #[h]
-
-#SCHEDULE
-#CONTINUE FOR 1000
 
 END

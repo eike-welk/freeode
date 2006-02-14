@@ -88,16 +88,9 @@ void siml::PyProcessGenerator::genProcessObject(int iProcess)
     m_toPy.setPythonName( m_PythonName);
 
     //generate the start of the simulation object's definition
-    m_PyFile << format("class %1%:\n") % m_FlatProcess.name;
+    m_PyFile << format("class %1%(SimulatorBase):\n") % m_FlatProcess.name;
     m_PyFile << format("%|4t|\"\"\" object to simulate process %1% \"\"\"\n") % m_FlatProcess.name;
-    m_PyFile << endl;
-
-    ///@todo these functions should later go into a common base class of all processes - put them into PyGenMain
-    //Generate some infrastructure functions
-    genAccessFunction();
-    genGraphFunction();
-    //Generate the function that performs the simulation.
-    genSimulateFunction();
+    m_PyFile << '\n';
 
     //Generate Constuctor which creates the maps for later access to variables (and some day parameters)
     genConstructor();
@@ -122,7 +115,7 @@ Generate Constuctor which creates the parameters as member variables
  */
 void siml::PyProcessGenerator::genConstructor()
 {
-    m_PyFile << format("%|4t|def __init__(self):") << endl;
+    m_PyFile << format("%|4t|def __init__(self):") << '\n';
 
     //Map for converting variable names to indices or slices
     //necessary for convenient access to the simulation results from Python.
@@ -148,7 +141,13 @@ void siml::PyProcessGenerator::genConstructor()
 
     //Compute parameter values
     m_PyFile << format("%|8t|#Compute parameter values.\n");
-    m_PyFile << format("%|8t|self.setParameters()\n\n");
+    m_PyFile << format("%|8t|self.setParameters()\n");
+
+    //Compute the initial values
+    m_PyFile << format("%|8t|#Compute the initial values.\n");
+    m_PyFile << format("%|8t|self.setInitialValues()\n");
+
+    m_PyFile << '\n';
 
     ///@todo initialize resultArray with the right dimensions
 }
@@ -166,7 +165,7 @@ The parameters are data members of the simulation object.
 void siml::PyProcessGenerator::genSetFunction()
 {
     m_PyFile <<
-            "    def setParameters():\n"
+            "    def setParameters(self):\n"
             "        \"\"\"\n"
             "        Assign values to the parmeters. The function represents the SET section.\n"
             "        The parameters are data members of the simulation object.\n"
@@ -186,9 +185,9 @@ void siml::PyProcessGenerator::genSetFunction()
         string simlName = equnD.lhs.toString();
         string pyName = m_PythonName[ equnD.lhs.path()];
         string pyMathExpr  = m_toPy.convert( equnD.rhs);
-        m_PyFile << format("%|8t|%1% %|25t|= %2% # = %3%") % pyName % pyMathExpr % simlName << endl;
+        m_PyFile << format("%|8t|%1% %|25t|= %2% # = %3%") % pyName % pyMathExpr % simlName << '\n';
     }
-    m_PyFile << endl;
+    m_PyFile << '\n';
 }
 
 
@@ -196,7 +195,7 @@ void siml::PyProcessGenerator::genSetFunction()
 void siml::PyProcessGenerator::genInitialFunction()
 {
     m_PyFile <<
-            "    def setInitialValues():\n"
+            "    def setInitialValues(self):\n"
             "        \"\"\"\n"
             "        Copute the initial values of the state variables.\n"
             "        The function represents the SET section.\n"
@@ -207,7 +206,7 @@ void siml::PyProcessGenerator::genInitialFunction()
 
     //Assign initial values to the state variables
     m_PyFile << format("%|8t|#Assign initial values to the state variables and store them in a vector.") << '\n';
-    m_PyFile << format("%|8t|self.initialValues = zeros(%1%, Float)") % m_StateVectorSize << endl;
+    m_PyFile << format("%|8t|self.initialValues = zeros(%1%, Float)") % m_StateVectorSize << '\n';
     CmEquationTable::const_iterator it;
     for( it = m_FlatProcess.initialEquation.begin(); it != m_FlatProcess.initialEquation.end(); ++it )
     {
@@ -240,17 +239,17 @@ void siml::PyProcessGenerator::genOdeFunction()
             "        \n";
 
 //     //Create local variables for the parameters.
-//     m_PyFile << format("%|8t|#Create local variables for the parameters.") << endl;
+//     m_PyFile << format("%|8t|#Create local variables for the parameters.") << '\n';
 //     CmMemoryTable::const_iterator itP;
 //     for( itP = m_Parameter.begin(); itP != m_Parameter.end(); ++itP )
 //     {
 //         CmMemoryDescriptor paramD = *itP;
-//         m_PyFile << format("%|8t|%1% = self.%1%") % paramD.name << endl;
+//         m_PyFile << format("%|8t|%1% = self.%1%") % paramD.name << '\n';
 //     }
-//     m_PyFile << endl;
+//     m_PyFile << '\n';
 
     //Dissect the state vector into individual, local state variables.
-    m_PyFile << format("%|8t|#Dissect the state vector into individual, local state variables.") << endl;
+    m_PyFile << format("%|8t|#Dissect the state vector into individual, local state variables.") << '\n';
     CmMemoryTable::const_iterator itV;
     for( itV = m_FlatProcess.variable.begin(); itV != m_FlatProcess.variable.end(); ++itV )
     {
@@ -259,17 +258,17 @@ void siml::PyProcessGenerator::genOdeFunction()
 
         string varName = m_PythonName[varD.name];
         string index = m_StateVectorMap[varD.name]; //look up variable's index in the state vector.
-        m_PyFile << format("%|8t|%1% = y[%2%]") % varName % index << endl;
+        m_PyFile << format("%|8t|%1% = y[%2%]") % varName % index << '\n';
     }
     m_PyFile << '\n';
 
     //Create the return vector
-    m_PyFile << format("%|8t|#Create the return vector (the time derivatives dy/dt).") << endl;
-    m_PyFile << format("%|8t|y_t = zeros(%1%, Float)") % m_StateVectorSize << endl;
-    m_PyFile << endl;
+    m_PyFile << format("%|8t|#Create the return vector (the time derivatives dy/dt).") << '\n';
+    m_PyFile << format("%|8t|y_t = zeros(%1%, Float)") % m_StateVectorSize << '\n';
+    m_PyFile << '\n';
 
     //write a line to compute each algebraic variable
-    m_PyFile << format("%|8t|#Compute the algebraic variables.") << endl;
+    m_PyFile << format("%|8t|#Compute the algebraic variables.") << '\n';
     CmEquationTable::const_iterator itE;
     for( itE = m_FlatProcess.equation.begin(); itE != m_FlatProcess.equation.end(); ++itE )
     {
@@ -277,11 +276,11 @@ void siml::PyProcessGenerator::genOdeFunction()
         if( equnD.isOdeAssignment() ) { continue; } //only algebraic variables
         string algebVar = m_PythonName[equnD.lhs.path()];
         string mathExpr = m_toPy.convert( equnD.rhs);
-        m_PyFile << format("%|8t|%1% = %2%") % algebVar % mathExpr << endl;
+        m_PyFile << format("%|8t|%1% = %2%") % algebVar % mathExpr << '\n';
     }
 
     //write a line to compute the time derivative of each integrated variable
-    m_PyFile << format("%|8t|#Compute the state variables. (Really the time derivatives.)") << endl;
+    m_PyFile << format("%|8t|#Compute the state variables. (Really the time derivatives.)") << '\n';
     for( itE = m_FlatProcess.equation.begin(); itE != m_FlatProcess.equation.end(); ++itE )
     {
         CmEquationDescriptor equnD = *itE;
@@ -289,13 +288,13 @@ void siml::PyProcessGenerator::genOdeFunction()
         string simlVarName = equnD.lhs.path().toString();
         string mathExpr = m_toPy.convert( equnD.rhs);
         string index = m_StateVectorMap[equnD.lhs.path()]; //look up variable's index in state vector
-        m_PyFile << format("%|8t|y_t[%1%] = %2% # = d %3% /dt ") % index % mathExpr % simlVarName << endl;
+        m_PyFile << format("%|8t|y_t[%1%] = %2% # = d %3% /dt ") % index % mathExpr % simlVarName << '\n';
     }
-    m_PyFile << endl;
+    m_PyFile << '\n';
 
     //return the result
-    m_PyFile << format("%|8t|return y_t") << endl;
-    m_PyFile << endl;
+    m_PyFile << format("%|8t|return y_t") << '\n';
+    m_PyFile << '\n';
 }
 
 
@@ -386,30 +385,30 @@ void siml::PyProcessGenerator::genOutputEquations()
             "        \n";
 
     //create the result array
-    m_PyFile << format("%|8t|#create the result array") << endl;
-    m_PyFile << format("%|8t|assert shape(y)[0] == size(self.time)") << endl;
-    m_PyFile << format("%|8t|sizeTime = shape(y)[0]") << endl;
-    m_PyFile << format("%|8t|self.resultArray = zeros((sizeTime, %1%), Float)") % m_ResultArrayColls << endl;
-    m_PyFile << endl;
+    m_PyFile << format("%|8t|#create the result array") << '\n';
+    m_PyFile << format("%|8t|assert shape(y)[0] == size(self.time)") << '\n';
+    m_PyFile << format("%|8t|sizeTime = shape(y)[0]") << '\n';
+    m_PyFile << format("%|8t|self.resultArray = zeros((sizeTime, %1%), Float)") % m_ResultArrayColls << '\n';
+    m_PyFile << '\n';
 
     //copy the state variables into the result array
-    m_PyFile << format("%|8t|#copy the state variables into the result array") << endl;
-    m_PyFile << format("%|8t|numStates = shape(y)[1]") << endl;
-    m_PyFile << format("%|8t|self.resultArray[:,0:numStates] = y;") << endl;
-    m_PyFile << endl;
+    m_PyFile << format("%|8t|#copy the state variables into the result array") << '\n';
+    m_PyFile << format("%|8t|numStates = shape(y)[1]") << '\n';
+    m_PyFile << format("%|8t|self.resultArray[:,0:numStates] = y;") << '\n';
+    m_PyFile << '\n';
 
 //     //Create local variables for the parameters.
-//     m_PyFile << format("%|8t|#Create local variables for the parameters.") << endl;
+//     m_PyFile << format("%|8t|#Create local variables for the parameters.") << '\n';
 //     CmMemoryTable::const_iterator itP;
 //     for( itP = m_Parameter.begin(); itP != m_Parameter.end(); ++itP )
 //     {
 //         CmMemoryDescriptor paramD = *itP;
-//         m_PyFile << format("%|8t|%1% = self.%1%") % paramD.name << endl;
+//         m_PyFile << format("%|8t|%1% = self.%1%") % paramD.name << '\n';
 //     }
-//     m_PyFile << endl;
+//     m_PyFile << '\n';
 
     //Create local state variables - take them from the result array.
-    m_PyFile << format("%|8t|#Create local state variables - take them from the result array.") << endl;
+    m_PyFile << format("%|8t|#Create local state variables - take them from the result array.") << '\n';
     CmMemoryTable::const_iterator itV;
     for( itV = m_FlatProcess.variable.begin(); itV != m_FlatProcess.variable.end(); ++itV )
     {
@@ -418,12 +417,12 @@ void siml::PyProcessGenerator::genOutputEquations()
 
         string pyName = m_PythonName[ varD.name];    //look up variable's Python name
         string index = m_ResultArrayMap[ varD.name]; //look up variable's index
-        m_PyFile << format( "%|8t|%1% = self.resultArray[:,%2%]") % pyName % index << endl;
+        m_PyFile << format( "%|8t|%1% = self.resultArray[:,%2%]") % pyName % index << '\n';
     }
-    m_PyFile << endl;
+    m_PyFile << '\n';
 
     //compute the algebraic variables from the state variables.
-    m_PyFile << format( "%|8t|#Compute the algebraic variables from the state variables.") << endl;
+    m_PyFile << format( "%|8t|#Compute the algebraic variables from the state variables.") << '\n';
     CmEquationTable::const_iterator itE;
     for( itE = m_FlatProcess.equation.begin(); itE != m_FlatProcess.equation.end(); ++itE )
     {
@@ -433,84 +432,80 @@ void siml::PyProcessGenerator::genOutputEquations()
         string algebVar = equnD.lhs.toString();
         string index = m_ResultArrayMap[ equnD.lhs.path()];
         string mathExpr = m_toPy.convert( equnD.rhs);
-        m_PyFile << format( "%|8t|self.resultArray[:,%1%] = %2% # = %3%") % index % mathExpr % algebVar << endl;
+        m_PyFile << format( "%|8t|self.resultArray[:,%1%] = %2% # = %3%") % index % mathExpr % algebVar << '\n';
     }
 
-    m_PyFile << endl;
+    m_PyFile << '\n';
 }
 
 
 /*!
 Generate the function that will perform the simulation.
-@todo this function should later go into a common base class of all processes - put it into PyGenMain
  */
-void siml::PyProcessGenerator::genSimulateFunction()
-{
-    m_PyFile <<
-            "    def simulate(self):\n"
-            "        \"\"\"\n"
-            "        This function performs the simulation.\n"
-            "        \"\"\"\n"
-            "        \n"
-            "        self.time = linspace(0, 20, 100)\n" ///@todo respect SOLUTIONPARAMETERS
-            "        y = integrate.odeint(self._diffStateT, self.y0, self.time)\n"
-            "        self._outputEquations(y)\n"
-            "        \n";
-}
+// void siml::PyProcessGenerator::genSimulateFunction()
+// {
+//     m_PyFile <<
+//             "    def simulate(self):\n"
+//             "        \"\"\"\n"
+//             "        This function performs the simulation.\n"
+//             "        \"\"\"\n"
+//             "        \n"
+//             "        self.time = linspace(0, 20, 100)\n" ///@todo respect SOLUTIONPARAMETERS
+//             "        y = integrate.odeint(self._diffStateT, self.y0, self.time)\n"
+//             "        self._outputEquations(y)\n"
+//             "        \n";
+// }
 
 
 
 /*!
 Access variables by name.
-@todo add returning multiple variables at once
-@todo this function should later go into a common base class of all processes - put it into PyGenMain
  */
-void siml::PyProcessGenerator::genAccessFunction()
-{
-    m_PyFile <<
-            "    def get(self, varName):\n"
-            "        \"\"\"\n"
-            "        Get a variable by name.\n"
-            "        \n"
-            "        There are special variable names:\n"
-            "           'time': vector of times\n"
-            "           'all': array of all variables\n"
-            "        \"\"\"\n"
-            "        if varName == 'time':\n"
-            "            return self.time\n"
-            "        elif varName == 'all':\n"
-            "            return self.resultArray\n"
-            "        index = self.resultArrayMap[varName]\n"
-            "        return self.resultArray[:,index]\n"
-            "        \n";
-}
+// void siml::PyProcessGenerator::genAccessFunction()
+// {
+//     m_PyFile <<
+//             "    def get(self, varName):\n"
+//             "        \"\"\"\n"
+//             "        Get a variable by name.\n"
+//             "        \n"
+//             "        There are special variable names:\n"
+//             "           'time': vector of times\n"
+//             "           'all': array of all variables\n"
+//             "        \"\"\"\n"
+//             "        if varName == 'time':\n"
+//             "            return self.time\n"
+//             "        elif varName == 'all':\n"
+//             "            return self.resultArray\n"
+//             "        index = self.resultArrayMap[varName]\n"
+//             "        return self.resultArray[:,index]\n"
+//             "        \n";
+// }
 
 
 /*!
 Display graphs
-@todo this function should later go into a common base class of all processes - put it into PyGenMain
  */
-void siml::PyProcessGenerator::genGraphFunction()
-{
-    m_PyFile <<
-            "    def graph(self, varNames):\n"
-            "        \"\"\"\n"
-            "        Show one or several variables in a graph.\n"
-            "        \n"
-            "        Parameters:\n"
-            "           varNames: String with a list of variables to be plotted. (Space or comma seperated.)\n"
-            "                     e.g.: 'X mu' \n"
-            "        \"\"\"\n"
-            "        \n"
-            "        diagram=Gnuplot.Gnuplot(debug=0, persist=1)\n"
-            "        diagram('set data style lines')\n"
-            "        diagram.title(varNames)\n"
-            "        diagram.xlabel('Time')\n"
-            "        \n"
-            "        varList = varNames.replace(',', ' ').split(' ')\n"
-            "        for varName1 in varList:\n"
-            "            if not (varName1 in self.resultArrayMap): continue\n"
-            "            curve=Gnuplot.Data(self.get('time'), self.get(varName1))\n"
-            "            diagram.replot(curve)\n"
-            "        \n";
-}
+// void siml::PyProcessGenerator::genGraphFunction()
+// {
+//     m_PyFile <<
+//             "    def graph(self, varNames):\n"
+//             "        \"\"\"\n"
+//             "        Show one or several variables in a graph.\n"
+//             "        \n"
+//             "        Parameters:\n"
+//             "           varNames: String with a list of variables to be plotted. (Space or comma seperated.)\n"
+//             "                     e.g.: 'X mu' \n"
+//             "        \"\"\"\n"
+//             "        \n"
+//             "        diagram=Gnuplot.Gnuplot(debug=0, persist=1)\n"
+//             "        diagram('set data style lines')\n"
+//             "        diagram.title(varNames)\n"
+//             "        diagram.xlabel('Time')\n"
+//             "        \n"
+//             "        varList = varNames.replace(',', ' ').split(' ')\n"
+//             "        for varName1 in varList:\n"
+//             "            if not (varName1 in self.resultArrayMap): continue\n"
+//             "            curve=Gnuplot.Data(self.get('time'), self.get(varName1))\n"
+//             "            diagram.replot(curve)\n"
+//             "        \n";
+// }

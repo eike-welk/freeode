@@ -65,13 +65,13 @@ private:
     //!create the function that compotes the algebraic variables for output
     void genOutputEquations();
 
-    ///@todo put these functions into PyGenMain
+    //Python code is now in separate Python file
     //!generate the simulation's main function
-    void genSimulateFunction();
+//     void genSimulateFunction();
     //!generate function that returns a single variable from the array of simulation results
-    void genAccessFunction();
+//     void genAccessFunction();
     //!create the function that shows results graphically
-    void genGraphFunction();
+//     void genGraphFunction();
 
     //creation of internal data structures
     //!Define which variable is at what index in various arrays
