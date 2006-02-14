@@ -1,0 +1,9 @@
+It is probably more efficient to implement the compiler in Python.
+Python is know to make people much more productive compared to C++.
+
+Python is not strictly typed which makes programming more easy.
+In fact all Python functions can be seen
+as analogous to C++ templates but easier to use. And Python is also
+efficient for string processing.
+
+A powerful parsing library for python is PyParsing.
