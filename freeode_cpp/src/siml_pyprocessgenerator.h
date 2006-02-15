@@ -22,7 +22,7 @@
 
 
 #include "siml_code_model.h"
-#include "siml_code_transformations.h"
+#include "siml_cmmodelintermediate.h"
 // #include "siml_cmpath.h"
 #include "siml_pyformulaconverter.h"
 

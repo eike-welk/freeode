@@ -20,7 +20,7 @@
 // #include "config.h"
 #include "siml_pyprocessgenerator.h"
 
-#include "siml_code_transformations.h"
+#include "siml_cmmodelintermediate.h"
 #include "siml_cmerror.h"
 // #include "siml_pyformulaconverter.h"
 
