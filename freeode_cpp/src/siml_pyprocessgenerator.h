@@ -22,6 +22,7 @@
 
 
 #include "siml_code_model.h"
+#include "siml_code_transformations.h"
 // #include "siml_cmpath.h"
 #include "siml_pyformulaconverter.h"
 
@@ -85,7 +86,7 @@ private:
     //!The process - special format
     /*!This object contains all memory and all equations that are used in the simulation.
     The entities from all sub-models were copied into this object, and given unique names.*/
-    CmModelDescriptor m_FlatProcess;
+    CmModelIntermediate m_FlatProcess;
 
     //!Mapping between variable name and index in state vector.
     /*!The variable name is the key. So the contents are pairs: var_name, index) e.g: ("S", "1")

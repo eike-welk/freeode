@@ -172,10 +172,8 @@ struct CmModelDescriptor
     //!Set an initial value to a state variable
     void addInitialEquation( CmEquationDescriptor inEqu);
 
-    //!Mark variable as state variable
+//     //!Mark variable as state variable
 //     void setVariableIntegrated(CmPath const & stateVarName);
-    //!Find all state variables, mark them in variable definition
-    void markStateVariables();
 
     //!Find parmeter by name, return the definition.
     CmMemoryTable::const_iterator   findParameter(CmPath const & name) const;

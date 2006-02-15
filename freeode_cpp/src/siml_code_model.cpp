@@ -181,42 +181,6 @@ Set flag so variable is treated as an integrated variable
 // }
 
 
-/*!
-Look through the list of equations.
-Find all time derivatives (uses of '$'), mark the variables in the list of variables.
-
-Currently time derivatives can only occour on the lhs.
-
-@todo move to special class for code generation
- */
-void siml::CmModelDescriptor::markStateVariables()
-{
-    //loop over all equations
-    CmEquationTable::const_iterator itE;
-    for( itE = equation.begin(); itE != equation.end(); ++itE )
-    {
-        CmEquationDescriptor const & equn = *itE;
-        //See if lhs is time derivative (no time derivatives are legal on rhs)
-        if( !equn.lhs.timeDerivative() ) { continue; }
-
-        //try to find the variable's definition
-        CmMemoryTable::iterator itVar = findVariable( equn.lhs.path());
-        if( itVar != variable.end() )
-        {   //mark variable as state variable
-            itVar->is_state_variable = true;
-        }
-        else
-        {   //error
-            string msg = ( format(  "No variable with name '%1%' exists! "
-                                    "You use the symbol '%1%' as a state variable.")
-                                    % equn.lhs.path().toString() ).str();
-            CmError::addError( msg, equn.defBegin);
-            errorsDetected = true;
-        }
-    }
-}
-
-
 /*!Find parmeter by name, return the definition.
 @return Iteratetor that points to the parameter's CmMemoryDescriptor if the parameter exists, or parameter.end() otherwise
 */

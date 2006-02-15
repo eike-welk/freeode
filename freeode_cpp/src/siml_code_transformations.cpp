@@ -31,7 +31,7 @@
 #include <list>
 
 
-using namespace siml;
+// using namespace siml;
 using boost::shared_ptr;
 using boost::format;
 using std::string;
@@ -43,6 +43,9 @@ using std::list;
 
 /*!
 Transform a model with sub-models into an equivalent model without sub-models.
+The objects from compositeProcess are recursively copied into *this. All identifiers get a prefix
+(the sub-model's name) to stay unique.
+
 This can also be seen as allocating memory for the (sub-)models.
 
 All parameters, variables and equations of the submodels are (recursively)
@@ -51,42 +54,38 @@ copied to the flat model. Parmeters and variables get unique long names.
 This is the first step in generating code for a procedure.
 
 @param  compositeProcess the model that will be converted.
-@return The generated equivalent model without submodels.
  */
-CmModelDescriptor
-siml::createFlatModel( CmModelDescriptor const & compositeProcess )
+void
+siml::CmModelIntermediate::createFlatModel( CmModelDescriptor const & compositeProcess )
 {
-    CmModelDescriptor flatModel; //the result
-
     //copy the features that are not copied recursively
-    flatModel.name = compositeProcess.name;
-    flatModel.isProcess = compositeProcess.isProcess;
-    flatModel.initialEquation = compositeProcess.initialEquation;
-    flatModel.solutionParameters = compositeProcess.solutionParameters;
-    flatModel.defBegin = compositeProcess.defBegin;
+    name                = compositeProcess.name;
+    isProcess           = compositeProcess.isProcess;
+    initialEquation     = compositeProcess.initialEquation;
+    solutionParameters  = compositeProcess.solutionParameters;
+    defBegin            = compositeProcess.defBegin;
 
     //copy the recursive features
     int recursionLevel = 0;
     CmPath variablePrefix;
-    flattenModelRecursive(&compositeProcess, variablePrefix, recursionLevel, &flatModel);
-
-    return flatModel;
+    flattenModelRecursive( compositeProcess, variablePrefix, recursionLevel);
 }
 
 /*!
 Copy parameters, variables and equations for createFlatModel(...).
+The objects are recursively copied into *this. All identifiers get a prefix
+(the sub-model's name) to stay unique.
 
 @param  inCompositeModel the model that will be converted.
 @param  inPathPrefix this is put in front of all variable and parameter names.
 @param  inRecursionLevel depth of recursion to avoid enless loops
-@param  outFlatModel the result. The converted entities are put here.
 @internal
 */
 void
-siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
-                                siml::CmPath const inPathPrefix,
-                                uint const inRecursionLevel,
-                                CmModelDescriptor * outFlatModel )
+siml::CmModelIntermediate::flattenModelRecursive(
+                                    CmModelDescriptor const & inCompositeModel,
+                                    siml::CmPath const inPathPrefix,
+                                    uint const inRecursionLevel )
 {
     //protect against circular dependencies ------------------------------
     uint const recursionLevelMax =10;
@@ -96,38 +95,38 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
                 "The maximum recursion level (%1%) has been reached!\n"
                 "Procedure: %2%; Submodel where the error happened: %3%.\n"
                 "(Maybe there are circular dependencies.)"
-                ) % recursionLevelMax % outFlatModel->name % inCompositeModel->name ).str();
+                ) % recursionLevelMax % name % inCompositeModel.name ).str();
         CmError::addError( msg, (char const *)0); ///@todo add iterator
-        outFlatModel->errorsDetected = true;
+        errorsDetected = true;
         return;
     }
 
     //copy the recursive entities -------------------------------------
     //copy parameters
     CmMemoryTable::const_iterator itM;
-    for(    itM = inCompositeModel->parameter.begin();
-            itM != inCompositeModel->parameter.end();
+    for(    itM = inCompositeModel.parameter.begin();
+            itM != inCompositeModel.parameter.end();
             ++itM )
     {
         CmMemoryDescriptor mem = *itM;
         mem.name.prepend(inPathPrefix); //put prefix in front of parameter name
-        outFlatModel->addParameter(mem);// add to model
+        addParameter(mem);// add to model
     }
 
     //copy variables
-    for(    itM = inCompositeModel->variable.begin();
-            itM != inCompositeModel->variable.end();
+    for(    itM = inCompositeModel.variable.begin();
+            itM != inCompositeModel.variable.end();
             ++itM )
     {
         CmMemoryDescriptor mem = *itM;
         mem.name.prepend(inPathPrefix); //put prefix in front of variable name
-        outFlatModel->addVariable(mem); // add to model
+        addVariable(mem); // add to model
     }
 
     //copy parameter assignments (SET)
     CmEquationTable::const_iterator itE;
-    for(    itE = inCompositeModel->parameterAssignment.begin();
-            itE != inCompositeModel->parameterAssignment.end();
+    for(    itE = inCompositeModel.parameterAssignment.begin();
+            itE != inCompositeModel.parameterAssignment.end();
             ++itE )
     {
         CmEquationDescriptor equ = *itE;
@@ -135,12 +134,12 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
         equ.lhs.prependPath( inPathPrefix);
         equ.rhs.prependPaths( inPathPrefix);
         //add updated equation to the model
-        outFlatModel->addParameterAssignment(equ);
+        addParameterAssignment(equ);
     }
 
     //copy equations
-    for(    itE = inCompositeModel->equation.begin();
-            itE != inCompositeModel->equation.end();
+    for(    itE = inCompositeModel.equation.begin();
+            itE != inCompositeModel.equation.end();
             ++itE )
     {
         CmEquationDescriptor equ = *itE;
@@ -148,12 +147,12 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
         equ.lhs.prependPath( inPathPrefix);
         equ.rhs.prependPaths( inPathPrefix);
         //add updated equation to the model
-        outFlatModel->addEquation(equ);
+        addEquation(equ);
     }
     //special handling for the error flag - errors were maybe detected. don't stop, we want to find more
-    if( inCompositeModel->errorsDetected )
+    if( inCompositeModel.errorsDetected )
     {
-        outFlatModel->errorsDetected = true;
+        errorsDetected = true;
     }
 
     //recursively call this function for each submodel----------------------------
@@ -161,8 +160,8 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
     uint newRecursionLevel = inRecursionLevel+1;
 
     CmSubModelTable::const_iterator itS;
-    for(    itS = inCompositeModel->subModel.begin();
-            itS != inCompositeModel->subModel.end();
+    for(    itS = inCompositeModel.subModel.begin();
+            itS != inCompositeModel.subModel.end();
             ++itS )
     {
         //Search model definition in repository.
@@ -172,8 +171,8 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
         {
             string msg = ( format(
                     "The model %1% does not exist!" ) % itS->type ).str();
-            CmError::addError( msg, (char const *)0); ///@todo add iterator
-            outFlatModel->errorsDetected = true;
+            CmError::addError( msg, itS->defBegin);
+            errorsDetected = true;
             continue;
         }
 
@@ -181,28 +180,63 @@ siml::flattenModelRecursive(    CmModelDescriptor const * inCompositeModel,
         CmPath newPrefix = inPathPrefix;
         newPrefix.append(itS->name);
         //copy entities of submodel
-        flattenModelRecursive( submodel, newPrefix, newRecursionLevel, outFlatModel );
+        flattenModelRecursive( *submodel, newPrefix, newRecursionLevel);
     }
 }
 
+
 /*!
-The parametre propagation rules say:
+Look through the list of equations.
+Find all time derivatives (uses of '$'), mark the variables in the list of variables.
+
+Currently time derivatives can only occour on the lhs.
+ */
+void siml::CmModelIntermediate::markStateVariables()
+{
+    //loop over all equations
+    CmEquationTable::const_iterator itE;
+    for( itE = equation.begin(); itE != equation.end(); ++itE )
+    {
+        CmEquationDescriptor const & equn = *itE;
+        //See if lhs is time derivative (no time derivatives are legal on rhs)
+        if( !equn.lhs.timeDerivative() ) { continue; }
+
+        //try to find the variable's definition
+        CmMemoryTable::iterator itVar = findVariable( equn.lhs.path());
+        if( itVar != variable.end() )
+        {   //mark variable as state variable
+            itVar->is_state_variable = true;
+        }
+        else
+        {   //error
+            string msg = ( format(  "No variable with name '%1%' exists! "
+                    "You use the symbol '%1%' as a state variable.")
+                    % equn.lhs.path().toString() ).str();
+            CmError::addError( msg, equn.defBegin);
+            errorsDetected = true;
+        }
+    }
+}
+
+
+/*!
+The parameter propagation rules say:
 
 Parameters declared high in the hierarchy replace parameters declared lower in the hierarchy,
 that have the same name. (Same name means: last component of the path is the same.)
 
 @note This algorithm assumes that parameters with short names come first.
 */
-void siml::propagateParameters( CmModelDescriptor & process)
+void siml::CmModelIntermediate::propagateParameters()
 {
 //     list<CmMemoryTable::iterator> deletedParams;
 //     map<CmPath, CmPath> replaceParams;
     CmPath::ReplaceMap replaceParams;
 
-    //find pameters (paths) that should be replaced (by parameters with shorter names)--------------------------------------------------
+    //find pameters (paths) that should be replaced (by parameters with shorter names)--------------------------
     CmMemoryTable::iterator itM1, itM2;
     //loop over all parameters. Take *itM1 and try to find parameters that will be replaced by *itM1.
-    for( itM1 = process.parameter.begin(); itM1 != process.parameter.end(); ++itM1 )
+    for( itM1 = parameter.begin(); itM1 != parameter.end(); ++itM1 )
     {
         CmMemoryDescriptor const & m1 = *itM1; //Kdevelop's completion is bad
 
@@ -211,7 +245,7 @@ void siml::propagateParameters( CmModelDescriptor & process)
 
         //loop over the parameters below *itM1 and see if they can be replaced.
         itM2 = itM1; ++itM2;
-        for( ; itM2 != process.parameter.end(); ++itM2 )
+        for( ; itM2 != parameter.end(); ++itM2 )
         {
             CmMemoryDescriptor const & m2 = *itM2; //Kdevelop's completion is bad
             if( m1.name.isTailOf( m2.name ) )
@@ -224,14 +258,14 @@ void siml::propagateParameters( CmModelDescriptor & process)
 
     //delete replaced parameters from the list of parameters. ---------------------------------------------
     CmMemoryTable::iterator itPar;
-    for( itPar = process.parameter.begin(); itPar != process.parameter.end(); )
+    for( itPar = parameter.begin(); itPar != parameter.end(); )
     {
         //see if the parameter is subject to replaceing. If yes delete the parameter.
         if( replaceParams.find( itPar->name ) != replaceParams.end() )
         {
             CmMemoryTable::iterator itDel = itPar;
             ++itPar; //increment iterator, deletiong will invalidate it
-            process.parameter.erase( itDel );
+            parameter.erase( itDel );
         }
         else //only increment iterator
         {
@@ -241,56 +275,48 @@ void siml::propagateParameters( CmModelDescriptor & process)
 
      //rename all references to parameters in the set section---------------------------------------
     CmEquationTable::iterator itE;
-    for( itE = process.parameterAssignment.begin(); itE != process.parameterAssignment.end(); ++itE)
+    for( itE = parameterAssignment.begin(); itE != parameterAssignment.end(); ++itE)
     {
         itE->lhs.replacePath(replaceParams);  //this should never do anything
         itE->rhs.replacePaths(replaceParams);
     }
 
     //rename all references to parameters in the initial equations---------------------------------------
-    for( itE = process.initialEquation.begin(); itE != process.initialEquation.end(); ++itE)
+    for( itE = initialEquation.begin(); itE != initialEquation.end(); ++itE)
     {
         itE->lhs.replacePath(replaceParams);  //this should never do anything
         itE->rhs.replacePaths(replaceParams);
     }
 
     //rename all references to parameters in the equations---------------------------------------
-    for( itE = process.equation.begin(); itE != process.equation.end(); ++itE)
+    for( itE = equation.begin(); itE != equation.end(); ++itE)
     {
         itE->lhs.replacePath(replaceParams);  //this should never do anything
         itE->rhs.replacePaths(replaceParams);
     }
 }
 
-namespace siml
-{
-//!check if an identifier in the parameter is using the correct semantics.
-/*!Curent checks: all operands must be parameters;  no $ allowed.*/
-struct TestIsParameter
-{
-    CmModelDescriptor & process;
-    CmEquationDescriptor const & equation;
 
-        TestIsParameter( CmModelDescriptor & inProcess, CmEquationDescriptor const & inEquation):
-                process( inProcess), equation( inEquation) {}
-
-        void operator() ( CmMemAccess const & mem) const
-        {
-            if( process.findParameter( mem.path()) == process.parameter.end() )
-            {   //all operands must be parameters
-                string msg = ( format( "Undefined parameter: %1%!" ) % mem.path()).str();
-                CmError::addError( msg, equation.defBegin);
-                process.errorsDetected = true;
-            }
-            else if( mem.timeDerivative() )
-            {   //no $ allowed.
-                string msg = ( format( "Parameters can not be differentiated! See: %1%!" ) % mem).str();
-                CmError::addError( msg, equation.defBegin);
-                process.errorsDetected = true;
-            }
-        }
-};
+/*!Determine the validity of the identifiers in the SET section (parameterAssignment).
+Current checks:
+    - All operands must be (defined) parameters;
+    - No $ allowed.*/
+void siml::CmModelIntermediate::CheckSetSectionIdentifier::operator() ( CmMemAccess const & mem) const
+{
+    if( process.findParameter( mem.path()) == process.parameter.end() )
+    {   //all operands must be parameters
+        string msg = ( format( "Undefined parameter: %1%!" ) % mem.path()).str();
+        CmError::addError( msg, equation.defBegin);
+        process.errorsDetected = true;
+    }
+    else if( mem.timeDerivative() )
+    {   //no $ allowed.
+        string msg = ( format( "Parameters can not be differentiated! See: %1%!" ) % mem).str();
+        CmError::addError( msg, equation.defBegin);
+        process.errorsDetected = true;
+    }
 }
+
 
 /*!
 Test for semantic errors
@@ -313,16 +339,16 @@ Function Result:
         - Errors will be generated and put imto the global storage.
         - The variable process.errorsDetected will be set to true, if errors are detected.
 */
-void siml::checkErrors( CmModelDescriptor & process)
+void siml::CmModelIntermediate::checkErrors()
 {
     //SET section ----------------------------------------------
     //all operands must be parameters;  no $ allowed.
     CmEquationTable::const_iterator itEqu;
-    for( itEqu = process.parameterAssignment.begin(); itEqu != process.parameterAssignment.end(); ++itEqu)
+    for( itEqu = parameterAssignment.begin(); itEqu != parameterAssignment.end(); ++itEqu)
     {
         CmEquationDescriptor const & equ = *itEqu;
-        TestIsParameter inspectMem( process, equ);
-        inspectMem( equ.lhs);
+        CheckSetSectionIdentifier inspectMem( *this, equ);
+        inspectMem( equ.lhs);                       // inspect the identifiers on the LHS
         equ.rhs.applyToMemAccessConst( inspectMem); // inspect all identifiers of the RHS
     }
 

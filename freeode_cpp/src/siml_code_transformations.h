@@ -35,21 +35,45 @@
 
 namespace siml {
 
-//!create model without sub-models
-CmModelDescriptor createFlatModel( CmModelDescriptor const & compositeProcess);
+class CmModelIntermediate: public CmModelDescriptor
+{
+    //!Check identifier in SET section
+    /*!The identifiers in the SET section must obey some restrictions. This
+    Functor class checks these restrictions.*/
+    struct CheckSetSectionIdentifier
+    {
+        CmModelIntermediate & process;
+        CmEquationDescriptor const & equation;
 
-//!copy parameters, variables and equations for createFlatModel
-void
-flattenModelRecursive(  CmModelDescriptor const * inCompositeModel,
-                        CmPath const inPathPrefix,
-                        uint const inRecursionLevel,
-                        CmModelDescriptor * outFlatModel );
+        CheckSetSectionIdentifier( CmModelIntermediate & inProcess, CmEquationDescriptor const & inEquation):
+                process( inProcess), equation( inEquation) {}
+        //!Perform the test.
+        void operator() ( CmMemAccess const & mem) const;
+    };
 
-//!Apply the parameter propagation rules
-void propagateParameters( CmModelDescriptor & process);
+public:
+    CmModelIntermediate(): CmModelDescriptor() {}
 
-//!Test for semantic errors
-void checkErrors( CmModelDescriptor & process);
+    //!create model without sub-models
+    void createFlatModel( CmModelDescriptor const & compositeProcess);
+
+private:
+    //!copy parameters, variables and equations for createFlatModel
+    void flattenModelRecursive( CmModelDescriptor const & inCompositeModel,
+                                CmPath const inPathPrefix,
+                                uint const inRecursionLevel);
+
+public:
+    //!Apply the parameter propagation rules
+    void propagateParameters();
+
+    //!Find all state variables, mark them in variable definition
+    void markStateVariables();
+
+    //!Test for semantic errors
+    void checkErrors();
+};
+
 }
 
 #endif //SIML_CODE_TRANSFORMATIONS_H

@@ -60,14 +60,14 @@ Create a single process
 void siml::PyProcessGenerator::genProcessObject(int iProcess)
 {
     //collect parameters, variables and equations from all models and put them into one big model
-    m_FlatProcess = createFlatModel( repository()->process[iProcess] );
+    m_FlatProcess.createFlatModel( repository()->process[iProcess] );
     //parameters high in the hierarchy replace parameters low in the hierarchy
-    propagateParameters( m_FlatProcess );
+    m_FlatProcess.propagateParameters();
     //look throug the equations, and find all state variables
-    m_FlatProcess.markStateVariables();
+    m_FlatProcess.markStateVariables();///@todo move member funcion to CmModelIntermdiate
 
     //find errors
-    checkErrors( m_FlatProcess );
+    m_FlatProcess.checkErrors();
 
     m_FlatProcess.display();       //show the final process
 //     CmError::printStorageToCerr(); //print the errors up to here
