@@ -68,6 +68,10 @@ class CmModelIntermediate: public CmModelDescriptor
 public:
     CmModelIntermediate(): CmModelDescriptor() {}
 
+    //!Create complete intermediate model.
+    bool createIntermediateModel( CmModelDescriptor const & compositeProcess);
+
+protected:
     //!create model without sub-models
     void createFlatModel( CmModelDescriptor const & compositeProcess);
 

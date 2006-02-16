@@ -57,20 +57,10 @@ siml::PyProcessGenerator::~PyProcessGenerator()
 /*!
 Create a single process
  */
-void siml::PyProcessGenerator::genProcessObject(int iProcess)
+void siml::PyProcessGenerator::genProcessObject( CmModelDescriptor const & inProcess)
 {
-    //collect parameters, variables and equations from all models and put them into one big model
-    m_FlatProcess.createFlatModel( repository()->process[iProcess] );
-    //parameters high in the hierarchy replace parameters low in the hierarchy
-    m_FlatProcess.propagateParameters();
-    //look throug the equations, and find all state variables
-    m_FlatProcess.markStateVariables();///@todo move member funcion to CmModelIntermdiate
-
-    //find errors
-    m_FlatProcess.checkErrors();
-
-    m_FlatProcess.display();       //show the final process
-//     CmError::printStorageToCerr(); //print the errors up to here
+    //create the intermediate model
+    m_FlatProcess.createIntermediateModel( inProcess);
 
     //Don't generate code when there are errors.
     if( m_FlatProcess.errorsDetected )
@@ -256,7 +246,7 @@ void siml::PyProcessGenerator::genOdeFunction()
     for( itV = m_FlatProcess.variable.begin(); itV != m_FlatProcess.variable.end(); ++itV )
     {
         CmMemoryDescriptor varD = *itV;
-        if( varD.is_state_variable == false ) { continue; }
+        if( varD.isStateVariable == false ) { continue; }
 
         string varName = m_PythonName[varD.name];
         string index = m_StateVectorMap[varD.name]; //look up variable's index in the state vector.
@@ -320,7 +310,7 @@ void siml::PyProcessGenerator::layoutArrays()
     for( itV = m_FlatProcess.variable.begin(); itV != m_FlatProcess.variable.end(); ++itV )
     {
         CmMemoryDescriptor varD = *itV;
-        if( varD.is_state_variable == false ) { continue; }
+        if( varD.isStateVariable == false ) { continue; }
 
         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
 //         string varNameStr = varD.name.toString();
@@ -338,7 +328,7 @@ void siml::PyProcessGenerator::layoutArrays()
     for( itV = m_FlatProcess.variable.begin(); itV != m_FlatProcess.variable.end(); ++itV )
     {
         CmMemoryDescriptor varD = *itV;
-        if( varD.is_state_variable == true ) { continue; }
+        if( varD.isStateVariable == true ) { continue; }
 
         string currIndexStr = (format("%1%") % currIndex).str(); //convert currIndex to currIndexStr
         string varNameStr = varD.name.toString();
@@ -415,7 +405,7 @@ void siml::PyProcessGenerator::genOutputEquations()
     for( itV = m_FlatProcess.variable.begin(); itV != m_FlatProcess.variable.end(); ++itV )
     {
         CmMemoryDescriptor varD = *itV;
-        if( varD.is_state_variable == false ) { continue; } //only state variables
+        if( varD.isStateVariable == false ) { continue; } //only state variables
 
         string pyName = m_PythonName[ varD.name];    //look up variable's Python name
         string index = m_ResultArrayMap[ varD.name]; //look up variable's index

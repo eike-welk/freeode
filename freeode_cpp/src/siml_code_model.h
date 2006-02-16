@@ -55,11 +55,11 @@ struct CmMemoryDescriptor
     //!REAL, INT, ANY (currently unused)
     std::string type;
     //!true if variable is an integrated variable
-    bool is_state_variable;
+    bool isStateVariable;
     //!Iterator to the place where the definition started (into the file buffer)
     BufferIterator defBegin;
 
-    CmMemoryDescriptor() : type("ANY"), is_state_variable(false) {};
+    CmMemoryDescriptor() : type("ANY"), isStateVariable(false) {};
 };
 /*!container for the parameter descriptors of a model. See: @see CmParameterDescriptor*/
 typedef std::list<CmMemoryDescriptor> CmMemoryTable;

@@ -169,7 +169,7 @@ Set flag so variable is treated as an integrated variable
 //     //variable does not exist: generate error
 //     if( itV != variable.end() )
 //     {
-//         itV->is_state_variable = true;
+//         itV->isStateVariable = true;
 //     }
 //     else
 //     {

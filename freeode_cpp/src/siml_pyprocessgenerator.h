@@ -51,7 +51,7 @@ public:
     ~PyProcessGenerator();
 
     //!generate python code for one process
-    void genProcessObject(int iProcess);
+    void genProcessObject( CmModelDescriptor const & inProcess);
 
 private:
     //text generating functions

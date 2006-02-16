@@ -42,7 +42,7 @@ MODEL BioReactor
     EQUATION #Specify the equations
         mu := mu_max * S/(S+Ks);
         $X := mu*X - D*X;
-        $S := -1/Yxs*mu*X + D*Sf - D*X;
+        $S := -1/Yxs*mu*X + D*Sf - D*S;
 END
 
 
@@ -79,14 +79,14 @@ PROCESS Conti
 
     SET #Set values to the parameters. The values will be copied into the BioReactor model
         mu_max := 0.32;
-        Ks     := 0.01;
+        Ks     := 0.1;
         Yxs    := 0.5;
         Sf     := 20;
         D      := 0.1;
 
     INITIAL #Set initial values to the state variables. Note: the full path has to be specified for variables.
         r.X := 0.1;
-        r.S := 20;
+        r.S := 0;
 
     SOLUTIONPARAMETERS #Specify options for the simulation algorithm.
         ReportingInterval :=0.5; #[h]

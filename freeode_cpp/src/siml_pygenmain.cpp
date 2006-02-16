@@ -23,6 +23,7 @@
 
 #include "siml_pygenmain.h"
 #include "siml_pyprocessgenerator.h"
+#include "siml_code_model.h"
 
 #include <boost/format.hpp>
 // #include <boost/tuple/tuple.hpp>
@@ -54,10 +55,11 @@ void siml::PyGenMain::generateAll()
     //loop over all processs and generate a python object for each.
     //genProcessObject(0); ///@TODO generate all processes
     cout << "Number of processes: " << repository()->process.size() << "\n";
-    for( uint i=0; i< repository()->process.size(); ++i)
+    CmModelTable::const_iterator it;
+    for( it = repository()->process.begin(); it != repository()->process.end(); ++it )
     {
         PyProcessGenerator genProc(m_PyFile);
-        genProc.genProcessObject(i);
+        genProc.genProcessObject(*it);
     }
 }
 
