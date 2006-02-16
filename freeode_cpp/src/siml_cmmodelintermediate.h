@@ -51,19 +51,26 @@ class CmModelIntermediate: public CmModelDescriptor
         void operator() ( CmMemAccess const & mem) const;
     };
 
+    //!Check identifier in RHS in EQUATION section
+    /*!The identifiers in the RHS in the EQUATION section must obey some restrictions. This
+    Functor class checks these restrictions.*/
+    struct CheckEquationRhsIdentifier
+    {
+        CmModelIntermediate & process;
+        CmEquationDescriptor const & equation;
+
+        CheckEquationRhsIdentifier( CmModelIntermediate & inProcess, CmEquationDescriptor const & inEquation):
+                process( inProcess), equation( inEquation) {}
+        //!Perform the test.
+        void operator() ( CmMemAccess const & mem) const;
+    };
+
 public:
     CmModelIntermediate(): CmModelDescriptor() {}
 
     //!create model without sub-models
     void createFlatModel( CmModelDescriptor const & compositeProcess);
 
-private:
-    //!copy parameters, variables and equations for createFlatModel
-    void flattenModelRecursive( CmModelDescriptor const & inCompositeModel,
-                                CmPath const inPathPrefix,
-                                uint const inRecursionLevel);
-
-public:
     //!Apply the parameter propagation rules
     void propagateParameters();
 
@@ -72,6 +79,12 @@ public:
 
     //!Test for semantic errors
     void checkErrors();
+
+private:
+    //!copy parameters, variables and equations for createFlatModel
+    void flattenModelRecursive( CmModelDescriptor const & inCompositeModel,
+                                CmPath const inPathPrefix,
+                                uint const inRecursionLevel);
 };
 
 }

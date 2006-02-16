@@ -1,0 +1,5 @@
+Further goals are:
+-Graphical tools.
+-Unstructured grids and arbitrarily shaped regions for PDEs.
+-A companion language for data acquisition and control where simulation objects could be embedded.
+-Integration of more problem specific languages e.g.: chemical reaction dynamics.

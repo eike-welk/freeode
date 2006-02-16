@@ -5,9 +5,13 @@
 from testproc import *
 # execfile('testproc.py')
 
-sim = SimBio()
-sim.simulate()
-sim.graph('r.X r.S')
+simConti = Conti()
+simConti.simulate()
+simConti.graph('r.X r.S')
+
+simBatch = Batch()
+simBatch.simulate()
+simBatch.graph('r.X r.S')
 
 ##sim.simulate()
 ##sim.graph('r.X r.S')

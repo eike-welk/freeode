@@ -29,6 +29,7 @@
 #include <map>
 // #include <vector>
 #include <list>
+#include <sstream>
 
 
 // using namespace siml;
@@ -39,17 +40,17 @@ using std::set;
 using std::map;
 // using std::vector;
 using std::list;
+using std::ostringstream;
 
 
 /*!
 Transform a model with sub-models into an equivalent model without sub-models.
-The objects from compositeProcess are recursively copied into *this. All identifiers get a prefix
-(the sub-model's name) to stay unique.
 
 This can also be seen as allocating memory for the (sub-)models.
 
-All parameters, variables and equations of the submodels are (recursively)
-copied to the flat model. Parmeters and variables get unique long names.
+All parameters, variables and equations of the submodels are recursively
+copied into *this, the flat model. Parmeters and variables get unique long names,
+by prefixing their names with the sub-model's name.
 
 This is the first step in generating code for a procedure.
 
@@ -71,11 +72,13 @@ siml::CmModelIntermediate::createFlatModel( CmModelDescriptor const & compositeP
     flattenModelRecursive( compositeProcess, variablePrefix, recursionLevel);
 }
 
+
 /*!
 Copy parameters, variables and equations for createFlatModel(...).
 The objects are recursively copied into *this. All identifiers get a prefix
 (the sub-model's name) to stay unique.
 
+@internal
 @param  inCompositeModel the model that will be converted.
 @param  inPathPrefix this is put in front of all variable and parameter names.
 @param  inRecursionLevel depth of recursion to avoid enless loops
@@ -189,7 +192,7 @@ siml::CmModelIntermediate::flattenModelRecursive(
 Look through the list of equations.
 Find all time derivatives (uses of '$'), mark the variables in the list of variables.
 
-Currently time derivatives can only occour on the lhs.
+Currently time derivatives can only appear on the LHS of an equation.
  */
 void siml::CmModelIntermediate::markStateVariables()
 {
@@ -199,7 +202,7 @@ void siml::CmModelIntermediate::markStateVariables()
     {
         CmEquationDescriptor const & equn = *itE;
         //See if lhs is time derivative (no time derivatives are legal on rhs)
-        if( !equn.lhs.timeDerivative() ) { continue; }
+        if( !equn.lhs.isTimeDerivative() ) { continue; }
 
         //try to find the variable's definition
         CmMemoryTable::iterator itVar = findVariable( equn.lhs.path());
@@ -209,9 +212,9 @@ void siml::CmModelIntermediate::markStateVariables()
         }
         else
         {   //error
-            string msg = ( format(  "No variable with name '%1%' exists! "
-                    "You use the symbol '%1%' as a state variable.")
-                    % equn.lhs.path().toString() ).str();
+            string msg = ( format(
+                    "Undefined Variable: %1%\nYou use the symbol %1% as a state variable."
+                                 ) % equn.lhs.path()).str();
             CmError::addError( msg, equn.defBegin);
             errorsDetected = true;
         }
@@ -224,6 +227,8 @@ The parameter propagation rules say:
 
 Parameters declared high in the hierarchy replace parameters declared lower in the hierarchy,
 that have the same name. (Same name means: last component of the path is the same.)
+
+Example Ks replaces r.Ks, a.b.Ks .
 
 @note This algorithm assumes that parameters with short names come first.
 */
@@ -297,7 +302,9 @@ void siml::CmModelIntermediate::propagateParameters()
 }
 
 
-/*!Determine the validity of the identifiers in the SET section (parameterAssignment).
+/*!
+Functor's action function.
+Determine the validity of the identifiers in the SET section (parameterAssignment).
 Current checks:
     - All operands must be (defined) parameters;
     - No $ allowed.*/
@@ -305,35 +312,66 @@ void siml::CmModelIntermediate::CheckSetSectionIdentifier::operator() ( CmMemAcc
 {
     if( process.findParameter( mem.path()) == process.parameter.end() )
     {   //all operands must be parameters
-        string msg = ( format( "Undefined parameter: %1%!" ) % mem.path()).str();
-        CmError::addError( msg, equation.defBegin);
+        format msg = format( "Undefined parameter: %1%" ) % mem.path();
+        CmError::addError( msg.str(), equation.defBegin);
         process.errorsDetected = true;
     }
-    else if( mem.timeDerivative() )
+    else if( mem.isTimeDerivative() )
     {   //no $ allowed.
-        string msg = ( format( "Parameters can not be differentiated! See: %1%!" ) % mem).str();
-        CmError::addError( msg, equation.defBegin);
+        format msg = format( "Parameters can not be differentiated! See: %1%" ) % mem;
+        CmError::addError( msg.str(), equation.defBegin);
         process.errorsDetected = true;
     }
 }
 
 
 /*!
-Test for semantic errors
+Functor's action function.
+Determine the validity of the identifiers in the RHS in the EQUATION section.
+Current checks:
+        - RHS: no $ allowed.
+        - RHS: Memory access must go to defined parameters or variables.
+*/
+void siml::CmModelIntermediate::CheckEquationRhsIdentifier::operator() ( CmMemAccess const & mem) const
+{
+    if( !process.isIdentifierExisting( mem.path()) )//note: intermediate models have no sub-models.
+    {   //all operands must be defined
+        format msg = format( "Undefined identifier: %1%\nExpecting variable or parameter here." ) % mem.path();
+        CmError::addError( msg.str(), equation.defBegin);
+        process.errorsDetected = true;
+    }
+    else if( mem.isTimeDerivative() )
+    {   //no $ allowed.
+        format msg = format( "Illegal time derivation: %1%\nTime derivation is only legal on the LHS." ) % mem;
+        CmError::addError( msg.str(), equation.defBegin);
+        process.errorsDetected = true;
+    }
+}
+
+
+/*!
+Test for semantic errors (the syntax was already checked by the parser).
 
 SET:
-        - All operands (paths) must be parameters.
-        - No $ allowed.
-@todo   - All parameters must be initialized.
+        - All: Operands (paths) must be parameters.
+        - All: No $ allowed.
+        - LHS: All parameters must be initialized.
+        - LHS: No duplicate assignments.
 
 EQUATION:
-        - lhs must be variable not parameter.
-        - rhs: no $ allowed.
-        - All memory access must go to declared parameters and variables.
-        - No assignment to state variables.
-        - No assignment to parameters.
-        - All state variables must have '$x =' assignments. - superflouus state variables are implicitly declared this way (CmModelDescriptor::markStateVariables()).
-        - All algebraic variables must have assignments.
+        - LHS must be (defined) variable not parameter.
+        - LHS: All variables must have assignments.
+        - LHS: No duplicate assignments. - catches: No assignment to state variables.
+        - RHS: no $ allowed.
+        - RHS: Memory access must go to defined parameters or variables.
+
+INITIAL:
+        - LHS must be state variable.
+        - LHS: All state variables must have assignments.
+        - LHS: No duplicate assignments.
+        - LHS: no $ allowed.
+        - RHS: no $ allowed.
+        - RHS: Memory access must go to defined parameters or variables.
 
 Function Result:
         - Errors will be generated and put imto the global storage.
@@ -341,19 +379,169 @@ Function Result:
 */
 void siml::CmModelIntermediate::checkErrors()
 {
-    //SET section ----------------------------------------------
-    //all operands must be parameters;  no $ allowed.
+    typedef set<CmPath> PathMap;
+    PathMap noAssignmentYet; //set for rule: one and only one assignment for each identifier.
+    CmMemoryTable::const_iterator itMem;
     CmEquationTable::const_iterator itEqu;
+
+    //SET section ------------------------------------------------------------------------------------------
+    //put all parameters into the set. When one is assigned it will be taken out again.
+    for( itMem = parameter.begin(); itMem != parameter.end(); ++itMem){ noAssignmentYet.insert( itMem->name); }
+
+    //Look at the entire SET section and see if no rules were violated.
     for( itEqu = parameterAssignment.begin(); itEqu != parameterAssignment.end(); ++itEqu)
     {
         CmEquationDescriptor const & equ = *itEqu;
-        CheckSetSectionIdentifier inspectMem( *this, equ);
-        inspectMem( equ.lhs);                       // inspect the identifiers on the LHS
-        equ.rhs.applyToMemAccessConst( inspectMem); // inspect all identifiers of the RHS
+        CheckSetSectionIdentifier inspectMem( *this, equ);// all operands must be parameters;  no $ allowed.
+        //RHS inspect all identifiers
+        equ.rhs.applyToMemAccessConst( inspectMem);
+        //LHS: inspect the identifier
+        inspectMem( equ.lhs);
+        //LHS: no duplicate assignment.
+        if( findParameter( equ.lhs.path()) == parameter.end() ) { continue; } //was already checked, but information was forgotten.
+        if( noAssignmentYet.find( equ.lhs.path()) != noAssignmentYet.end() )
+        {   //OK the identifier has not been assigned already.
+            //Take identifier out of set, because assignement has happened.
+            noAssignmentYet.erase( equ.lhs.path());
+        }
+        else
+        {
+            format msg = format( "Duplicate assignment to parameter: %1%\n") % equ.lhs;
+            CmError::addError( msg.str(), equ.defBegin);
+            errorsDetected = true;
+        }
     }
 
+    //Test if there are still uassigned parameters
+    if( noAssignmentYet.size() > 0 )
+    {
+        ostringstream msg;
+        msg << "Process: " << name << ". The following parameters are unassigned: ";
+        PathMap::const_iterator it;
+        for( it = noAssignmentYet.begin(); it != noAssignmentYet.end(); ++it ) { msg << *it << ", "; }
+        CmError::addError( msg.str(), defBegin);
+        errorsDetected = true;
+    }
 
-    return;
+    //EQUATION section ----------------------------------------------------------------------------------
+    //put all variables into the set. When one is assigned it will be taken out again.
+    noAssignmentYet.clear();
+    for( itMem = variable.begin(); itMem != variable.end(); ++itMem){ noAssignmentYet.insert( itMem->name); }
+
+    //Look at the entire EQUATION section and see if no rules were violated.
+    for( itEqu = equation.begin(); itEqu != equation.end(); ++itEqu)
+    {
+        CmEquationDescriptor const & equ = *itEqu;
+        //RHS: no $ allowed; Memory access must go to defined parameters or variables.
+        CheckEquationRhsIdentifier inspector( *this, equ);
+        equ.rhs.applyToMemAccessConst( inspector);
+        //LHS: must not be parameter.
+        if( findParameter( equ.lhs.path()) != parameter.end() )
+        {
+            format msg = format( "Illegal assignment to parameter: %1%\n"
+                                 "Parameters can only be assigned once in the SET section." ) % equ.lhs;
+            CmError::addError( msg.str(), equ.defBegin);
+            errorsDetected = true;
+            continue;
+        }
+        //LHS: must be variable
+        if( findVariable( equ.lhs.path()) == variable.end() )
+        {
+            format msg = format( "Undefined variable: %1%" ) % equ.lhs;
+            CmError::addError( msg.str(), equ.defBegin);
+            errorsDetected = true;
+            continue;
+        }
+        //LHS: no duplicate assignment
+        if( noAssignmentYet.find( equ.lhs.path()) != noAssignmentYet.end() )
+        {   //OK the identifier has not been assigned already.
+            //Take identifier out of set, because assignement has happened.
+            noAssignmentYet.erase( equ.lhs.path());
+        }
+        else
+        {
+            format msg = format( "Duplicate assignment to variable: %1%\n") % equ.lhs.path();
+            CmError::addError( msg.str(), equ.defBegin);
+            errorsDetected = true;
+        }
+    }
+
+    //Test if there are still uassigned variables
+    if( !noAssignmentYet.empty() )
+    {
+        ostringstream msg;
+        msg << "Process: " << name << ". The following variables are unassigned: ";
+        PathMap::const_iterator it;
+        for( it = noAssignmentYet.begin(); it != noAssignmentYet.end(); ++it ) { msg << *it << ", "; }
+        CmError::addError( msg.str(), defBegin);
+        errorsDetected = true;
+    }
+
+    //Check initial section --------------------------------------------------------------------------
+    //put the state variables into the set. When one is assigned it will be taken out again.
+    noAssignmentYet.clear();
+    for( itMem = variable.begin(); itMem != variable.end(); ++itMem)
+    {
+        if( itMem->is_state_variable ) { noAssignmentYet.insert( itMem->name); }
+    }
+
+    //Look at the entire INITIAL section and see if no rules were violated.
+    for( itEqu = initialEquation.begin(); itEqu != initialEquation.end(); ++itEqu)
+    {
+        CmEquationDescriptor const & equ = *itEqu;
+        //RHS: no $ allowed; Memory access must go to defined parameters or variables.
+        CheckSetSectionIdentifier inspector( *this, equ);///@todo make special functor with better error messages.
+        equ.rhs.applyToMemAccessConst( inspector);
+        //LHS: must be defined variable.
+        CmMemoryTable::const_iterator lhsVar = findVariable( equ.lhs.path());
+        if(  lhsVar == variable.end() )
+        {
+            format msg = format( "Undefined variable: %1%" ) % equ.lhs.path();
+            CmError::addError( msg.str(), equ.defBegin);
+            errorsDetected = true;
+            continue;
+        }
+        //LHS: must be state variable.
+        if( !lhsVar->is_state_variable )
+        {
+            format msg = format( "State variable required! Variable %1% is algebraic.\n"
+                                 "Only state Variables can be initalied." ) % equ.lhs.path();
+            CmError::addError( msg.str(), equ.defBegin);
+            errorsDetected = true;
+            continue;
+        }
+        //LHS: no $ allowed.
+        if( equ.lhs.isTimeDerivative() )
+        {
+            format msg = format( "Illegal time derivative in initial section: %1%" ) % equ.lhs;
+            CmError::addError( msg.str(), equ.defBegin);
+            errorsDetected = true;
+        }
+        //LHS: no duplicate initilization
+        if( noAssignmentYet.find( equ.lhs.path()) != noAssignmentYet.end() )
+        {   //OK the identifier has not been assigned already.
+            //Take identifier out of set, because assignement has happened.
+            noAssignmentYet.erase( equ.lhs.path());
+        }
+        else
+        {
+            format msg = format( "Duplicate initialization of state variable: %1%\n") % equ.lhs.path();
+            CmError::addError( msg.str(), equ.defBegin);
+            errorsDetected = true;
+        }
+    }
+
+    //Test if there are still uninitialized state variables
+    if( !noAssignmentYet.empty() )
+    {
+        ostringstream msg;
+        msg << "Process: " << name << ". The following state variables are not initialized: ";
+        PathMap::const_iterator it;
+        for( it = noAssignmentYet.begin(); it != noAssignmentYet.end(); ++it ) { msg << *it << ", "; }
+        CmError::addError( msg.str(), defBegin);
+        errorsDetected = true;
+    }
+
 }
 
 

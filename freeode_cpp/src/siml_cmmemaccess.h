@@ -58,7 +58,7 @@ public:
     //!Change time derivative propperty. If true: e.g: "$x" otherwise "x"
     void setTimeDerivative( bool deriv) { m_TimeDerivative = deriv; }
     //!If true the object is a time derivative e.g: "$x" otherwise "x"
-    bool timeDerivative() const { return m_TimeDerivative; }
+    bool isTimeDerivative() const { return m_TimeDerivative; }
     //!Change the path - the variable name
     void setPath( const CmPath& theValue) { m_Path = theValue; }
     //!Return the m_path propperty - the variable name

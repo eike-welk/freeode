@@ -53,7 +53,7 @@ std::string siml::CmMemAccess::toString(
     ostringstream   outputStream;
 
     //print the indicator for time derivation
-    if( timeDerivative() ) { outputStream << derivativeStr; }
+    if( isTimeDerivative() ) { outputStream << derivativeStr; }
 
     outputStream << m_Path.toString( separatorStr);
 
