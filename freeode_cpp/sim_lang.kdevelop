@@ -25,15 +25,16 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
       <useconfiguration>debug</useconfiguration>
     </general>
     <run>
-      <mainprogram/>
+      <mainprogram></mainprogram>
       <directoryradio>build</directoryradio>
       <customdirectory>/</customdirectory>
-      <programargs/>
+      <programargs>test1.siml</programargs>
       <terminal>false</terminal>
       <autocompile>true</autocompile>
       <envvars/>
       <runarguments>
         <yac/>
+        <sim_lang/>
       </runarguments>
     </run>
     <configurations>
@@ -121,7 +122,7 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
   <kdevdebugger>
     <general>
       <dbgshell>libtool</dbgshell>
-      <programargs></programargs>
+      <programargs>qwert</programargs>
       <gdbpath></gdbpath>
       <configGdbScript></configGdbScript>
       <runShellScript></runShellScript>

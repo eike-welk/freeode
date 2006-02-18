@@ -147,7 +147,9 @@ void siml::PyProcessGenerator::genConstructor()
 Generate the (SET) function where values are assigned to the parameters.
 The parameters are data members of the simulation object.
 
-@todo changing parameters from Python requires a special set function. Therfore genSetFunction() should be parameterized on the arguments for the special set function. Then: (arguments.size() == 0) --> standard set function; (arguments.size() > 0) --> special set function with with arguments.
+@todo Changing parameters from Python requires a special set function. Therfore genSetFunction() should be parameterized on the arguments for the special set function. Then: (arguments.size() == 0) --> standard set function; (arguments.size() > 0) --> special set function with with arguments.
+
+@todo Alternative to above: always generate a setParameters(self, ...) with arguments. All parameters are arguments. The arguments are named arguments with default values. The parameters where the RHS is a computation (not just a number) are excluded.
 
 @todo Refactor: Implement genEquation(...) which generates one line of any equation. for SET, EQUATION, INITIAL and output equation ??? Problem: different LHS required; function must be parameterizwd on LHS termplates.
 @todo Refactor: Maybe genAlgebraicVariables() is a usefull function?
@@ -181,7 +183,11 @@ void siml::PyProcessGenerator::genSetFunction()
 }
 
 
-/*!Generate function to Set INITIAL values of the state variables.*/
+/*!
+Generate function to Set INITIAL values of the state variables.
+
+@todo A function to change the initial values from Python ia needed: Generate a setInitialValues(self, ...) with arguments. All state variables are arguments. The arguments are named arguments with default values. The state variables where the RHS is a computation (not just a number) are excluded.
+*/
 void siml::PyProcessGenerator::genInitialFunction()
 {
     m_PyFile <<

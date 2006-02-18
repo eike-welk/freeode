@@ -75,8 +75,11 @@ siml::CmModelIntermediate::createIntermediateModel( CmModelDescriptor const & co
     //find errors
     checkErrors();
 
+    ///@todo this is debug output.
     //show the final process
-    display();
+//     display();
+
+    return errorsDetected;
 }
 
 
