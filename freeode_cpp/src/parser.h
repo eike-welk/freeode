@@ -23,6 +23,10 @@
 #include "siml_code_model.h"
 #include <boost/shared_ptr.hpp>
 
+
+namespace siml
+{
+
 /**
 @short The parser's main object
 
@@ -33,13 +37,15 @@ from the tree.
 @author Eike Welk <eike.welk@post.rwth-aachen.de>
 @version 0.1
 */
-class Parser{
+class ps_main_object
+{
 public:
-    Parser();
+    ps_main_object();
 
-    ~Parser();
+    ~ps_main_object();
 
     void doParse();
 };
 
+}
 #endif

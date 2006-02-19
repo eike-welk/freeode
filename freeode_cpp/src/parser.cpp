@@ -20,6 +20,8 @@
 #define PHOENIX_LIMIT 10
 #define BOOST_SPIRIT_CLOSURE_LIMIT 10
 
+#include "siml_globaldef.h"
+
 #include "parser.h"
 #include "siml_ps_skip.h"
 // #include "siml_ps_name.h"
@@ -48,20 +50,21 @@ using namespace siml;
 using boost::shared_ptr;
 
 
-Parser::Parser()
+siml::ps_main_object::ps_main_object()
 {
 }
 
 
-Parser::~Parser()
+siml::ps_main_object::~ps_main_object()
 {
 }
 
 
 /*!
 This is the parsing action
+@todo rename to ps_main_object
 */
-void Parser::doParse()
+void siml::ps_main_object::doParse()
 {
     std::ifstream inputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/test.siml");
     std::istreambuf_iterator<char> itBegin(inputStream);
