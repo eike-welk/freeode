@@ -22,6 +22,7 @@
 #define SIML_CODE_MODEL_HPP
 
 
+#include "siml_globaldef.h"
 #include "siml_cmpath.h"
 #include "siml_cmmemaccess.h"
 #include "siml_cmformula.h"
@@ -34,9 +35,6 @@
 
 
 namespace siml {
-
-//!Iterator for the parsed text @todo this belongs into some configuration file
-typedef char const * BufferIterator;
 
 /*!
 @short Data of parameter or variable
@@ -217,6 +215,8 @@ struct CmCodeRepository
 
     //!Static pointer to the one and only code model
     static CmCodeRepository * repository;
+    //!The names of the input files - for inclusion into messages.
+    static std::vector<std::string> inputFileNames;
 
     //!Display the repositorie's contents (for debuging)
     void display() const;

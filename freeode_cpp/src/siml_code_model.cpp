@@ -29,7 +29,8 @@
 using std::cout;
 using std::endl;
 using std::string;
-using boost::shared_ptr;
+using std::vector;
+// using boost::shared_ptr;
 using boost::format;
 
 
@@ -332,8 +333,12 @@ siml::CmModelDescriptor::display() const
 }
 
 
-/*!Static pointer to the one and only code model*/
+/*!Create the one and only code model*/
 siml::CmCodeRepository * siml::CmCodeRepository::repository = new CmCodeRepository();
+
+
+/*!Initialize list with names of the input files - for inclusion into messages.*/
+vector<string> siml::CmCodeRepository::inputFileNames;
 
 
 /*!Iterate through all lists and display their contents.*/

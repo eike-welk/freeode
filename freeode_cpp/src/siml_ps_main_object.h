@@ -44,7 +44,7 @@ public:
 
     ~ps_main_object();
 
-    void doParse();
+    void doParse( BufferIterator bufBegin, BufferIterator bufEnd);
 };
 
 }

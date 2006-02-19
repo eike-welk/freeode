@@ -22,26 +22,26 @@
 
 #include "siml_globaldef.h"
 
-#include "parser.h"
+#include "siml_ps_main_object.h"
 #include "siml_ps_skip.h"
 // #include "siml_ps_name.h"
 // #include "siml_ps_model.h"
 #include "siml_ps_toplevel.h"
-#include "siml_pygenmain.h"
-#include "siml_cmerror.h"
+// #include "siml_pygenmain.h"
+// #include "siml_cmerror.h"
 
-//#include <boost/spirit.hpp>
-#include <boost/spirit/core.hpp>
+#include <boost/spirit.hpp>
+// #include <boost/spirit/core.hpp>
 //#include <boost/spirit/actor/push_back_actor.hpp>
 //#include <boost/spirit/phoenix.hpp>
 //#include <boost/spirit/symbols/symbols.hpp>
-#include <boost/spirit/iterator.hpp>
+// #include <boost/spirit/iterator.hpp>
 
 #include <iostream>
-#include <vector>
-#include <string>
-#include <streambuf>
-#include <fstream>
+// #include <vector>
+// #include <string>
+// #include <streambuf>
+// #include <fstream>
 
 
 using namespace std;
@@ -62,49 +62,28 @@ siml::ps_main_object::~ps_main_object()
 
 /*!
 This is the parsing action
-@todo rename to ps_main_object
 */
-void siml::ps_main_object::doParse()
+void siml::ps_main_object::doParse( BufferIterator bufBegin, BufferIterator bufEnd)
 {
-    std::ifstream inputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/test.siml");
-    std::istreambuf_iterator<char> itBegin(inputStream);
-    std::istreambuf_iterator<char> itEnd;
-    std::string<char> inputStr="\n\n\n"+std::string(itBegin, itEnd)+"\n\n\n"; //protect against iterating beyond begin or end of the string by the error generation function.
-    char const * inputCStr = inputStr.c_str();
-
-    ///@todo using different iterators than "char const *" does not work.
-    ///@todo make sure BufferIterator ("siml_code_model.h") is equal to iterator_t
-//     typedef position_iterator<char const *> iterator_t;
-//     iterator_t begin(inputCStr, inputCStr+strlen(inputCStr), "test.file");
-//     iterator_t end;
-    typedef char const * iterator_t;
-    iterator_t begin = inputCStr;
-    iterator_t end = inputCStr+strlen(inputCStr);
-
-    cout << "The input: \n";
-    cout << inputStr;
-    cout << "-----------------------------------------------------\n\n";
-
-//     shared_ptr<CmCodeRepository> parse_result(new CmCodeRepository);
+    //create instance of the toplevel grammar.
     ps_toplevel toplevel_grammar;
+    //this parser recognizes whitespace and comments
     ps_skip skip;
-    parse_info<> info;
-//     info = ps_toplevel.parse(begin, end, skip);
-    info = boost::spirit::parse(begin, end, toplevel_grammar, skip);
+    //this object caries the result of parsing.
+    parse_info<BufferIterator> info;
 
-    if     (info.full){ cout << "parser consumed all input.\n"; }
-    else if(info.hit) { cout << "parser consumed input partially.\n"; }
-    else              { cout << "parsing failed.\n"; }
+    //do the parsing. The results are stored in the global struct
+    //CmCodeRepository::repository which is accessible by the non member function
+    //repository()
+    info = boost::spirit::parse(bufBegin, bufEnd, toplevel_grammar, skip);
 
-    repository()->display();
+    ///@todo this is debug output. (-m)
+//     if     (info.full){ cout << "parser consumed all input.\n"; }
+//     else if(info.hit) { cout << "parser consumed input partially.\n"; }
+//     else              { cout << "parser consumed no input.\n"; }
+    ///@todo this is debug output. (-mmm)
+//     repository()->display();
 
-    //generate python program from CmCodeRepository
-    std::ofstream pyOutputStream("/home/eike/codedir/freeode/trunk/freeode_cpp/src/testproc.py");
-    PyGenMain pyGen( pyOutputStream);
-    pyGen.generateAll();
-    pyOutputStream.close();
-
-    CmError::printStorageToCerr();
     return;
 }
 

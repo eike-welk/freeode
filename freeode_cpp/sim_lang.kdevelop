@@ -25,10 +25,10 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
       <useconfiguration>debug</useconfiguration>
     </general>
     <run>
-      <mainprogram></mainprogram>
+      <mainprogram/>
       <directoryradio>build</directoryradio>
       <customdirectory>/</customdirectory>
-      <programargs>test1.siml</programargs>
+      <programargs>../src/test.siml -o ../src/testproc.py</programargs>
       <terminal>false</terminal>
       <autocompile>true</autocompile>
       <envvars/>
@@ -123,10 +123,10 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
     <general>
       <dbgshell>libtool</dbgshell>
       <programargs>qwert</programargs>
-      <gdbpath></gdbpath>
-      <configGdbScript></configGdbScript>
-      <runShellScript></runShellScript>
-      <runGdbScript></runGdbScript>
+      <gdbpath/>
+      <configGdbScript/>
+      <runShellScript/>
+      <runGdbScript/>
       <breakonloadinglibs>true</breakonloadinglibs>
       <separatetty>false</separatetty>
       <floatingtoolbar>true</floatingtoolbar>
@@ -185,7 +185,7 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
       <headerCompletionDelay>250</headerCompletionDelay>
     </codecompletion>
     <creategettersetter>
-      <prefixGet></prefixGet>
+      <prefixGet/>
       <prefixSet>set</prefixSet>
       <prefixVariable>m_,_</prefixVariable>
       <parameterName>theValue</parameterName>
