@@ -1,0 +1,23 @@
+YAC is Yet Another Calculator. It has been written as a vehicle with which to
+investigate some of the Spirit parser framework's powerful facilities. As such,
+I've put at least as much effort into the documentation as I put into writing
+the code. My primary hope is that this documentation will prove useful to those
+thinking of using closures, lambda functions, lazy functions and the functor
+parser in their own code.
+
+The source code, to be found in the src directory can be compiled in a single
+pass. Here, on a Linux machine I compile it with:
+
+    g++ -I$HOME/boost/cvs -o yac yac.cpp
+
+The html documentation, in the doc directory has been generated from the
+yac.txt master file using a patched version of Joel de Guzman's QuickDoc
+utility. The patch enables QuickDoc to generate fully-conformant XHTML 1.1 code
+and is to be found in this directory.
+
+You want to know more? Then go read the docs ;-)
+
+Enjoy!
+
+Angus Leeming
+11 March 2004.
