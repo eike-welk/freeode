@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Project SYSTEM "Project-3.8.dtd">
+<!-- Project file for project sim_lang -->
+<!-- Saved: 2006-02-20, 02:15:50 -->
+<!-- Copyright (C) 2006 Eike Welk, Eike.Welk@post.RWTH-Aachen.de -->
+<Project version="3.8">
+  <ProgLanguage mixed="0">Python</ProgLanguage>
+  <UIType>Qt</UIType>
+  <Description>Python project for creation and debuging of the Python parts of the siml compiler.</Description>
+  <Version>0.1</Version>
+  <Author>Eike Welk</Author>
+  <Email>Eike.Welk@post.RWTH-Aachen.de</Email>
+  <Sources>
+    <Source>
+      <Dir>src</Dir>
+      <Name>py2c_string.py</Name>
+    </Source>
+    <Source>
+      <Dir>src</Dir>
+      <Name>simulatorbase.py</Name>
+    </Source>
+    <Source>
+      <Dir>models</Dir>
+      <Name>pymain.py</Name>
+    </Source>
+    <Source>
+      <Dir>models</Dir>
+      <Name>testprogram.py</Name>
+    </Source>
+  </Sources>
+  <Forms>
+  </Forms>
+  <Translations>
+  </Translations>
+  <Interfaces>
+  </Interfaces>
+  <Others>
+  </Others>
+  <MainScript>
+    <Dir>models</Dir>
+    <Name>pymain.py</Name>
+  </MainScript>
+  <Vcs>
+    <VcsType>Subversion</VcsType>
+    <VcsOptions>{'status': [], 'log': [], 'global': [], 'update': [], 'remove': [], 'add': [], 'tag': [], 'export': [], 'diff': [], 'commit': [], 'checkout': [], 'history': []}</VcsOptions>
+    <VcsOtherData>{'standardLayout': 1}</VcsOtherData>
+  </Vcs>
+  <FiletypeAssociations>
+    <FiletypeAssociation pattern="*.py" type="SOURCES" />
+    <FiletypeAssociation pattern="*.ui.h" type="FORMS" />
+    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
+    <FiletypeAssociation pattern="*.ui" type="FORMS" />
+    <FiletypeAssociation pattern="*.ptl" type="SOURCES" />
+  </FiletypeAssociations>
+</Project>
