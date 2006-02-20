@@ -1,4 +1,11 @@
 #!/usr/bin/python
+#---------------------------------------------------------------------
+# This hand written simulation program is included here as refference.
+#
+# This simulation was a first step of the compiler writing process.
+# It showed me, that simulation programs could be generated in a quite
+# mechanial manner
+#---------------------------------------------------------------------
 
 from scipy import * #also includes Numeric
 import Gnuplot, Gnuplot.funcutils
