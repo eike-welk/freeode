@@ -28,7 +28,7 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
       <mainprogram></mainprogram>
       <directoryradio>build</directoryradio>
       <customdirectory>/</customdirectory>
-      <programargs>../models/bioreactor.siml -o ../models/testprogram.py</programargs>
+      <programargs>../models/bioreactor.siml -o ../models/testprogram.py </programargs>
       <terminal>false</terminal>
       <autocompile>true</autocompile>
       <envvars/>
@@ -122,7 +122,7 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
   <kdevdebugger>
     <general>
       <dbgshell>libtool</dbgshell>
-      <programargs>qwert</programargs>
+      <programargs>../models/bioreactor.siml -o ../models/testprogram.py</programargs>
       <gdbpath></gdbpath>
       <configGdbScript></configGdbScript>
       <runShellScript></runShellScript>
@@ -201,4 +201,8 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
       <root>/usr/lib/qt3</root>
     </qt>
   </kdevcppsupport>
+  <ctagspart>
+    <customArguments></customArguments>
+    <customTagfilePath></customTagfilePath>
+  </ctagspart>
 </kdevelop>

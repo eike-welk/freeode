@@ -23,8 +23,8 @@
 
 #include <string>
 // #include <vector>
-#include <list>
-// #include <boost/shared_ptr.hpp>
+#include <list>// #include <boost/shared_ptr.hpp>
+#include <boost/spirit/iterator/position_iterator.hpp>
 
 
 namespace siml {
@@ -59,7 +59,11 @@ public:
     void addToStorage();
 
     //!create error, put it into central storage
-    /*!When you don't happen to have an iterator pass in 0 for where. */
+    /*!
+    When you don't happen to have an iterator pass in 0 for where.
+    The function simply calls createError(...) and the adds the error to the
+    static storage.
+    */
     template <typename IteratorT>
     static void addError(std::string const & message, IteratorT where, Severity howBad = Error)
     {
@@ -68,7 +72,14 @@ public:
     }
 
     //!create error, return it
-    /*!This function asks the iterator for the file and the line where the eror happened.*/
+    /*!
+    This is an unspecialized template function that just ignores the iterator
+    and generates a simple error message.
+    There are specilizations for IteratorT = const char *; and IteratorT = file line iterator;
+
+    Template specilizations must be defined outside of the class. Reference:
+    http://www.lrde.epita.fr/cgi-bin/twiki/view/Know/MemberFunctionsTemplateSpecialization
+    */
     template <typename IteratorT>
     static CmError createError(std::string const & message, IteratorT /*where*/, Severity howBad)
     {
@@ -96,14 +107,39 @@ public:
 
 //!create error, return it
 /*!
-Template specialization for char const *. Includes some of the errornous code into the error message. See:
-http://www.lrde.epita.fr/cgi-bin/twiki/view/Know/MemberFunctionsTemplateSpecialization
- */
+Template specialization for char const *. Includes some of the errornous code into the error message.
+Calls createErrorChar(...) to do the real work.
+
+This is a fallback implementation when the position_iterator is unavaillable.
+*/
 template <>
-inline CmError CmError::createError<char const *>(std::string const & message, char const * where, Severity howBad)
+inline CmError
+CmError::createError< char const *>( std::string const & message, char const * where, Severity howBad)
 {
     return createErrorChar( message, where, howBad);
 }
+
+//!create error, return it
+/*!
+Template specialization for file line iterator. This function asks the iterator
+for the file and the line where the eror happened, and includes this information
+in the error message.
+Calls createErrorFileLine(...) to do the real work.
+*/
+template <>
+inline CmError
+CmError::createError< boost::spirit::position_iterator<char const *> > (
+        std::string const & message,
+        boost::spirit::position_iterator<char const *> where,
+        Severity howBad)
+{
+    std::string file = where.get_position().file;
+    uint line =  where.get_position().line;
+    return createErrorFileLine( message, file, line, howBad);
+}
+
+
+
 
 }
 

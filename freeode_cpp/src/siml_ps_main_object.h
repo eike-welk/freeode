@@ -29,10 +29,12 @@ namespace siml
 
 /**
 @short The parser's main object
+The class takes a pair of iterators into the input buffer, and generates a
+representation in the static code repository of it (think of syntax tree).
+The code repository is accessible throught a call to siml::repository()
 
-One day this class should accept a file (an iterator pair?) and transform it
-into a parse tree. A code generation object would then generate Pyton or C++
-from the tree.
+The class' only purpose is to decouple the parser, that has very long compile
+time, from the rest.
 
 @author Eike Welk <eike.welk@post.rwth-aachen.de>
 @version 0.1

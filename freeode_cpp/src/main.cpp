@@ -54,7 +54,7 @@ using std::back_insert_iterator;
 int main(int argc, char* argv[])
 {
     string outputFile;
-    vector< string> inputFiles;
+    vector< string> inputFileNames;
     uint debugLevel = 0;
 //     uint messageLevel = 0;
 
@@ -115,7 +115,7 @@ int main(int argc, char* argv[])
         //input file ----------------------------------------------------------
         else if( currOpt[0] != '-' )
         {
-            inputFiles.push_back( currOpt);
+            inputFileNames.push_back( currOpt);
         }
         //error
         else
@@ -126,16 +126,17 @@ int main(int argc, char* argv[])
     }
 
     //complain if no input file is present.----------------------------------------------------------
-    if( inputFiles.size() == 0 )
+    if( inputFileNames.size() == 0 )
     {
         cerr << "Error: No input file(s).\n";
         return 1;
     }
 
-    //create the output file name if none given (name.* --> name.py) -------------------------------------
+    //Name the output file like the input file if no uotput file is specified. ----------------------
+    //Conversion: name.* --> name.py
     if( outputFile.empty() )
     {
-        outputFile = inputFiles.front();
+        outputFile = inputFileNames.front();
         //chop off everything behind the last dot (the extension).
         int posLastDot = outputFile.rfind( ".");
         if( posLastDot > 0 )
@@ -149,55 +150,49 @@ int main(int argc, char* argv[])
 
     ///@todo this is debug output. (-m)
     //show what we're going to do -----------------------------------------------------------------------
-    vector< string>::iterator itS;
+//     vector< string>::iterator itS;
 //     cout << "Input file(s):\n";
-//     for( itS = inputFiles.begin(); itS != inputFiles.end(); ++itS){ cout << *itS << ", "; }
+//     for( itS = inputFileNames.begin(); itS != inputFileNames.end(); ++itS){ cout << *itS << ", "; }
 //     cout << '\n';
 //     cout << "Output file:\n";
 //     cout << outputFile << '\n';
 
     //put the file names into the code repository
     back_insert_iterator< vector<string> > insertStrings( CmCodeRepository::inputFileNames);
-    copy(inputFiles.begin(), inputFiles.end(), insertStrings);
+    copy(inputFileNames.begin(), inputFileNames.end(), insertStrings);
 
+    //load the input files into memory and parse them -------------------------------------
     ///@todo a solution with #include style directives where much better.
-    //load the input files into memory and concatenate them-------------------------------------
-    string pading = "\n\n\n"; //protect against iterating beyond begin or end by the error generation function.
-    string inputStr = pading; //The buffer, all files go here.
-//     vector< string>::iterator itS;
-    for( itS = inputFiles.begin(); itS != inputFiles.end(); ++itS)
+    vector< string> inputBuffer;
+    vector< string>::iterator itName;
+    for( itName = inputFileNames.begin(); itName != inputFileNames.end(); ++itName)
     {
-        ifstream inputStream( itS->c_str()); //try to open the file
+        //try to open the file
+        ifstream inputStream( itName->c_str());
         if( !inputStream.is_open() )
-        {   //The file does not exist.
-            cerr << "Error: Can not open input file: " << *itS << '\n';
+        {   //The file does not exist. Abort the program.
+            cerr << "Error: Can not open input file: " << *itName << '\n';
             return 1;
         }
-        //append the file to the buffer
+
+        //put new buffer into the list
+        inputBuffer.push_back(string());
+        //read the file's contents into the buffer
         istreambuf_iterator< char> itBegin( inputStream);
         istreambuf_iterator< char> itEnd;
-        inputStr.append( itBegin, itEnd);
-        inputStr.append( pading.begin(), pading.end()); //append some return chars after each file
+        inputBuffer.back().append( itBegin, itEnd);
+        //close the file
         inputStream.close();
+
+        //create the iterators for the parser.
+        BufferIterator begin(   inputBuffer.back().c_str(),
+                                inputBuffer.back().c_str()+inputBuffer.back().size(),
+                                *itName);
+        BufferIterator end;
+        //call the parser - results are stored in CmCodeRepository::repository
+        ps_main_object parser;
+        parser.doParse( begin, end);
     }
-
-    ///@todo this is debug output. (-mmm)
-//     cout << "The input: \n";
-//     cout << "-----------------------------------------------------\n";
-//     cout << inputStr;
-//     cout << "-----------------------------------------------------\n\n";
-
-    //Parsing ----------------------------------------------------------------------------------
-    //create the iterators for the parser.
-    ///@todo using different iterators than "char const *" does not work.
-//     typedef position_iterator<char const *> IteratorT;
-//     IteratorT begin(inputCStr, inputCStr+strlen(inputCStr), "test.file");
-//     IteratorT end;
-    BufferIterator begin = inputStr.c_str();  //BufferIterator ~ char const *
-    BufferIterator end = begin+inputStr.size(); //strlen(inputCStr);
-    //call the parser - results are stored in CmCodeRepository::repository
-    ps_main_object parser;
-    parser.doParse( begin, end);
 
     ///@todo a separate call to generate the intermediate representation were good desingn.
 
@@ -205,16 +200,16 @@ int main(int argc, char* argv[])
     //open the output file.
     ofstream outputStream( outputFile.c_str()); //try to open the file
     if( !outputStream.is_open() )
-    {   //The file does not exist.
+    {   //The file does not exist. Abort program.
         cerr << "Error: Can not open output file: " << outputFile << '\n';
         return 1;
     }
     //call the code generator - generate python program from CmCodeRepository::repository
     PyGenMain pyGen( outputStream);
     pyGen.generateAll();
-
+    //close output file
     outputStream.close();
-
+    //flush also the console buffer
     cout << std::endl;
 
     //print the errors

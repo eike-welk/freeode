@@ -41,7 +41,7 @@ namespace siml {
 
 This is the parsing result for one line of the PARAMETER section. The code
 generator will later use this information.
-@todo A pair of pointers: char const * where_first, where_last; instead of std::string definition_text would be a good idea, to aid the generation of code generator errors.
+a good idea, to aid the generation of code generator errors.
 @todo A split between syntax tree and code generation structure may be a good idea.
 */
 struct CmMemoryDescriptor
@@ -153,7 +153,7 @@ struct CmModelDescriptor
     bool errorsDetected;
 
     //!Constructor
-    CmModelDescriptor(): defBegin(0), isProcess(false), errorsDetected(false) {};
+    CmModelDescriptor(): /*defBegin(0),*/ isProcess(false), errorsDetected(false) {};
     //!Display the model's contents (for debuging)
     void display() const;
 

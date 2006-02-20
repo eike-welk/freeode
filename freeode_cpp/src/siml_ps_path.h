@@ -145,7 +145,7 @@ struct ps_path : public spirit::grammar<ps_path>
         //!Current iterator type
         /*!
         The scanner contains the type of the iterator which is used in the parse function
-        (among other things). So if we write:
+        (among other things). So if you start parsing (in the toplevel cpp file) with:
         @code
         char const * inputCStr = ....;
         ....
