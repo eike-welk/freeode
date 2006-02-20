@@ -2,8 +2,8 @@
 
 #Main program for the simulator scripts
 
-from testproc import *
-# execfile('testproc.py')
+from testprogram import *
+# execfile('testprogram.py')
 
 simConti = Conti()
 simConti.simulate()
