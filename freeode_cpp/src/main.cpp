@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     string outputFile;
     vector< string> inputFiles;
     uint debugLevel = 0;
-    uint messageLevel = 0;
+//     uint messageLevel = 0;
 
     //parse the input by hand. (Boost command line argument lib makes problems.) -------------------------
     int iOpt;
@@ -214,6 +214,8 @@ int main(int argc, char* argv[])
     pyGen.generateAll();
 
     outputStream.close();
+
+    cout << std::endl;
 
     //print the errors
     CmError::printStorageToCerr();

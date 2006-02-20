@@ -2,17 +2,19 @@
 <!DOCTYPE Session SYSTEM "Session-3.8.dtd">
 <!-- eric3 session file for project sim_lang -->
 <!-- This file was generated automatically, do not edit. -->
-<!-- Saved: 2006-02-20, 02:10:54 -->
+<!-- Saved: 2006-02-20, 03:36:36 -->
 <Session version="3.8">
   <Filenames>
+    <Filename cline="4" cindex="0">/home/eike/codedir/freeode/trunk/freeode_cpp/models/pymain.py</Filename>
   </Filenames>
+  <ActiveWindow cline="4" cindex="0">/home/eike/codedir/freeode/trunk/freeode_cpp/models/pymain.py</ActiveWindow>
   <Breakpoints>
   </Breakpoints>
   <Watchpoints>
   </Watchpoints>
   <DebugInfo>
     <CommandLine></CommandLine>
-    <WorkingDirectory></WorkingDirectory>
+    <WorkingDirectory>/home/eike/codedir/freeode/trunk/freeode_cpp/</WorkingDirectory>
     <Environment></Environment>
     <ReportExceptions value="1" />
     <Exceptions>

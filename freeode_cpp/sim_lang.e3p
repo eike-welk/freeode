@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.8.dtd">
 <!-- Project file for project sim_lang -->
-<!-- Saved: 2006-02-20, 02:15:50 -->
+<!-- Saved: 2006-02-20, 03:36:36 -->
 <!-- Copyright (C) 2006 Eike Welk, Eike.Welk@post.RWTH-Aachen.de -->
 <Project version="3.8">
   <ProgLanguage mixed="0">Python</ProgLanguage>
@@ -26,6 +26,10 @@
     <Source>
       <Dir>models</Dir>
       <Name>testprogram.py</Name>
+    </Source>
+    <Source>
+      <Dir>models</Dir>
+      <Name>bioreactor1.py</Name>
     </Source>
   </Sources>
   <Forms>
