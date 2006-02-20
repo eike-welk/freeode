@@ -1,0 +1,94 @@
+# MODEL mo1
+#
+# PARAMETER
+# mu_max DEFAULT 0.32;
+# Ks     DEFAULT 0.1;
+# Yxs    DEFAULT 0.5;
+# Ko     DEFAULT 1e-3;
+# Yxo    DEFAULT 0.028;
+#
+# kla    DEFAULT 360.0;
+# O_star DEFAULT 0.21;
+# #kla     DEFAULT 9;
+#
+# #UNIT
+# #kla AS mo1;
+#
+# VARIABLE
+# mu;
+# X INITIAL 0.2; # Biomass
+# S INITIAL 25;  # Sugar
+# O INITIAL 0.21;# Oxygen
+# #O ;
+#
+# #SET
+#
+# EQUATION
+# mu := mu_max * S/(S+Ks) * O/(O+Ko) ;
+# $X := mu*X;
+# $S := -1/Yxs*mu*X;
+# $O := -1/Yxo*mu*X + kla*(O_star - O);
+#
+# END
+
+
+MODEL BioReactor
+    PARAMETER #Define  values that stay constant during the simulation.
+        mu_max; Ks; Yxs; Sf; D;
+
+    VARIABLE #Define values that change during the simulation.
+        mu; X; S;
+
+    EQUATION #Specify the equations
+        mu := mu_max * S/(S+Ks);
+        $X := mu*X - D*X;
+        $S := -1/Yxs*mu*X + D*Sf - D*S;
+END
+
+
+PROCESS Batch
+    PARAMETER #Define the constant values again.
+        mu_max; Ks; Yxs; Sf; D; #TODO the compiler crashes when last ";" is removed.
+
+    UNIT #Say which model will be used.
+        r AS BioReactor;
+
+    SET #Set values to the parameters. The values will be copied into the BioReactor model
+        mu_max := 0.32;
+        Ks     := 0.01;
+        Yxs    := 0.5;
+        Sf     := 20;
+        D      := 0;
+
+    INITIAL #Set initial values to the state variables. Note: the full path has to be specified for variables.
+        r.X := 0.1;
+        r.S := 20;
+
+    SOLUTIONPARAMETERS #Specify options for the simulation algorithm.
+        ReportingInterval :=0.5; #[h]
+        SimulationTime    :=20; #[h]
+END
+
+
+PROCESS Conti
+    PARAMETER #Define the constant values again.
+        mu_max; Ks; Yxs; Sf; D;
+
+    UNIT #Say which model will be used.
+        r AS BioReactor;
+
+    SET #Set values to the parameters. The values will be copied into the BioReactor model
+        mu_max := 0.32;
+        Ks     := 0.1;
+        Yxs    := 0.5;
+        Sf     := 20;
+        D      := 0.1;
+
+    INITIAL #Set initial values to the state variables. Note: the full path has to be specified for variables.
+        r.X := 0.1;
+        r.S := 0;
+
+    SOLUTIONPARAMETERS #Specify options for the simulation algorithm.
+        ReportingInterval :=0.5; #[h]
+        SimulationTime    :=40; #[h]
+END
