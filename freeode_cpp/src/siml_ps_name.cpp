@@ -28,7 +28,10 @@ namespace siml
     ps_name::symbol_table_t ps_name::reserved_keywords = init_reserved_keywords();
     ps_name::symbol_table_t ps_name::empty_table;
 
-    /*!initialize the symbol table "reserved_keywords" with the language's keywords*/
+    /*!
+    Initialize the symbol table "reserved_keywords" with the language's keywords.
+    @todo split the symbol table up into section_headers = "PARAMETER", "UNIT" ... for better error recovery. After an error text could be skiped until the next ";" or the next section_headers.
+    */
     ps_name::symbol_table_t ps_name::init_reserved_keywords()
     {
         symbol_table_t keywords;
@@ -41,6 +44,7 @@ namespace siml
             "INTEGER","REAL","LOGICAL",
             "IF","ELSE","INTEGRAL",
     //         "TYPICAL",
+            "time", "TIME", //special variable
             "END";
         return keywords;
     }

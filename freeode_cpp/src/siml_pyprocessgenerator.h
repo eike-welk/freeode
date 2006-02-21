@@ -58,9 +58,9 @@ private:
     //!generate the processe's constructor
     void genConstructor();
     //! Generate the (SET) function where values are assigned to the parameters.
-    void genSetFunction();
+    void genSetParameters();
     //!Generate function to Set INITIAL values of the state variables.
-    void genInitialFunction();
+    void geSetInitialValues();
     //!generate the function that conains the equations
     void genOdeFunction();
     //!create the function that compotes the algebraic variables for output
@@ -115,6 +115,12 @@ private:
     //!Python names for all variables and parameters.
     /*! Mapping between siml path ("a.b.c") and Python expression to access this object ("self.a_b_c") */
     std::map<CmPath, std::string> m_PythonName;
+
+    //!Python names for all variables and parameters for the ssset function
+    /*!The set* functions change parameters and initial values via named arguments.
+    These names need to be close to the original. Otherwise no one can remember them.
+    */
+    std::map<CmPath, std::string> m_funcArgName;
 
     //!create Python expressions from CmFormula objects.
     PyFormulaConverter m_toPy;

@@ -40,7 +40,7 @@ END
 #Biological reactor with constant inflow and outfow
 PROCESS Conti #Define a concrete simulation expriment
     PARAMETER #Define the constant values again.
-        mu_max; Ks; Yxs; Sf; D;
+        mu_max; Ks; Yxs; Sf; D;# dummy1; dummy2;
 
     UNIT #Say which model will be used.
         r AS BioReactor;
@@ -51,6 +51,8 @@ PROCESS Conti #Define a concrete simulation expriment
         Yxs    := 0.5;  #one g sugar gives this much biomass
         Sf     := 20;   #sugar concentration in feed liquid (inflow)
         D      := 0.1;  #Dilution rate (inflow speed)
+#        dummy1 := Sf*D;
+#        dummy2 := Sf;
 
     INITIAL #Set initial values to the state variables. Note: the full path has to be specified for variables.
         r.X := 0.1; #initial biomass concentration

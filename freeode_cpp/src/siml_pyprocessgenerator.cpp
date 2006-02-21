@@ -25,6 +25,8 @@
 // #include "siml_pyformulaconverter.h"
 
 #include <iostream>
+#include <set>
+
 #include <boost/format.hpp>
 #include <boost/tuple/tuple.hpp>
 
@@ -34,6 +36,8 @@ using std::endl;
 using std::map;
 using std::vector;
 using std::cout;
+using std::set;
+
 using boost::format;
 using boost::tie;
 using boost::shared_ptr;
@@ -86,10 +90,10 @@ void siml::PyProcessGenerator::genProcessObject( CmModelDescriptor const & inPro
     genConstructor();
 
     //generate the SET function where parameter values are assigned (as member variables).
-    genSetFunction();
+    genSetParameters();
 
     //Generate function to Set INITIAL values of the state variables.
-    genInitialFunction();
+    geSetInitialValues();
 
     //Generate the function that contains the equations.
     genOdeFunction();
@@ -107,12 +111,16 @@ void siml::PyProcessGenerator::genConstructor()
 {
     m_PyFile << format("%|4t|def __init__(self):") << '\n';
 
+    //call base class' constructor
+    m_PyFile << format("%|8t|#call base class' constructor.\n");
+    m_PyFile << format("%|8t|SimulatorBase.__init__(self)\n\n");
+
     //Map for converting variable names to indices or slices
     //necessary for convenient access to the simulation results from Python.
     //used by Python functions: get(...), graph(...)
-    //loop produces: self.resultArrayMap = { 'reactor.S':1, 'reactor.X':0, 'reactor.mu':2,  }
+    //loop produces: self._resultArrayMap = { 'reactor.S':1, 'reactor.X':0, 'reactor.mu':2,  }
     m_PyFile << format("%|8t|#Map for converting variable names to indices or slices.\n");
-    m_PyFile << format("%|8t|self.resultArrayMap = {");
+    m_PyFile << format("%|8t|self._resultArrayMap = {");
     map<CmPath, string>::const_iterator itMa;
     for( itMa = m_ResultArrayMap.begin(); itMa != m_ResultArrayMap.end(); ++itMa )
     {
@@ -139,7 +147,7 @@ void siml::PyProcessGenerator::genConstructor()
 
     m_PyFile << '\n';
 
-    ///@todo initialize resultArray with the right dimensions
+    ///@todo initialize _resultArray with the right dimensions. Now get() dfails prior to a simulation run.
 }
 
 
@@ -147,37 +155,83 @@ void siml::PyProcessGenerator::genConstructor()
 Generate the (SET) function where values are assigned to the parameters.
 The parameters are data members of the simulation object.
 
-@todo Changing parameters from Python requires a special set function. Therfore genSetFunction() should be parameterized on the arguments for the special set function. Then: (arguments.size() == 0) --> standard set function; (arguments.size() > 0) --> special set function with with arguments.
-
-@todo Alternative to above: always generate a setParameters(self, ...) with arguments. All parameters are arguments. The arguments are named arguments with default values. The parameters where the RHS is a computation (not just a number) are excluded.
-
-@todo Refactor: Implement genEquation(...) which generates one line of any equation. for SET, EQUATION, INITIAL and output equation ??? Problem: different LHS required; function must be parameterizwd on LHS termplates.
-@todo Refactor: Maybe genAlgebraicVariables() is a usefull function?
+All parameter that are assigne only numbers are (named) function arguments.
+The function looks like this:
+@code
+    def setParameters(self, mu_max=0.32, Ks=0.1, Yxs=0.5, Sf=20, D=0.1):
+        self.p_mu_max    = float(mu_max) # = mu_max
+        ....
+        self.p_dummy1    = self.p_Sf * self.p_D # = dummy1
+@endcode
 */
-void siml::PyProcessGenerator::genSetFunction()
+void siml::PyProcessGenerator::genSetParameters()
 {
+    CmEquationTable::const_iterator it;
+    //Determine the parameters with simple assignments in the SET section. e.g.:"Ks := 0.1;"
+    //These parameters can be easyly changed, and then the computations for the
+    //other parameters are carried out.
+    //The easy parameters become named arguments of the setParameters(self, ...) function
+    set<CmPath> functionArgs;
+    for( it = m_FlatProcess.parameterAssignment.begin(); it != m_FlatProcess.parameterAssignment.end(); ++it )
+    {
+        CmEquationDescriptor equnD = *it;
+        //A formula of size 1 is a simple assignment
+        if( equnD.rhs.size() != 1 ) { continue; }
+        //And the only element must also be a number.
+        CmFormula::NumberCmd * numPtr = dynamic_cast<CmFormula::NumberCmd*>( equnD.rhs.commands().front().get());
+        if( !numPtr ) { continue; }
+        //finally put the parmeter name into the set
+        functionArgs.insert(equnD.lhs.path());
+    }
+
+    //write first line of function definition
+    m_PyFile << format("%|4t|def setParameters(self");
+    //write parmeter list with default values.
+    for( it = m_FlatProcess.parameterAssignment.begin(); it != m_FlatProcess.parameterAssignment.end(); ++it )
+    {
+        CmEquationDescriptor equnD = *it;
+        if( functionArgs.find( equnD.lhs.path()) == functionArgs.end() ) { continue; }
+        string argName    = m_funcArgName[equnD.lhs.path()];
+        string defaultVal = m_toPy.convert( equnD.rhs);
+        m_PyFile << format(", %1%=%2%") % argName % defaultVal;
+    }
+    m_PyFile << "):\n";
+
     m_PyFile <<
-            "    def setParameters(self):\n"
             "        \"\"\"\n"
             "        Assign values to the parmeters. The function represents the SET section.\n"
+            "        All parameters that have numbers assigned to them can be given new values\n"
+            "        by passing them as named arguments of this function.\n"
+            "        e.g. mySimulation.setParameters( Ks=0.5, Sf=5)\n"
             "        The parameters are data members of the simulation object.\n"
             "        \"\"\"\n"
             "        \n"
             ;
-    //TODO assign the parameters that are given in the arguments
 
-    //Assign values to the parameters (and create them)
-    m_PyFile << format("%|8t|#Assign values to the parameters (and create them)") << '\n';
-    CmEquationTable::const_iterator it;
+    //Assign values to the parameters that have function arguments.
+    m_PyFile << format("%|8t|#Assign values to the parameters with function arguments") << '\n';
     for( it = m_FlatProcess.parameterAssignment.begin(); it != m_FlatProcess.parameterAssignment.end(); ++it )
     {
-        //TODO if( equnD.lhs.path in argumentSet ) { continue; }
-
         CmEquationDescriptor equnD = *it;
+        if( functionArgs.find( equnD.lhs.path()) == functionArgs.end() ) { continue; }
+
+        string simlName = equnD.lhs.toString();
+        string pyName = m_PythonName[ equnD.lhs.path()];
+        string pyFuncArg  = m_funcArgName[equnD.lhs.path()];
+        m_PyFile << format("%|8t|%1% %|25t|= float(%2%) # = %3%") % pyName % pyFuncArg % simlName << '\n';
+    }
+
+    //Assign values to the parameters that have computations.
+    m_PyFile << format("%|8t|#Assign values to the parameters with computations") << '\n';
+    for( it = m_FlatProcess.parameterAssignment.begin(); it != m_FlatProcess.parameterAssignment.end(); ++it )
+    {
+        CmEquationDescriptor equnD = *it;
+        if( functionArgs.find( equnD.lhs.path()) != functionArgs.end() ) { continue; }
+
         string simlName = equnD.lhs.toString();
         string pyName = m_PythonName[ equnD.lhs.path()];
         string pyMathExpr  = m_toPy.convert( equnD.rhs);
-        m_PyFile << format("%|8t|%1% %|25t|= float(%2%) # = %3%") % pyName % pyMathExpr % simlName << '\n';
+        m_PyFile << format("%|8t|%1% %|25t|= %2% # = %3%") % pyName % pyMathExpr % simlName << '\n';
     }
     m_PyFile << '\n';
 }
@@ -186,9 +240,9 @@ void siml::PyProcessGenerator::genSetFunction()
 /*!
 Generate function to Set INITIAL values of the state variables.
 
-@todo A function to change the initial values from Python ia needed: Generate a setInitialValues(self, ...) with arguments. All state variables are arguments. The arguments are named arguments with default values. The state variables where the RHS is a computation (not just a number) are excluded.
+@todo A function to change the initial values from Python ia needed: Generate a setInitialValues(self, ...) how to really do this needs to be elaporated.
 */
-void siml::PyProcessGenerator::genInitialFunction()
+void siml::PyProcessGenerator::geSetInitialValues()
 {
     m_PyFile <<
             "    def setInitialValues(self):\n"
@@ -346,7 +400,10 @@ void siml::PyProcessGenerator::layoutArrays()
 }
 
 
-/*!create maping between path and Python variable name*/
+/*!
+Create maping between Siml path and Python variable name.
+@todo check if names are duplicate and alter them
+*/
 void siml::PyProcessGenerator::createPyVarNames()
 {
     CmMemoryTable::const_iterator itMem;
@@ -354,16 +411,24 @@ void siml::PyProcessGenerator::createPyVarNames()
     for( itMem = m_FlatProcess.parameter.begin(); itMem != m_FlatProcess.parameter.end(); ++itMem )
     {
         CmMemoryDescriptor const & mem = *itMem;
-        string pyName = "self.p_" + mem.name.toString( "_"); //eg.: "self.p_r1_d" - parameters are member variables in Python
+        //expressions for access in function bodies
+        string pyName = "self.p_" + mem.name.toString( "_"); //eg.: "self.p_r1_d" - member variable
         m_PythonName[mem.name] = pyName;
+        //names as parameters of a set* function (for gegenSetParameters())
+        string setParamName = mem.name.toString( "_"); //eg.: "r1_d" - exchange "." with "_"
+        m_funcArgName[mem.name] = setParamName;
     }
 
     //loop over all variables and create Python expressions to access them
     for( itMem = m_FlatProcess.variable.begin(); itMem != m_FlatProcess.variable.end(); ++itMem )
     {
         CmMemoryDescriptor const & mem = *itMem;
-        string pyName = "v_" + mem.name.toString( "_"); //eg.: "v_r1_d" - variables are local variables in Python
+        //expressions for access in function bodies
+        string pyName = "v_" + mem.name.toString( "_"); //eg.: "v_r1_d" - local variable
         m_PythonName[mem.name] = pyName;
+//         //names as parameters of a set* function
+//         string setParamName = mem.name.toString( "_"); //eg.: "r1_d" - exchange "." with "_"
+//         m_funcArgName[mem.name] = setParamName;
     }
 }
 
@@ -386,13 +451,13 @@ void siml::PyProcessGenerator::genOutputEquations()
     m_PyFile << format("%|8t|#create the result array") << '\n';
     m_PyFile << format("%|8t|assert shape(y)[0] == size(self.time)") << '\n';
     m_PyFile << format("%|8t|sizeTime = shape(y)[0]") << '\n';
-    m_PyFile << format("%|8t|self.resultArray = zeros((sizeTime, %1%), Float)") % m_ResultArrayColls << '\n';
+    m_PyFile << format("%|8t|self._resultArray = zeros((sizeTime, %1%), Float)") % m_ResultArrayColls << '\n';
     m_PyFile << '\n';
 
     //copy the state variables into the result array
     m_PyFile << format("%|8t|#copy the state variables into the result array") << '\n';
     m_PyFile << format("%|8t|numStates = shape(y)[1]") << '\n';
-    m_PyFile << format("%|8t|self.resultArray[:,0:numStates] = y;") << '\n';
+    m_PyFile << format("%|8t|self._resultArray[:,0:numStates] = y;") << '\n';
     m_PyFile << '\n';
 
 //     //Create local variables for the parameters.
@@ -415,7 +480,7 @@ void siml::PyProcessGenerator::genOutputEquations()
 
         string pyName = m_PythonName[ varD.name];    //look up variable's Python name
         string index = m_ResultArrayMap[ varD.name]; //look up variable's index
-        m_PyFile << format( "%|8t|%1% = self.resultArray[:,%2%]") % pyName % index << '\n';
+        m_PyFile << format( "%|8t|%1% = self._resultArray[:,%2%]") % pyName % index << '\n';
     }
     m_PyFile << '\n';
 
@@ -430,80 +495,9 @@ void siml::PyProcessGenerator::genOutputEquations()
         string algebVar = equnD.lhs.toString();
         string index = m_ResultArrayMap[ equnD.lhs.path()];
         string mathExpr = m_toPy.convert( equnD.rhs);
-        m_PyFile << format( "%|8t|self.resultArray[:,%1%] = %2% # = %3%") % index % mathExpr % algebVar << '\n';
+        m_PyFile << format( "%|8t|self._resultArray[:,%1%] = %2% # = %3%") % index % mathExpr % algebVar << '\n';
     }
 
     m_PyFile << '\n';
 }
 
-
-/*!
-Generate the function that will perform the simulation.
- */
-// void siml::PyProcessGenerator::genSimulateFunction()
-// {
-//     m_PyFile <<
-//             "    def simulate(self):\n"
-//             "        \"\"\"\n"
-//             "        This function performs the simulation.\n"
-//             "        \"\"\"\n"
-//             "        \n"
-//             "        self.time = linspace(0, 20, 100)\n" ///@todo respect SOLUTIONPARAMETERS
-//             "        y = integrate.odeint(self._diffStateT, self.y0, self.time)\n"
-//             "        self._outputEquations(y)\n"
-//             "        \n";
-// }
-
-
-
-/*!
-Access variables by name.
- */
-// void siml::PyProcessGenerator::genAccessFunction()
-// {
-//     m_PyFile <<
-//             "    def get(self, varName):\n"
-//             "        \"\"\"\n"
-//             "        Get a variable by name.\n"
-//             "        \n"
-//             "        There are special variable names:\n"
-//             "           'time': vector of times\n"
-//             "           'all': array of all variables\n"
-//             "        \"\"\"\n"
-//             "        if varName == 'time':\n"
-//             "            return self.time\n"
-//             "        elif varName == 'all':\n"
-//             "            return self.resultArray\n"
-//             "        index = self.resultArrayMap[varName]\n"
-//             "        return self.resultArray[:,index]\n"
-//             "        \n";
-// }
-
-
-/*!
-Display graphs
- */
-// void siml::PyProcessGenerator::genGraphFunction()
-// {
-//     m_PyFile <<
-//             "    def graph(self, varNames):\n"
-//             "        \"\"\"\n"
-//             "        Show one or several variables in a graph.\n"
-//             "        \n"
-//             "        Parameters:\n"
-//             "           varNames: String with a list of variables to be plotted. (Space or comma seperated.)\n"
-//             "                     e.g.: 'X mu' \n"
-//             "        \"\"\"\n"
-//             "        \n"
-//             "        diagram=Gnuplot.Gnuplot(debug=0, persist=1)\n"
-//             "        diagram('set data style lines')\n"
-//             "        diagram.title(varNames)\n"
-//             "        diagram.xlabel('Time')\n"
-//             "        \n"
-//             "        varList = varNames.replace(',', ' ').split(' ')\n"
-//             "        for varName1 in varList:\n"
-//             "            if not (varName1 in self.resultArrayMap): continue\n"
-//             "            curve=Gnuplot.Data(self.get('time'), self.get(varName1))\n"
-//             "            diagram.replot(curve)\n"
-//             "        \n";
-// }

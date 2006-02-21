@@ -150,6 +150,9 @@ public:
     //!Get container with commands
     CommandContainer const & commands() const { return m_commands; };
 
+    //!Return number of commands
+    uint size() const { return m_commands.size(); }
+
 private:
     CommandContainer m_commands;
 };
