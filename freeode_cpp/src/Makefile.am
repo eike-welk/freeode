@@ -31,8 +31,7 @@ sim_lang_SOURCES = main.cpp siml_code_model.cpp siml_pyprocessgenerator.cpp \
 	siml_cmmemaccess.cpp siml_pyformulaconverter.cpp siml_cmmodelintermediate.cpp \
 	siml_ps_main_object.cpp
 sim_lang_LDFLAGS = $(KDE_RPATH) $(all_libraries)
-sim_lang_LDADD = $(LIB_KDEUI) -lboost_date_time -lboost_program_options-gcc \
-	-lboost_program_options
+sim_lang_LDADD = $(LIB_KDEUI) -lboost_date_time
 
 # this is where the desktop file will go 
 shelldesktopdir = $(kde_appsdir)/Utilities
