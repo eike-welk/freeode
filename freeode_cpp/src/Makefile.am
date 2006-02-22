@@ -23,22 +23,22 @@ KDE_ICON = AUTO
 #########################################################################
 # this is the program that gets installed.  it's name is used for all
 # of the other Makefile.am variables
-bin_PROGRAMS = sim_lang
+bin_PROGRAMS = siml
 
 # the application source, library search path, and link libraries
-sim_lang_SOURCES = main.cpp siml_code_model.cpp siml_pyprocessgenerator.cpp \
-	siml_cmpath.cpp siml_cmformula.cpp siml_cmerror.cpp siml_ps_name.cpp siml_pygenmain.cpp \
-	siml_cmmemaccess.cpp siml_pyformulaconverter.cpp siml_cmmodelintermediate.cpp \
-	siml_ps_main_object.cpp
-sim_lang_LDFLAGS = $(KDE_RPATH) $(all_libraries)
-sim_lang_LDADD = $(LIB_KDEUI) -lboost_date_time
 
 # this is where the desktop file will go 
 shelldesktopdir = $(kde_appsdir)/Utilities
-shelldesktop_DATA = sim_lang.desktop
+shelldesktop_DATA = siml.desktop
 
 # this is where the shell's XML-GUI resource file goes
 shellrcdir = $(kde_datadir)/sim_lang
-shellrc_DATA = sim_langui.rc
+
 
 AM_CXXFLAGS = -fexceptions
+siml_LDFLAGS = $(KDE_RPATH) $(all_libraries)
+siml_LDADD = $(LIB_KDEUI) -lboost_date_time
+siml_SOURCES = main.cpp siml_cmerror.cpp siml_cmformula.cpp siml_cmmemaccess.cpp\
+	siml_cmmodelintermediate.cpp siml_cmpath.cpp siml_code_model.cpp\
+	siml_ps_main_object.cpp siml_ps_name.cpp siml_pyformulaconverter.cpp\
+	siml_pygenmain.cpp siml_pyprocessgenerator.cpp
