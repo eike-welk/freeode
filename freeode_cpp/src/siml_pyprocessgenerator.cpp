@@ -209,11 +209,19 @@ void siml::PyProcessGenerator::genSetParameters()
 
     m_PyFile <<
             "        \"\"\"\n"
-            "        Assign values to the parmeters. The function represents the SET section.\n"
-            "        All parameters that have numbers assigned to them can be given new values\n"
-            "        by passing them as named arguments of this function.\n"
-            "        e.g. mySimulation.setParameters( Ks=0.5, Sf=5)\n"
-            "        The parameters are data members of the simulation object.\n"
+            "        Assign values to the parmeters.\n"
+            "        \n"
+            "        The function represents the SET section. Parameters can be given new values,\n"
+            "        by passing them as (named) arguments to this function.\n"
+            "        Exceptions are parameters that are computed from other parameters. These\n"
+            "        parameters can not be changed directly, but they are computed from the new\n"
+            "        values.\n"
+            "        Parameters are data members of the simulation object.\n"
+            "        \n"
+            "        Parameters (here function arguments):\n"
+            "            Parameters of the simulation. The character '.' is replaced by '_'.\n"
+            "        Example:\n"
+            "            >>> mySimulation.setParameters( Ks=0.5, Sf=5)\n"
             "        \"\"\"\n"
             "        \n"
             ;
@@ -248,7 +256,7 @@ void siml::PyProcessGenerator::genSetParameters()
 
 
 /*!
-Generate function to Set INITIAL values of the state variables.
+Generate function to set INITIAL values of the state variables.
 
 @todo A function to change the initial values from Python ia needed: Generate a setInitialValues(self, ...) how to really do this needs to be elaporated.
 */
@@ -258,7 +266,7 @@ void siml::PyProcessGenerator::geSetInitialValues()
             "    def setInitialValues(self):\n"
             "        \"\"\"\n"
             "        Copute the initial values of the state variables.\n"
-            "        The function represents the SET section.\n"
+            "        The function represents the INITIAL section.\n"
             "        The inital values are stored together as a state vector in a data member.\n"
             "        \"\"\"\n"
             "        \n"

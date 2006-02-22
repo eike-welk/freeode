@@ -8,13 +8,24 @@ class SimulatorBase:
     """ Base class for the generated simulator classes """
 
     def __init__(self):
-         #Show if initial values have been computed
+##        #Store if initial values have been computed
 ##        self._initialValuesDirty = True
         pass
+        
+    def help(self):
+        """Show a (this) help text."""
+        help(self.__class__)
 
+    def helpVariables(self):
+        """Show list of all variables."""
+##        print "Variables of this simulation object:"
+        for i in self._resultArrayMap: 
+            print "'%s', " % i,
+        print
+    
     def clear(self):
         """
-        Delete the time and the result array.
+        Delete the results. Use prior to simulateSteadyState().
         """
         if hasattr(self, 'time'):
             del self.time
@@ -24,12 +35,18 @@ class SimulatorBase:
     def get(self, varName):
         """
         Get a variable by name.
-
-        @todo add returning multiple variables at once
-
-        There are special variable names:
-           'time': vector of times
-           'all': array of all variables
+        
+        The funcion returns a vector with the variable's values at all 
+        simulated points in time. Parameter values can not be accessed by 
+        this function.
+        Parameter:
+        varName:    Text string with the variable name as it would appear in 
+                    the Siml language.
+                    There are special variable names:
+                        'time': vector of simulated points in time
+                        'all': array of all variables
+        Example:
+            >>> mySimulationObject.get('r.X')        
         """
         if varName == 'time':
             return self.time
@@ -42,11 +59,13 @@ class SimulatorBase:
         """
         Show one or several variables in a graph.
 
-        Parameters:
-           varNames: String with a list of variables to be plotted. (Space or comma seperated.)
-                     e.g.: 'X mu'
-            
-        @todo there must be an error when the variable name is wrong.
+        The X-axis is always the time, the specified variables appear on the 
+        Y-Axis.
+        Parameter:
+        varNames:   Text string with a list of variables to be plotted. (Space or 
+                    comma seperated.) e.g.: 'r.X r.mu'
+        Example:
+            >>> mySimulationObject.graph('r.X r.mu')
         """
 
         diagram=Gnuplot.Gnuplot(debug=0, persist=1)
@@ -65,7 +84,11 @@ class SimulatorBase:
 
     def simulateDynamic(self):
         """
-        This function performs the simulation.
+        Perform a dynamic simulation.
+        
+        The results can be displayed with the graph(...) function.
+        The funcion get(...) returns the simulation result of a speciffic
+        variable as a vector.
         """
 
 ##        #The numerical integration changes the initial values, but the user maybe 
@@ -86,13 +109,24 @@ class SimulatorBase:
 
     def simulateSteadyState(self):
         """
-        This function computes a steady state solution. And appends it to the 
-        array of results. 
-        Initial guess: When there are no prior results the initial valuse are
-        (ab)used as a initial guess; otherwise the latest results are used as 
+        Perform a stady state simulation.
+        
+        This function computes one steady state solution, of the system of 
+        differential equations. Which solution of the potentially many solutions
+        is found, depends on the initial guess. A steady state solution is a 
+        vector of all variables. This vector is appended to the array of results.
+        Usually one will compute a series of stady state solutions, each with 
+        slightly different parameters.
+        
+        Initial guess: When there are no prior results, the initial values are
+        (ab)used as an initial guess; otherwise the latest results are used as 
         the initial guess.
         In the time array the count of current simulation is stored. This way the 
-        graph function still gives useful results with steady state simulations.
+        graph function still produces useful graphs with steady state simulations.
+
+        The final results can be displayed with the graph(...) function.
+        The funcion get(...) returns the simulation result of a speciffic
+        variable as a vector.
         """
         
         if not hasattr(self, 'time'):
@@ -108,7 +142,8 @@ class SimulatorBase:
             t0 = self.time[lastResult] 
         
         #compute the state variables of the steady state solution
-        (xmin, msg) = optimize.leastsq(self._diffStateT, x0, (0))
+        (xmin, msg) = optimize.leastsq(self._diffStateT, x0, (0)) #funcion will also report local minima that are no roots. Caution!
+##        xmin = optimize.fsolve(self._diffStateT, x0, (0)) #function is always stuck in one (the trivial) minimum 
         #also compute the algebraic variables
         currRes = self._outputEquations(xmin)
         #expand the storage and save the results
