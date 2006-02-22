@@ -53,7 +53,7 @@ public:
     Severity severity() const { return m_severity; }
 
     //!Dump the whole storage into cerr.
-    static void printStorageToCerr();
+    static void printStorage();
 
     //!Add error to central storage.
     void addToStorage();

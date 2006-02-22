@@ -133,7 +133,7 @@ siml::CmError siml::CmError::createErrorChar(std::string const & message, char c
 
 
 /*!Dump the whole storage into cerr.*/
-void siml::CmError::printStorageToCerr()
+void siml::CmError::printStorage()
 {
     ErrorContainer::const_iterator itE;
     for( itE = s_ErrorStorage.begin(); itE != s_ErrorStorage.end(); ++itE )

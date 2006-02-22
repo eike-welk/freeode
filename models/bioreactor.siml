@@ -1,6 +1,6 @@
 MODEL BioReactor
     PARAMETER #Define  values that stay constant during the simulation.
-        mu_max; Ks; Yxs; Sf; D;
+        mu_max; Ks; Yxs; Sf; D; ms;
 
     VARIABLE #Define values that change during the simulation.
         mu; X; S; STY;
@@ -8,7 +8,8 @@ MODEL BioReactor
     EQUATION #Specify the equations
         mu := mu_max * S/(S+Ks);        #growth speed (of biomass)
         $X := mu*X - D*X;               #change of biomass concentration
-        $S := -1/Yxs*mu*X + D*Sf - D*S; #change of sugar concentration
+##        $S := -1/Yxs*mu*X + D*Sf - D*S; #change of sugar concentration
+        $S := -1/Yxs*mu*X + D*Sf - D*S - ms*X; #Alternative with maintainance rate
         STY:= X*D;                      #yield per time and space
 END
 
@@ -16,7 +17,7 @@ END
 #Biological reactor with no inflow or outfow
 PROCESS Batch #Define a concrete simulation expriment
     PARAMETER #Define the constant values again.
-        mu_max; Ks; Yxs; Sf; D;
+        mu_max; Ks; Yxs; Sf; D; ms;
 
     UNIT #Say which model will be used.
         r AS BioReactor;
@@ -27,6 +28,7 @@ PROCESS Batch #Define a concrete simulation expriment
         Yxs    := 0.5;  #one g sugar gives this much biomass
         Sf     := 20;   #sugar concentration in feed liquid (inflow)
         D      := 0;    #Dilution rate (inflow speed)
+        ms     := 0.01; #Sugar consumption when bacteria are not growing
 
     INITIAL #Set initial values to the state variables. Note: the full path has to be specified for variables.
         r.X := 0.1; #initial biomass concentration
@@ -41,7 +43,7 @@ END
 #Biological reactor with constant inflow and outfow
 PROCESS Conti #Define a concrete simulation expriment
     PARAMETER #Define the constant values again.
-        mu_max; Ks; Yxs; Sf; D; X_init; S_init;
+        mu_max; Ks; Yxs; Sf; D; ms; X_init; S_init;
 
     UNIT #Say which model will be used.
         r AS BioReactor;
@@ -52,6 +54,7 @@ PROCESS Conti #Define a concrete simulation expriment
         Yxs    := 0.5;  #one g sugar gives this much biomass
         Sf     := 20;   #sugar concentration in feed liquid (inflow)
         D      := 0.1;  #Dilution rate (inflow speed)
+        ms     := 0.05; #Sugar consumption when bacteria are not growing
         X_init := 0.1;  #Parameter for initial biomass concentration
         S_init := 0;    #Parameter for initial sugar concentration
 

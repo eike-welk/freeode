@@ -213,7 +213,7 @@ int main(int argc, char* argv[])
     cout << std::endl;
 
     //print the errors
-    CmError::printStorageToCerr();
+    CmError::printStorage();
 
     return 0;
 }
