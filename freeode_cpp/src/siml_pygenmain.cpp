@@ -69,6 +69,7 @@ void siml::PyGenMain::generateAll()
     {
         PyProcessGenerator genProc(m_PyFile);
         genProc.genProcessObject(*it);
+        m_PyFile << '\n';
     }
 }
 

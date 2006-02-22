@@ -83,7 +83,12 @@ void siml::PyProcessGenerator::genProcessObject( CmModelDescriptor const & inPro
 
     //generate the start of the simulation object's definition
     m_PyFile << format("class %1%(SimulatorBase):\n") % m_FlatProcess.name;
-    m_PyFile << format("%|4t|\"\"\" object to simulate process %1% \"\"\"\n") % m_FlatProcess.name;
+    m_PyFile << format("%|4t|\"\"\"\n");
+    m_PyFile << format("%|4t|Object to simulate process %1%\n") % m_FlatProcess.name;
+    string fileName = m_FlatProcess.defBegin.get_position().file;
+    int line = m_FlatProcess.defBegin.get_position().line;
+    m_PyFile << format("%|4t|Definition in file: '%1%' line: %2%\n") % fileName % line;
+    m_PyFile << format("%|4t|\"\"\"\n");
     m_PyFile << '\n';
 
     //Generate Constuctor which creates the maps for later access to variables (and some day parameters)
@@ -139,11 +144,16 @@ void siml::PyProcessGenerator::genConstructor()
 
     //Compute parameter values
     m_PyFile << format("%|8t|#Compute parameter values.\n");
-    m_PyFile << format("%|8t|self.setParameters()\n");
+    m_PyFile << format("%|8t|self.setParameters()\n\n");
 
 //     //Compute the initial values
 //     m_PyFile << format("%|8t|#Compute the initial values.\n");
 //     m_PyFile << format("%|8t|self.setInitialValues()\n");
+
+    //Easy access to number of state variables and total number of variables
+    m_PyFile << format("%|8t|#Number of state variables and total number of variables.\n");
+    m_PyFile << format("%|8t|self._numStates    = %1%\n") % m_StateVectorSize;
+    m_PyFile << format("%|8t|self._numVariables = %1%\n") % m_ResultArrayColls;
 
     m_PyFile << '\n';
 
@@ -440,24 +450,29 @@ so they can be examined too. Only state variables are stored doring ODE simulati
 void siml::PyProcessGenerator::genOutputEquations()
 {
     m_PyFile <<
-            "    def _outputEquations(self, y):\n"
+            "    def _outputEquations(self, stateResult):\n"
             "        \"\"\"\n"
             "        Compute (again) the algebraic variables as functions of the state \n"
             "        variables. All variables are then stored together in a 2D array.\n"
             "        \"\"\"\n"
             "        \n";
 
-    //create the result array
-    m_PyFile << format("%|8t|#create the result array") << '\n';
-    m_PyFile << format("%|8t|assert shape(y)[0] == size(self.time)") << '\n';
-    m_PyFile << format("%|8t|sizeTime = shape(y)[0]") << '\n';
-    m_PyFile << format("%|8t|self._resultArray = zeros((sizeTime, %1%), Float)") % m_ResultArrayColls << '\n';
-    m_PyFile << '\n';
+    //compute size of result array
+    m_PyFile << format("%|8t|#compute size of result array\n");
+    m_PyFile << format("%|8t|#assert shape(stateResult)[0] == size(self.time) #not true for steady state\n");
+    m_PyFile << format("%|8t|dimRes = size(shape(stateResult))\n");
+    m_PyFile << format("%|8t|if dimRes == 1:       \n");
+    m_PyFile << format("%|8t|    sizeTime = 1\n");
+    m_PyFile << format("%|8t|else:\n");
+    m_PyFile << format("%|8t|    sizeTime = shape(stateResult)[0]\n\n");
 
+    //create the result array
+    m_PyFile << format("%|8t|#create the result array\n");
+    m_PyFile << format("%|8t|resultArray = zeros((sizeTime, %1%), Float)\n") % m_ResultArrayColls;
     //copy the state variables into the result array
-    m_PyFile << format("%|8t|#copy the state variables into the result array") << '\n';
-    m_PyFile << format("%|8t|numStates = shape(y)[1]") << '\n';
-    m_PyFile << format("%|8t|self._resultArray[:,0:numStates] = y;") << '\n';
+    m_PyFile << format("%|8t|#copy the state variables into the result array\n");
+//     m_PyFile << format("%|8t|numStates = shape(stateResult)[1]") << '\n';
+    m_PyFile << format("%|8t|resultArray[:,0:self._numStates] = stateResult;\n");
     m_PyFile << '\n';
 
 //     //Create local variables for the parameters.
@@ -480,7 +495,7 @@ void siml::PyProcessGenerator::genOutputEquations()
 
         string pyName = m_PythonName[ varD.name];    //look up variable's Python name
         string index = m_ResultArrayMap[ varD.name]; //look up variable's index
-        m_PyFile << format( "%|8t|%1% = self._resultArray[:,%2%]") % pyName % index << '\n';
+        m_PyFile << format( "%|8t|%1% = resultArray[:,%2%]") % pyName % index << '\n';
     }
     m_PyFile << '\n';
 
@@ -495,9 +510,10 @@ void siml::PyProcessGenerator::genOutputEquations()
         string algebVar = equnD.lhs.toString();
         string index = m_ResultArrayMap[ equnD.lhs.path()];
         string mathExpr = m_toPy.convert( equnD.rhs);
-        m_PyFile << format( "%|8t|self._resultArray[:,%1%] = %2% # = %3%") % index % mathExpr % algebVar << '\n';
+        m_PyFile << format( "%|8t|resultArray[:,%1%] = %2% # = %3%") % index % mathExpr % algebVar << '\n';
     }
-
     m_PyFile << '\n';
+
+    m_PyFile << format( "%|8t|return resultArray\n\n");
 }
 

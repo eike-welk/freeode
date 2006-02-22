@@ -2,19 +2,22 @@
 <!DOCTYPE Session SYSTEM "Session-3.8.dtd">
 <!-- eric3 session file for project sim_lang -->
 <!-- This file was generated automatically, do not edit. -->
-<!-- Saved: 2006-02-20, 03:36:36 -->
+<!-- Saved: 2006-02-21, 14:09:22 -->
 <Session version="3.8">
   <Filenames>
-    <Filename cline="4" cindex="0">/home/eike/codedir/freeode/trunk/freeode_cpp/models/pymain.py</Filename>
+    <Filename cline="15" cindex="26">/home/eike/codedir/freeode/trunk/freeode_cpp/models/pymain.py</Filename>
+    <Filename cline="96" cindex="8">/home/eike/codedir/freeode/trunk/freeode_cpp/src/simulatorbase.py</Filename>
+    <Filename cline="0" cindex="0">/home/eike/codedir/freeode/trunk/freeode_cpp/src/py2c_string.py</Filename>
+    <Filename cline="19" cindex="0">/home/eike/codedir/freeode/trunk/freeode_cpp/models/testprogram.py</Filename>
   </Filenames>
-  <ActiveWindow cline="4" cindex="0">/home/eike/codedir/freeode/trunk/freeode_cpp/models/pymain.py</ActiveWindow>
+  <ActiveWindow cline="96" cindex="8">/home/eike/codedir/freeode/trunk/freeode_cpp/src/simulatorbase.py</ActiveWindow>
   <Breakpoints>
   </Breakpoints>
   <Watchpoints>
   </Watchpoints>
   <DebugInfo>
     <CommandLine></CommandLine>
-    <WorkingDirectory>/home/eike/codedir/freeode/trunk/freeode_cpp/</WorkingDirectory>
+    <WorkingDirectory>/home/eike/codedir/freeode/trunk/freeode_cpp/src/</WorkingDirectory>
     <Environment></Environment>
     <ReportExceptions value="1" />
     <Exceptions>

@@ -3,12 +3,13 @@ MODEL BioReactor
         mu_max; Ks; Yxs; Sf; D;
 
     VARIABLE #Define values that change during the simulation.
-        mu; X; S;
+        mu; X; S; STY;
 
     EQUATION #Specify the equations
         mu := mu_max * S/(S+Ks);        #growth speed (of biomass)
         $X := mu*X - D*X;               #change of biomass concentration
         $S := -1/Yxs*mu*X + D*Sf - D*S; #change of sugar concentration
+        STY:= X*D;                      #yield per time and space
 END
 
 
@@ -40,7 +41,7 @@ END
 #Biological reactor with constant inflow and outfow
 PROCESS Conti #Define a concrete simulation expriment
     PARAMETER #Define the constant values again.
-        mu_max; Ks; Yxs; Sf; D;# dummy1; dummy2;
+        mu_max; Ks; Yxs; Sf; D; X_init; S_init;
 
     UNIT #Say which model will be used.
         r AS BioReactor;
@@ -51,12 +52,12 @@ PROCESS Conti #Define a concrete simulation expriment
         Yxs    := 0.5;  #one g sugar gives this much biomass
         Sf     := 20;   #sugar concentration in feed liquid (inflow)
         D      := 0.1;  #Dilution rate (inflow speed)
-#        dummy1 := Sf*D;
-#        dummy2 := Sf;
+        X_init := 0.1;  #Parameter for initial biomass concentration
+        S_init := 0;    #Parameter for initial sugar concentration
 
     INITIAL #Set initial values to the state variables. Note: the full path has to be specified for variables.
-        r.X := 0.1; #initial biomass concentration
-        r.S := 0;   #initial sugar concentration
+        r.X := X_init; #set initial biomass concentration
+        r.S := S_init; #set initial sugar concentration
 
     SOLUTIONPARAMETERS #Specify options for the simulation algorithm.
         ReportingInterval :=0.5; #[h] time between data points

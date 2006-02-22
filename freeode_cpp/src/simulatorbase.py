@@ -82,7 +82,7 @@ class SimulatorBase:
         #compute the numerical solution
         y = integrate.odeint(self._diffStateT, initialValues, self.time)
         #compute the algebraic variables for a second time, so they can be shown in graphs.
-        self._outputEquations(y)
+        self._resultArray = self._outputEquations(y)
 
     def simulateSteadyState(self):
         """
@@ -95,7 +95,26 @@ class SimulatorBase:
         graph function still gives useful results with steady state simulations.
         """
         
-        pass
-
+        if not hasattr(self, 'time'):
+            #this is the first call in a row of steady state simulations - setup everything
+            lastResult = -1
+            self._resultArray = array([[0]], Float)
+            self.time = array([0], Float)
+            x0 = self.setInitialValues()    #initial guess for root finder: initial values abused
+            t0 = -1
+        else:
+            lastResult = shape(self._resultArray)[0]-1
+            x0 = self._resultArray[lastResult, 0:self._numStates] #initial guess for root finder: last result
+            t0 = self.time[lastResult] 
         
+        #compute the state variables of the steady state solution
+        (xmin, msg) = optimize.leastsq(self._diffStateT, x0, (0))
+        #also compute the algebraic variables
+        currRes = self._outputEquations(xmin)
+        #expand the storage and save the results
+        self._resultArray = resize(self._resultArray, (lastResult+2, self._numVariables))
+        self._resultArray[lastResult+1,:] = currRes[0,:]
+        self.time = resize(self.time, (lastResult+2,))
+        self.time[lastResult+1] = t0 + 1
+
 
