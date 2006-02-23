@@ -15,18 +15,17 @@ import os
 ##os.chdir('/home/eike/codedir/freeode/trunk/models') #put your model directory here
 
 #run the compiler
-(inp, msg) = os.popen4('siml spring_simple.siml')
+(inp, msg) = os.popen4('siml bioreactor_simple.siml')
 print msg.read(); inp.close(); msg.close(); #print compiler's output
 
 #import the generated simulation script(s)
-from spring_simple import *
+from bioreactor_simple import *
 
 
-if 1:
-    #Perform dynamic simulation. Batch reactor.
-    simMech = Step()
-    simMech.simulateDynamic()
-    simMech.graph('s.x s.v')
+#Perform dynamic simulation. Batch reactor.
+simBio = Batch()
+simBio.simulateDynamic()
+simBio.graph('r.X r.S')
 
 
 

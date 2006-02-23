@@ -7,9 +7,6 @@
 # simulation program. 
 # For the script to work, the Siml compiler has to be installed.
 #-------------------------------------------------------------------------------
-#export PATH=$PATH:"codedir/freeode/trunk/freeode_cpp/debug/src"
-#os.popen3()
-#os.system()
 
 #import the commands for starting programs and manipulating directories.
 import os
@@ -18,10 +15,10 @@ import os
 ##os.chdir('/home/eike/codedir/freeode/trunk/models') #put your model directory here
 
 #run the compiler 
-(inp, msg) = os.popen4('/home/eike/codedir/freeode/trunk/freeode_cpp/debug/src/siml bioreactor.siml')
+(inp, msg) = os.popen4('siml bioreactor.siml')
 print msg.read(); inp.close(); msg.close(); #print compiler's output
 
-#import the generated simulation script(s) - no typing of bioreactor.Conti required this way
+#import the generated simulation script(s) 
 from bioreactor import *
 
 

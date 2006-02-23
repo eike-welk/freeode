@@ -8,7 +8,7 @@
 # This Program MUST be run in the "src" directory.  
 
 import sys
-sys.path.insert(0, '../models/')
+sys.path.append('../models/')
 
 from testprogram import *
 
@@ -22,7 +22,7 @@ from testprogram import *
 #Perform dynamic simulation.
 simConti = Conti()
 simConti.simulateDynamic()
-simConti.graph('r.X r.S')
+simConti.graph('r.S r.X')
 simConti.graph('r.mu')
 
 #Perform steady state simulation (clumsy)
@@ -40,7 +40,7 @@ for newD in dVals:
     simConti.simulateSteadyState()
 #Display results of steady state simulation
 simConti.time = dVals
-simConti.graph('r.X r.S')
+simConti.graph('r.S r.X')
 simConti.graph('r.STY')
 
 

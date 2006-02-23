@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.8.dtd">
-<!-- Project file for project mechanical -->
-<!-- Saved: 2006-02-23, 18:04:45 -->
+<!-- Project file for project bioreactor -->
+<!-- Saved: 2006-02-23, 17:59:54 -->
 <!-- Copyright (C) 2006 Eike Welk, eike@users.berlios.de -->
 <Project version="3.8">
   <ProgLanguage mixed="0">Python</ProgLanguage>
   <UIType>Console</UIType>
-  <Description>Main script for mechanical example simulations</Description>
+  <Description>Example project to demonstrate the usage of the Eric IDE for development with the siml compiler.</Description>
   <Version>0.1</Version>
   <Author>Eike Welk</Author>
   <Email>eike@users.berlios.de</Email>
   <Sources>
     <Source>
-      <Name>mechanical_main.py</Name>
+      <Name>bioreactor_main.py</Name>
     </Source>
     <Source>
-      <Name>spring_simple.siml</Name>
+      <Name>bioreactor.siml</Name>
     </Source>
   </Sources>
   <Forms>
@@ -26,20 +26,22 @@
   </Interfaces>
   <Others>
     <Other>
-      <Name>spring_simple.siml</Name>
+      <Name>bioreactor.siml</Name>
     </Other>
   </Others>
   <MainScript>
-    <Name>mechanical_main.py</Name>
+    <Name>bioreactor_main.py</Name>
   </MainScript>
   <Vcs>
-    <VcsType>None</VcsType>
+    <VcsType>Subversion</VcsType>
+    <VcsOptions>{'status': [''], 'log': [''], 'global': [''], 'update': [''], 'remove': [''], 'add': [''], 'tag': [''], 'export': [''], 'diff': [''], 'commit': [''], 'checkout': [''], 'history': ['']}</VcsOptions>
+    <VcsOtherData>{'standardLayout': 1}</VcsOtherData>
   </Vcs>
   <FiletypeAssociations>
-    <FiletypeAssociation pattern="*.ui.h" type="FORMS" />
-    <FiletypeAssociation pattern="*.ui" type="FORMS" />
-    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
-    <FiletypeAssociation pattern="*.ptl" type="SOURCES" />
     <FiletypeAssociation pattern="*.py" type="SOURCES" />
+    <FiletypeAssociation pattern="*.ui.h" type="FORMS" />
+    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
+    <FiletypeAssociation pattern="*.ui" type="FORMS" />
+    <FiletypeAssociation pattern="*.ptl" type="SOURCES" />
   </FiletypeAssociations>
 </Project>
