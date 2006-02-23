@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.8.dtd">
 <!-- Project file for project sim_project -->
-<!-- Saved: 2006-02-22, 21:41:46 -->
+<!-- Saved: 2006-02-23, 00:06:52 -->
 <!-- Copyright (C) 2006 Eike Welk, eike@users.berlios.de -->
 <Project version="3.8">
   <ProgLanguage mixed="0">Python</ProgLanguage>
@@ -13,6 +13,9 @@
   <Sources>
     <Source>
       <Name>sim_main.py</Name>
+    </Source>
+    <Source>
+      <Name>bioreactor.py</Name>
     </Source>
   </Sources>
   <Forms>
@@ -36,9 +39,9 @@
   </Vcs>
   <FiletypeAssociations>
     <FiletypeAssociation pattern="*.ui.h" type="FORMS" />
-    <FiletypeAssociation pattern="*.ui" type="FORMS" />
-    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
-    <FiletypeAssociation pattern="*.py" type="SOURCES" />
     <FiletypeAssociation pattern="*.ptl" type="SOURCES" />
+    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
+    <FiletypeAssociation pattern="*.ui" type="FORMS" />
+    <FiletypeAssociation pattern="*.py" type="SOURCES" />
   </FiletypeAssociations>
 </Project>

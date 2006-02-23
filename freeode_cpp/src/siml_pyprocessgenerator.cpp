@@ -105,6 +105,8 @@ void siml::PyProcessGenerator::genProcessObject( CmModelDescriptor const & inPro
 
     //Function to compute the algebraic variables after the simulation.
     genOutputEquations();
+
+    cout << "Generated process: " << m_FlatProcess.name << '\n';
 }
 
 

@@ -134,8 +134,8 @@ struct ps_model : public spirit::grammar<ps_model>
             else {
                 ps_result = " finished correctly.\n";
             }
-
-            cout << "Parsing " << mp_type << m_grammar.model.name << ps_result;
+            ///@todo this is debug output. (-m)
+//             cout << "Parsing " << mp_type << m_grammar.model.name << ps_result;
         }
     };
 

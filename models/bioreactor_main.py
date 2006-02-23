@@ -11,35 +11,39 @@
 #os.popen3()
 #os.system()
 
-#import the commands for starting programs and such.
+#import the commands for starting programs and manipulating directories.
 import os
-#manipulate the current directory because Eric does not set it up propperly
-os.getcwd() 
+#manipulate the current directory if necessary
+##print os.getcwd() #see in what directory you are
 ##os.chdir('/home/eike/codedir/freeode/trunk/models') #put your model directory here
 
-#run the compiler
+#run the compiler 
 (inp, msg) = os.popen4('/home/eike/codedir/freeode/trunk/freeode_cpp/debug/src/siml bioreactor.siml')
-print msg.read(); inp.close(); msg.close();
-#import the generated simulation script(s) - no typing of bioreactor.Conti required
+print msg.read(); inp.close(); msg.close(); #print compiler's output
+
+#import the generated simulation script(s) - no typing of bioreactor.Conti required this way
 from bioreactor import *
 
-#Perform dynamic simulation. Batch reactor.
-if 0:
+
+if 0: 
+    #Perform dynamic simulation. Batch reactor.
     simBatch = Batch()
     simBatch = Batch()
     simBatch.simulateDynamic()
     simBatch.graph('r.X r.S')
     simBatch.graph('r.mu')
 
-#Perform dynamic simulation. Continuous reactor.
+    
 if 1:
+    #Perform dynamic simulation. Continuous reactor.
     simConti = Conti()
     simConti.simulateDynamic()
     simConti.graph('r.X r.S')
     simConti.graph('r.mu')
 
-#Perform steady state simulation (clumsy). Continuous reactor.
+
 if 1:
+    #Perform steady state simulation (clumsy). Continuous reactor.
     simConti = Conti()
     #Define range of dilution rates that will be tried
     D_start = 0.02
