@@ -3,4 +3,4 @@
 
 KDE_LANG = en
 KDE_DOCS = sim_lang
-SUBDIRS = $(AUTODIRS)  
+SUBDIRS = $(AUTODIRS)

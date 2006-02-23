@@ -2,16 +2,25 @@
 <!DOCTYPE Session SYSTEM "Session-3.8.dtd">
 <!-- eric3 session file for project sim_lang -->
 <!-- This file was generated automatically, do not edit. -->
-<!-- Saved: 2006-02-21, 14:09:22 -->
+<!-- Saved: 2006-02-23, 18:35:03 -->
 <Session version="3.8">
   <Filenames>
-    <Filename cline="15" cindex="26">/home/eike/codedir/freeode/trunk/freeode_cpp/models/pymain.py</Filename>
-    <Filename cline="96" cindex="8">/home/eike/codedir/freeode/trunk/freeode_cpp/src/simulatorbase.py</Filename>
     <Filename cline="0" cindex="0">/home/eike/codedir/freeode/trunk/freeode_cpp/src/py2c_string.py</Filename>
-    <Filename cline="19" cindex="0">/home/eike/codedir/freeode/trunk/freeode_cpp/models/testprogram.py</Filename>
+    <Filename cline="144" cindex="132">/home/eike/codedir/freeode/trunk/freeode_cpp/src/simulatorbase.py</Filename>
+    <Filename cline="24" cindex="20">/home/eike/codedir/freeode/trunk/freeode_cpp/src/pymain.py</Filename>
+    <Filename cline="401" cindex="26">/home/eike/codedir/freeode/trunk/freeode_cpp/models/testprogram.py</Filename>
+    <Filename cline="0" cindex="0">/home/eike/codedir/freeode/trunk/freeode_cpp/models/bioreactor.siml</Filename>
   </Filenames>
-  <ActiveWindow cline="96" cindex="8">/home/eike/codedir/freeode/trunk/freeode_cpp/src/simulatorbase.py</ActiveWindow>
+  <ActiveWindow cline="24" cindex="20">/home/eike/codedir/freeode/trunk/freeode_cpp/src/pymain.py</ActiveWindow>
   <Breakpoints>
+    <Breakpoint>
+      <BpFilename>/home/eike/codedir/freeode/trunk/freeode_cpp/models/testprogram.py</BpFilename>
+      <Linenumber value="163" />
+      <Condition>None</Condition>
+      <Temporary value="0" />
+      <Enabled value="1" />
+      <Count value="0" />
+    </Breakpoint>
   </Breakpoints>
   <Watchpoints>
   </Watchpoints>

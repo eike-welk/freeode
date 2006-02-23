@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.8.dtd">
 <!-- Project file for project sim_lang -->
-<!-- Saved: 2006-02-20, 03:36:36 -->
+<!-- Saved: 2006-02-23, 18:35:03 -->
 <!-- Copyright (C) 2006 Eike Welk, Eike.Welk@post.RWTH-Aachen.de -->
 <Project version="3.8">
   <ProgLanguage mixed="0">Python</ProgLanguage>
@@ -21,15 +21,15 @@
     </Source>
     <Source>
       <Dir>models</Dir>
-      <Name>pymain.py</Name>
-    </Source>
-    <Source>
-      <Dir>models</Dir>
       <Name>testprogram.py</Name>
     </Source>
     <Source>
       <Dir>models</Dir>
       <Name>bioreactor1.py</Name>
+    </Source>
+    <Source>
+      <Dir>src</Dir>
+      <Name>pymain.py</Name>
     </Source>
   </Sources>
   <Forms>
@@ -41,7 +41,7 @@
   <Others>
   </Others>
   <MainScript>
-    <Dir>models</Dir>
+    <Dir>src</Dir>
     <Name>pymain.py</Name>
   </MainScript>
   <Vcs>
@@ -50,10 +50,10 @@
     <VcsOtherData>{'standardLayout': 1}</VcsOtherData>
   </Vcs>
   <FiletypeAssociations>
-    <FiletypeAssociation pattern="*.py" type="SOURCES" />
     <FiletypeAssociation pattern="*.ui.h" type="FORMS" />
-    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
     <FiletypeAssociation pattern="*.ui" type="FORMS" />
+    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
+    <FiletypeAssociation pattern="*.py" type="SOURCES" />
     <FiletypeAssociation pattern="*.ptl" type="SOURCES" />
   </FiletypeAssociations>
 </Project>

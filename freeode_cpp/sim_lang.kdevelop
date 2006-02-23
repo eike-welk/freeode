@@ -25,7 +25,7 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
       <useconfiguration>debug</useconfiguration>
     </general>
     <run>
-      <mainprogram></mainprogram>
+      <mainprogram/>
       <directoryradio>build</directoryradio>
       <customdirectory>/</customdirectory>
       <programargs>../models/biological/bioreactor.siml -o ../models/testprogram.py </programargs>
@@ -34,7 +34,7 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
       <envvars/>
       <runarguments>
         <yac/>
-        <sim_lang></sim_lang>
+        <sim_lang/>
         <siml></siml>
       </runarguments>
     </run>
@@ -124,10 +124,10 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
     <general>
       <dbgshell>libtool</dbgshell>
       <programargs>../models/biological/bioreactor.siml -o ../models/testprogram.py</programargs>
-      <gdbpath></gdbpath>
-      <configGdbScript></configGdbScript>
-      <runShellScript></runShellScript>
-      <runGdbScript></runGdbScript>
+      <gdbpath/>
+      <configGdbScript/>
+      <runShellScript/>
+      <runGdbScript/>
       <breakonloadinglibs>true</breakonloadinglibs>
       <separatetty>false</separatetty>
       <floatingtoolbar>true</floatingtoolbar>
@@ -186,7 +186,7 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
       <headerCompletionDelay>250</headerCompletionDelay>
     </codecompletion>
     <creategettersetter>
-      <prefixGet></prefixGet>
+      <prefixGet/>
       <prefixSet>set</prefixSet>
       <prefixVariable>m_,_</prefixVariable>
       <parameterName>theValue</parameterName>
@@ -206,4 +206,29 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
     <customArguments/>
     <customTagfilePath/>
   </ctagspart>
+  <dist>
+    <custom>false</custom>
+    <bzip>false</bzip>
+    <archname></archname>
+    <appname>sim_lang.kdevelop</appname>
+    <version>0.2.0</version>
+    <release></release>
+    <vendor></vendor>
+    <licence></licence>
+    <summary></summary>
+    <group></group>
+    <packager></packager>
+    <description>Siml is a language to express differential equations. 
+This progam is a compiler for the Siml language. The Siml program is compiled into a Python program, that solves the differential equation numerically.</description>
+    <changelog></changelog>
+    <devpackage>false</devpackage>
+    <docspackage>false</docspackage>
+    <appicon>false</appicon>
+    <arch>0</arch>
+    <genHTML>false</genHTML>
+    <useRPM>false</useRPM>
+    <ftpkde>false</ftpkde>
+    <appskde>false</appskde>
+    <url></url>
+  </dist>
 </kdevelop>
