@@ -5,7 +5,7 @@ MODEL BioReactor
     VARIABLE #Define values that change during the simulation.
         mu; X; S;
 
-    EQUATION #Specify the equations
+    EQUATION #Specify the differential equations
         mu := mu_max * S/(S+Ks);        #growth speed (of biomass)
         $X := mu*X;                     #change of biomass concentration
         $S := -1/Yxs*mu*X;              #change of sugar concentration

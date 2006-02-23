@@ -62,3 +62,6 @@ if 1:
     simConti.time = dVals
     simConti.graph('r.X r.S')
     simConti.graph('r.STY')
+
+    
+#TODO parameter identification like Ute did (manually)

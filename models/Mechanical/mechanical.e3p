@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-3.8.dtd">
-<!-- Project file for project sim_project -->
-<!-- Saved: 2006-02-23, 13:31:06 -->
+<!-- Project file for project mechanical -->
+<!-- Saved: 2006-02-23, 17:25:35 -->
 <!-- Copyright (C) 2006 Eike Welk, eike@users.berlios.de -->
 <Project version="3.8">
   <ProgLanguage mixed="0">Python</ProgLanguage>
   <UIType>Console</UIType>
-  <Description>Example project to demonstrate the usage of the Eric IDE for development with the siml compiler.</Description>
+  <Description>Main script for mechanical example simulations</Description>
   <Version>0.1</Version>
   <Author>Eike Welk</Author>
   <Email>eike@users.berlios.de</Email>
   <Sources>
     <Source>
-      <Name>bioreactor.py</Name>
+      <Name>mechanical_main.py</Name>
     </Source>
     <Source>
-      <Name>bioreactor_main.py</Name>
+      <Name>spring_simple.py</Name>
     </Source>
   </Sources>
   <Forms>
@@ -26,22 +26,20 @@
   </Interfaces>
   <Others>
     <Other>
-      <Name>bioreactor.siml</Name>
+      <Name>spring_simple.siml</Name>
     </Other>
   </Others>
   <MainScript>
-    <Name>bioreactor_main.py</Name>
+    <Name>mechanical_main.py</Name>
   </MainScript>
   <Vcs>
-    <VcsType>Subversion</VcsType>
-    <VcsOptions>{'status': [''], 'log': [''], 'global': [''], 'update': [''], 'remove': [''], 'add': [''], 'tag': [''], 'export': [''], 'diff': [''], 'commit': [''], 'checkout': [''], 'history': ['']}</VcsOptions>
-    <VcsOtherData>{'standardLayout': 1}</VcsOtherData>
+    <VcsType>None</VcsType>
   </Vcs>
   <FiletypeAssociations>
     <FiletypeAssociation pattern="*.ui.h" type="FORMS" />
-    <FiletypeAssociation pattern="*.ui" type="FORMS" />
-    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
     <FiletypeAssociation pattern="*.ptl" type="SOURCES" />
+    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
+    <FiletypeAssociation pattern="*.ui" type="FORMS" />
     <FiletypeAssociation pattern="*.py" type="SOURCES" />
   </FiletypeAssociations>
 </Project>
