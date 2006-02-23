@@ -87,12 +87,12 @@ int main(int argc, char* argv[])
         //show version --------------------------------------------------------
         else if( currOpt == "-v" )
         {
-            cerr << "siml version: " << VERSION << '\n';
+            cout << "siml version: " << VERSION << '\n';
         }
         //show debug output - -d  ... -ddddd  (okay it also takes: "-dqwert" etc.)
         else if( currOpt[0] == '-' && currOpt[1] == 'd' )
         {
-            cerr << "Debug output is currently unsupported.\n";
+            cerr << "siml: Debug output is currently unsupported.\n";
             debugLevel += currOpt.size()-1;
 //             cout << "You want debug level: " << debugLevel << ".\n";
         }
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
         {
             if( ++iOpt >= argc )
             {
-                cerr << "Error: Name of output file required after '-o' option.\n";
+                cerr << "siml - Error: Name of output file required after '-o' option.\n";
                 return 1;
             }
             outputFile = argv[iOpt];
@@ -120,7 +120,7 @@ int main(int argc, char* argv[])
         //error
         else
         {
-            cerr << "Unknown option: " << argv[iOpt] << '\n';
+            cerr << "siml - Error: Unknown option: " << argv[iOpt] << '\n';
             return 1;
         }
     }
@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
     //complain if no input file is present.----------------------------------------------------------
     if( inputFileNames.size() == 0 )
     {
-        cerr << "Error: No input file(s).\n";
+        cerr << "siml - Error: No input file(s).\n";
         return 1;
     }
 
@@ -171,7 +171,7 @@ int main(int argc, char* argv[])
         ifstream inputStream( itName->c_str());
         if( !inputStream.is_open() )
         {   //The file does not exist. Abort the program.
-            cerr << "Error: Can not open input file: " << *itName << '\n';
+            cerr << "siml - Error: Can not open input file: " << *itName << '\n';
             return 1;
         }
 
@@ -201,7 +201,7 @@ int main(int argc, char* argv[])
     ofstream outputStream( outputFile.c_str()); //try to open the file
     if( !outputStream.is_open() )
     {   //The file does not exist. Abort program.
-        cerr << "Error: Can not open output file: " << outputFile << '\n';
+        cerr << "siml - Error: Can not open output file: " << outputFile << '\n';
         return 1;
     }
     //call the code generator - generate python program from CmCodeRepository::repository
