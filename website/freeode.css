@@ -6,8 +6,9 @@
     min-width: 41em; /* Mindestbreite verhindert Umbruch und Anzeigefehler in modernen Browsern */
   }
 
-  h1 {
+  div#header {
     font-size: 1.5em;
+    font-weight: bold;
     margin: 0 0 0.7em; padding: 0.3em;
     text-align: center;
     background-color: #FFCE31;
