@@ -7,29 +7,97 @@
   <meta name="GENERATOR" content="Quanta Plus">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="KEYWORDS" content="simulation, numerical math, python, ODE, differential equations">
-  <link rel="stylesheet" type="text/css" href="http://developer.berlios.de/berlios.css">
+  <link rel="stylesheet" type="text/css" href="freeode.css">
 </head>
 
+
 <body>
-<div align="center">
-  <h1><font size="+4">Freeode</font></h1>
+<!--Title-->
+<h1>
+  <font size="+3">Freeode</font><br>
+  <font size="+0">Fewer typing for continuous simulations</font>
+</h1>
+
+
+
+<!--Navigation-->
+<div id="navigation">
+  <ul>
+    <!--<strong>External at BerliOS</strong>-->
+    <li><A href="https://developer.berlios.de/projects/freeode/">Summary</A> </li>
+    <li><A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">Download</A> </li>
+    <strong>Python</strong>
+    <li><A href="http://www.python.org/">Python project page</A></li>
+    <li><A href="http://www.scipy.org/">SciPy project page</A></li>
+    <li><A href="http://docs.python.org/tut/tut.html">Official Python Tutorial</A></li>
+    <li><A href="http://diveintopython.org/">Alternative Python tutorial</A></li>
+    <em>The Langtagen book</em><br>
+    <strong>IDE</strong>
+    <li><A href="http://www.die-offenbachs.de/detlev/eric3.html">Eric</A></li>
+  </ul>
 </div>
 
+<!--<div id="info">
+  <h2>info-Box</h2>
+  <p>Some info text</p>
+</div>-->
 
-<p>
-A language and a compiler for the solution of differential equations. Both lumped
-(<abbr TITLE="ordinary differential equations">ODE</abbr>)
-and distributed variables
-(<abbr TITLE="partially differential equations">PDE</abbr>)
-will be possible. The ability to solve
-<abbr TITLE="differential algebraic equations">DAE</abbr>s
-is a long term goal. The compiler generates a Python program that does the computation.
-</p>
+<div id="contents">
+<!--Short intro-->
+  <h2>Intro</h2>
+  <p>
+    The Freeode project provides a simple programming language (Siml), and a
+    matching compiler, to solve differential equations numerically. The compiler
+    produces Python source code, that uses the
+    <A href="http://www.scipy.org/">SciPy</A>
+    libraries for numerical computations. Currently only
+    <abbr TITLE="ordinary differential equations">ODE</abbr>
+    can be solved.
+  </p>
+  <p>
+    The generated Python code can be used with a minimal main program, or in an
+    interactive Python session. With a Python
+    <abbr title="integrated development environment">IDE</abbr>
+    like Eric one can have both at
+    once, very much like the Matlab
+    <abbr title="integrated development environment">IDE</abbr>
+    (which is for the commercial language Matlab).
+  </p>
 
-<!--the required berlios image-->
-<div align="center">
-<a href="http://developer.berlios.de" title="BerliOS Developer"> <img src="http://developer.berlios.de/bslogo.php?group_id=5610" width="124px" height="32px" border="0" alt="BerliOS Developer Logo"></a>
+
+  <h2>Example session</h2>
+
+  <h2>Inner workings</h2>
+  <h2>Installation</h2>
+  <h2>Windows</h2>
+  <p>
+  The development happens on Linux and no attempt has been made to port the compiler
+  to Windows. In principle however, everything should work on Windows. The Python
+  language and necessary libraries (
+  <A href="http://www.boost.org/">Boost</A>,
+  <A href="http://www.scipy.org/">SiPy</A>)
+  are all available for Windows. So you're on your own there.
+  </p>
+  <p>
+  If you have a C++ compiler for Windows and some time, you could probably port the compiler
+  to Windows with minimum effort. The Python part needs no change, since Python promises to
+  be platform independent.
+  I would be very glad to receive patches and binaries.
+  </p>
+
 </div>
+
+<!--footer with the required berlios image-->
+<div id="footer">
+  Hosted by:
+  <br>
+  <a href="http://developer.berlios.de" title="BerliOS Developer"> <img src="http://developer.berlios.de/bslogo.php?group_id=5610" width="124px" height="32px" border="0" alt="BerliOS Developer Logo"></a>
+  <br>
+  Copyright (C) 2006 Eike Welk.
+  Copying and distribution of this website, whole or in parts, is
+  permitted as long as this notice is preserved.
+</div>
+
 
 </body>
 </html>

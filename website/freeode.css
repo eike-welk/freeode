@@ -1,0 +1,88 @@
+  body, p /*a*/ {
+    color: black; background-color: white;
+    font-size: 100.01%;
+    font-family: Helvetica,Arial,sans-serif;
+    margin: 0; /*padding: 0.1em;*/
+    min-width: 41em; /* Mindestbreite verhindert Umbruch und Anzeigefehler in modernen Browsern */
+  }
+
+  h1 {
+    font-size: 1.5em;
+    margin: 0 0 0.7em; padding: 0.3em;
+    text-align: center;
+    background-color: #FFCE31;
+    border: 2px ridge silver;
+  }
+  html>body h1 {
+    border-color: gray;  /* Farbangleichung an den Internet Explorer  */
+  }
+
+  div#navigation {
+    font-size: 0.83em;
+    float: left; width: 18em;
+    margin: 0 0 0em 0em; padding: 0;
+    /*border: 1px dashed silver;*/
+    text-align: center;
+  }
+  div#navigation li {
+    list-style: none;
+    margin: 0; padding: 0.5em;
+    text-align: left;
+  }
+  div#navigation a {
+    display: block;
+    padding: 0.2em;
+    font-weight: bold;
+  }
+  div#navigation a:link {
+    color: black; background-color: #EAECEF;
+  }
+  div#navigation a:visited {
+    color: #666; background-color: #EAECEF;
+  }
+  div#navigation a:hover {
+    color: black; background-color: white;
+  }
+  div#navigation a:active {
+    color: white; background-color: gray;
+  }
+
+  div#info {
+    font-size: 0.9em;
+    float: right; width: 12em;
+    margin: 0 0 1.1em; padding: 0;
+    background-color: #eee; /*border: 1px dashed silver;*/
+  }
+  div#info h2 {
+    font-size: 1.33em;
+    margin: 0.2em 0.5em;
+  }
+  div#info p {
+    font-size: 1em;
+    margin: 0.5em;
+  }
+
+  div#contents {
+    /*margin: 0 12em 1em 16em;*/
+    padding: 0 1em;
+    /*border: 1px dashed silver;*/
+  }
+  * html div#contents {
+    height: 1em;  /* Workaround gegen den 3-Pixel-Bug des Internet Explorers */
+  }
+  div#contents h2 {
+    font-size: 1.2em;
+    margin: 0.2em 0;
+  }
+  div#contents p {
+    font-size: 1em;
+    margin: 1em 0;
+  }
+
+  div#footer {
+    clear: both;
+    font-size: 0.7em;
+    margin: 0; padding: 0.1em;
+    text-align: center;
+    /*background-color: #B3B3B3; border: 2px ridge silver;*/
+  }
