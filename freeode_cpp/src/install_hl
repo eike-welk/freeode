@@ -1,0 +1,4 @@
+#!/bin/bash
+#install the highlighting file in the user's kate highlighting direcory.
+
+cp hl_siml.xml ~/.kde/share/apps/katepart/syntax
