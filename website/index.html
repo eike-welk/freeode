@@ -16,8 +16,8 @@
 <!--Title-->
 <div id="header">
   <!--<h1>-->
-    <font size="+4">Freeode</font><br>
-    <font size="+0">Fewer typing for continuous simulations</font>
+  Freeode&nbsp;&nbsp;&nbsp;&nbsp;
+  <font size="-1">Fewer typing for continuous simulations</font>
  <!-- </h1>-->
 </div>
 
@@ -26,15 +26,20 @@
 <!--Navigation-->
 <div id="navigation">
   <ul>
+    <li><A href="index.html">Home</A> </li>
+    <li><A href="examples.html">Examples</A> </li>
+    <li><A href="language.html">Language</A> </li>
+    <li><A href="installation.html">Installation</A> </li>
+    <li><A href="development.html">Development</A> </li>
     <!--<strong>External at BerliOS</strong>-->
-    <li><A href="https://developer.berlios.de/projects/freeode/">Summary</A> </li>
+    <li><A href="https://developer.berlios.de/projects/freeode/">BerliOS Summary</A> </li>
     <li><A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">Download</A> </li>
     <strong>Python</strong>
     <li><A href="http://www.python.org/">Python project page</A></li>
     <li><A href="http://www.scipy.org/">SciPy project page</A></li>
     <li><A href="http://docs.python.org/tut/tut.html">Official Python Tutorial</A></li>
     <li><A href="http://diveintopython.org/">Alternative Python tutorial</A></li>
-    <em>The Langtagen book</em><br>
+    <li><A href="http://www.amazon.com/gp/product/3540294155/">Python Scripting for Computational Science (Book)</A></li>
     <strong>IDE</strong>
     <li><A href="http://www.die-offenbachs.de/detlev/eric3.html">Eric</A></li>
   </ul>
@@ -50,44 +55,75 @@
 
   <h2>Intro</h2>
   <p>
-    The Freeode project provides a simple programming language (Siml), and a
-    matching compiler, to solve differential equations numerically. The compiler
-    produces Python source code, that uses the
+    The Freeode project provides a simple programming language, and a
+    matching compiler, to numerically solve differential equations. The compiler
+    produces source code in the interpreted language
+    <A href="http://www.python.org/">Python</A>,
+    that performs the numerical computations.
+    Both dynamic and steady state simulations can be done.
+    The
     <A href="http://www.scipy.org/">SciPy</A>
-    libraries for numerical computations. Currently only
+    libraries are used for the numerical computations. Currently only
     <abbr TITLE="ordinary differential equations">ODE</abbr>
     can be solved.
   </p>
   <p>
     The generated Python code can be used with a minimal main program, or in an
-    interactive Python session. With a Python
+    interactive Python session. Especially can the generated Python objects be used
+    as building blocks of more complex programs. The programmer is freed
+    from the relatively mechanical task of implementing the simulation function, and
+    can concentrate on the higher level aspects of the problem.
+  </p>
+
+  <h2>Why Python</h2>
+  <p>
+    The free SciPy libraries turn the Python language into a prototyping environment
+    for numerical algorithms, quite similar to the commercial language Matlab.
+    There are several other free numerical prototyping languages; examples are Octave and Scilab.
+    Python however is a allpurpose programming language with a rich standard library.
+    Most notably here, is Pythons powerfull string processing (which is a pain in Matlab).
+  </p>
+  <p>
+<!--    With a Python
     <abbr title="integrated development environment">IDE</abbr>
     like Eric one can have both at
     once, very much like the Matlab
     <abbr title="integrated development environment">IDE</abbr>
-    (which is for the commercial language Matlab).
-  </p>
+    (which is for the commercial language Matlab).-->
+    </p>
 
 
-  <h2>Example session</h2>
+  <h2>Incomplete example session</h2>
+  A simple biological reactor should be simulated. The simulation has two
+  sate variables:
+  <strong>X</strong> the concentration of biomass, and
+  <strong>S</strong> the concentration of sugar.
+  The growth speed <strong>&#181;</strong> is an algebraic variable.
+
+  <h3>The Differential Equations</h3>
+  dX/dt = &#181;*X;                                 <br>
+  dS/dt = -1/Y<sub>xs</sub>*&#181;*X;               <br>
+  with:                                             <br>
+  &#181; = &#181;<sub>max</sub> * S/(S+K<sub>s</sub>);  <br>
+
+<h3>The generated code</h3>
+<h3>The commands</h3>
+  <pre>
+$> kwrite bioreactor_simple.siml
+$> siml bioreactor_simple.siml
+Generated process: Batch
+
+$> python
+Python 2.4 (...)
+>>> execfile('bioreactor_simple.py')
+>>> s = Batch()
+>>> s.simulateDynamic()
+>>> s.graph('r.S r.X')
+  </pre>
+  This opens a window with the following graph:
+  <IMG src="bioreactor_simple - r.S r.X.png" alt="Graph of X and S, produced by the  bioreactor_simple.siml program" width="640" height="450" align="right" border="0">
 
   <h2>Inner workings</h2>
-  <h2>Installation</h2>
-  <h2>Windows</h2>
-  <p>
-  The development happens on Linux and no attempt has been made to port the compiler
-  to Windows. In principle however, everything should work on Windows. The Python
-  language and necessary libraries (
-  <A href="http://www.boost.org/">Boost</A>,
-  <A href="http://www.scipy.org/">SiPy</A>)
-  are all available for Windows. So you're on your own there.
-  </p>
-  <p>
-  If you have a C++ compiler for Windows and some time, you could probably port the compiler
-  to Windows with minimum effort. The Python part needs no change, since Python promises to
-  be platform independent.
-  I would be very glad to receive patches and binaries.
-  </p>
 
 </div>
 

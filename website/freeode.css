@@ -14,9 +14,9 @@
     background-color: #FFCE31;
     border: 2px ridge silver;
   }
-  html>body h1 {
-    border-color: gray;  /* Farbangleichung an den Internet Explorer  */
-  }
+  /*html>body h1 {
+    border-color: gray;*/  /* Farbangleichung an den Internet Explorer  */
+/*   } */
 
   div#navigation {
     font-size: 0.83em;

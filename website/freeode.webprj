@@ -11,10 +11,8 @@
     <projectview name="eike1" >
       <viewitem url="index.php" />
     </projectview>
-    <item modified_time="1140737947" url="index-old.php" uploadstatus="1" />
-    <item modified_time="1140825090" url="index.html" uploadstatus="1" />
-    <item modified_time="1140812701" url="layout-test.html" uploadstatus="1" />
-    <item modified_time="1140825363" url="freeode.css" uploadstatus="1" />
+    <item modified_time="1141093779" url="index.html" uploadstatus="1" />
+    <item modified_time="1141091269" url="freeode.css" uploadstatus="1" />
     <annotations/>
     <author>Eike Welk</author>
     <email>eike@users.berlios.de</email>
@@ -27,5 +25,10 @@
       <mailinglist address="" />
     </teamdata>
     <events/>
+    <item modified_time="1141090037" url="examples.html" uploadstatus="1" />
+    <item modified_time="1141090037" url="templates/template_page.html" uploadstatus="1" />
+    <item modified_time="1141091249" url="language.html" uploadstatus="1" />
+    <item modified_time="1141092007" url="installation.html" uploadstatus="1" />
+    <item modified_time="1141090037" url="development.html" uploadstatus="1" />
   </project>
 </webproject>
