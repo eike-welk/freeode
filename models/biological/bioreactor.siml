@@ -6,11 +6,11 @@ MODEL BioReactor
         mu; X; S; STY;
 
     EQUATION #Specify the differential equations
-        mu := mu_max * S/(S+Ks);        #growth speed (of biomass)
-        $X := mu*X - D*X;               #change of biomass concentration
-##        $S := -1/Yxs*mu*X + D*Sf - D*S; #change of sugar concentration
-        $S := -1/Yxs*mu*X + D*Sf - D*S - ms*X; #Alternative with maintainance rate
-        STY:= X*D;                      #yield per time and space
+        mu := mu_max * S/(S+Ks);               #growth speed (of biomass)
+        $X := mu*X - D*X;                      #change of biomass concentration
+        $S := -1/Yxs*mu*X + D*Sf - D*S - ms*X; #change of sugar concentration (with maintainance rate)
+#        $S := -1/Yxs*mu*X + D*Sf - D*S;        #change of sugar concentration (without maintainance rate)
+        STY:= X*D;                             #yield per time and space
 END
 
 
