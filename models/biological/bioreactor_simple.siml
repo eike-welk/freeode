@@ -1,10 +1,8 @@
 MODEL BioReactor
     PARAMETER #Define  values that stay constant during the simulation.
         mu_max; Ks; Yxs; Sf;
-
     VARIABLE #Define values that change during the simulation.
         mu; X; S;
-
     EQUATION #Specify the differential equations
         mu := mu_max * S/(S+Ks);        #growth speed (of biomass)
         $X := mu*X;                     #change of biomass concentration

@@ -3,7 +3,7 @@
     font-size: 100.01%;
     font-family: Helvetica,Arial,sans-serif;
     margin: 0; /*padding: 0.1em;*/
-    min-width: 41em; /* Mindestbreite verhindert Umbruch und Anzeigefehler in modernen Browsern */
+    /*min-width: 41em; *//* Mindestbreite verhindert Umbruch und Anzeigefehler in modernen Browsern */
   }
 
   div#header {
@@ -20,20 +20,24 @@
 
   div#navigation {
     font-size: 0.83em;
-    float: left; width: 18em;
-    margin: 0 0 0em 0em; padding: 0;
-    /*border: 1px dashed silver;*/
+    font-weight: bold;
+    float: left; width: 15em;
+    margin: 0 0 0em 0em;
+/*     padding: 0; */
+/*     border: 1px dashed silver; */
     text-align: center;
   }
   div#navigation li {
     list-style: none;
-    margin: 0; padding: 0.5em;
-    text-align: left;
+    margin: 0em 0em 0em -3em;
+    padding: 0.5em;
+
   }
   div#navigation a {
     display: block;
     padding: 0.2em;
     font-weight: bold;
+    text-align: left;
   }
   div#navigation a:link {
     color: black; background-color: #EAECEF;
@@ -64,21 +68,21 @@
   }
 
   div#contents {
-    /*margin: 0 12em 1em 16em;*/
-    padding: 0 1em;
-    /*border: 1px dashed silver;*/
+    margin: 0em 0em 0em 12em;
+    padding: 1em 1em 1em 1em;
+/*     border: 1px dashed silver; */
   }
   * html div#contents {
     height: 1em;  /* Workaround gegen den 3-Pixel-Bug des Internet Explorers */
   }
-  div#contents h2 {
+/*  div#contents h2 {
     font-size: 1.2em;
     margin: 0.2em 0;
-  }
-  div#contents p {
+  }*/
+/*  div#contents p {
     font-size: 1em;
-    margin: 1em 0;
-  }
+    margin: 1em;
+  }*/
 
   div#footer {
     clear: both;

@@ -31,16 +31,17 @@
     <li><A href="language.html">Language</A> </li>
     <li><A href="installation.html">Installation</A> </li>
     <li><A href="development.html">Development</A> </li>
+    <li><A href="https://developer.berlios.de/screenshots/?group_id=5610">Screenshots</A> </li>
     <!--<strong>External at BerliOS</strong>-->
     <li><A href="https://developer.berlios.de/projects/freeode/">BerliOS Summary</A> </li>
     <li><A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">Download</A> </li>
-    <strong>Python</strong>
+    <li>Python</li>
     <li><A href="http://www.python.org/">Python project page</A></li>
     <li><A href="http://www.scipy.org/">SciPy project page</A></li>
     <li><A href="http://docs.python.org/tut/tut.html">Official Python Tutorial</A></li>
     <li><A href="http://diveintopython.org/">Alternative Python tutorial</A></li>
     <li><A href="http://www.amazon.com/gp/product/3540294155/">Python Scripting for Computational Science (Book)</A></li>
-    <strong>IDE</strong>
+    <li>IDE</li>
     <li><A href="http://www.die-offenbachs.de/detlev/eric3.html">Eric</A></li>
   </ul>
 </div>
@@ -101,30 +102,79 @@
   The growth speed <strong>&#181;</strong> is an algebraic variable.
 
   <h3>The Differential Equations</h3>
-  dX/dt = &#181;*X;                                 <br>
-  dS/dt = -1/Y<sub>xs</sub>*&#181;*X;               <br>
-  with:                                             <br>
-  &#181; = &#181;<sub>max</sub> * S/(S+K<sub>s</sub>);  <br>
+  <table>
+    <tbody>
+      <tr>
+        <td>dX/dt = &#181;*X</td>
+        <td>
+          &nbsp;&nbsp;
+          <span style="font-style: italic;color: #808080;">Change of biomass concentration<span/>
+        </td>
+      </tr>
+      <tr>
+        <td>dS/dt = -1/Y<sub>xs</sub>*&#181;*X</td>
+        <td>
+          &nbsp;&nbsp;
+          <span style="font-style: italic;color: #808080;">Change of sugar concentration</span>
+        </td>
+      </tr>
+      <tr>
+        <td>with:</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>&#181; = &#181;<sub>max</sub> * S/(S+K<sub>s</sub>)</td>
+        <td>
+          &nbsp;&nbsp;
+          <span style="font-style: italic;color: #808080;">Growth speed</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 
-<h3>The generated code</h3>
-<h3>The commands</h3>
+
+  <h3>Equivalent Siml code</h3>
+  <div id="siml">
+    <pre>
+<span style="color: #0000ff;">MODEL</span><span style="color: #000000;"> BioReactor</span>
+<span style="color: #000000;">    </span><span style="color: #0000ff;">PARAMETER</span><span style="color: #000000;"> </span><span style="font-style: italic;color: #808080;">#Values that stay constant</span>
+<span style="color: #000000;">        mu_max; Ks; Yxs; Sf;</span>
+<span style="color: #000000;">    </span><span style="color: #0000ff;">VARIABLE</span><span style="color: #000000;"> </span><span style="font-style: italic;color: #808080;"> #Values that change</span>
+<span style="color: #000000;">        mu; X; S;</span>
+<span style="color: #000000;">    </span><span style="color: #0000ff;">EQUATION</span><span style="color: #000000;"> </span><span style="font-style: italic;color: #808080;"> #Differential and algebraic equations</span>
+<span style="color: #000000;">        mu </span><span style="color: #ff00ff;">:=</span><span style="color: #000000;"> mu_max </span><span style="color: #ff00ff;">*</span><span style="color: #000000;"> S</span><span style="color: #ff00ff;">/(</span><span style="color: #000000;">S</span><span style="color: #ff00ff;">+</span><span style="color: #000000;">Ks</span><span style="color: #ff00ff;">)</span><span style="color: #000000;">; </span><span style="font-style: italic;color: #808080;">#growth speed</span>
+<span style="color: #000000;">        </span><span style="color: #ff00ff;">$</span><span style="color: #000000;">X </span><span style="color: #ff00ff;">:=</span><span style="color: #000000;"> mu</span><span style="color: #ff00ff;">*</span><span style="color: #000000;">X;              </span><span style="font-style: italic;color: #808080;">#change of biomass concentration</span>
+<span style="color: #000000;">        </span><span style="color: #ff00ff;">$</span><span style="color: #000000;">S </span><span style="color: #ff00ff;">:=</span><span style="color: #000000;"> </span><span style="color: #ff00ff;">-</span><span style="color: #0000ff;">1</span><span style="color: #ff00ff;">/</span><span style="color: #000000;">Yxs</span><span style="color: #ff00ff;">*</span><span style="color: #000000;">mu</span><span style="color: #ff00ff;">*</span><span style="color: #000000;">X;       </span><span style="font-style: italic;color: #808080;">#change of sugar concentration</span>
+<span style="color: #0000ff;">END</span>
+    </pre>
+  </div>
+
+
+  <h3>The generated Python code</h3>
+  <div id="python">
+    <pre>
+<span style="font-style: italic;color: #808080;">#Compute the algebraic variables.</span>
+<span style="color: #000000;">v_r_mu </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #008000;">self</span><span style="color: #000000;">.p_mu_max </span><span style="color: #ff00ff;">*</span><span style="color: #000000;"> v_r_S </span><span style="color: #ff00ff;">/</span><span style="color: #000000;"> </span><span style="color: #ff00ff;">(</span><span style="color: #000000;">v_r_S </span><span style="color: #ff00ff;">+</span><span style="color: #000000;"> </span><span style="color: #008000;">self</span><span style="color: #000000;">.p_Ks</span><span style="color: #ff00ff;">)</span>
+<span style="font-style: italic;color: #808080;">#Compute the state variables. (Really the time derivatives.)</span>
+<span style="color: #000000;">y_t</span><span style="color: #ff00ff;">[</span><span style="color: #0000ff;">0</span><span style="color: #ff00ff;">]</span><span style="color: #000000;"> </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> v_r_mu </span><span style="color: #ff00ff;">*</span><span style="color: #000000;"> v_r_X </span><span style="font-style: italic;color: #808080;"># = d r.X /dt</span>
+<span style="color: #000000;">y_t</span><span style="color: #ff00ff;">[</span><span style="color: #0000ff;">1</span><span style="color: #ff00ff;">]</span><span style="color: #000000;"> </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #ff00ff;">-</span><span style="color: #0000ff;">1</span><span style="color: #000000;"> </span><span style="color: #ff00ff;">/</span><span style="color: #000000;"> </span><span style="color: #008000;">self</span><span style="color: #000000;">.p_Yxs </span><span style="color: #ff00ff;">*</span><span style="color: #000000;"> v_r_mu </span><span style="color: #ff00ff;">*</span><span style="color: #000000;"> v_r_X </span><span style="font-style: italic;color: #808080;"># = d r.S /dt</span>
+    </pre>
+  </div>
+  <h3>The commands</h3>
   <pre>
-$> kwrite bioreactor_simple.siml
-$> siml bioreactor_simple.siml
+$> kwrite bioreactor_simple.siml     <span style="font-style: italic;color: #808080;">#Edit Siml file</span>
+$> siml bioreactor_simple.siml       <span style="font-style: italic;color: #808080;">#Run compiler</span>
 Generated process: Batch
 
-$> python
+$> python                            <span style="font-style: italic;color: #808080;">Start Python interpreter</span>
 Python 2.4 (...)
->>> execfile('bioreactor_simple.py')
->>> s = Batch()
->>> s.simulateDynamic()
->>> s.graph('r.S r.X')
+>>> execfile('bioreactor_simple.py') <span style="font-style: italic;color: #808080;">Load generated file</span>
+>>> s = Batch()                      <span style="font-style: italic;color: #808080;">Create simulation object</span>
+>>> s.simulateDynamic()              <span style="font-style: italic;color: #808080;">Perform simulation</span>
+>>> s.graph('r.S r.X')               <span style="font-style: italic;color: #808080;">Show results</span>
   </pre>
   This opens a window with the following graph:
-  <IMG src="bioreactor_simple - r.S r.X.png" alt="Graph of X and S, produced by the  bioreactor_simple.siml program" width="640" height="450" align="right" border="0">
-
-  <h2>Inner workings</h2>
-
+  <IMG src="bioreactor_simple - r.S r.X.png" alt="Graph of X and S, produced by the  bioreactor_simple.siml program" width="640" height="450" align="left" border="0">
 </div>
 
 <!--footer with the required berlios image-->
