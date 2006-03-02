@@ -51,9 +51,9 @@
 
 <div id="contents">
   <h1>Development</h1>
-
   <p>
-    The siml compiler is a standard C++ program that uses the Boost library.
+    The siml compiler is a C++ program that uses the
+    <A href="http://www.boost.org/">Boost</A> library.
     Boost should be present on all Linux distributions.
   </p>
   <p>
@@ -63,6 +63,25 @@
   </p>
 
   <p>The script 'pymain.py' is for debugging the generated Python code.</p>
+
+  <p>
+    The Python part uses the
+    <A href="http://www.scipy.org/">SciPy</A> library for the
+    numerical computations and the
+    <A href="http://gnuplot-py.sourceforge.net/">Gnuplot.py</A> library for plotting.
+  </p>
+
+
+  <h2>Libraries</h2>
+  <p>
+    These are the libraries that you need. Tarballs of SciPy and Gnuplot.py
+    are also present in the download section.
+  </p>
+  <ul>
+    <li><A href="http://www.boost.org/">Boost</A> (usually present on Linux)</li>
+    <li><A href="http://www.scipy.org/">SciPy</A></li>
+    <li><A href="http://gnuplot-py.sourceforge.net/">Gnuplot.py</A></li>
+  </ul>
 
 
   <h2>Linux</h2>
@@ -97,7 +116,7 @@ svn checkout svn://svn.berlios.de/freeode/trunk
     If you just want to compile the latest soures here are the necessary steps:
     Open a shell window and  change into the directory 'freeode_cpp'
     (which you just downloaded through subversion).
-    Type the following commands.
+    Type the commands given below.
     Some commands will take quite a while to complete.
     <br>
     <strong>Warning!</strong> Currently the installation goes into the KDE
@@ -132,7 +151,7 @@ python py2c_string.py
   In principle however, everything should work on Windows. The Python
   language and the necessary libraries (
   <A href="http://www.boost.org/">Boost</A>,
-  <A href="http://www.scipy.org/">SiPy</A>)
+  <A href="http://www.scipy.org/">SciPy</A>)
   are all available for Windows. So you're on your own there.
   </p>
   <p>
