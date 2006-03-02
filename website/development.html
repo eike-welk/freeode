@@ -50,8 +50,97 @@
 </div>-->
 
 <div id="contents">
-<h1>Test</h1>
-Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text. Some text. Some Text.
+  <h1>Development</h1>
+
+  <p>
+    The siml compiler is a standard C++ program that uses the Boost library.
+    Boost should be present on all Linux distributions.
+  </p>
+  <p>
+    The Python part consists of
+    one file 'simulatorbase.py' which is included into the C++ program as a string.
+    The script 'py2c_string.py' creates the header 'simulatorbase.h' for that purpose.
+  </p>
+
+  <p>The script 'pymain.py' is for debuging the generated Python code.</p>
+
+
+  <h2>Linux</h2>
+
+  <h3>Geting the sources</h3>
+  <p>
+    The latest version of all of the project's files, is available from the subversion
+    repository at BerliOS.
+  </p>
+  <p>
+    To check out (download) only the compiler, type the following in a shell window:
+  </p>
+  <div id="code">
+    <pre>
+svn checkout svn://svn.berlios.de/freeode/trunk/freeode_cpp
+    </pre>
+  </div>
+
+  <p>To check out everything, including website, examples and more, do:</p>
+  <div id="code">
+    <pre>
+svn checkout svn://svn.berlios.de/freeode/trunk
+    </pre>
+  </div>
+
+  <h3>Compiling the sources</h3>
+  <p>
+    In the directory 'freeode_cpp' you will find a Kdevelop project file.
+    The Siml compiler is currently developed with the IDE Kdevelop.
+  </p>
+  <p>
+    If you just want to compile the latest soures here are the necessary steps:
+    Open a shell window and  change into the directory 'freeode_cpp'
+    (which you just downloaded throught subversion).
+    Type the following commands.
+    Some commands will take quite a while to complete.
+    <br>
+    <strong>Warning!</strong> Currently the installation goes into the KDE
+    directory. This won't harm, but is quite stupid.
+    </p>
+  <div id="code">
+    <pre>
+make -f Makefile.cvs
+./configure
+make
+su
+make install
+    </pre>
+  </div>
+
+  <p>
+    From time to time you will be forced to regenerate the file 'simulatorbase.h'
+    from the file 'simulatorbase.py' with the following commands:
+    </p>
+  <div id="code">
+    <pre>
+cd src
+python py2c_string.py
+    </pre>
+  </div>
+
+
+  <h2>Windows</h2>
+  <p>
+  No attempt has been made to port the compiler
+  to Windows, since the development happens on Linux.
+  In principle however, everything should work on Windows. The Python
+  language and the necessary libraries (
+  <A href="http://www.boost.org/">Boost</A>,
+  <A href="http://www.scipy.org/">SiPy</A>)
+  are all available for Windows. So you're on your own there.
+  </p>
+  <p>
+  If you have a C++ compiler for Windows and some time, you could probably port the compiler
+  to Windows with minimum effort. The Python part needs no change, since Python promises to
+  be platform independent.
+  I would be very glad to receive patches and binaries.
+  </p>
 </div>
 
 <!--footer with the required berlios image-->

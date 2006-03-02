@@ -52,32 +52,38 @@
 <div id="contents">
   <h1>Installation</h1>
   <h2>Linux</h2>
-  Go ahead, just do it.
+  <h3>Compiling from sources</h3>
+  <p>TODO: create source package.</p>
   <p>
-    If you don't feel like compiling the program you can downoad a binary version.
+    Alternatively you could download the sources with subversion. This is explained in
+    the <A href="development.html">development</A> section.
+  </p>
+
+  <h3>Binary Package</h3>
+  <p>
+    If you don't feel like compiling the program you can download a binary version.
     It was compiled on a Suse 9.3 system with <strong>gcc version 3.3.5</strong>.
 
     <ul>
+      <li>
+        Download the file 'siml-binary-0.2.0.tar.gz' from the
+        <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">download</A>
+        section
+      </li>
       <li>Extract the executable from the archive. This results in a file named 'siml'</li>
       <li>Copy the executable to a directory in your PATH. Usually: '/usr/local/bin'</li>
+      <li>Use the compiler: siml filename.siml</li>
     </ul>
+  </p>
 
-  </p>
   <h2>Windows</h2>
+  <p>Currently there is no Windows version, although porting should be easy.</p>
+
+  <h2>Examples</h2>
   <p>
-  No attempt has been made to port the compiler
-  to Windows, since the development happens on Linux.
-  In principle however, everything should work on Windows. The Python
-  language and the necessary libraries (
-  <A href="http://www.boost.org/">Boost</A>,
-  <A href="http://www.scipy.org/">SiPy</A>)
-  are all available for Windows. So you're on your own there.
-  </p>
-  <p>
-  If you have a C++ compiler for Windows and some time, you could probably port the compiler
-  to Windows with minimum effort. The Python part needs no change, since Python promises to
-  be platform independent.
-  I would be very glad to receive patches and binaries.
+    There is also a package with example files in the
+    <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">download</A>
+    section: 'models.tar.gz'.
   </p>
 </div>
 
