@@ -72,16 +72,42 @@
   </p>
 
 
-  <h2>Libraries</h2>
+  <h2>Dependencies</h2>
   <p>
-    These are the libraries that you need. Tarballs of SciPy and Gnuplot.py
-    are also present in the download section.
+    You need the Python language, and libraries below.
   </p>
-  <ul>
-    <li><A href="http://www.boost.org/">Boost</A> (usually present on Linux)</li>
-    <li><A href="http://www.scipy.org/">SciPy</A></li>
-    <li><A href="http://gnuplot-py.sourceforge.net/">Gnuplot.py</A></li>
-  </ul>
+  <p>
+    <table>
+      <tbody>
+        <tr>
+          <td><A href="http://www.boost.org/">Boost</A></td>
+          <td>&nbsp;&nbsp;C++ lib</td>
+          <td>&nbsp;&nbsp;usually present on Linux</td>
+        </tr>
+        <tr>
+          <td><A href="http://www.python.org">Python</A></td>
+          <td>&nbsp;&nbsp;Programming language</td>
+          <td>&nbsp;&nbsp;usually present on Linux</td>
+        </tr>
+        <tr>
+          <td><A href="http://numeric.scipy.org/">NumPy</A></td>
+          <td>&nbsp;&nbsp;Python lib</td>
+          <td>&nbsp;&nbsp;often present on Linux</td>
+        </tr>
+        <tr>
+          <td><A href="http://www.scipy.org/">SciPy</A></td>
+          <td>&nbsp;&nbsp;Python lib</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td><A href="http://gnuplot-py.sourceforge.net/">Gnuplot.py</A></td>
+          <td>&nbsp;&nbsp;Python lib</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </p>
+
 
 
   <h2>Linux</h2>
@@ -133,7 +159,7 @@ make install
   </div>
 
   <p>
-    From time to time you will be forced to regenerate the file 'simulatorbase.h'
+    From time to time you'll need to regenerate the file 'simulatorbase.h'
     from the file 'simulatorbase.py' with the following commands:
     </p>
   <div id="code">
@@ -146,19 +172,30 @@ python py2c_string.py
 
   <h2>Windows</h2>
   <p>
-  No attempt has been made to port the compiler
-  to Windows, since the development happens on Linux.
-  In principle however, everything should work on Windows. The Python
-  language and the necessary libraries (
-  <A href="http://www.boost.org/">Boost</A>,
-  <A href="http://www.scipy.org/">SciPy</A>)
-  are all available for Windows. So you're on your own there.
+    No attempt has been made to port the compiler
+    to Windows, since the development happens on Linux.
+    In principle however, everything should work on Windows. The
+    <A href="http://www.python.org">Python</A>
+    language and the necessary libraries (
+    <A href="http://www.boost.org/">Boost</A>,
+    <A href="http://numeric.scipy.org/">NumPy</A>,
+    <A href="http://www.scipy.org/">SciPy</A>)
+    are all available for Windows. So you're on your own there.
   </p>
   <p>
-  If you have a C++ compiler for Windows and some time, you could probably port the compiler
-  to Windows with minimum effort. The Python part needs no change, since Python promises to
-  be platform independent.
-  I would be very glad to receive patches and binaries.
+    There is a free Python package from <A href="http://www.enthought.com/">Enthought</A>.
+    It contains <strong>NumPy</strong> and <strong>SciPy</strong>, (plus much more scientific Python stuff).
+  </p>
+  <p>
+    If you have a C++ compiler for Windows and some time, you could probably port the compiler
+    to Windows with minimum effort. The Python part needs no change, since Python promises to
+    be platform independent.
+    I would be very glad to receive patches and binaries.
+  </p>
+  <p>
+    Graphs (<A href="http://gnuplot-py.sourceforge.net/">Gnuplot.py</A>) are surely an issue.
+    If you port the compiler to Windows I'll change the graph library to whatever is commonly
+    available on Windows.
   </p>
 </div>
 
