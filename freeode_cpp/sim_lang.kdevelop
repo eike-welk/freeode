@@ -35,7 +35,7 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
       <runarguments>
         <yac/>
         <sim_lang/>
-        <siml></siml>
+        <siml/>
       </runarguments>
     </run>
     <configurations>
@@ -209,18 +209,18 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
   <dist>
     <custom>false</custom>
     <bzip>false</bzip>
-    <archname></archname>
+    <archname/>
     <appname>sim_lang.kdevelop</appname>
     <version>0.2.0</version>
-    <release></release>
-    <vendor></vendor>
-    <licence></licence>
-    <summary></summary>
-    <group></group>
-    <packager></packager>
+    <release/>
+    <vendor/>
+    <licence/>
+    <summary/>
+    <group/>
+    <packager/>
     <description>Siml is a language to express differential equations. 
 This progam is a compiler for the Siml language. The Siml program is compiled into a Python program, that solves the differential equation numerically.</description>
-    <changelog></changelog>
+    <changelog/>
     <devpackage>false</devpackage>
     <docspackage>false</docspackage>
     <appicon>false</appicon>
@@ -229,6 +229,6 @@ This progam is a compiler for the Siml language. The Siml program is compiled in
     <useRPM>false</useRPM>
     <ftpkde>false</ftpkde>
     <appskde>false</appskde>
-    <url></url>
+    <url/>
   </dist>
 </kdevelop>
