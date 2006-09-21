@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
 //     cout << "Output file:\n";
 //     cout << outputFile << '\n';
 
-    //put the file names into the code repository
+    //The code repository contains a list with the names of the input files. Put the file names into this list.
     back_insert_iterator< vector<string> > insertStrings( CmCodeRepository::inputFileNames);
     copy(inputFileNames.begin(), inputFileNames.end(), insertStrings);
 
