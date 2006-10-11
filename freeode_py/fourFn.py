@@ -12,8 +12,14 @@ from pyparsing import Literal,CaselessLiteral,Word,Combine,Group,Optional,\
 import math
 import operator
 
+
+#global variables
+mathParser = 0
+#results of parsing go here
 exprStack = []
 
+
+#semantic actions for the parser
 def pushFirst( strg, loc, toks ):
     exprStack.append( toks[0] )
 def pushUMinus( strg, loc, toks ):
@@ -22,9 +28,11 @@ def pushUMinus( strg, loc, toks ):
         #~ exprStack.append( '-1' )
         #~ exprStack.append( '*' )
 
-bnf = None
-def BNF():
+
+#Create the parser object
+def createMathParser():
     """
+    -- The BNF that will be implemented here: --
     expop   :: '^'
     multop  :: '*' | '/'
     addop   :: '+' | '-'
@@ -34,46 +42,48 @@ def BNF():
     term    :: factor [ multop factor ]*
     expr    :: term [ addop term ]*
     """
-    global bnf
-    if not bnf:
-        point = Literal( "." )
-        e     = CaselessLiteral( "E" )
-        fnumber = Combine( Word( "+-"+nums, nums ) + 
-                           Optional( point + Optional( Word( nums ) ) ) +
-                           Optional( e + Word( "+-"+nums, nums ) ) )
-        ident = Word(alphas, alphas+nums+"_$")
-     
-        plus  = Literal( "+" )
-        minus = Literal( "-" )
-        mult  = Literal( "*" )
-        div   = Literal( "/" )
-        lpar  = Literal( "(" ).suppress()
-        rpar  = Literal( ")" ).suppress()
-        addop  = plus | minus
-        multop = mult | div
-        expop = Literal( "^" )
-        pi    = CaselessLiteral( "PI" )
-        
-        expr = Forward()
-        atom = (Optional("-") + ( pi | e | fnumber | ident + lpar + expr + rpar ).setParseAction( pushFirst ) | ( lpar + expr.suppress() + rpar )).setParseAction(pushUMinus) 
-        
-        # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...", we get right-to-left exponents, instead of left-to-righ
-        # that is, 2^3^2 = 2^(3^2), not (2^3)^2.
-        factor = Forward()
-        factor << atom + ZeroOrMore( ( expop + factor ).setParseAction( pushFirst ) )
-        
-        term = factor + ZeroOrMore( ( multop + factor ).setParseAction( pushFirst ) )
-        expr << term + ZeroOrMore( ( addop + term ).setParseAction( pushFirst ) )
-        bnf = expr
+    
+    point = Literal( "." )
+    e     = CaselessLiteral( "E" )
+    fnumber = Combine( Word( "+-"+nums, nums ) + 
+                       Optional( point + Optional( Word( nums ) ) ) +
+                       Optional( e + Word( "+-"+nums, nums ) ) )
+    ident = Word(alphas, alphas+nums+"_$")
+ 
+    plus  = Literal( "+" )
+    minus = Literal( "-" )
+    mult  = Literal( "*" )
+    div   = Literal( "/" )
+    lpar  = Literal( "(" ).suppress()
+    rpar  = Literal( ")" ).suppress()
+    addop  = plus | minus
+    multop = mult | div
+    expop = Literal( "^" )
+    pi    = CaselessLiteral( "PI" )
+    
+    expr = Forward()
+    atom = (Optional("-") + ( pi | e | fnumber | ident + lpar + expr + rpar ).setParseAction( pushFirst ) | ( lpar + expr.suppress() + rpar )).setParseAction(pushUMinus) 
+    
+    # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...", we get right-to-left exponents, instead of left-to-righ
+    # that is, 2^3^2 = 2^(3^2), not (2^3)^2.
+    factor = Forward()
+    factor << atom + ZeroOrMore( ( expop + factor ).setParseAction( pushFirst ) )
+    
+    term = factor + ZeroOrMore( ( multop + factor ).setParseAction( pushFirst ) )
+    expr << term + ZeroOrMore( ( addop + term ).setParseAction( pushFirst ) )
+    bnf = expr
     return bnf
 
-# map operator symbols to corresponding arithmetic operations
-epsilon = 1e-12
+
+#map (binary) operator symbols to corresponding arithmetic operations
 opn = { "+" : operator.add,
         "-" : operator.sub,
         "*" : operator.mul,
         "/" : operator.truediv,
         "^" : operator.pow }
+        
+#map (binary) unarry function symbols to the corresponding operations
+epsilon = 1e-12
 fn  = { "sin" : math.sin,
         "cos" : math.cos,
         "tan" : math.tan,
@@ -81,6 +91,9 @@ fn  = { "sin" : math.sin,
         "trunc" : lambda a: int(a),
         "round" : round,
         "sgn" : lambda a: abs(a)>epsilon and cmp(a,0) or 0}
+
+
+#Compute the value after parsing
 def evaluateStack( s ):
     op = s.pop()
     if op == 'unary -':
@@ -100,24 +113,31 @@ def evaluateStack( s ):
     else:
         return float( op )
 
-if __name__ == "__main__":
+
+#evaluate a string and see if the parser works correctly
+def test( s, expVal ):
+    global exprStack
+    global mathParser
     
-    def test( s, expVal ):
-        global exprStack
-        exprStack = []
-        results = BNF().parseString( s )
-        val = evaluateStack( exprStack[:] )
-        if val == expVal:
-            print s, "=", val, results, "=>", exprStack
-        else:
-            print s+"!!!", val, "!=", expVal, results, "=>", exprStack, " ------------ ERROR! ------------"
-  
+    if not mathParser:
+        mathParser = createMathParser()
+    
+    exprStack = []
+    results = mathParser.parseString( s )
+    val = evaluateStack( exprStack[:] )
+    if val == expVal:
+        print s, "=", val, results, "=>", exprStack
+    else:
+        print s+"!!!", val, "!=", expVal, results, "=>", exprStack, " ------------ ERROR! ------------"
+
+if __name__ == "__main__":
+      
     test( "9", 9 )
     test( "-9", -9 )
     test( "--9", 9 )
     test( "-E", -math.e )
     test( "9 + 3 + 6", 9 + 3 + 6 )
-    test( "9 + 3 / 11", 9 + 3.0 / 11 +1)
+    test( "9 + 3 / 11", 9 + 3.0 / 11 )
     test( "(9 + 3)", (9 + 3) )
     test( "(9+3) / 11", (9+3.0) / 11 )
     test( "9 - 12 - 6", 9 - 12 - 6 )
