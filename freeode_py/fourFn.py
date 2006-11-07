@@ -62,7 +62,8 @@ def createMathParser():
     pi    = CaselessLiteral( "PI" )
     
     expr = Forward()
-    atom = (Optional("-") + ( pi | e | fnumber | ident + lpar + expr + rpar ).setParseAction( pushFirst ) | ( lpar + expr.suppress() + rpar )).setParseAction(pushUMinus) 
+    atom = (Optional("-") + (pi | e | fnumber | ident + lpar + expr + rpar).setParseAction( pushFirst ) | \
+           ( lpar + expr.suppress() + rpar )).setParseAction(pushUMinus) 
     
     # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...", we get right-to-left exponents, instead of left-to-righ
     # that is, 2^3^2 = 2^(3^2), not (2^3)^2.
@@ -158,10 +159,12 @@ if __name__ == "__main__":
     test( "E^PI", math.e**math.pi )
     test( "2^3^2", 2**3**2 )
     test( "2^3+2", 2**3+2 )
+    test( "2^3*2", 2**3*2 )
     test( "2^9", 2**9 )
     test( "sgn(-2)", -1 )
     test( "sgn(0)", 0 )
     test( "sgn(0.1)", 1 )
+    test( "sin(0.2)", math.sin(0.2))
 
 
 """
