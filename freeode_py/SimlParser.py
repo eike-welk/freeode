@@ -1,11 +1,31 @@
+#***************************************************************************
+#    Copyright (C) 2006 by Eike Welk                                       *
+#    eike.welk@post.rwth-aachen.de                                         *
+#                                                                          *
+#    Inspiration came from:                                                *
+#    "fourFn.py", an example program, by Paul McGuire                      *
+#    and the "Spark" library by John Aycock                                *
+#                                                                          *
+#                                                                          *
+#    This program is free software; you can redistribute it and/or modify  *
+#    it under the terms of the GNU General Public License as published by  *
+#    the Free Software Foundation; either version 2 of the License, or     *
+#    (at your option) any later version.                                   *
+#                                                                          *
+#    This program is distributed in the hope that it will be useful,       *
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+#    GNU General Public License for more details.                          *
+#                                                                          *
+#    You should have received a copy of the GNU General Public License     *
+#    along with this program; if not, write to the                         *
+#    Free Software Foundation, Inc.,                                       *
+#    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+#***************************************************************************
+
+__doc__ = \
 """
 Parser for the SIML simulation language.
-
-Inspiration came from: 
-    "fourFn.py" an example program by Paul McGuire
-    and the "Spark" library by John Aycock
-
-Copyright (C) 2006 Eike Welk
 """
 
 from pyparsing import Literal,Keyword,CaselessLiteral,Word,Combine,Group,Optional, \
