@@ -46,7 +46,7 @@ class ParseStage(object):
     
     Usage:
     parser = ParseStage()
-    result = parser.parseString("0+1+2+3+4")
+    result = parser.parseProgram("0+1+2+3+4")
     """
     
     debugSyntax = 0 
@@ -92,7 +92,7 @@ class ParseStage(object):
     
     def actionInfixBinOp(self, str, loc, toks):
         """
-        Parse action for binary mathematical operations (+ - * / ^). 
+        Parse action for binary mathematical operations: + - * / ^
         Put additional information into parse result, that would 
         be lost otherwise. The information is stored in a dict, and put before 
         the original parse result.
@@ -111,7 +111,7 @@ class ParseStage(object):
     
     def actionPrefixUnaryOp(self, str, loc, toks):
         """
-        Parse action for mathematical unary operations (-). 
+        Parse action for mathematical unary operations: -5 . 
         Put additional information into parse result, that would 
         be lost otherwise. The information is stored in a dict, and put before 
         the original parse result.
@@ -130,7 +130,7 @@ class ParseStage(object):
     
     def actionMemAccess(self, str, loc, toks):
         """
-        Parse action for memory access (aa.bb.cc). 
+        Parse action for memory access: aa.bb.cc  
         Put additional information into parse result, that would 
         be lost otherwise. The information is stored in a dict, and put before 
         the original parse result.
@@ -141,7 +141,7 @@ class ParseStage(object):
         elif self.debugSyntax == 1:
             return toks.copy()
         
-        # toks is structured like this [["-","5"]]
+        # toks is structured like this [["aa","bb","cc"]]
         newToks = ParseResults([{"type":"memA", "loc":loc}]) #create dict
         newToks += toks[0].copy() #add original contents
         return ParseResults([newToks]) #wrap in []; return.    
@@ -149,7 +149,7 @@ class ParseStage(object):
     
     def actionFuncCall(self, str, loc, toks):
         """
-        Parse action for function call.
+        Parse action for function call: sin(2.1)
         Put additional information into parse result, that would 
         be lost otherwise. The information is stored in a dict, and put before 
         the original parse result.
@@ -160,7 +160,7 @@ class ParseStage(object):
         elif self.debugSyntax == 1:
             return toks.copy()
         
-        # toks is structured like this [['sin','(',['2'],')']]
+        # toks is structured like this [['sin','(',['2.1'],')']]
         newToks = ParseResults([{"type":"funcCall", "loc":loc}]) #create dict
         newToks += toks[0].copy() #add original contents
         return ParseResults([newToks]) #wrap in []; return.    
@@ -209,9 +209,9 @@ class ParseStage(object):
         Creates the objects of the pyParsing library, 
         that do all the work.
         """
-        #define short alias for defineKeyword(...) function. 
-        #Usage: test = kw("test")
-        kw = self.defineKeyword
+        #define short alias so they don't clutter the text
+        kw = self.defineKeyword # Usage: test = kw("variable")
+        L = Literal # Usage: L("+")
         
         #Constants that are built into the language
         #TODO: come up with better name: time is no constant
@@ -221,11 +221,13 @@ class ParseStage(object):
         builtInFuntion = (  kw("sin") | kw("cos") | kw("tan") |
                             kw("sqrt") | kw("ln")               )   .setName("builtInFuntion")#.setDebug(True)
         
-        #Floating point number.
+        #Integer (unsigned).
+        uInteger = Word(nums)                                        .setName("builtInConstant")#.setDebug(True)
+        #Floating point number (unsigned).
         eE = CaselessLiteral( "E" )
-        number = ( Combine( 
-                    Word(nums) + 
-                    Optional("." + Optional(Word(nums))) +
+        uNumber = ( Combine( 
+                    uInteger + 
+                    Optional("." + Optional(uInteger)) +
                     Optional(eE + Word("+-"+nums, nums))     )
                  )                                                  .setName("builtInConstant")#.setDebug(True)
         
@@ -245,14 +247,12 @@ class ParseStage(object):
                                                                     .setName("funcCall")#.setDebug(True)
         parentheses = Group("(" + expression + ")")                 .setParseAction(self.actionParentheses) \
                                                                     .setName("parentheses")#.setDebug(True)
-        atom = (    number | builtInConstant | funcCall | 
+        atom = (    uNumber | builtInConstant | funcCall | 
                     memAccess | parentheses               )         .setName("atom")#.setDebug(True)
         
-        #The basic mathematical operations (-a+b*c^d):
+        #The basic mathematical operations: -a+b*c^d.
         #All operations have right-to-left associativity; althoug this is only 
         #required for exponentiation. Precedence decreases towards the bottom.
-        addop  = Literal("+") | Literal("-")
-        multop = Literal("*") | Literal("/")
         #Unary minus: -a;
         unaryMinus = Group("-" + signedAtom)            .setParseAction(self.actionPrefixUnaryOp) \
                                                         .setName("unaryMinus")#.setDebug(True)
@@ -265,12 +265,14 @@ class ParseStage(object):
         factor << (factor2 | factor1)                   .setName("factor")#.setDebug(True)
         
         #multiplicative operations: a*b; a/b 
+        multop = L("*") | L("/")
         term1 = factor                                  .setName("term1")#.setDebug(True)
         term2 = Group(factor + multop + term)           .setParseAction(self.actionInfixBinOp) \
                                                         .setName("term2")#.setDebug(True)
         term << (term2 | term1)                         .setName("term")#.setDebug(True)
         
         #additive operations: a+b; a-b 
+        addop  = L("+") | L("-")
         expression1 = term                              .setName("expression1")#.setDebug(True)
         expression2 = Group(term + addop + expression)  .setParseAction(self.actionInfixBinOp) \
                                                         .setName("expression2")#.setDebug(True)
@@ -306,7 +308,8 @@ class ParseStage(object):
         return startSymbol
     
     
-    def parseString(self, inString):
+    #TODO: Maybe write: parseExpression, parseMemAccess, ...
+    def parseProgram(self, inString):
         """Parse a whole program. The program is entered as a string."""
         result = self._parser.parseString(inString)
         return result
@@ -330,66 +333,68 @@ class Node(object):
 	def __cmp__(self, o):
 		return cmp(self.type, o)
 
+##    def copy(self):
+##        """
+##        Make a (recursive) deep copy of the object.
+##        This will (currently) not work with attributes that are lists or 
+##        dictionaries! 
+##        See: http://www.python.org/search/hypermail/python-1993/0267.html
+##        """
+##        newObject = self.__class__()     #Create new object with same class
+##        #duplicate attributes
+##        for key in self.__dict__.keys(): #key is a string
+##            oldAttr = getattr(self, key) 
+##            if hasattr(oldAttr, "copy"): #If attribute has a copy function then
+##                newAttr = oldAttr.copy() #use the copy function to duplicate it
+##            else:
+##                newAttr = oldAttr #else shallow copy - attribute is believed to 
+##                                  #be immutable e.g.: number.
+##            setattr(newObject, key, newAttr) #Put duplicated attribute into 
+##                                             #new object
+##        return newObject
 
 
-class Struct(object):
-    """
-    Act like a Matlab struct; store anyhting in tree like way.
-    The object is currently only useful to store numbers, "array" objects  
-    and other "Struct" objects.
+
+class SyntaxTreeGenerator(object):
+    """Create a syntax tree from the parsers output"""
     
-    Supports (recursive) deep copy with copy() function.
+    def __init(self):
+        pass
     
-    TODO: write constructor (__init__) that takes the output of __repr__ as input.
-    """
-    
-    def copy(self):
-        """
-        Make a (recursive) deep copy of the object.
-        This will (currently) not work with attributes that are lists or 
-        dictionaries! 
-        See: http://www.python.org/search/hypermail/python-1993/0267.html
-        """
-        newObject = self.__class__()     #Create new object with same class
-        #duplicate attributes
-        for key in self.__dict__.keys(): #key is a string
-            oldAttr = getattr(self, key) 
-            if hasattr(oldAttr, "copy"): #If attribute has a copy function then
-                newAttr = oldAttr.copy() #use the copy function to duplicate it
-            else:
-                newAttr = oldAttr #else shallow copy - attribute is believed to 
-                                  #be immutable e.g.: number.
-            setattr(newObject, key, newAttr) #Put duplicated attribute into 
-                                             #new object
-        return newObject
+    def createSyntaxTree(self, inParseResult):
+        """Create the syntax tree from a nested list"""
+        pass
 
 
 
 
 if __name__ == '__main__':
     # Self-testing code goes here.
-    
     #TODO: add unit tests
+    
     parser = ParseStage()
-##    parser.debugSyntax = 1
-##    parser.debugSyntax = 2
-    
-    print parser.parseString("0+1+2+3+4");
-    print parser.parseString("0*1*2*3*4");
-    print parser.parseString("0^1^2^3^4");
-    print parser.parseString("0+1*2+3+4");
-    print parser.parseString("0*1^2*3*4");
-    print parser.parseString("0+(1+2)+3+4");
-    print parser.parseString("-0+1+--2*-3--4");
-    print parser.parseString("-aa.a+bb.b+--cc.c*-dd.d--ee.e+f");
-    print parser.parseString("0+sin(2+3*4)+5");
-    print parser.parseString("0+a1.a2+bb.b1.b2+3+4 #comment");
-    print parser.parseString("0.123+1.2e3");
-    #parser.parseString("0+1*2^3^4+5+6*7+8+9");
-    
     
     print "keywords:"
     print parser.keywords
+    
+    flagTestParser = True
+    if flagTestParser:
+        parser.debugSyntax = 1
+        parser.debugSyntax = 2
+        print parser.parseProgram("0+1+2+3+4");
+        print parser.parseProgram("0*1*2*3*4");
+        print parser.parseProgram("0^1^2^3^4");
+        print parser.parseProgram("0+1*2+3+4");
+        print parser.parseProgram("0*1^2*3*4");
+        print parser.parseProgram("0+(1+2)+3+4");
+        print parser.parseProgram("-0+1+--2*-3--4");
+        print parser.parseProgram("-aa.a+bb.b+--cc.c*-dd.d--ee.e+f");
+        print parser.parseProgram("0+sin(2+3*4)+5");
+        print parser.parseProgram("0+a1.a2+bb.b1.b2+3+4 #comment");
+        print parser.parseProgram("0.123+1.2e3");
+        #parser.parseProgram("0+1*2^3^4+5+6*7+8+9");
+    
+    
 
 else:
     # This will be executed in case the
