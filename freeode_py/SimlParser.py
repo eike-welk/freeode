@@ -320,18 +320,28 @@ class ParseStage(object):
 class Node(object):
     """Building block of a n-ary tree structure."""
     
-    def __init__(self, type):
-        self.type = type
-        self.children = []
-
-	def __getitem__(self, i):
-		return self.children[i]
-	def __len__(self):
-		return len(self.children)
-	def __setslice__(self, low, high, seq):
-		self.children[low:high] = seq
-	def __cmp__(self, o):
-		return cmp(self.type, o)
+    def __init__(self, type, children=[]):
+        #TODO: write an init function that can accept any number of named arguments
+        self.type = type   # type string
+        #self.parent = None 
+        self.children = [] # list of children
+        self.loc  = None   # the location in the program
+        self.toks = []     # the original tokens
+    
+    
+    def __repr__(self):
+        className = a.__class__.__name__
+        reprString = className + "(" + repr(self.type) +  + ")"
+        return reprString
+        
+##    def __getitem__(self, i):
+##        return self.children[i]
+##    def __len__(self):
+##        return len(self.children)
+##    def __setslice__(self, low, high, seq):
+##        self.children[low:high] = seq
+##    def __cmp__(self, o):
+##        return cmp(self.type, o)
 
 ##    def copy(self):
 ##        """
@@ -377,7 +387,7 @@ if __name__ == '__main__':
     print "keywords:"
     print parser.keywords
     
-    flagTestParser = True
+    flagTestParser = False
     if flagTestParser:
         parser.debugSyntax = 1
         parser.debugSyntax = 2
