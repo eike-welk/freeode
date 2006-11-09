@@ -324,14 +324,15 @@ class Node(object):
         #TODO: write an init function that can accept any number of named arguments
         self.type = type   # type string
         #self.parent = None 
-        self.children = [] # list of children
+        self.children = children # list of children
         self.loc  = None   # the location in the program
         self.toks = []     # the original tokens
     
     
     def __repr__(self):
         className = self.__class__.__name__
-        reprString = className + "(" + repr(self.type) + repr(self.children) + ")"
+        reprString = className  + "(" + repr(self.type) + "," \
+                                + repr(self.children) + ")"
         return reprString
         
 ##    def __getitem__(self, i):
