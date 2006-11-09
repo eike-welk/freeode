@@ -330,8 +330,8 @@ class Node(object):
     
     
     def __repr__(self):
-        className = a.__class__.__name__
-        reprString = className + "(" + repr(self.type) +  + ")"
+        className = self.__class__.__name__
+        reprString = className + "(" + repr(self.type) + repr(self.children) + ")"
         return reprString
         
 ##    def __getitem__(self, i):
@@ -382,10 +382,13 @@ if __name__ == '__main__':
     # Self-testing code goes here.
     #TODO: add unit tests
     
-    parser = ParseStage()
+    print Node("root", [Node("child1",[]),Node("child2",[])])
     
-    print "keywords:"
-    print parser.keywords
+##    parser = ParseStage()
+##    
+##    print "keywords:"
+##    print parser.keywords
+    
     
     flagTestParser = False
     if flagTestParser:
