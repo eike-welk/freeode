@@ -401,9 +401,9 @@ class Node(object):
         object.__init__(self)
         self.typ = typ   # type string
         #self.parent = None
-        self.kids = kids # list of children
-        self.loc  = loc  # the location in the program
-        self.dat = dat   # whatever is appropriate
+        self.kids = kids[:] # list of children
+        self.loc  = loc     # the location in the program
+        self.dat = dat      # whatever is appropriate
 
 
     def __repr__(self):
@@ -475,7 +475,7 @@ class SyntaxTreeGenerator(object):
     def createSyntaxTree(self, parseResult):
         """Create the syntax tree from a ParseResult."""
         toklist = parseResult.asList()[0]
-        pdb.set_trace()
+        #pdb.set_trace()
         tree = self._createSubTree(toklist)
         return tree
 
@@ -497,36 +497,32 @@ class SyntaxTreeGenerator(object):
         except:
             print "Warning node without node type or meta dict discovered!"
             raise
-
+    #TODO: "m_p1", "memA", "funcCall", "paren", "buildInVal", --- "m_i2", "num"
 
     def _createInfixOp(self, tokList):
         """
         Create node for math infix operators: + - * / ^
         The item has the followin structure:
-        <meta dictionary>, <expression_l>, <operator>, <expression_r>
+        [<meta dictionary>, <expression_l>, <operator>, <expression_r>]
         """
         nCurr = Node("m_i2")
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
             setattr(nCurr, attrName, attrVal)
-        #Debug code
-        lhsToks = tokList[1]; operator = tokList[2]; rhsToks = tokList[3];
-        #Process remainig items
-        lhsTree = self._createSubTree(tokList[1])
-        nCurr.dat = tokList[2]
-        rhsTree = self._createSubTree(tokList[3])
-        nCurr.kids.append(lhsTree)
-        nCurr.kids.append(rhsTree)
-
+        #create children and store operator
+        lhsTree = self._createSubTree(tokList[1]) #child lhs
+        nCurr.dat = tokList[2]                    #operator
+        rhsTree = self._createSubTree(tokList[3]) #child rhs
+        nCurr.kids=[lhsTree, rhsTree]
         return nCurr
 
 
     def _createNumber(self, tokList):
         """
-        Create node for math infix operators: + - * / ^
+        Create node for a number: 5.23
         The item has the followin structure:
-        <meta dictionary>, <number>
+        [<meta dictionary>, <number>]
         """
         nCurr = Node("num")
         #Create an attribute for each key value pair in the meta dictionary
@@ -535,7 +531,6 @@ class SyntaxTreeGenerator(object):
             setattr(nCurr, attrName, attrVal)
         #Store the number
         nCurr.dat = tokList[1]
-
         return nCurr
 
 
