@@ -29,12 +29,15 @@ Parser for the SIML simulation language.
 """
 #TODO: usage (above)
 
-import pdb
+import pprint #pretty printer
+import pdb    #debuber
+
 from pyparsing import Literal,Keyword,CaselessLiteral,Word,Combine,Group,Optional, \
     ZeroOrMore,Forward,nums,alphas,restOfLine,ParseResults, ParseException, \
     ParseFatalException
 
 
+pp = pprint.PrettyPrinter(indent=4)
 
 
 class ParseStage(object):
@@ -76,6 +79,7 @@ class ParseStage(object):
 
 
     def __init__(self):
+        object.__init__(self)
         self._parser = self.defineLanguageSyntax() #Create parser object
         """The parser object from pyParsing"""
 
@@ -124,7 +128,7 @@ class ParseStage(object):
             return toks.copy()
 
         # toks is structured like this [["2","+","5"]]
-        typeStr = self.defineNodeType("mopI2")
+        typeStr = self.defineNodeType("m_i2")
         newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
         newToks += toks[0].copy() #add original contents
         return ParseResults([newToks]) #wrap in []; return.
@@ -144,7 +148,7 @@ class ParseStage(object):
             return toks.copy()
 
         # toks is structured like this [["-","5"]]
-        typeStr = self.defineNodeType("mopP1")
+        typeStr = self.defineNodeType("m_p1")
         newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
         newToks += toks[0].copy() #add original contents
         return ParseResults([newToks]) #wrap in []; return.
@@ -210,6 +214,48 @@ class ParseStage(object):
         return ParseResults([newToks]) #wrap in []; return.
 
 
+    def actionNumber(self, str, loc, toks):
+        """
+        Parse action for a real number: 5.23 .
+        Put additional information into parse result, that would
+        be lost otherwise. The information is stored in a dict, and put before
+        the original parse result.
+        """
+        #debug code-----------------
+        if   self.debugSyntax == 2:
+            return None
+        elif self.debugSyntax == 1:
+            return toks.copy()
+
+        #toks is structured like this [['5.23']]
+        typeStr = self.defineNodeType("num")
+        newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
+        newToks += toks[0].copy() #add original contents
+        return ParseResults([newToks]) #wrap in []; return.
+
+
+    def actionbuiltInConstant(self, str, loc, toks):
+        """
+        Parse action for a built in constant: pi .
+        Put additional information into parse result, that would
+        be lost otherwise. The information is stored in a dict, and put before
+        the original parse result.
+        """
+        #debug code-----------------
+        if   self.debugSyntax == 2:
+            return None
+        elif self.debugSyntax == 1:
+            return toks.copy()
+
+        #toks is structured like this [['pi']]
+        typeStr = self.defineNodeType("buildInVal")
+        newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
+        newToks += toks[0].copy() #add original contents
+        return ParseResults([newToks]) #wrap in []; return.
+
+
+
+
     def actionCheckIdentifier(self, str, loc, toks):
         """
         Parse action to check an identifier.
@@ -240,21 +286,22 @@ class ParseStage(object):
 
         #Constants that are built into the language
         #TODO: come up with better name: time is no constant
-        builtInConstant = ( kw("e") | kw("pi") | kw("time"))        .setName("builtInConstant")#.setDebug(True)
+        builtInConstant = Group( kw("e") | kw("pi") | kw("time"))   .setParseAction(self.actionbuiltInConstant)\
+                                                                    .setName("builtInConstant")#.setDebug(True)
 
         #Functions that are built into the language
-        builtInFuntion = (  kw("sin") | kw("cos") | kw("tan") |
-                            kw("sqrt") | kw("ln")               )   .setName("builtInFuntion")#.setDebug(True)
+        builtInFuncName = (  kw("sin") | kw("cos") | kw("tan") |
+                             kw("sqrt") | kw("ln")               )  .setName("builtInFuncName")#.setDebug(True)
 
         #Integer (unsigned).
-        uInteger = Word(nums)                                        .setName("builtInConstant")#.setDebug(True)
+        uInteger = Word(nums)                                       .setName("uInteger")#.setDebug(True)
         #Floating point number (unsigned).
         eE = CaselessLiteral( "E" )
-        uNumber = ( Combine(
+        uNumber = Group( Combine(
                     uInteger +
                     Optional("." + Optional(uInteger)) +
-                    Optional(eE + Word("+-"+nums, nums))     )
-                 )                                                  .setName("builtInConstant")#.setDebug(True)
+                    Optional(eE + Word("+-"+nums, nums))))          .setParseAction(self.actionNumber)\
+                                                                    .setName("uNumber")#.setDebug(True)
 
         # .............. Mathematical expression .............................................................
         #"Forward declarations" for recursive rules
@@ -268,7 +315,7 @@ class ParseStage(object):
         #sin(2*a), (a+2), a.b.c(2.5:3.5))
         #Function call, parenthesis and memory access can however contain
         #independent expressions.
-        funcCall = Group( builtInFuntion + "(" + expression + ")")  .setParseAction(self.actionFuncCall) \
+        funcCall = Group( builtInFuncName + "(" + expression + ")") .setParseAction(self.actionFuncCall) \
                                                                     .setName("funcCall")#.setDebug(True)
         parentheses = Group("(" + expression + ")")                 .setParseAction(self.actionParentheses) \
                                                                     .setName("parentheses")#.setDebug(True)
@@ -351,6 +398,7 @@ class Node(object):
         #*args    : is a list of all normal arguments
         #**kwargs : is a dict of keyword arguments
         #Code for derived classes: super(A, self).__init__(*args, **kwds)
+        object.__init__(self)
         self.typ = typ   # type string
         #self.parent = None
         self.kids = kids # list of children
@@ -362,7 +410,6 @@ class Node(object):
         className = self.__class__.__name__
         typeStr = repr(self.typ)
         childStr = repr(self.kids)
-
         #if location and contents have their default value, don't print them
         if self.loc == None:
             locStr = ''
@@ -377,12 +424,15 @@ class Node(object):
         return reprStr
 
 
-##    def __getitem__(self, i):
-##        return self.children[i]
-##    def __len__(self):
-##        return len(self.children)
-##    def __setslice__(self, low, high, seq):
-##        self.children[low:high] = seq
+    #Acces to childern throug []
+    def __getitem__(self, i):
+        return self.kids[i]
+    def __len__(self):
+        return len(self.kids)
+    #def __getslice__(self, low, high):
+        #return self.kids[low:high]
+    #def __setslice__(self, low, high, childList):
+        #self.kids[low:high] = seq
 ##    def __cmp__(self, o):
 ##        return cmp(self.type, o)
 
@@ -424,53 +474,108 @@ class SyntaxTreeGenerator(object):
 
     def createSyntaxTree(self, parseResult):
         """Create the syntax tree from a ParseResult."""
-        return self.createSubTree(parseResult.asList())
+        toklist = parseResult.asList()[0]
+        pdb.set_trace()
+        tree = self._createSubTree(toklist)
+        return tree
 
 
-    def createSubTree(self, parseResult):
+    def _createSubTree(self, tokList):
         """Central dispatcher function for recursive tree construction."""
 
-        #look at the node type and decide which member function handels the nodeTypes
-        #The first item can be a dict with meta information
-        if isinstance(parseResult[0], type({})):
-            nType = parseResult[0]["typ"]
-        else:
-            nodeType = "generic"
-        #...
-        #Last resort: generic nodeTypes
-        return self.createGenericNode(parseResult)
+        try:
+            #First item is a dict with meta information. Get node type from there.
+            nType = tokList[0]["typ"]
 
-
-    def createGenericNode(self, parseResult):
-        """
-        Create a generic node.
-        Parse result is a list of lists: [{"loc":0}"1", "+", [{"loc":2}"2", "*", "3"]]
-        1. For every list item create a child node.
-        2. Put everything else into the dat attribute.
-        """
-        node = Node("generic")
-        node.dat = []
-
-        #pdb.set_trace()
-        #The first item can be a dict with meta information
-        if isinstance(parseResult[0], type({})):
-            metaDict = parseResult[0]
-            startItem = 1
-        else:
-            metaDict = {}
-            startItem = 0
-        #Create an attribute for each key value pair
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(node, attrName, attrVal)
-
-        #For all other items create either a child or put them into dat
-        for item in parseResult[startItem:len(parseResult)]:
-            if isinstance(item, type([])):
-                node.kids.append(self.createSubTree(item))
+            if nType == "m_i2":
+                return self._createInfixOp(tokList)
+            elif nType == "num":
+                return self._createNumber(tokList)
             else:
-                node.dat.append(item)
+                print "Warning unknown node type discovered: " + nType
+                return None
+        except:
+            print "Warning node without node type or meta dict discovered!"
+            raise
 
-        return node
+
+    def _createInfixOp(self, tokList):
+        """
+        Create node for math infix operators: + - * / ^
+        The item has the followin structure:
+        <meta dictionary>, <expression_l>, <operator>, <expression_r>
+        """
+        nCurr = Node("m_i2")
+        #Create an attribute for each key value pair in the meta dictionary
+        metaDict = tokList[0]
+        for attrName, attrVal in metaDict.iteritems():
+            setattr(nCurr, attrName, attrVal)
+        #Debug code
+        lhsToks = tokList[1]; operator = tokList[2]; rhsToks = tokList[3];
+        #Process remainig items
+        lhsTree = self._createSubTree(tokList[1])
+        nCurr.dat = tokList[2]
+        rhsTree = self._createSubTree(tokList[3])
+        nCurr.kids.append(lhsTree)
+        nCurr.kids.append(rhsTree)
+
+        return nCurr
+
+
+    def _createNumber(self, tokList):
+        """
+        Create node for math infix operators: + - * / ^
+        The item has the followin structure:
+        <meta dictionary>, <number>
+        """
+        nCurr = Node("num")
+        #Create an attribute for each key value pair in the meta dictionary
+        metaDict = tokList[0]
+        for attrName, attrVal in metaDict.iteritems():
+            setattr(nCurr, attrName, attrVal)
+        #Store the number
+        nCurr.dat = tokList[1]
+
+        return nCurr
+
+
+    #def createGenericNode(self, tokList):
+        #"""
+        #Create a generic node.
+        #Parse result is a list of lists: [{"loc":0}"1", "+", [{"loc":2}"2", "*", "3"]]
+        #1. For every list item create a child node.
+        #2. Put everything else into the dat attribute.
+        #"""
+        #nodeNew = Node("gen")
+        #nodeNew.dat = []
+
+        ##pdb.set_trace()
+        ##The first item can be a dict with meta information
+        #if isinstance(tokList[0], type({})):
+            #metaDict = tokList[0]
+            #startItem = 1
+        #else:
+            #metaDict = {}
+            #startItem = 0
+        ##Create an attribute for each key value pair
+        #for attrName, attrVal in metaDict.iteritems():
+            #setattr(nodeNew, attrName, attrVal)
+
+        ##For all other items create either a child or put them into dat
+        #print 'enter function with: ', tokList
+        ##pdb.set_trace()
+        #for i in range(startItem, len(tokList)):
+            #currItem = tokList[i]
+            #if isinstance(currItem, type([])):
+                #print 'currItem: ', currItem
+                #childNew = self.createSubTree(currItem)
+                #print 'childNew: ', childNew
+                #nodeNew.kids.append(childNew)
+            #else:
+                #nodeNew.dat.append(currItem)
+
+        #print 'exit function with: ', nodeNew
+        #return nodeNew
 
 
 def doTests():
@@ -486,9 +591,15 @@ def doTests():
         parser = ParseStage()
         treeGen = SyntaxTreeGenerator()
 
-        parseResult = parser.parseProgram("0+1+2+3+4")
-        print parseResult
-        print treeGen.createSyntaxTree(parseResult)
+        pres = parser.parseProgram("0+1+2")
+        print pres
+        tree = treeGen.createSyntaxTree(pres)
+        print tree
+        #pres = [['0'],['1'],['2']]
+        #print pr
+        #tree = treeGen.createSubTree(pr)
+        ##pp.pprint(tree)
+        #print tree
 
     #test the parser
     #flagTestParser = True

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import pdb
 import simlparser
 
 def main():
@@ -8,3 +9,8 @@ def main():
 
 main()
 
+#pdb.set_trace()
+
+
+#Reload a previously imported module.
+#reload(simlparser)
