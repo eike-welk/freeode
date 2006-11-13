@@ -373,28 +373,44 @@ class ParseStage(object):
 
         #..................... Statements ..............................................................
         statementList = Forward()
+        #Flow control - if then else
         ifStatement = Group(
                         kw('if') + boolExpression + kw('then') +
                         statementList +
                         Optional(kw('else') + statementList) +
                         kw('end'))                                  .setName("ifStatement")#.setDebug(True)
+        #compute expression and assign to value
         assignment = Group(valAccess + ':=' + expression + ';')     .setName("assignment")#.setDebug(True)
+        #insert code of a child model
+        blockName = kw('run') | kw('init') #| kw('insert')
+        blockExecute = Group(blockName + identifier + ';')          .setName("insertStatement")#.setDebug(True)
+        #define parameters, variables and submodels
+        defRole = kw('par') | kw('var') | kw('sub') | kw('submodel')
+        dedinitionStatement = Group(defRole + identifier + ';')
 
-        statement = ifStatement | assignment
+        statement = (   ifStatement | assignment | blockExecute |
+                        dedinitionStatement)                        .setName("statement")#.setDebug(True)
         statementList << Group(OneOrMore(statement))                .setName("statementList")#.setDebug(True)
 
-        #...
-        parameterSection = kw('parameter')
-        variableSection = kw('variable')
-        equationSection = kw('equation') + ZeroOrMore(statement)
-        block = ZeroOrMore(parameterSection) + ZeroOrMore(variableSection) + ZeroOrMore(equationSection)
-        objStartKw = kw('procedure') | kw('model')
-        object = Group(objStartKw + block + kw('end'))
-        program = Group(OneOrMore(object))
+        #..................... Class ........................................................................
+        definitionList = Group(OneOrMore(dedinitionStatement))      .setName("definitionList")#.setDebug(True)
+        runBlock = Group(   kw('runblock') +
+                            statementList + kw('end'))              .setName("runBlock")#.setDebug(True)
+        initBlock = Group(  kw('initblock') +
+                            statementList + kw('end'))              .setName("runBlock")#.setDebug(True)
+
+        classRole = kw('procedure') | kw('model') #| kw('paramset')
+        classDef = Group(   classRole + identifier +
+                            Optional(definitionList) +
+                            Optional(runBlock) +
+                            Optional(initBlock)  +
+                            kw('end'))                              .setName("class")#.setDebug(True)
+
+        program = Group(OneOrMore(classDef))                        .setName("program")#.setDebug(True)
         #................ End of language definition ..................................................
 
         #determine start symbol
-        startSymbol = program
+        startSymbol = statementList
         #set up comments
         singleLineCommentCpp = "//" + restOfLine
         singleLineCommentPy = "#" + restOfLine
@@ -683,8 +699,15 @@ def doTests():
         parser = ParseStage()
         parser.debugSyntax = 1
         #parser.debugSyntax = 2
-        print parser.parseProgram("a:=0+1;b:=2+3+4;")
-        print parser.parseProgram("if a==0 then b:=-1; else b:=2+3+4; a:=1; end")
+        #print parser.parseProgram('model test var a; par b; end')
+        print parser.parseProgram('a:=2; b:=5')
+        #print parser.parseProgram(
+#"""
+#model test
+#runblock a:=2; end
+#""")
+        #print parser.parseProgram("a:=0+1;b:=2+3+4;")
+        #print parser.parseProgram("if a==0 then b:=-1; else b:=2+3+4; a:=1; end")
         #print parser.parseProgram("0*1*2*3*4")
         #print parser.parseProgram("0^1^2^3^4")
         #print parser.parseProgram("0+1*2+3+4")
