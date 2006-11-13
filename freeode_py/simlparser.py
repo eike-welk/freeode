@@ -32,8 +32,8 @@ Parser for the SIML simulation language.
 import pprint #pretty printer
 import pdb    #debuber
 
-from pyparsing import Literal,Keyword,CaselessLiteral,Word,Combine,Group,Optional, \
-    ZeroOrMore,Forward,nums,alphas,restOfLine,ParseResults, ParseException, \
+from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
+    ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,ParseResults, ParseException, \
     ParseFatalException
 
 
@@ -64,13 +64,13 @@ class ParseStage(object):
     2: Do not modify parse result (from pyParsing library).
     """
 
-    keywords = []
+    keywords = set([])
     """
     List of all keywords (filled by defineLanguageSyntax() and defineKeyword).
     TODO: change to set.
     """
 
-    nodeTypes = []
+    nodeTypes = set([])
     """
     List of all type strings, that identify the nodes in the parse result.
     (filled by defineNodeType() in the semantic actions).
@@ -91,7 +91,7 @@ class ParseStage(object):
         Keyword class directly.
         """
         if not (inString in self.keywords):
-            self.keywords.append(inString)
+            self.keywords.add(inString)
         return Keyword(inString)
 
 
@@ -99,7 +99,7 @@ class ParseStage(object):
         """Store type string (in self.nodeTypes) and return it."""
         #TODO create faster solution! Don't call this function in parse actions.
         if not (inString in self.nodeTypes):
-            self.nodeTypes.append(inString)
+            self.nodeTypes.add(inString)
         return inString
 
 
@@ -315,7 +315,7 @@ class ParseStage(object):
         #Basic building blocks of mathematical expressions e.g.: (1, x, e,
         #sin(2*a), (a+2), a.b.c(2.5:3.5))
         #Function call, parenthesis and memory access can however contain
-        #independent expressions.
+        #expressions.
         funcCall = Group( builtInFuncName + "(" + expression + ")") .setParseAction(self.actionFuncCall) \
                                                                     .setName("funcCall")#.setDebug(True)
         parentheses = Group("(" + expression + ")")                 .setParseAction(self.actionParentheses) \
@@ -326,8 +326,9 @@ class ParseStage(object):
         #The basic mathematical operations: -a+b*c^d.
         #All operations have right-to-left associativity; althoug this is only
         #required for exponentiation. Precedence decreases towards the bottom.
-        #Unary minus: -a;
-        unaryMinus = Group("-" + signedAtom)            .setParseAction(self.actionPrefixUnaryOp) \
+        #Unary minus: -a, not a;
+        negop = "-" | kw("not")
+        unaryMinus = Group(negop + signedAtom)          .setParseAction(self.actionPrefixUnaryOp) \
                                                         .setName("unaryMinus")#.setDebug(True)
         signedAtom << (atom | unaryMinus)               .setName("signedAtom")#.setDebug(True)
 
@@ -351,12 +352,14 @@ class ParseStage(object):
                                                         .setName("expression2")#.setDebug(True)
         expression << (expression2 | expression1)       .setName("expression")#.setDebug(True)
 
-        #TODO: missing are relational operators (<, >, ==, ...).
-        #They have the lowest precedence and would be placed here
-
+        #Relational operators : <, >, ==, ...
+        #TODO: missing are: or, and, not
+        relop = L('<') | L('>') | L('<=') | L('>=') | L('==')
+        boolExpression = Group(expression + relop + expression) .setParseAction(self.actionInfixBinOp) \
+                                                                .setName("expression2")#.setDebug(True)
         #................ End mathematical expression ................................................---
 
-        #Identifiers
+        #................ Identifiers ...................................................................
         #TODO: check for keywods -  .setParseAction(self.actionCheckIdentifier) \
         identifier = Word(alphas, alphas+nums+"_")              .setName("identifier")#.setDebug(True)
 
@@ -368,10 +371,30 @@ class ParseStage(object):
                             ZeroOrMore(dotSup  + identifier) )  .setParseAction(self.actionValAccess) \
                                                                 .setName("valAccess")#.setDebug(True)
 
+        #..................... Statements ..............................................................
+        statementList = Forward()
+        ifStatement = Group(
+                        kw('if') + boolExpression + kw('then') +
+                        statementList +
+                        Optional(kw('else') + statementList) +
+                        kw('end'))                                  .setName("ifStatement")#.setDebug(True)
+        assignment = Group(valAccess + ':=' + expression + ';')     .setName("assignment")#.setDebug(True)
+
+        statement = ifStatement | assignment
+        statementList << Group(OneOrMore(statement))                .setName("statementList")#.setDebug(True)
+
+        #...
+        parameterSection = kw('parameter')
+        variableSection = kw('variable')
+        equationSection = kw('equation') + ZeroOrMore(statement)
+        block = ZeroOrMore(parameterSection) + ZeroOrMore(variableSection) + ZeroOrMore(equationSection)
+        objStartKw = kw('procedure') | kw('model')
+        object = Group(objStartKw + block + kw('end'))
+        program = Group(OneOrMore(object))
         #................ End of language definition ..................................................
 
         #determine start symbol
-        startSymbol = expression
+        startSymbol = program
         #set up comments
         singleLineCommentCpp = "//" + restOfLine
         singleLineCommentPy = "#" + restOfLine
@@ -474,45 +497,7 @@ class ASTGenerator(object):
 
     def __init__(self):
         object.__init__(self)
-        #TODO: list or dict: "m_p1", "m_i2", "num", "valA", "builtInVal", "paren", "funcCall",
-        #TODO: ldictCreateFuncs = {"m_p1":_createPrefixOp}
         pass
-
-
-    def createSyntaxTree(self, parseResult):
-        """Create the syntax tree from a ParseResult."""
-        if isinstance(parseResult, ParseResults):
-            toklist = parseResult.asList()[0]   #Parse result object have to be converted to lists
-        else:
-            toklist = parseResult
-        #pdb.set_trace()
-        return self._createSubTree(toklist)
-
-
-    def _createSubTree(self, tokList):
-        """Central dispatcher function for recursive tree construction."""
-
-        #First item is a dict with meta information. Get node type from there.
-        nType = tokList[0]["typ"]
-
-        if   nType == "m_p1":
-            return self._createPrefixOp(tokList)
-        elif nType == "m_i2":
-            return self._createInfixOp(tokList)
-        elif nType == "funcCall":
-            return self._createFunctionCall(tokList)
-        elif nType == "paren":
-            return self._createParenthesePair(tokList)
-        elif nType == "num":
-            return self._createNumber(tokList)
-        elif nType == "builtInVal":
-            return self._createBuiltInValue(tokList)
-        elif nType == "valA":
-            return self._createValueAccess(tokList)
-        else:
-            raise ASTGeneratorException(
-                "Compiler internal error! Unknown node type discovered: " +
-                nType)
 
 
     def _createPrefixOp(self, tokList):
@@ -633,6 +618,43 @@ class ASTGenerator(object):
         return nCurr
 
 
+    funcDict = {"m_p1":_createPrefixOp, "m_i2":_createInfixOp,
+                "funcCall":_createFunctionCall, "paren":_createParenthesePair,
+                "num":_createNumber,"builtInVal":_createBuiltInValue,
+                "valA":_createValueAccess}
+    """Dictionary with type string and node creator function."""
+
+
+    def _createSubTree(self, tokList):
+        """Central dispatcher function for recursive tree construction.
+        tokList is a nested list."""
+
+        #First list item is a dict with meta information.
+        metaDict = tokList[0]
+        if not isinstance(metaDict, type({})):
+            raise ASTGeneratorException("Node has no metadict!")
+
+        nType = metaDict["typ"]             #Get node type.
+        creatorFunc = self.funcDict[nType]  #Find matching creator function
+        return creatorFunc(self, tokList)   #call ceator function
+
+
+    def createSyntaxTree(self, parseResult):
+        """
+        Create the syntax tree from a ParseResult.
+        parameter parseResult: ParseResult object, or nested list.
+        """
+        if isinstance(parseResult, ParseResults): #Parse result objects
+            tokList = parseResult.asList()[0]     #must be converted to lists
+            tokList = tokList[0]     #remove one pair of square brackets
+        else:
+            tokList = parseResult
+        #pdb.set_trace()
+        return self._createSubTree(tokList)
+
+
+
+
 def doTests():
     """Perform various tests."""
 
@@ -640,42 +662,39 @@ def doTests():
     #print t1
 
     #test the AST generator
-    flagTestASTGenerator = True
-    #flagTestASTGenerator = False
+    #flagTestASTGenerator = True
+    flagTestASTGenerator = False
     if flagTestASTGenerator:
         parser = ParseStage()
         treeGen = ASTGenerator()
 
-        pres = parser.parseProgram("2*sin(1)")
+        pres = parser.parseProgram("5.1+2")
         print "parse result:"
         print pres
         tree = treeGen.createSyntaxTree(pres)
         print "tree:"
         print tree
-        #pres = [['0'],['1'],['2']]
-        #print pr
-        #tree = treeGen.createSubTree(pr)
-        ##pp.pprint(tree)
-        #print tree
+
 
     #test the parser
-    #flagTestParser = True
-    flagTestParser = False
+    flagTestParser = True
+    #flagTestParser = False
     if flagTestParser:
         parser = ParseStage()
-        #parser.debugSyntax = 1
+        parser.debugSyntax = 1
         #parser.debugSyntax = 2
-        print parser.parseProgram("0+1+2+3+4")
-        print parser.parseProgram("0*1*2*3*4")
-        print parser.parseProgram("0^1^2^3^4")
-        print parser.parseProgram("0+1*2+3+4")
-        print parser.parseProgram("0*1^2*3*4")
-        print parser.parseProgram("0+(1+2)+3+4")
-        print parser.parseProgram("-0+1+--2*-3--4")
-        print parser.parseProgram("-aa.a+bb.b+--cc.c*-dd.d--ee.e+f")
-        print parser.parseProgram("0+sin(2+3*4)+5")
-        print parser.parseProgram("0+a1.a2+bb.b1.b2+3+4 #comment")
-        print parser.parseProgram("0.123+1.2e3")
+        print parser.parseProgram("a:=0+1;b:=2+3+4;")
+        print parser.parseProgram("if a==0 then b:=-1; else b:=2+3+4; a:=1; end")
+        #print parser.parseProgram("0*1*2*3*4")
+        #print parser.parseProgram("0^1^2^3^4")
+        #print parser.parseProgram("0+1*2+3+4")
+        #print parser.parseProgram("0*1^2*3*4")
+        #print parser.parseProgram("0+(1+2)+3+4")
+        #print parser.parseProgram("-0+1+--2*-3--4")
+        #print parser.parseProgram("-aa.a+bb.b+--cc.c*-dd.d--ee.e+f")
+        #print parser.parseProgram("0+sin(2+3*4)+5")
+        #print parser.parseProgram("0+a1.a2+bb.b1.b2+3+4 #comment")
+        #print parser.parseProgram("0.123+1.2e3")
         #parser.parseProgram("0+1*2^3^4+5+6*7+8+9")
 
         print "keywords:"
