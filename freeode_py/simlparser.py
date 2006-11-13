@@ -154,7 +154,7 @@ class ParseStage(object):
         return ParseResults([newToks]) #wrap in []; return.
 
 
-    def actionMemAccess(self, str, loc, toks):
+    def actionValAccess(self, str, loc, toks):
         """
         Parse action for memory access: aa.bb.cc
         Put additional information into parse result, that would
@@ -168,7 +168,7 @@ class ParseStage(object):
             return toks.copy()
 
         # toks is structured like this [["aa","bb","cc"]]
-        typeStr = self.defineNodeType("memA")
+        typeStr = self.defineNodeType("valA")
         newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
         newToks += toks[0].copy() #add original contents
         return ParseResults([newToks]) #wrap in []; return.
@@ -234,9 +234,9 @@ class ParseStage(object):
         return ParseResults([newToks]) #wrap in []; return.
 
 
-    def actionbuiltInConstant(self, str, loc, toks):
+    def actionbuiltInValue(self, str, loc, toks):
         """
-        Parse action for a built in constant: pi .
+        Parse action for a built in value: pi .
         Put additional information into parse result, that would
         be lost otherwise. The information is stored in a dict, and put before
         the original parse result.
@@ -248,7 +248,7 @@ class ParseStage(object):
             return toks.copy()
 
         #toks is structured like this [['pi']]
-        typeStr = self.defineNodeType("buildInVal")
+        typeStr = self.defineNodeType("builtInVal")
         newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
         newToks += toks[0].copy() #add original contents
         return ParseResults([newToks]) #wrap in []; return.
@@ -284,12 +284,13 @@ class ParseStage(object):
         kw = self.defineKeyword # Usage: test = kw("variable")
         L = Literal # Usage: L("+")
 
-        #Constants that are built into the language
-        #TODO: come up with better name: time is no constant
-        builtInConstant = Group( kw("e") | kw("pi") | kw("time"))   .setParseAction(self.actionbuiltInConstant)\
+        #Values that are built into the language
+        #TODO: this should be a for loop and a list (attribute)!
+        builtInConstant = Group( kw("e") | kw("pi") | kw("time"))   .setParseAction(self.actionbuiltInValue)\
                                                                     .setName("builtInConstant")#.setDebug(True)
 
         #Functions that are built into the language
+        #TODO: this should be a for loop and a list (attribute)!
         builtInFuncName = (  kw("sin") | kw("cos") | kw("tan") |
                              kw("sqrt") | kw("ln")               )  .setName("builtInFuncName")#.setDebug(True)
 
@@ -309,7 +310,7 @@ class ParseStage(object):
         term =  Forward()
         factor = Forward()
         signedAtom = Forward()
-        memAccess = Forward() #For PDE: may also contain expressions for slices: a.b.c(2.5:3.5)
+        valAccess = Forward() #For PDE: may also contain expressions for slices: a.b.c(2.5:3.5)
 
         #Basic building blocks of mathematical expressions e.g.: (1, x, e,
         #sin(2*a), (a+2), a.b.c(2.5:3.5))
@@ -320,7 +321,7 @@ class ParseStage(object):
         parentheses = Group("(" + expression + ")")                 .setParseAction(self.actionParentheses) \
                                                                     .setName("parentheses")#.setDebug(True)
         atom = (    uNumber | builtInConstant | funcCall |
-                    memAccess | parentheses               )         .setName("atom")#.setDebug(True)
+                    valAccess | parentheses               )         .setName("atom")#.setDebug(True)
 
         #The basic mathematical operations: -a+b*c^d.
         #All operations have right-to-left associativity; althoug this is only
@@ -362,10 +363,10 @@ class ParseStage(object):
         #Compound identifiers for variables or parameters "aaa.bbb".
         #TODO: add slices: aaa.bbb(2:3)
         dotSup = Literal(".").suppress()
-        memAccess << Group( Optional("$") +
+        valAccess << Group( Optional("$") +
                             identifier +
-                            ZeroOrMore(dotSup  + identifier) )  .setParseAction(self.actionMemAccess) \
-                                                                .setName("memAccess")#.setDebug(True)
+                            ZeroOrMore(dotSup  + identifier) )  .setParseAction(self.actionValAccess) \
+                                                                .setName("valAccess")#.setDebug(True)
 
         #................ End of language definition ..................................................
 
@@ -463,46 +464,79 @@ class Node(object):
 ##        return newObject
 
 
+class ASTGeneratorException(Exception):
+    """Exception raised by the ASTGenerator class"""
+    pass
 
-class SyntaxTreeGenerator(object):
+
+class ASTGenerator(object):
     """Create a syntax tree from the parsers output"""
 
     def __init__(self):
         object.__init__(self)
+        #TODO: list or dict: "m_p1", "m_i2", "num", "valA", "builtInVal", "paren", "funcCall",
+        #TODO: ldictCreateFuncs = {"m_p1":_createPrefixOp}
         pass
 
 
     def createSyntaxTree(self, parseResult):
         """Create the syntax tree from a ParseResult."""
-        toklist = parseResult.asList()[0]
+        if isinstance(parseResult, ParseResults):
+            toklist = parseResult.asList()[0]   #Parse result object have to be converted to lists
+        else:
+            toklist = parseResult
         #pdb.set_trace()
-        tree = self._createSubTree(toklist)
-        return tree
+        return self._createSubTree(toklist)
 
 
     def _createSubTree(self, tokList):
         """Central dispatcher function for recursive tree construction."""
 
-        try:
-            #First item is a dict with meta information. Get node type from there.
-            nType = tokList[0]["typ"]
+        #First item is a dict with meta information. Get node type from there.
+        nType = tokList[0]["typ"]
 
-            if nType == "m_i2":
-                return self._createInfixOp(tokList)
-            elif nType == "num":
-                return self._createNumber(tokList)
-            else:
-                print "Warning unknown node type discovered: " + nType
-                return None
-        except:
-            print "Warning node without node type or meta dict discovered!"
-            raise
-    #TODO: "m_p1", "memA", "funcCall", "paren", "buildInVal", --- "m_i2", "num"
+        if   nType == "m_p1":
+            return self._createPrefixOp(tokList)
+        elif nType == "m_i2":
+            return self._createInfixOp(tokList)
+        elif nType == "funcCall":
+            return self._createFunctionCall(tokList)
+        elif nType == "paren":
+            return self._createParenthesePair(tokList)
+        elif nType == "num":
+            return self._createNumber(tokList)
+        elif nType == "builtInVal":
+            return self._createBuiltInValue(tokList)
+        elif nType == "valA":
+            return self._createValueAccess(tokList)
+        else:
+            raise ASTGeneratorException(
+                "Compiler internal error! Unknown node type discovered: " +
+                nType)
+
+
+    def _createPrefixOp(self, tokList):
+        """
+        Create node for math prefix operators: -
+        Parameter tokList has the following structure:
+        [<meta dictionary>, <operator>, <expression_l>]
+        """
+        nCurr = Node("m_p1")
+        #Create an attribute for each key value pair in the meta dictionary
+        metaDict = tokList[0]
+        for attrName, attrVal in metaDict.iteritems():
+            setattr(nCurr, attrName, attrVal)
+        #create the child and store operator
+        nCurr.dat = tokList[1]                     #operator
+        childTree = self._createSubTree(tokList[2]) #child
+        nCurr.kids=[childTree]
+        return nCurr
+
 
     def _createInfixOp(self, tokList):
         """
         Create node for math infix operators: + - * / ^
-        The item has the followin structure:
+        Parameter tokList has the following structure:
         [<meta dictionary>, <expression_l>, <operator>, <expression_r>]
         """
         nCurr = Node("m_i2")
@@ -518,10 +552,43 @@ class SyntaxTreeGenerator(object):
         return nCurr
 
 
+    def _createFunctionCall(self, tokList):
+        """
+        Create node for function call: sin(2.1)
+        Parameter tokList has the following structure:
+        [<meta dictionary>, <function dentifier>, "(", <expression>, ")"]
+        """
+        nCurr = Node("funcCall")
+        #Create an attribute for each key value pair in the meta dictionary
+        metaDict = tokList[0]
+        for attrName, attrVal in metaDict.iteritems():
+            setattr(nCurr, attrName, attrVal)
+        #store child expession and function name
+        nCurr.dat = tokList[1]                       #function dentifier
+        nCurr.kids=[self._createSubTree(tokList[3])] #child expression
+        return nCurr
+
+
+    def _createParenthesePair(self, tokList):
+        """
+        Create node for a pair of parentheses that enclose an expression: (...)
+        Parameter tokList has the following structure:
+        [<meta dictionary>, "(", <expression>, ")"]
+        """
+        nCurr = Node("paren")
+        #Create an attribute for each key value pair in the meta dictionary
+        metaDict = tokList[0]
+        for attrName, attrVal in metaDict.iteritems():
+            setattr(nCurr, attrName, attrVal)
+        #Create and store child expression
+        nCurr.kids = [self._createSubTree(tokList[2])]
+        return nCurr
+
+
     def _createNumber(self, tokList):
         """
         Create node for a number: 5.23
-        The item has the followin structure:
+        Parameter tokList has the following structure:
         [<meta dictionary>, <number>]
         """
         nCurr = Node("num")
@@ -534,43 +601,36 @@ class SyntaxTreeGenerator(object):
         return nCurr
 
 
-    #def createGenericNode(self, tokList):
-        #"""
-        #Create a generic node.
-        #Parse result is a list of lists: [{"loc":0}"1", "+", [{"loc":2}"2", "*", "3"]]
-        #1. For every list item create a child node.
-        #2. Put everything else into the dat attribute.
-        #"""
-        #nodeNew = Node("gen")
-        #nodeNew.dat = []
+    def _createBuiltInValue(self, tokList):
+        """
+        Create node for a built in value: pi, time
+        Parameter tokList has the following structure:
+        [<meta dictionary>, <identifier>]
+        """
+        nCurr = Node("builtInVal")
+        #Create an attribute for each key value pair in the meta dictionary
+        metaDict = tokList[0]
+        for attrName, attrVal in metaDict.iteritems():
+            setattr(nCurr, attrName, attrVal)
+        #Store the built in value's name
+        nCurr.dat = tokList[1]
+        return nCurr
 
-        ##pdb.set_trace()
-        ##The first item can be a dict with meta information
-        #if isinstance(tokList[0], type({})):
-            #metaDict = tokList[0]
-            #startItem = 1
-        #else:
-            #metaDict = {}
-            #startItem = 0
-        ##Create an attribute for each key value pair
-        #for attrName, attrVal in metaDict.iteritems():
-            #setattr(nodeNew, attrName, attrVal)
 
-        ##For all other items create either a child or put them into dat
-        #print 'enter function with: ', tokList
-        ##pdb.set_trace()
-        #for i in range(startItem, len(tokList)):
-            #currItem = tokList[i]
-            #if isinstance(currItem, type([])):
-                #print 'currItem: ', currItem
-                #childNew = self.createSubTree(currItem)
-                #print 'childNew: ', childNew
-                #nodeNew.kids.append(childNew)
-            #else:
-                #nodeNew.dat.append(currItem)
-
-        #print 'exit function with: ', nodeNew
-        #return nodeNew
+    def _createValueAccess(self, tokList):
+        """
+        Create node for acces to a variable or parameter: bb.ccc.dd
+        Parameter tokList has the following structure:
+        [<meta dictionary>, <part1>, <part2>, <part3>, ...]
+        """
+        nCurr = Node("valA")
+        #Create an attribute for each key value pair in the meta dictionary
+        metaDict = tokList[0]
+        for attrName, attrVal in metaDict.iteritems():
+            setattr(nCurr, attrName, attrVal)
+        #Store the parts of the name in a list
+        nCurr.dat = tokList[1:len(tokList)]
+        return nCurr
 
 
 def doTests():
@@ -584,11 +644,13 @@ def doTests():
     #flagTestASTGenerator = False
     if flagTestASTGenerator:
         parser = ParseStage()
-        treeGen = SyntaxTreeGenerator()
+        treeGen = ASTGenerator()
 
-        pres = parser.parseProgram("0+1+2")
+        pres = parser.parseProgram("2*sin(1)")
+        print "parse result:"
         print pres
         tree = treeGen.createSyntaxTree(pres)
+        print "tree:"
         print tree
         #pres = [['0'],['1'],['2']]
         #print pr
