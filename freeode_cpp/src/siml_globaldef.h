@@ -21,8 +21,8 @@
 #define SIML_GLOBALDEF_H
 
 #include "config.h"
-// #include <boost/spirit/iterator.hpp>
-#include <boost/spirit/iterator/position_iterator.hpp>
+#include <boost/spirit/iterator.hpp>
+// #include <boost/spirit/iterator/position_iterator.hpp>
 
 //!Simple iterator for the program text
 // typedef char const * BufferIterator;
