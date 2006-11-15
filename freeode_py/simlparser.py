@@ -67,14 +67,13 @@ class ParseStage(object):
     keywords = set([])
     """
     List of all keywords (filled by defineLanguageSyntax() and defineKeyword).
-    TODO: change to set.
     """
 
     nodeTypes = set([])
     """
     List of all type strings, that identify the nodes in the parse result.
-    (filled by defineNodeType() in the semantic actions).
-    TODO: change to set.
+    Filled by defineNodeType() in the semantic actions; or by the AddMetaDict
+    object.
     """
 
 
@@ -86,20 +85,17 @@ class ParseStage(object):
 
     def defineKeyword(self, inString):
         """
-        Store keyword (in self.keywords) and create parser for it.
+        Store keyword (in ParseStage.keywords) and create parser for it.
         Use this function (in defineLanguageSyntax(...)) instead of using the
         Keyword class directly.
         """
-        if not (inString in self.keywords):
-            self.keywords.add(inString)
+        ParseStage.keywords.add(inString)
         return Keyword(inString)
 
 
     def defineNodeType(self, inString):
-        """Store type string (in self.nodeTypes) and return it."""
-        #TODO create faster solution! Don't call this function in parse actions.
-        if not (inString in self.nodeTypes):
-            self.nodeTypes.add(inString)
+        """Store type string (in ParseStage.nodeTypes) and return it."""
+        ParseStage.nodeTypes.add(inString)
         return inString
 
 
@@ -114,146 +110,144 @@ class ParseStage(object):
         return toks
 
 
-    def actionInfixBinOp(self, str, loc, toks):
-        """
-        Parse action for binary mathematical operations: + - * / ^
-        Put additional information into parse result, that would
-        be lost otherwise. The information is stored in a dict, and put before
-        the original parse result.
-        """
-        #debug code-----------------
-        if   self.debugSyntax == 2:
-            return None
-        elif self.debugSyntax == 1:
-            return toks.copy()
+    #def actionInfixBinOp(self, str, loc, toks):
+        #"""
+        #Parse action for binary mathematical operations: + - * / ^
+        #Put additional information into parse result, that would
+        #be lost otherwise. The information is stored in a dict, and put before
+        #the original parse result.
+        #"""
+        ##debug code-----------------
+        #if   self.debugSyntax == 2:
+            #return None
+        #elif self.debugSyntax == 1:
+            #return toks.copy()
 
-        # toks is structured like this [["2","+","5"]]
-        typeStr = self.defineNodeType("m_i2")
-        newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
-        newToks += toks[0].copy() #add original contents
-        return ParseResults([newToks]) #wrap in []; return.
-
-
-    def actionPrefixUnaryOp(self, str, loc, toks):
-        """
-        Parse action for mathematical unary operations: -5 .
-        Put additional information into parse result, that would
-        be lost otherwise. The information is stored in a dict, and put before
-        the original parse result.
-        """
-        #debug code-----------------
-        if   self.debugSyntax == 2:
-            return None
-        elif self.debugSyntax == 1:
-            return toks.copy()
-
-        # toks is structured like this [["-","5"]]
-        typeStr = self.defineNodeType("m_p1")
-        newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
-        newToks += toks[0].copy() #add original contents
-        return ParseResults([newToks]) #wrap in []; return.
+        ## toks is structured like this [["2","+","5"]]
+        #typeStr = self.defineNodeType("m_i2")
+        #newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
+        #newToks += toks[0].copy() #add original contents
+        #return ParseResults([newToks]) #wrap in []; return.
 
 
-    def actionValAccess(self, str, loc, toks):
-        """
-        Parse action for memory access: aa.bb.cc
-        Put additional information into parse result, that would
-        be lost otherwise. The information is stored in a dict, and put before
-        the original parse result.
-        """
-        #debug code-----------------
-        if   self.debugSyntax == 2:
-            return None
-        elif self.debugSyntax == 1:
-            return toks.copy()
+    #def actionPrefixUnaryOp(self, str, loc, toks):
+        #"""
+        #Parse action for mathematical unary operations: -5 .
+        #Put additional information into parse result, that would
+        #be lost otherwise. The information is stored in a dict, and put before
+        #the original parse result.
+        #"""
+        ##debug code-----------------
+        #if   self.debugSyntax == 2:
+            #return None
+        #elif self.debugSyntax == 1:
+            #return toks.copy()
 
-        # toks is structured like this [["aa","bb","cc"]]
-        typeStr = self.defineNodeType("valA")
-        newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
-        newToks += toks[0].copy() #add original contents
-        return ParseResults([newToks]) #wrap in []; return.
-
-
-    def actionFuncCall(self, str, loc, toks):
-        """
-        Parse action for function call: sin(2.1)
-        Put additional information into parse result, that would
-        be lost otherwise. The information is stored in a dict, and put before
-        the original parse result.
-        """
-        #debug code-----------------
-        if   self.debugSyntax == 2:
-            return None
-        elif self.debugSyntax == 1:
-            return toks.copy()
-
-        # toks is structured like this [['sin','(',['2.1'],')']]
-        typeStr = self.defineNodeType("funcCall")
-        newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
-        newToks += toks[0].copy() #add original contents
-        return ParseResults([newToks]) #wrap in []; return.
+        ## toks is structured like this [["-","5"]]
+        #typeStr = self.defineNodeType("m_p1")
+        #newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
+        #newToks += toks[0].copy() #add original contents
+        #return ParseResults([newToks]) #wrap in []; return.
 
 
-    def actionParentheses(self, str, loc, toks):
-        """
-        Parse action for pair of parentheses: ( 1+2 ).
-        Put additional information into parse result, that would
-        be lost otherwise. The information is stored in a dict, and put before
-        the original parse result.
-        """
-        #debug code-----------------
-        if   self.debugSyntax == 2:
-            return None
-        elif self.debugSyntax == 1:
-            return toks.copy()
+    #def actionValAccess(self, str, loc, toks):
+        #"""
+        #Parse action for memory access: aa.bb.cc
+        #Put additional information into parse result, that would
+        #be lost otherwise. The information is stored in a dict, and put before
+        #the original parse result.
+        #"""
+        ##debug code-----------------
+        #if   self.debugSyntax == 2:
+            #return None
+        #elif self.debugSyntax == 1:
+            #return toks.copy()
 
-        #toks is structured like this [['(', ['1', '+', '2'], ')']]
-        typeStr = self.defineNodeType("paren")
-        newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
-        newToks += toks[0].copy() #add original contents
-        return ParseResults([newToks]) #wrap in []; return.
-
-
-    def actionNumber(self, str, loc, toks):
-        """
-        Parse action for a real number: 5.23 .
-        Put additional information into parse result, that would
-        be lost otherwise. The information is stored in a dict, and put before
-        the original parse result.
-        """
-        #debug code-----------------
-        if   self.debugSyntax == 2:
-            return None
-        elif self.debugSyntax == 1:
-            return toks.copy()
-
-        #toks is structured like this [['5.23']]
-        typeStr = self.defineNodeType("num")
-        newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
-        newToks += toks[0].copy() #add original contents
-        return ParseResults([newToks]) #wrap in []; return.
+        ## toks is structured like this [["aa","bb","cc"]]
+        #typeStr = self.defineNodeType("valA")
+        #newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
+        #newToks += toks[0].copy() #add original contents
+        #return ParseResults([newToks]) #wrap in []; return.
 
 
-    def actionbuiltInValue(self, str, loc, toks):
-        """
-        Parse action for a built in value: pi .
-        Put additional information into parse result, that would
-        be lost otherwise. The information is stored in a dict, and put before
-        the original parse result.
-        """
-        #debug code-----------------
-        if   self.debugSyntax == 2:
-            return None
-        elif self.debugSyntax == 1:
-            return toks.copy()
+    #def actionFuncCall(self, str, loc, toks):
+        #"""
+        #Parse action for function call: sin(2.1)
+        #Put additional information into parse result, that would
+        #be lost otherwise. The information is stored in a dict, and put before
+        #the original parse result.
+        #"""
+        ##debug code-----------------
+        #if   self.debugSyntax == 2:
+            #return None
+        #elif self.debugSyntax == 1:
+            #return toks.copy()
 
-        #toks is structured like this [['pi']]
-        typeStr = self.defineNodeType("builtInVal")
-        newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
-        newToks += toks[0].copy() #add original contents
-        return ParseResults([newToks]) #wrap in []; return.
+        ## toks is structured like this [['sin','(',['2.1'],')']]
+        #typeStr = self.defineNodeType("funcCall")
+        #newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
+        #newToks += toks[0].copy() #add original contents
+        #return ParseResults([newToks]) #wrap in []; return.
 
 
+    #def actionParentheses(self, str, loc, toks):
+        #"""
+        #Parse action for pair of parentheses: ( 1+2 ).
+        #Put additional information into parse result, that would
+        #be lost otherwise. The information is stored in a dict, and put before
+        #the original parse result.
+        #"""
+        ##debug code-----------------
+        #if   self.debugSyntax == 2:
+            #return None
+        #elif self.debugSyntax == 1:
+            #return toks.copy()
+
+        ##toks is structured like this [['(', ['1', '+', '2'], ')']]
+        #typeStr = self.defineNodeType("paren")
+        #newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
+        #newToks += toks[0].copy() #add original contents
+        #return ParseResults([newToks]) #wrap in []; return.
+
+
+    #def actionNumber(self, str, loc, toks):
+        #"""
+        #Parse action for a real number: 5.23 .
+        #Put additional information into parse result, that would
+        #be lost otherwise. The information is stored in a dict, and put before
+        #the original parse result.
+        #"""
+        ##debug code-----------------
+        #if   self.debugSyntax == 2:
+            #return None
+        #elif self.debugSyntax == 1:
+            #return toks.copy()
+
+        ##toks is structured like this [['5.23']]
+        #typeStr = self.defineNodeType("num")
+        #newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
+        #newToks += toks[0].copy() #add original contents
+        #return ParseResults([newToks]) #wrap in []; return.
+
+
+    #def actionbuiltInValue(self, str, loc, toks):
+        #"""
+        #Parse action for a built in value: pi .
+        #Put additional information into parse result, that would
+        #be lost otherwise. The information is stored in a dict, and put before
+        #the original parse result.
+        #"""
+        ##debug code-----------------
+        #if   self.debugSyntax == 2:
+            #return None
+        #elif self.debugSyntax == 1:
+            #return toks.copy()
+
+        ##toks is structured like this [['pi']]
+        #typeStr = self.defineNodeType("builtInVal")
+        #newToks = ParseResults([{"typ":typeStr, "loc":loc}]) #create dict
+        #newToks += toks[0].copy() #add original contents
+        #return ParseResults([newToks]) #wrap in []; return.
 
 
     def actionCheckIdentifier(self, str, loc, toks):
@@ -286,8 +280,8 @@ class ParseStage(object):
 
         #Values that are built into the language
         #TODO: this should be a for loop and a list (attribute)!
-        builtInConstant = Group( kw("e") | kw("pi") | kw("time"))   .setParseAction(self.actionbuiltInValue)\
-                                                                    .setName("builtInConstant")#.setDebug(True)
+        builtInValue = Group( kw("e") | kw("pi") | kw("time"))      .setParseAction(AddMetaDict('builtInVal'))\
+                                                                    .setName("builtInValue")#.setDebug(True)
 
         #Functions that are built into the language
         #TODO: this should be a for loop and a list (attribute)!
@@ -301,7 +295,7 @@ class ParseStage(object):
         uNumber = Group( Combine(
                     uInteger +
                     Optional("." + Optional(uInteger)) +
-                    Optional(eE + Word("+-"+nums, nums))))          .setParseAction(self.actionNumber)\
+                    Optional(eE + Word("+-"+nums, nums))))          .setParseAction(AddMetaDict('num'))\
                                                                     .setName("uNumber")#.setDebug(True)
 
         # .............. Mathematical expression .............................................................
@@ -316,11 +310,11 @@ class ParseStage(object):
         #sin(2*a), (a+2), a.b.c(2.5:3.5))
         #Function call, parenthesis and memory access can however contain
         #expressions.
-        funcCall = Group( builtInFuncName + "(" + expression + ")") .setParseAction(self.actionFuncCall) \
+        funcCall = Group( builtInFuncName + "(" + expression + ")") .setParseAction(AddMetaDict('funcCall')) \
                                                                     .setName("funcCall")#.setDebug(True)
-        parentheses = Group("(" + expression + ")")                 .setParseAction(self.actionParentheses) \
+        parentheses = Group("(" + expression + ")")                 .setParseAction(AddMetaDict('paren')) \
                                                                     .setName("parentheses")#.setDebug(True)
-        atom = (    uNumber | builtInConstant | funcCall |
+        atom = (    uNumber | builtInValue | funcCall |
                     valAccess | parentheses               )         .setName("atom")#.setDebug(True)
 
         #The basic mathematical operations: -a+b*c^d.
@@ -328,34 +322,34 @@ class ParseStage(object):
         #required for exponentiation. Precedence decreases towards the bottom.
         #Unary minus: -a, not a;
         negop = "-" | kw("not")
-        unaryMinus = Group(negop + signedAtom)          .setParseAction(self.actionPrefixUnaryOp) \
+        unaryMinus = Group(negop + signedAtom)          .setParseAction(AddMetaDict('m_p1')) \
                                                         .setName("unaryMinus")#.setDebug(True)
         signedAtom << (atom | unaryMinus)               .setName("signedAtom")#.setDebug(True)
 
         #Exponentiation: a^b;
         factor1 = signedAtom                            .setName("factor1")#.setDebug(True)
-        factor2 = Group(signedAtom + "^" + factor)      .setParseAction(self.actionInfixBinOp) \
+        factor2 = Group(signedAtom + "^" + factor)      .setParseAction(AddMetaDict('m_i2')) \
                                                         .setName("factor2")#.setDebug(True)
         factor << (factor2 | factor1)                   .setName("factor")#.setDebug(True)
 
         #multiplicative operations: a*b; a/b
         multop = L("*") | L("/")
         term1 = factor                                  .setName("term1")#.setDebug(True)
-        term2 = Group(factor + multop + term)           .setParseAction(self.actionInfixBinOp) \
+        term2 = Group(factor + multop + term)           .setParseAction(AddMetaDict('m_i2')) \
                                                         .setName("term2")#.setDebug(True)
         term << (term2 | term1)                         .setName("term")#.setDebug(True)
 
         #additive operations: a+b; a-b
         addop  = L("+") | L("-")
         expression1 = term                              .setName("expression1")#.setDebug(True)
-        expression2 = Group(term + addop + expression)  .setParseAction(self.actionInfixBinOp) \
+        expression2 = Group(term + addop + expression)  .setParseAction(AddMetaDict('m_i2')) \
                                                         .setName("expression2")#.setDebug(True)
         expression << (expression2 | expression1)       .setName("expression")#.setDebug(True)
 
         #Relational operators : <, >, ==, ...
         #TODO: missing are: or, and, not
         relop = L('<') | L('>') | L('<=') | L('>=') | L('==')
-        boolExpression = Group(expression + relop + expression) .setParseAction(self.actionInfixBinOp) \
+        boolExpression = Group(expression + relop + expression) .setParseAction(AddMetaDict('m_i2')) \
                                                                 .setName("expression2")#.setDebug(True)
         #................ End mathematical expression ................................................---
 
@@ -368,7 +362,7 @@ class ParseStage(object):
         dotSup = Literal(".").suppress()
         valAccess << Group( Optional("$") +
                             identifier +
-                            ZeroOrMore(dotSup  + identifier) )  .setParseAction(self.actionValAccess) \
+                            ZeroOrMore(dotSup  + identifier) )  .setParseAction(AddMetaDict('valA')) \
                                                                 .setName("valAccess")#.setDebug(True)
 
         #..................... Statements ..............................................................
@@ -378,39 +372,54 @@ class ParseStage(object):
                         kw('if') + boolExpression + kw('then') +
                         statementList +
                         Optional(kw('else') + statementList) +
-                        kw('end'))                                  .setName("ifStatement")#.setDebug(True)
+                        kw('end'))                                  .setParseAction(AddMetaDict('ifStmt'))\
+                                                                    .setName("ifStatement")#.setDebug(True)
         #compute expression and assign to value
-        assignment = Group(valAccess + ':=' + expression + ';')     .setName("assignment")#.setDebug(True)
-        #insert code of a child model
+        assignment = Group(valAccess + ':=' + expression + ';')     .setParseAction(AddMetaDict('assign'))\
+                                                                    .setName("assignment")#.setDebug(True)
+        #execute a block - insert code of a child model
         blockName = kw('run') | kw('init') #| kw('insert')
-        blockExecute = Group(blockName + identifier + ';')          .setName("insertStatement")#.setDebug(True)
-        #define parameters, variables and submodels
-        defRole = kw('par') | kw('var') | kw('sub') | kw('submodel')
-        dedinitionStatement = Group(defRole + identifier + ';')
+        blockExecute = Group(blockName + identifier + ';')          .setParseAction(AddMetaDict('blockExecute'))\
+                                                                    .setName("blockExecute")#.setDebug(True)
 
-        statement = (   ifStatement | assignment | blockExecute |
-                        dedinitionStatement)                        .setName("statement")#.setDebug(True)
-        statementList << Group(OneOrMore(statement))                .setName("statementList")#.setDebug(True)
+        statement = (blockExecute | ifStatement | assignment)       .setName("statement")#.setDebug(True)
+        statementList << Group(OneOrMore(statement))                .setParseAction(AddMetaDict('stmtList'))\
+                                                                    .setName("statementList")#.setDebug(True)
 
         #..................... Class ........................................................................
-        definitionList = Group(OneOrMore(dedinitionStatement))      .setName("definitionList")#.setDebug(True)
-        runBlock = Group(   kw('runblock') +
-                            statementList + kw('end'))              .setName("runBlock")#.setDebug(True)
-        initBlock = Group(  kw('initblock') +
-                            statementList + kw('end'))              .setName("runBlock")#.setDebug(True)
+        #define parameters, variables and submodels
+        defRole = kw('par') | kw('var') | kw('sub') | kw('submodel')
+        dedinitionStatement = Group(defRole + identifier + ';')     .setParseAction(AddMetaDict('defStmt'))\
+                                                                    .setName("dedinitionStatement")#.setDebug(True)
+        definitionList = Group(OneOrMore(dedinitionStatement))      .setParseAction(AddMetaDict('defList'))\
+                                                                    .setName("definitionList")#.setDebug(True)
+
+        #The statements (equations) that determine the system dynamics go here
+        runBlock = Group(   kw('block') + kw('run') +
+                            statementList +
+                            kw('end'))                              .setParseAction(AddMetaDict('runBlock'))\
+                                                                    .setName("runBlock")#.setDebug(True)
+
+        #The initialization code goes here
+        initBlock = Group(  kw('block') + kw('init') +
+                            statementList +
+                            kw('end'))                              .setParseAction(AddMetaDict('initBlock'))\
+                                                                    .setName("initBlock")#.setDebug(True)
 
         classRole = kw('procedure') | kw('model') #| kw('paramset')
         classDef = Group(   classRole + identifier +
                             Optional(definitionList) +
                             Optional(runBlock) +
                             Optional(initBlock)  +
-                            kw('end'))                              .setName("class")#.setDebug(True)
+                            kw('end'))                              .setParseAction(AddMetaDict('classDef'))\
+                                                                    .setName("classDef")#.setDebug(True)
 
-        program = Group(OneOrMore(classDef))                        .setName("program")#.setDebug(True)
+        program = Group(OneOrMore(classDef))                        .setParseAction(AddMetaDict('program'))\
+                                                                    .setName("program")#.setDebug(True)
         #................ End of language definition ..................................................
 
         #determine start symbol
-        startSymbol = statementList
+        startSymbol = program
         #set up comments
         singleLineCommentCpp = "//" + restOfLine
         singleLineCommentPy = "#" + restOfLine
@@ -426,6 +435,39 @@ class ParseStage(object):
         result = self._parser.parseString(inString)
         return result
 
+
+
+class AddMetaDict(object):
+    """
+    Functor class to add a dict to a ParseResults object in a semantic action.
+    The meta dict contains (at least) the result's type and the location in the
+    input string:
+    {'typ':'foo', 'loc':23}
+
+    Additionally adds type string to a central list
+    (ParseStage.nodeTypes - really a set) for checking the consistency
+
+    TODO: a dict, that is added to the standard meta dict.
+    """
+    def __init__(self, typeString):
+        """typeString : string to identify the node."""
+        object.__init__(self)
+        self.typeString = typeString
+        ParseStage.nodeTypes.add(typeString) #add to set
+
+
+    def __call__(self,str, loc, toks):
+        """The parse action that adds the dict."""
+        #debug code-----------------
+        if   ParseStage.debugSyntax == 2:
+            return None
+        elif ParseStage.debugSyntax == 1:
+            return toks.copy()
+
+        #toks is structured like this [['pi']]
+        newToks = ParseResults([{"typ":self.typeString, "loc":loc}]) #create dict
+        newToks += toks[0].copy() #add original contents
+        return ParseResults([newToks]) #wrap in []; return.
 
 
 
@@ -449,7 +491,7 @@ class Node(object):
     def __repr__(self):
         className = self.__class__.__name__
         typeStr = repr(self.typ)
-        childStr = repr(self.kids)
+        childStr = "," + repr(self.kids)
         #if location and contents have their default value, don't print them
         if self.loc == None:
             locStr = ''
@@ -459,10 +501,18 @@ class Node(object):
             datStr =''
         else:
             datStr = ', ' + repr(self.dat)
+        #treat all other attributes as named attributes
+        standardAttributes = set(['typ', 'kids', 'loc', 'dat'])
+        for key, attr in self.__dict__.iteritems():
+            if key in standardAttributes:
+                continue
+            extraAttrStr += ', ' + key + '=' + repr(attr)
 
-        reprStr = className  + "(" + typeStr + "," + childStr + locStr + datStr + ")"
+        reprStr = className  + "(" + typeStr + childStr + locStr + datStr + \
+                                    extraAttrStr + ")"
         return reprStr
 
+    #TODO: __str__() that prints the tree in a neat way
 
     #Acces to childern throug []
     def __getitem__(self, i):
@@ -501,6 +551,30 @@ class Node(object):
 ##            setattr(newObject, key, newAttr) #Put duplicated attribute into
 ##                                             #new object
 ##        return newObject
+
+
+
+
+class NodeValAccess(Node):
+    """
+    AST node for access to a variable or parameter.
+    Has additional attribute deriv.
+        typ: type string, usually: 'valA'
+        kids: slice?
+        loc: location in input string
+        dat: list of identifiers; the dot separated name, from left to right.
+        deriv: [],['time'] or list of distibution domains
+    """
+
+    def __init__(self, typ='valA', kids=[], loc=None, dat=None, deriv=[]):
+        """
+        deriv: [],['time'] or list of distibution domains. Shows that
+        derivative of variable is accessed.
+        """
+        Node.__init__(self, typ, kids, loc, dat)
+        self.deriv = deriv[:]
+
+
 
 
 class ASTGeneratorException(Exception):
@@ -624,13 +698,18 @@ class ASTGenerator(object):
         Parameter tokList has the following structure:
         [<meta dictionary>, <part1>, <part2>, <part3>, ...]
         """
-        nCurr = Node("valA")
+        nCurr = NodeValAccess("valA")
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
             setattr(nCurr, attrName, attrVal)
-        #Store the parts of the name in a list
-        nCurr.dat = tokList[1:len(tokList)]
+        #Look if there is a '$' that indicates time derivatives
+        tok1 = 1
+        if tokList[1] == '$':
+            nCurr.deriv = ['time']
+            tok1 = 2
+        #The remaining tokens are the dot separated name
+        nCurr.dat = tokList[tok1:len(tokList)]
         return nCurr
 
 
@@ -677,14 +756,34 @@ def doTests():
     #t1 = Node("root", [Node("child1",[]),Node("child2",[])])
     #print t1
 
+    testProgStr = (
+"""
+model test
+var V; var h;
+par A_bott; par A_o; par mu;
+par q; par g;
+
+block run
+h := V/A;
+$V := q - mu*A_o*sqrt(2*g*h);
+end
+
+block init
+V := 0;
+A_bott := 1; A_o := 0.02; mu := 0.55;
+q := 0.05;
+end
+end
+""" )
+
     #test the AST generator
-    #flagTestASTGenerator = True
-    flagTestASTGenerator = False
+    flagTestASTGenerator = True
+    #flagTestASTGenerator = False
     if flagTestASTGenerator:
         parser = ParseStage()
         treeGen = ASTGenerator()
 
-        pres = parser.parseProgram("5.1+2")
+        pres = parser.parseProgram(testProgStr)
         print "parse result:"
         print pres
         tree = treeGen.createSyntaxTree(pres)
@@ -693,19 +792,18 @@ def doTests():
 
 
     #test the parser
-    flagTestParser = True
-    #flagTestParser = False
+    #flagTestParser = True
+    flagTestParser = False
     if flagTestParser:
         parser = ParseStage()
-        parser.debugSyntax = 1
-        #parser.debugSyntax = 2
+        #ParseStage.debugSyntax = 1
+        #ParseStage.debugSyntax = 2
         #print parser.parseProgram('model test var a; par b; end')
-        print parser.parseProgram('a:=2; b:=5')
-        #print parser.parseProgram(
-#"""
-#model test
-#runblock a:=2; end
-#""")
+        #print parser.parseProgram('model test par a; end')
+
+
+        print parser.parseProgram(testProgStr)
+
         #print parser.parseProgram("a:=0+1;b:=2+3+4;")
         #print parser.parseProgram("if a==0 then b:=-1; else b:=2+3+4; a:=1; end")
         #print parser.parseProgram("0*1*2*3*4")
@@ -724,6 +822,21 @@ def doTests():
         print parser.keywords
         print "node types"
         print parser.nodeTypes
+
+    #Check if the parser and the AST generator use the same type strings
+    #to identify the nodes.
+    typeStrParser = ParseStage.nodeTypes
+    typeStrASTGenerator = set(ASTGenerator.funcDict.keys())
+    print
+    if typeStrASTGenerator == typeStrParser:
+        print 'Parser and AST generator use the same type strings.'
+    else:
+        print 'Error: Parser and AST generator use DIFFERENT type strings!'
+        print 'Type strings only in parser: '
+        print typeStrParser.difference(typeStrASTGenerator)
+        print 'Type strings only in AST generator: '
+        print typeStrASTGenerator.difference(typeStrParser)
+
 
     pdb.set_trace()
 
