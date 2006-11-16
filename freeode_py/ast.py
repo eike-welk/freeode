@@ -1,6 +1,6 @@
 ############################################################################
-#    Copyright (C) 2006 by Eike Welk   #
-#    eike.welk@post.rwth-aachen.de   #
+#    Copyright (C) 2006 by Eike Welk                                       #
+#    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
 #    it under the terms of the GNU General Public License as published by  #
@@ -29,7 +29,35 @@ Module contains specialized nodes and tools for tree handling.
 
 
 class Node(object):
-    '''Building block of a n-ary tree structure.'''
+    '''
+    Building block of a n-ary tree structure.  
+    
+    TODO: turn this into a doctest
+    Usage:
+    >>> t1 = Node('root 0.0', [Node('c 1.0', [Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
+    
+    #access to children with  [] operator
+    >>> t1[0][1]
+    Node('c 2.1',[])
+    
+    >>> #iterating over only the children of a node:
+    >>> for n in t1:
+    ...     print n.typ
+    ... 
+    c 1.0
+    c 1.1
+    
+    >>> #iterating over the whole tree:
+    >>> for n,d in t1.iterateDepthFirst(returnDepth=True):
+    ...     print n.typ, 'depth: ', d
+    ... 
+    root 0.0 depth:  0
+    c 1.0 depth:  1
+    c 2.0 depth:  2
+    c 2.1 depth:  2
+    c 1.1 depth:  1
+    >>>     
+    '''
 
     def __init__(self, typ, kids=[], loc=None, dat=None):
         #TODO: write an init function that can accept any number of named arguments
@@ -87,9 +115,18 @@ class Node(object):
         #return self.kids[low:high]
     #def __setslice__(self, low, high, childList):
         #self.kids[low:high] = seq
+        
 ##    def __cmp__(self, o):
 ##        return cmp(self.type, o)
 
+    def iterateDepthFirst(self, returnDepth=False):
+        '''
+        Iterate over whole (sub) tree in a depth first manner.
+        returnDepth :   if True the iterator returns a tuple (node, depth) otherwise it 
+                        returns only the current node.
+        returns: a DepthFirstIterator instance
+        '''
+        return DepthFirstIterator(self, returnDepth)
 
 ##    def copy(self):
 ##        '''
@@ -121,7 +158,7 @@ class Node(object):
 
 class NodeValAccess(Node):
     '''
-    AST node for access to a variable or parameter.
+    Specialized AST node for access to a variable or parameter.
     Has additional attribute deriv.
         typ: type string, usually: 'valA'
         kids: slice?
@@ -140,24 +177,42 @@ class NodeValAccess(Node):
 
 
 
-class TreeIterator(object):
+#TODO: Create specialized nodes for attribute definition: 
+#TODO:      Definition of numbers: 'defAttrVal'
+#TODO:      Definition of sub-model 'defAttrClass' ? 'defAttrSubMod'
+
+
+
+
+class DepthFirstIterator(object):
     """
     Iterate over each node of a (AST) tree, in a depth first fashion.
     Designed for Node and its subclasses. It works for other nodes though:
-    The nodes must have functions __getitem__ and __len__.
+    The nodes must have the functions __getitem__ and __len__.
+    
+    Usage:
+    >>> t1 = Node('root 0.0', [Node('c 1.0', [Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
+    >>> for n in DepthFirstIterator(t1):
+    ...     print n
+    ... 
+    Node('root 0.0',[Node('c 1.0',[Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
+    Node('c 1.0',[Node('c 2.0',[]), Node('c 2.1',[])])
+    Node('c 2.0',[])
+    Node('c 2.1',[])
+    Node('c 1.1',[])
     """
 
     def __init__(self, treeRoot, returnDepth=False):
         """
         treeRoot    : root node of the tree over which the iterator goes.
-        returnDepth : if True the __next__ function retuns a tuple
+        returnDepth : if True the __next__ function returns a tuple
                       (node, depth) otherwise it only returns the current
                       node.
         """
-        self.stack = [] #tuples (node, next_child) go here.
-        self.depth = 0       #how deep we are in the tree.
-        self.root = treeRoot
-        self.returnDepth = returnDepth
+        self.stack = [(treeRoot, 0)] #tuples (node, childIndex). 
+        self.depth = 0  #how deep we are in the tree.
+        self.returnDepth = returnDepth #flag: shoult we return the current depth
+        self.start = True #remember that we've just been initialized 
 
 
     def __iter__(self):
@@ -165,29 +220,38 @@ class TreeIterator(object):
         return self
 
 
-    def __next__(self):
-        '''Go to the next element and return it.'''
-        #start: go to root node, the child to visit is [0]
+    def next(self):
+        '''Go to the next node, return current node.'''
+        #After tree has been traversed throw exception, don't start again
         if len(self.stack) == 0:
-            self.stack = [(self.root, 0)]
-            return self._handleReturnDepth(self.root, self.depth)
+            raise StopIteration
+        #start: special handling
+        if self.start:
+            self.start = False
+            currNode, currChild = self.stack[-1] 
+            return self._handleReturnDepth(currNode, currChild)
 
-        #normal operation -----------------------
-        currNode, currChild = self.stack[-1] #get current state
-
-        #if no children left: go up one level
+        #go to next node. 
+        #get current state, from top of stack
+        currNode, currChild = self.stack[-1] 
+                
+        #if all children visited: go up one or more levels
         while currChild == len(currNode):
             self.stack.pop()
+            #stop iterating, if no nodes are left on the stack
+            if len(self.stack) == 0:
+                raise StopIteration
             self.depth -= 1
             currNode, currChild = self.stack[-1] #get state from one level up
 
         #remember to visit next child when we come here again
         self.stack[-1] = (currNode, currChild+1)
-        #go to one level down, to current child
-        theChild = currNode[currChild]
-        self.stack.append((theChild, 0))
+        #go to one level down, to current child. 
+        nextNode = currNode[currChild]
+        self.stack.append((nextNode, 0))
         self.depth += 1
-        return self._handleReturnDepth(theChild, self.depth)
+        #return the next node
+        return self._handleReturnDepth(nextNode, self.depth)
 
 
     def _handleReturnDepth(self, node, depth):
@@ -196,11 +260,46 @@ class TreeIterator(object):
         else:
             return node
 
+
+
+class TreePrinter(object):
+    '''Print a tree of Node objects in a nice way.'''
+    
+    def __init__(self, root):
+        '''root : the root of the tree, which will be printed'''
+        self.root = root
+        self.indentWidth = 4
+
+    def printTree(self):
+        indentStepStr = '|' + ' '*int(self.indentWidth - 1)
+        for node, depth in self.root.iterateDepthFirst(True):
+            indentStr = indentStepStr * depth
+            
+            #print attributes that are always present
+            stdAttrStr = indentStr + node.__class__.__name__ + ' typ: ' + str(node.typ) + \
+                         ' loc: ' + str(node.loc) + ' dat: ' + str(node.dat)
+            print stdAttrStr
+            
+            #print attributes that may be present in derived classes 
+            standardAttributes = set(['typ', 'kids', 'loc', 'dat'])
+            extraAttrStr = indentStr + '  '
+            extraAttrNum = 0
+            for key, attr in node.__dict__.iteritems():
+                if key in standardAttributes:
+                    continue
+                extraAttrStr += key + ':' + str(attr) + ' '
+                extraAttrNum += 1
+            
+            if extraAttrNum > 0:
+                print extraAttrStr
+            
+
 #------------ testcode --------------------------------------------------
-testAST = True
-#testAST = False
-if testAST:
-    print '----------------------------------------------------'
+if __name__ == '__main__':
+    # Self-testing code goes here.
+    #TODO: add unit tests
+    #TODO: add doctest tests. 
+    
     print 'Test the AST:'
     t1 = Node('root 0.0', [Node('c 1.0', [Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
     print t1
@@ -210,7 +309,15 @@ if testAST:
         print n.typ
 
     print 'iterating over the whole tree:'
-    for n in TreeIterator(t1):
-        print n.typ
+    for n,d in t1.iterateDepthFirst(returnDepth=True):
+        print n.typ, 'depth: ', d
+        
+    print 'print the tree'
+    TreePrinter(t1).printTree()
+    
+else:
+    # This will be executed in case the
+    #    source has been imported as a
+    #    module.
+    pass
 
-    print '----------------------------------------------'

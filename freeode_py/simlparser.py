@@ -68,7 +68,7 @@ class ParseStage(object):
 
     keywords = set([])
     '''
-    List of all keywords (filled by defineLanguageSyntax() and defineKeyword).
+    List of all keywords (filled by _defineLanguageSyntax() and defineKeyword).
     '''
 
     nodeTypes = set([])
@@ -81,14 +81,14 @@ class ParseStage(object):
 
     def __init__(self):
         object.__init__(self)
-        self._parser = self.defineLanguageSyntax() #Create parser object
+        self._parser = self._defineLanguageSyntax() #Create parser object
         '''The parser object from pyParsing'''
 
 
     def defineKeyword(self, inString):
         '''
         Store keyword (in ParseStage.keywords) and create parser for it.
-        Use this function (in defineLanguageSyntax(...)) instead of using the
+        Use this function (in _defineLanguageSyntax(...)) instead of using the
         Keyword class directly.
         '''
         ParseStage.keywords.add(inString)
@@ -102,7 +102,7 @@ class ParseStage(object):
 
 
 #------------- Parse Actions -------------------------------------------------*
-    def actionDebug(self, str, loc, toks):
+    def _actionDebug(self, str, loc, toks):
         '''Parse action for debuging.'''
         print '------debug action'
         print str
@@ -252,7 +252,7 @@ class ParseStage(object):
         #return ParseResults([newToks]) #wrap in []; return.
 
 
-    def actionCheckIdentifier(self, str, loc, toks):
+    def _actionCheckIdentifier(self, str, loc, toks):
         '''
         Parse action to check an identifier.
         Tries to see wether it is equal to a keyword.
@@ -270,7 +270,7 @@ class ParseStage(object):
 
 
 #------------------- BNF --------------------------------------------------------*
-    def defineLanguageSyntax(self):
+    def _defineLanguageSyntax(self):
         '''
         Here is Siml's BNF
         Creates the objects of the pyParsing library,
@@ -391,10 +391,11 @@ class ParseStage(object):
         #..................... Class ........................................................................
         #define parameters, variables and submodels
         defRole = kw('par') | kw('var') | kw('sub') | kw('submodel')
-        definitionStatement = Group(defRole + identifier + ';')     .setParseAction(AddMetaDict('defStmt'))\
-                                                                    .setName('definitionStatement')#.setDebug(True)
+        attributeDef = Group(defRole + identifier + 
+                             Optional(kw('as') + identifier) + ';') .setParseAction(AddMetaDict('defAttr'))\
+                                                                    .setName('attributeDef')#.setDebug(True)
         #Note: For the AST this is also a statementList-'stmtList'
-        definitionList = Group(OneOrMore(definitionStatement))      .setParseAction(AddMetaDict('stmtList'))\
+        definitionList = Group(OneOrMore(attributeDef))   .setParseAction(AddMetaDict('stmtList'))\
                                                                     .setName('definitionList')#.setDebug(True)
 
         #The statements (equations) that determine the system dynamics go here
@@ -699,16 +700,17 @@ class ASTGenerator(object):
             nCurr.kids.append(child)
         return nCurr
 
-
+#TODO: Create specialized nodes for attribute definition: 
     def _createDefinitionStatemen(self, tokList):
         '''
         Create node for defining parameterr, variable or submodel: var foo;
-        type string: 'defStmt'
+        type string: 'defAttr'
         BNF:
         defRole = kw('par') | kw('var') | kw('sub') | kw('submodel')
-        definitionStatement = Group(defRole + identifier + ';')
+        attributeDef = Group(defRole + identifier + 
+                             Optional(kw('as') + identifier + ';'))
         '''
-        nCurr = Node('defStmt')
+        nCurr = Node('defAttr')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -759,14 +761,16 @@ class ASTGenerator(object):
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
             setattr(nCurr, attrName, attrVal)
-        #store role and class name; create children
+        #store role and class name - these are always present
         role = tokList[1]
         name = tokList[2]
-        definitions = self._createSubTree(tokList[3])
-        runBlock = self._createSubTree(tokList[4])
-        initBlock = self._createSubTree(tokList[5])
         nCurr.dat = [role, name]
-        nCurr.kids = [definitions, runBlock, initBlock]
+        #create children (may or may not be present):  definitions, run block, init block
+        for tok in tokList[3:len(tokList)]:
+            if not isinstance(tok, list):
+                break
+            child = self._createSubTree(tok)
+            nCurr.kids.append(child)
         return nCurr
 
 
@@ -795,7 +799,7 @@ class ASTGenerator(object):
         'num':_createNumber, 'builtInVal':_createBuiltInValue,
         'valA':_createValueAccess, 'ifStmt':_createIfStatement,
         'assign':_createAssignment, 'blockExecute':_createBlockExecute,
-        'stmtList':_createStatementList, 'defStmt':_createDefinitionStatemen,
+        'stmtList':_createStatementList, 'defAttr':_createDefinitionStatemen,
         'blockDef':_createBlockDefinition, 'classDef':_createClassDef,
         'program':_createProgram }
     '''Dictionary with type string and node creator function.'''
@@ -840,36 +844,58 @@ def doTests():
     testProg1 = (
 '''
 model test
-var V; var h;
-par A_bott; par A_o; par mu;
-par q; par g;
-
-block run
-h := V/A;
-$V := q - mu*A_o*sqrt(2*g*h);
+    var V; var h;
+    par A_bott; par A_o; par mu;
+    par q; par g;
+    
+    block run
+        h := V/A;
+        $V := q - mu*A_o*sqrt(2*g*h);
+    end
+    
+    block init
+        V := 0;
+        A_bott := 1; A_o := 0.02; mu := 0.55;
+        q := 0.05;
+    end
 end
 
-block init
-V := 0;
-A_bott := 1; A_o := 0.02; mu := 0.55;
-q := 0.05;
-end
+procedure RunTest
+    sub test as Test;
+    
+    block run
+        run test;
+    end
+    block init
+        init test;
+    end
 end
 ''' )
 
     testProg2 = (
 '''
-model test
-var a;
+model Test
+    var a;
 
-block run
-$a := 0.5;
+    block run
+        $a := 0.5;
+    end
+    block init
+        a := 1;
+    end
 end
 
-block init
-a := 1;
-end
-end
+procedure RunTest
+    sub test as Test;
+    
+    block run
+        run test;
+    end
+    
+    block init
+        init test;
+    end
+end 
 ''' )
 
     #test the AST generator
@@ -879,13 +905,13 @@ end
         parser = ParseStage()
         treeGen = ASTGenerator()
 
-        pres = parser.parseProgram(testProg2)
+        pres = parser.parseProgram(testProg1)
         print 'parse result:'
         print pres
         tree = treeGen.createSyntaxTree(pres)
         print 'tree:'
-        print tree
-
+##        print tree
+        TreePrinter(tree).printTree()
 
     #test the parser
     #flagTestParser = True
@@ -918,7 +944,7 @@ end
         print parser.keywords
         print 'node types'
         print parser.nodeTypes
-
+    
     #Check if the parser and the AST generator use the same type strings
     #to identify the nodes.
     typeStrParser = ParseStage.nodeTypes
@@ -934,7 +960,7 @@ end
         print typeStrASTGenerator.difference(typeStrParser)
 
 
-    pdb.set_trace()
+##    pdb.set_trace()
 
 
 if __name__ == '__main__':
