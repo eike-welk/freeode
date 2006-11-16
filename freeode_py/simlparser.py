@@ -36,8 +36,10 @@ from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optiona
     ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,ParseResults, ParseException, \
     ParseFatalException
 
+from ast import *
 
-pp = pprint.PrettyPrinter(indent=4)
+
+#pp = pprint.PrettyPrinter(indent=4)
 
 
 class ParseStage(object):
@@ -469,113 +471,6 @@ class AddMetaDict(object):
         newToks = ParseResults([{'typ':self.typeString, 'loc':loc}]) #create dict
         newToks += toks[0].copy() #add original contents
         return ParseResults([newToks]) #wrap in []; return.
-
-
-
-class Node(object):
-    '''Building block of a n-ary tree structure.'''
-
-    def __init__(self, typ, kids=[], loc=None, dat=None):
-        #TODO: write an init function that can accept any number of named arguments
-        #Variabe number of arguments:
-        #*args    : is a list of all normal arguments
-        #**kwargs : is a dict of keyword arguments
-        #Code for derived classes: super(A, self).__init__(*args, **kwds)
-        object.__init__(self)
-        self.typ = typ   # type string
-        #self.parent = None
-        self.kids = kids[:] # list of children
-        self.loc  = loc     # the location in the program
-        self.dat = dat      # whatever is appropriate
-
-
-    def __repr__(self):
-        className = self.__class__.__name__
-        typeStr = repr(self.typ)
-        childStr = ',' + repr(self.kids)
-        #if location and contents have their default value, don't print them
-        if self.loc == None:
-            locStr = ''
-        else:
-            locStr = ', ' + repr(self.loc)
-        if self.dat == None:
-            datStr =''
-        else:
-            datStr = ', ' + repr(self.dat)
-        #treat all other attributes as named attributes
-        standardAttributes = set(['typ', 'kids', 'loc', 'dat'])
-        extraAttrStr=''
-        for key, attr in self.__dict__.iteritems():
-            if key in standardAttributes:
-                continue
-            extraAttrStr += ', ' + key + '=' + repr(attr)
-
-        reprStr = className  + '(' + typeStr + childStr + locStr + datStr + \
-                                    extraAttrStr + ')'
-        return reprStr
-
-    #TODO: __str__() that prints the tree in a neat way
-
-    #Acces to childern throug []
-    def __getitem__(self, i):
-        return self.kids[i]
-    def __len__(self):
-        return len(self.kids)
-    #def __getslice__(self, low, high):
-        #return self.kids[low:high]
-    #def __setslice__(self, low, high, childList):
-        #self.kids[low:high] = seq
-##    def __cmp__(self, o):
-##        return cmp(self.type, o)
-
-
-##    def copy(self):
-##        '''
-##        TODO: use built in copy module
-##          import copy
-##          x = copy.copy(y)        # make a shallow copy of y
-##          x = copy.deepcopy(y)    # make a deep copy of y
-##
-##        Make a (recursive) deep copy of the object.
-##        This will (currently) not work with attributes that are lists or
-##        dictionaries!
-##        See: http://www.python.org/search/hypermail/python-1993/0267.html
-##        '''
-##        newObject = self.__class__()     #Create new object with same class
-##        #duplicate attributes
-##        for key in self.__dict__.keys(): #key is a string
-##            oldAttr = getattr(self, key)
-##            if hasattr(oldAttr, 'copy'): #If attribute has a copy function then
-##                newAttr = oldAttr.copy() #use the copy function to duplicate it
-##            else:
-##                newAttr = oldAttr #else shallow copy - attribute is believed to
-##                                  #be immutable e.g.: number.
-##            setattr(newObject, key, newAttr) #Put duplicated attribute into
-##                                             #new object
-##        return newObject
-
-
-
-
-class NodeValAccess(Node):
-    '''
-    AST node for access to a variable or parameter.
-    Has additional attribute deriv.
-        typ: type string, usually: 'valA'
-        kids: slice?
-        loc: location in input string
-        dat: list of identifiers; the dot separated name, from left to right.
-        deriv: [],['time'] or list of distibution domains
-    '''
-
-    def __init__(self, typ='valA', kids=[], loc=None, dat=None, deriv=[]):
-        '''
-        deriv: [],['time'] or list of distibution domains. Shows that
-        derivative of variable is accessed.
-        '''
-        Node.__init__(self, typ, kids, loc, dat)
-        self.deriv = deriv[:]
-
 
 
 
