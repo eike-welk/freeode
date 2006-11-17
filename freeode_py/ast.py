@@ -48,7 +48,7 @@ class Node(object):
     c 1.1
     
     >>> #iterating over the whole tree:
-    >>> for n,d in t1.iterateDepthFirst(returnDepth=True):
+    >>> for n,d in t1.iterDepthFirst(returnDepth=True):
     ...     print n.typ, 'depth: ', d
     ... 
     root 0.0 depth:  0
@@ -65,8 +65,9 @@ class Node(object):
         #*args    : is a list of all normal arguments
         #**kwargs : is a dict of keyword arguments
         #Code for derived classes: super(A, self).__init__(*args, **kwds)
-        object.__init__(self)
-        self.typ = typ   # type string
+        super(Node, self).__init__()
+##        object.__init__(self)
+        self.typ = typ      # type string
         #self.parent = None
         self.kids = kids[:] # list of children
         self.loc  = loc     # the location in the program
@@ -93,13 +94,16 @@ class Node(object):
             if key in standardAttributes:
                 continue
             extraAttrStr += ', ' + key + '=' + repr(attr)
-
+        #assemble the string
         reprStr = className  + '(' + typeStr + childStr + locStr + datStr + \
                                     extraAttrStr + ')'
         return reprStr
 
-    #TODO: __str__() that prints the tree in a neat way
 
+    def __str__(self):
+        return TreePrinter(self).toStringTree()
+        
+    
     #let for loop iterate over children
     def __iter__(self):
         return self.kids.__iter__()
@@ -119,7 +123,7 @@ class Node(object):
 ##    def __cmp__(self, o):
 ##        return cmp(self.type, o)
 
-    def iterateDepthFirst(self, returnDepth=False):
+    def iterDepthFirst(self, returnDepth=False):
         '''
         Iterate over whole (sub) tree in a depth first manner.
         returnDepth :   if True the iterator returns a tuple (node, depth) otherwise it 
@@ -155,16 +159,39 @@ class Node(object):
 
 
 
+class NodeAttrDef(Node):
+    '''
+    AST node for definition of a variable, parameter or submodel.
+        typ         : type string, usually: 'defAttr'
+        kids        : []
+        loc         : location in input string
+        dat         : None     
+        
+        attrName    : identifier; name of the attribute
+        className   : type of the attribute: Real for numbers, the name for models
+        role        : 'var', 'par' or None
+        isSubmodel  : True or False
+   '''
+    
+    def __init__(self, typ='defAttr', kids=[], loc=None, dat=None, 
+                        attrName=None, className=None, role=None, isSubmodel=None):
+        Node.__init__(self, typ, kids, loc, dat)
+        self.attrName = attrName
+        self.className = className
+        self.role = role
+        self.isSubmodel = isSubmodel
+        
+        
 
 class NodeValAccess(Node):
     '''
-    Specialized AST node for access to a variable or parameter.
+    AST node for access to a variable or parameter.
     Has additional attribute deriv.
-        typ: type string, usually: 'valA'
-        kids: slice?
-        loc: location in input string
-        dat: list of identifiers; the dot separated name, from left to right.
-        deriv: [],['time'] or list of distibution domains
+        typ     : type string, usually: 'valA'
+        kids    :  ? slice object if attribute is an array?
+        loc     : location in input string
+        dat     : list of identifiers; the dot separated name, from left to right.
+        deriv   : [],['time'] or list of distibution domains
     '''
 
     def __init__(self, typ='valA', kids=[], loc=None, dat=None, deriv=[]):
@@ -175,14 +202,7 @@ class NodeValAccess(Node):
         Node.__init__(self, typ, kids, loc, dat)
         self.deriv = deriv[:]
 
-
-
-#TODO: Create specialized nodes for attribute definition: 
-#TODO:      Definition of numbers: 'defAttrVal'
-#TODO:      Definition of sub-model 'defAttrClass' ? 'defAttrSubMod'
-
-
-
+       #TODO: Node for classes with attribute: name
 
 class DepthFirstIterator(object):
     """
@@ -269,16 +289,22 @@ class TreePrinter(object):
         '''root : the root of the tree, which will be printed'''
         self.root = root
         self.indentWidth = 4
-
+            
+            
     def printTree(self):
+        print self.toStringTree()
+
+
+    def toStringTree(self):
+        treeStr = ''
         indentStepStr = '|' + ' '*int(self.indentWidth - 1)
-        for node, depth in self.root.iterateDepthFirst(True):
+        for node, depth in self.root.iterDepthFirst(True):
             indentStr = indentStepStr * depth
             
             #print attributes that are always present
             stdAttrStr = indentStr + node.__class__.__name__ + ' typ: ' + str(node.typ) + \
                          ' loc: ' + str(node.loc) + ' dat: ' + str(node.dat)
-            print stdAttrStr
+            treeStr += stdAttrStr  + '\n'
             
             #print attributes that may be present in derived classes 
             standardAttributes = set(['typ', 'kids', 'loc', 'dat'])
@@ -287,12 +313,14 @@ class TreePrinter(object):
             for key, attr in node.__dict__.iteritems():
                 if key in standardAttributes:
                     continue
-                extraAttrStr += key + ':' + str(attr) + ' '
+                extraAttrStr += key + ': ' + str(attr) + ' '
                 extraAttrNum += 1
-            
+            #only add if there are extra attributes
             if extraAttrNum > 0:
-                print extraAttrStr
-            
+                treeStr += extraAttrStr  + '\n'
+        return treeStr
+
+        
 
 #------------ testcode --------------------------------------------------
 if __name__ == '__main__':
@@ -302,6 +330,9 @@ if __name__ == '__main__':
     
     print 'Test the AST:'
     t1 = Node('root 0.0', [Node('c 1.0', [Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
+    
+    print 'print the tree'
+##    TreePrinter(t1).printTree()
     print t1
 
     print 'iterating over only the children of a node:'
@@ -309,11 +340,11 @@ if __name__ == '__main__':
         print n.typ
 
     print 'iterating over the whole tree:'
-    for n,d in t1.iterateDepthFirst(returnDepth=True):
+    for n,d in t1.iterDepthFirst(returnDepth=True):
         print n.typ, 'depth: ', d
         
-    print 'print the tree'
-    TreePrinter(t1).printTree()
+    
+
     
 else:
     # This will be executed in case the

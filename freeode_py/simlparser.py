@@ -390,7 +390,7 @@ class ParseStage(object):
 
         #..................... Class ........................................................................
         #define parameters, variables and submodels
-        defRole = kw('par') | kw('var') | kw('sub') | kw('submodel')
+        defRole = kw('par') | kw('var') | kw('sub') 
         attributeDef = Group(defRole + identifier + 
                              Optional(kw('as') + identifier) + ';') .setParseAction(AddMetaDict('defAttr'))\
                                                                     .setName('attributeDef')#.setDebug(True)
@@ -656,7 +656,7 @@ class ASTGenerator(object):
             setattr(nCurr, attrName, attrVal)
         #create children and store operator
         lhsTree = self._createSubTree(tokList[1]) #child lhs
-        #nCurr.dat = tokList[2]                    #operator
+        nCurr.dat = tokList[2]                    #operator
         rhsTree = self._createSubTree(tokList[3]) #child rhs
         nCurr.kids=[lhsTree, rhsTree]
         return nCurr
@@ -701,24 +701,33 @@ class ASTGenerator(object):
         return nCurr
 
 #TODO: Create specialized nodes for attribute definition: 
-    def _createDefinitionStatemen(self, tokList):
+    def _createAttrDefinition(self, tokList):
         '''
         Create node for defining parameterr, variable or submodel: var foo;
         type string: 'defAttr'
         BNF:
-        defRole = kw('par') | kw('var') | kw('sub') | kw('submodel')
+        defRole = kw('par') | kw('var') | kw('sub') 
         attributeDef = Group(defRole + identifier + 
                              Optional(kw('as') + identifier + ';'))
         '''
-        nCurr = Node('defAttr')
+        nCurr = NodeAttrDef('defAttr')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
             setattr(nCurr, attrName, attrVal)
-        #Store the data
-        blockName = tokList[1]                    #type
-        modelName = tokList[2]                    #Name of variable
-        nCurr.dat = [blockName, modelName]
+        #These are aways present
+        roleStr = tokList[1]                    #var, par, sub
+        nCurr.attrName = tokList[2] #identifier; name of the attribute
+        #attribute is a submodel
+        if roleStr == 'sub':
+            nCurr.className = tokList[4]
+            nCurr.isSubmodel = True
+            nCurr.role = None
+        #attribute is a variable or parameter
+        else:
+            nCurr.className = 'Real'
+            nCurr.isSubmodel = False
+            nCurr.role = roleStr
         return nCurr
 
 
@@ -799,7 +808,7 @@ class ASTGenerator(object):
         'num':_createNumber, 'builtInVal':_createBuiltInValue,
         'valA':_createValueAccess, 'ifStmt':_createIfStatement,
         'assign':_createAssignment, 'blockExecute':_createBlockExecute,
-        'stmtList':_createStatementList, 'defAttr':_createDefinitionStatemen,
+        'stmtList':_createStatementList, 'defAttr':_createAttrDefinition,
         'blockDef':_createBlockDefinition, 'classDef':_createClassDef,
         'program':_createProgram }
     '''Dictionary with type string and node creator function.'''
@@ -834,7 +843,20 @@ class ASTGenerator(object):
 
 
 
-
+class ASTValidator(object):
+    '''
+    Test if the AST is valid.
+    '''
+    def __init__(self, treeRoot):
+        self.root = treeRoot
+        self.classes = {}
+    
+    def findClasses(self):
+        for node in root:
+            self.classes[node.name] = node
+        #TODO: Node for classes with attribute: name
+    
+    
 def doTests():
     '''Perform various tests.'''
 
