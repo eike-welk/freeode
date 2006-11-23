@@ -22,6 +22,7 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
+from ast import NodeClassDef
 
 __doc__ = \
 '''
@@ -39,7 +40,7 @@ from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optiona
 from ast import *
 
 
-#pp = pprint.PrettyPrinter(indent=4)
+#pp = pprint.PrettyPrinter(indent=4) 
 
 
 class ParseStage(object):
@@ -410,7 +411,7 @@ class ParseStage(object):
                             kw('end'))                              .setParseAction(AddMetaDict('blockDef'))\
                                                                     .setName('initBlock')#.setDebug(True)
 
-        classRole = kw('procedure') | kw('model') #| kw('paramset')
+        classRole = kw('process') | kw('model') #| kw('paramset')
         classDef = Group(   classRole + identifier +
                             Optional(definitionList) +
                             Optional(runBlock) +
@@ -765,7 +766,7 @@ class ASTGenerator(object):
                             Optional(initBlock)  +
                             kw('end'))
         '''
-        nCurr = Node('classDef')
+        nCurr = NodeClassDef('classDef')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -773,7 +774,8 @@ class ASTGenerator(object):
         #store role and class name - these are always present
         role = tokList[1]
         name = tokList[2]
-        nCurr.dat = [role, name]
+        nCurr.name = name
+        nCurr.role = role
         #create children (may or may not be present):  definitions, run block, init block
         for tok in tokList[3:len(tokList)]:
             if not isinstance(tok, list):
@@ -843,18 +845,42 @@ class ASTGenerator(object):
 
 
 
-class ASTValidator(object):
+class IntermediateTreeGenerator(object):
     '''
-    Test if the AST is valid.
+    Generate a tree that represents the intermediate language.
     '''
-    def __init__(self, treeRoot):
-        self.root = treeRoot
+    def __init__(self):
+        self.astRoot = None
         self.classes = {}
+        self.processes = {}
+        
     
-    def findClasses(self):
-        for node in root:
+    def _findClasses(self):
+        '''
+        Extract all class definitions from the ast and put them into self.classes.
+        Additionally the process definitions go into self.processes.
+        '''
+        for node in self.astRoot:
             self.classes[node.name] = node
-        #TODO: Node for classes with attribute: name
+            if node.role == 'process':
+                self.processes[node.name] = node
+                
+    def createProcess(self, procDef):
+        '''generate ILT subtree for one process'''
+        process = procDef.copy()
+        return process
+    
+    def createIntermediateTree(self, inAST):
+        '''generate ILT tree from AST tree'''
+        self.astRoot = inAST
+        self._findClasses()
+        iltRoot = Node('ILT')
+        for processName, processDef in self.processes.iteritems():
+            print 'processing process: ', processName
+            newProc = self.createProcess(processDef)
+            iltRoot.kids.append(newProc)
+        return iltRoot
+    
     
     
 def doTests():
@@ -882,7 +908,7 @@ model test
     end
 end
 
-procedure RunTest
+process RunTest
     sub test as Test;
     
     block run
@@ -907,7 +933,7 @@ model Test
     end
 end
 
-procedure RunTest
+process RunTest
     sub test as Test;
     
     block run
@@ -919,10 +945,28 @@ procedure RunTest
     end
 end 
 ''' )
-
-    #test the AST generator
-    flagTestASTGenerator = True
-    #flagTestASTGenerator = False
+    #test the intermedite tree generator ------------------------------------------------------------------
+    flagTestILTGenerator = True
+    #flagTestILTGenerator = False
+    if flagTestILTGenerator:
+        parser = ParseStage()
+        astGen = ASTGenerator()
+        itGen = IntermediateTreeGenerator()
+        
+        pres = parser.parseProgram(testProg1)
+        print 'parse result:'
+        print pres
+        astTree = astGen.createSyntaxTree(pres)
+        print 'AST tree:'
+        print astTree
+        iltTree = itGen.createIntermediateTree(astTree)
+        print 'ILT tree:'
+        print iltTree
+        
+        
+    #test the AST generator ------------------------------------------------------------------
+    #flagTestASTGenerator = True
+    flagTestASTGenerator = False
     if flagTestASTGenerator:
         parser = ParseStage()
         treeGen = ASTGenerator()
@@ -930,12 +974,12 @@ end
         pres = parser.parseProgram(testProg1)
         print 'parse result:'
         print pres
-        tree = treeGen.createSyntaxTree(pres)
+        astTree = treeGen.createSyntaxTree(pres)
         print 'tree:'
 ##        print tree
-        TreePrinter(tree).printTree()
+        TreePrinter(astTree).printTree()
 
-    #test the parser
+    #test the parser ----------------------------------------------------------------------
     #flagTestParser = True
     flagTestParser = False
     if flagTestParser:
@@ -946,7 +990,7 @@ end
         #print parser.parseProgram('model test par a; end')
 
 
-        print parser.parseProgram(testProgStr)
+        print parser.parseProgram(testProg2)
 
         #print parser.parseProgram('a:=0+1;b:=2+3+4;')
         #print parser.parseProgram('if a==0 then b:=-1; else b:=2+3+4; a:=1; end')
@@ -967,7 +1011,7 @@ end
         print 'node types'
         print parser.nodeTypes
     
-    #Check if the parser and the AST generator use the same type strings
+    #Check if the parser and the AST generator use the same type strings ---------------------------------
     #to identify the nodes.
     typeStrParser = ParseStage.nodeTypes
     typeStrASTGenerator = set(ASTGenerator.funcDict.keys())

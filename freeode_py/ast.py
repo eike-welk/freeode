@@ -27,6 +27,9 @@ Module contains specialized nodes and tools for tree handling.
 
 
 
+import copy
+
+
 
 class Node(object):
     '''
@@ -132,6 +135,12 @@ class Node(object):
         '''
         return DepthFirstIterator(self, returnDepth)
 
+
+    def copy(self):
+        '''Return a (recursive) deep copy of the node.'''
+        return copy.deepcopy(self)
+        
+        
 ##    def copy(self):
 ##        '''
 ##        TODO: use built in copy module
@@ -202,7 +211,23 @@ class NodeValAccess(Node):
         Node.__init__(self, typ, kids, loc, dat)
         self.deriv = deriv[:]
 
-       #TODO: Node for classes with attribute: name
+
+
+class NodeClassDef(Node):
+    """
+    AST node for class definition.
+    """
+    
+    def __init__(self, typ='classDef', kids=[], loc=None, dat=None, name=None, role=None):
+        '''
+        name : classname
+        role : "process", "model" 
+        '''
+        Node.__init__(self, typ, kids, loc, dat)
+        self.name = name
+        self.role = role
+
+
 
 class DepthFirstIterator(object):
     """
@@ -303,7 +328,8 @@ class TreePrinter(object):
             
             #print attributes that are always present
             stdAttrStr = indentStr + node.__class__.__name__ + ' typ: ' + str(node.typ) + \
-                         ' loc: ' + str(node.loc) + ' dat: ' + str(node.dat)
+                         ' loc: ' + str(node.loc) + ' dat: ' + str(node.dat) + \
+                         ' ID: ' + str(id(node))
             treeStr += stdAttrStr  + '\n'
             
             #print attributes that may be present in derived classes 
