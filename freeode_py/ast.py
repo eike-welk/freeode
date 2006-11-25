@@ -69,7 +69,6 @@ class Node(object):
         #**kwargs : is a dict of keyword arguments
         #Code for derived classes: super(A, self).__init__(*args, **kwds)
         super(Node, self).__init__()
-##        object.__init__(self)
         self.typ = typ      # type string
         #self.parent = None
         self.kids = kids[:] # list of children
@@ -139,32 +138,6 @@ class Node(object):
     def copy(self):
         '''Return a (recursive) deep copy of the node.'''
         return copy.deepcopy(self)
-        
-        
-##    def copy(self):
-##        '''
-##        TODO: use built in copy module
-##          import copy
-##          x = copy.copy(y)        # make a shallow copy of y
-##          x = copy.deepcopy(y)    # make a deep copy of y
-##
-##        Make a (recursive) deep copy of the object.
-##        This will (currently) not work with attributes that are lists or
-##        dictionaries!
-##        See: http://www.python.org/search/hypermail/python-1993/0267.html
-##        '''
-##        newObject = self.__class__()     #Create new object with same class
-##        #duplicate attributes
-##        for key in self.__dict__.keys(): #key is a string
-##            oldAttr = getattr(self, key)
-##            if hasattr(oldAttr, 'copy'): #If attribute has a copy function then
-##                newAttr = oldAttr.copy() #use the copy function to duplicate it
-##            else:
-##                newAttr = oldAttr #else shallow copy - attribute is believed to
-##                                  #be immutable e.g.: number.
-##            setattr(newObject, key, newAttr) #Put duplicated attribute into
-##                                             #new object
-##        return newObject
 
 
 
@@ -224,8 +197,16 @@ class NodeClassDef(Node):
         role : "process", "model" 
         '''
         Node.__init__(self, typ, kids, loc, dat)
-        self.name = name
+        self.className = name
         self.role = role
+
+
+
+class NodeStmtList(Node):
+    '''AST Node for list of statements'''
+    
+    def __init__(self, typ='stmtList', kids=[], loc=None, dat=None):
+        super(NodeStmtList, self).__init__(typ, kids, loc, dat)
 
 
 
@@ -238,7 +219,7 @@ class DepthFirstIterator(object):
     Usage:
     >>> t1 = Node('root 0.0', [Node('c 1.0', [Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
     >>> for n in DepthFirstIterator(t1):
-    ...     print n
+    ...     print repr(n)
     ... 
     Node('root 0.0',[Node('c 1.0',[Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
     Node('c 1.0',[Node('c 2.0',[]), Node('c 2.1',[])])
@@ -348,11 +329,16 @@ class TreePrinter(object):
 
         
 
+
 #------------ testcode --------------------------------------------------
 if __name__ == '__main__':
     # Self-testing code goes here.
     #TODO: add unit tests
-    #TODO: add doctest tests. 
+    #perform the doctests
+    def doDoctest():
+        import doctest
+        doctest.testmod()   
+    doDoctest()
     
     print 'Test the AST:'
     t1 = Node('root 0.0', [Node('c 1.0', [Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
