@@ -481,6 +481,7 @@ class ASTGeneratorException(Exception):
     pass
 
 
+
 class ASTGenerator(object):
     '''Create a syntax tree from the parsers output'''
 
@@ -669,9 +670,9 @@ class ASTGenerator(object):
         type string: 'blockExecute'
         BNF:
         blockName = kw('run') | kw('init') #| kw('insert')
-        blockExecute = Group(blockName + identifier + ';')          .setParseAction(AddMetaDict('blockExecute'))\
+        blockExecute = Group(blockName + subModelName + ';')
         '''
-        nCurr = Node('blockExecute')
+        nCurr = NodeBlockExecute('blockExecute')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -679,7 +680,8 @@ class ASTGenerator(object):
         #Store the data
         blockName = tokList[1]                    #block name - operator
         modelName = tokList[2]                    #Name of model from where block is taken
-        nCurr.dat = [blockName, modelName]
+        nCurr.blockName = blockName
+        nCurr.subModelName = modelName
         return nCurr
 
 
@@ -741,7 +743,7 @@ class ASTGenerator(object):
                             statementList +
                             kw('end'))
         '''
-        nCurr = Node('blockDef')
+        nCurr = NodeBlockDef('blockDef')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -749,7 +751,7 @@ class ASTGenerator(object):
         #store name of block and create the child
         blockName = tokList[2]
         statements = self._createSubTree(tokList[3])
-        nCurr.dat = blockName
+        nCurr.name = blockName
         nCurr.kids=[statements]
         return nCurr
 
@@ -759,7 +761,7 @@ class ASTGenerator(object):
         Create node for definition of a class: model foo ... end
         type string: 'classDef'
         BNF:
-        classRole = kw('procedure') | kw('model') #| kw('paramset')
+        classRole = kw('process') | kw('model') #| kw('paramset')
         classDef = Group(   classRole + identifier +
                             Optional(definitionList) +
                             Optional(runBlock) +
@@ -845,97 +847,175 @@ class ASTGenerator(object):
 
 
 
-class IntermediateTreeGenerator(object):
+class UserException(Exception):
+    '''Exception that transports user visible error messages'''
+    def __init__(self, message, loc=None, str=None):
+        Exception.__init__(self)
+        self.message = message
+        '''The error message'''
+        self.loc = loc
+        '''Position in the input string, where the error occured'''
+        self.str = str
+        '''When not none take this as the input string'''
+
+    def __str__(self):
+        return 'Error! ' + self.message + '\n At position: ' + str(self.loc)
+    #TODO: better error message formating
+    #TODO: include str in all Node(s) to facilate error message handling?
+    
+    
+
+class IntermediateProcessGenerator(object):
     '''
-    Generate a tree that represents the intermediate language.
+    Generate a process for the intermediate language tree (ILT)
     '''
-    def __init__(self, inAST):
-        self.astRoot = inAST
-        self.classes = {}
-        self.processes = {}
-        self.iltProc = NodeClassDef('Dummy') #the procedure which is currently assembled
-        #populate classes and processes 
-        self.findClasses()
+    def __init__(self, astRoot):
+        self.astRoot = astRoot
+        '''The AST'''
+        self.astClasses = {}
+        '''dict of classes in ast: {'mod1':NodeClassDef}'''
+        self.astProcesses = {}
+        '''dict of processes in AST'''
+        self.process = NodeClassDef('Dummy') 
+        '''The process which is currently assembled'''
+        self.processAttributes = {}
+        '''Dict of attributes of the process: {('mod1', 'var1'):NodeAttrDef} '''
+        #populate self.classes and self.processes 
+        self.findClassesAndProcesses()
 
     
-    def findClasses(self):
+    def findClassesAndProcesses(self):
         '''
         Extract all class definitions from the ast and put them into self.classes.
         Additionally the process definitions go into self.processes.
         '''
         for classDef in self.astRoot:
-            self.classes[classDef.className] = classDef
+            self.astClasses[classDef.className] = classDef
             if classDef.role == 'process':
-                self.processes[classDef.className] = classDef
+                self.astProcesses[classDef.className] = classDef
                 
-    
 
     def copyAttributesRecursively(self, model, namePrefix):
         '''
         Copy variables and parameters from all submodels into the procedure
+        Additionaly puts all attributes into self.processAttributes
         arguments:
             model      : A class definition from the AST
             namePrefix : a list of strings. prefix for the dotted name of the class' attributes.
         '''
         #attrbutes are defined first - in  a statement list
         attrDefs = model[0]
+        newAttrDefs = self.process[0]
+        
         #return if class defines no attributes
         if not isinstance(attrDefs, NodeStmtList):
             return
+        
         #Iterate over the (variable, parameter, submodel) definitions
         for defStmt in attrDefs:
             #submodel:  recurse into the submodel.
             if defStmt.isSubmodel:
                 className = defStmt.className
                 attrName = defStmt.attrName
-                #TODO: user visible error if class does not exist
-                if not className in self.classes:
-                    pass
-                subModel = self.classes[className] #find the class definition
-                namePrefixNew = namePrefix[:]
-                namePrefixNew.append(attrName) #append attribute name to prefix
+                #User visible error if class does not exist
+                if not className in self.astClasses:
+                    raise UserException('Undefined class: '+ className, defStmt.loc)
+                subModel = self.astClasses[className] #find the class definition
+                namePrefixNew = namePrefix + [attrName] #append attribute name to prefix
                 self.copyAttributesRecursively(subModel, namePrefixNew) #recurse into submodel
             #variable or parameter: copy definition and put prefix before name
             else:
                 newAttr = defStmt.copy()
                 newAttr.attrName = namePrefix + [defStmt.attrName]
-                self.iltProc.kids[0].kids.append(newAttr)
+                newAttrDefs.appendChild(newAttr) #put into new process
+                self.processAttributes[tuple(newAttr.attrName)] = newAttr #put into dict for quick reference
         return
        
        
-       
-    def copyBlockRecursively(self, block, namePrefix, mode):
+    def copyBlockRecursively(self, block, namePrefix, newBlock, mode):
         '''
-        Copy a bock recursively
+        Copy block into newBlock recursively. 
+        Copies all statements of block and all statements of blocks that are 
+        executed in this block, recursively.
             block      : A block definition 
-            namePrefix : a list of strings. prefix for the dotted name of the class' attributes.
-            mode       : 'dynamic' or 'init'
+            namePrefix : a list of strings. prefix for all variable names.
+            newBlock   : the statements are copied here
+            mode       : 'run' or 'init'
         '''
-        pass
-       
+        stmtList = block.kids[0]
+        newStmtList = newBlock.kids[0]
+        
+        for statement in stmtList:
+            #Block execution statement: include the called blocks variables
+            if isinstance(statement, NodeBlockExecute):
+                subModelName = statement.subModelName
+                blockName = statement.blockName
+                #Error if submodel does not exist
+                if not tuple(subModelName) in self.processAttributes:
+                    raise UserException('Undefined submodel: '
+                                        + str(subModelName), statement.loc)
+                subModelDef = self.processAttributes[tuple(subModelName)] #find definition of submodel
+            #Any other statement: copy statement
+            else:
+                newStmt = statement.copy()
+                #put prefix before all varible names in new Statement
+                for var in DepthFirstIterator(newStmt):
+                    if not isinstance(var, NodeValAccess):
+                        continue
+                    newAttrName = namePrefix + [var.attrName]
+                    var.attrName = newAttrName
+                    #Error if attribute does not exist
+                    if not tuple(newAttrName) in self.processAttributes:
+                        raise UserException('Undefined attribute: '
+                                            + str(newAttrName), var.loc)
+                #put new statement into new block
+                newStmtList.appendChild(newStmt)
 
     def createProcess(self, astProc):
         '''generate ILT subtree for one process'''
-        self.iltProc = NodeClassDef('ILTProcess')
-        self.iltProc.className = astProc.className
-        self.iltProc.role = astProc.role
-        self.iltProc.kids.append(NodeStmtList('attributes')) #create empty attribute definition
+        #init new process
+        self.process = NodeClassDef('ILTProcess')
+        self.process.className = astProc.className
+        self.process.role = astProc.role
+        self.process.kids.append(NodeStmtList('attributes')) #create empty attribute definition
+        #init quick reference list
+        self.processAttributes = {}
         
+        #create the new process' attributes
         self.copyAttributesRecursively(astProc, [])
+        #create the new process' blocks (methods)
+        for block in astProc:
+            if not isinstance(block, NodeBlockDef):
+                continue
+            newBlock = NodeBlockDef('ILTBlock') #create the new block for the procedure
+            newBlock.name = block.name
+            mode = block.name #determine mode from block name (role)
+            self.copyBlockRecursively(block, [], newBlock, mode) #copy the statements
+            self.process.kids.append(newBlock) #put new block into process
         
-        for block in astProc[1:len(astProc)]:
-            #TODO: determine mode from block name (role)
-            mode = 'dynamic'
-            self.copyBlockRecursively(block, [], mode)
-        #TODO:special node for block definition
-        return self.iltProc
+        return self.process
+
+
     
-    def createIntermediateTree(self):
+class IntermediateTreeGenerator(object):
+    '''
+    Generate a tree that represents the intermediate language.
+    intermediate language tree (ILT)
+    '''
+   
+    def __init__(self):
+        super(IntermediateTreeGenerator, self).__init__()
+   
+    def createIntermediateTree(self, astRoot):
         '''generate ILT tree from AST tree'''
         iltRoot = Node('ILT')
-        for processName, processDef in self.processes.iteritems():
-#            print 'processing process: ', processName
-            newProc = self.createProcess(processDef)
+        procGen = IntermediateProcessGenerator(astRoot)
+        
+        for processDef in astRoot:
+            if ((not isinstance(processDef, NodeClassDef)) or 
+                (not processDef.role == 'process')):
+                continue
+            newProc = procGen.createProcess(processDef)
             iltRoot.kids.append(newProc)
         return iltRoot
     
@@ -1009,6 +1089,7 @@ end
     if flagTestILTGenerator:
         parser = ParseStage()
         astGen = ASTGenerator()
+        iltGen = IntermediateTreeGenerator()
         
         pres = parser.parseProgram(testProg1)
         print 'parse result:'
@@ -1016,8 +1097,8 @@ end
         astTree = astGen.createSyntaxTree(pres)
         print 'AST tree:'
         print astTree
-        itGen = IntermediateTreeGenerator(astTree)
-        iltTree = itGen.createIntermediateTree()
+ 
+        iltTree = iltGen.createIntermediateTree(astTree)
         print 'ILT tree:'
         print iltTree
         
