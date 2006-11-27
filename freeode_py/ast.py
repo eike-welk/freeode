@@ -35,7 +35,6 @@ class Node(object):
     '''
     Building block of a n-ary tree structure.  
     
-    TODO: turn this into a doctest
     Usage:
     >>> t1 = Node('root 0.0', [Node('c 1.0', [Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
     
@@ -220,7 +219,7 @@ class NodeBlockDef(Node):
     It has neither arguments nor return values. It is treated as an C++ inline 
     function or template.
     
-    The block has exactly one child; the statement list
+    The block's childern are the statements.
     """
     
     def __init__(self, typ='blockDef', kids=[], loc=None, dat=None, name=None):
@@ -229,7 +228,6 @@ class NodeBlockDef(Node):
         '''
         Node.__init__(self, typ, kids, loc, dat)
         self.name = name
-        self.kids = [NodeStmtList()]
 
 
 class NodeClassDef(Node):

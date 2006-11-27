@@ -22,6 +22,7 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
+from pyparsing import OneOrMore
 from ast import NodeClassDef
 
 __doc__ = \
@@ -29,6 +30,7 @@ __doc__ = \
 Parser for the SIML simulation language.
 '''
 #TODO: usage (above)
+
 
 import pprint #pretty printer
 import pdb    #debuber
@@ -111,146 +113,6 @@ class ParseStage(object):
         print toks
         print '-------------------'
         return toks
-
-
-    #def actionInfixBinOp(self, str, loc, toks):
-        #'''
-        #Parse action for binary mathematical operations: + - * / ^
-        #Put additional information into parse result, that would
-        #be lost otherwise. The information is stored in a dict, and put before
-        #the original parse result.
-        #'''
-        ##debug code-----------------
-        #if   self.debugSyntax == 2:
-            #return None
-        #elif self.debugSyntax == 1:
-            #return toks.copy()
-
-        ## toks is structured like this [['2','+','5']]
-        #typeStr = self.defineNodeType('m_i2')
-        #newToks = ParseResults([{'typ':typeStr, 'loc':loc}]) #create dict
-        #newToks += toks[0].copy() #add original contents
-        #return ParseResults([newToks]) #wrap in []; return.
-
-
-    #def actionPrefixUnaryOp(self, str, loc, toks):
-        #'''
-        #Parse action for mathematical unary operations: -5 .
-        #Put additional information into parse result, that would
-        #be lost otherwise. The information is stored in a dict, and put before
-        #the original parse result.
-        #'''
-        ##debug code-----------------
-        #if   self.debugSyntax == 2:
-            #return None
-        #elif self.debugSyntax == 1:
-            #return toks.copy()
-
-        ## toks is structured like this [['-','5']]
-        #typeStr = self.defineNodeType('m_p1')
-        #newToks = ParseResults([{'typ':typeStr, 'loc':loc}]) #create dict
-        #newToks += toks[0].copy() #add original contents
-        #return ParseResults([newToks]) #wrap in []; return.
-
-
-    #def actionValAccess(self, str, loc, toks):
-        #'''
-        #Parse action for memory access: aa.bb.cc
-        #Put additional information into parse result, that would
-        #be lost otherwise. The information is stored in a dict, and put before
-        #the original parse result.
-        #'''
-        ##debug code-----------------
-        #if   self.debugSyntax == 2:
-            #return None
-        #elif self.debugSyntax == 1:
-            #return toks.copy()
-
-        ## toks is structured like this [['aa','bb','cc']]
-        #typeStr = self.defineNodeType('valA')
-        #newToks = ParseResults([{'typ':typeStr, 'loc':loc}]) #create dict
-        #newToks += toks[0].copy() #add original contents
-        #return ParseResults([newToks]) #wrap in []; return.
-
-
-    #def actionFuncCall(self, str, loc, toks):
-        #'''
-        #Parse action for function call: sin(2.1)
-        #Put additional information into parse result, that would
-        #be lost otherwise. The information is stored in a dict, and put before
-        #the original parse result.
-        #'''
-        ##debug code-----------------
-        #if   self.debugSyntax == 2:
-            #return None
-        #elif self.debugSyntax == 1:
-            #return toks.copy()
-
-        ## toks is structured like this [['sin','(',['2.1'],')']]
-        #typeStr = self.defineNodeType('funcCall')
-        #newToks = ParseResults([{'typ':typeStr, 'loc':loc}]) #create dict
-        #newToks += toks[0].copy() #add original contents
-        #return ParseResults([newToks]) #wrap in []; return.
-
-
-    #def actionParentheses(self, str, loc, toks):
-        #'''
-        #Parse action for pair of parentheses: ( 1+2 ).
-        #Put additional information into parse result, that would
-        #be lost otherwise. The information is stored in a dict, and put before
-        #the original parse result.
-        #'''
-        ##debug code-----------------
-        #if   self.debugSyntax == 2:
-            #return None
-        #elif self.debugSyntax == 1:
-            #return toks.copy()
-
-        ##toks is structured like this [['(', ['1', '+', '2'], ')']]
-        #typeStr = self.defineNodeType('paren')
-        #newToks = ParseResults([{'typ':typeStr, 'loc':loc}]) #create dict
-        #newToks += toks[0].copy() #add original contents
-        #return ParseResults([newToks]) #wrap in []; return.
-
-
-    #def actionNumber(self, str, loc, toks):
-        #'''
-        #Parse action for a real number: 5.23 .
-        #Put additional information into parse result, that would
-        #be lost otherwise. The information is stored in a dict, and put before
-        #the original parse result.
-        #'''
-        ##debug code-----------------
-        #if   self.debugSyntax == 2:
-            #return None
-        #elif self.debugSyntax == 1:
-            #return toks.copy()
-
-        ##toks is structured like this [['5.23']]
-        #typeStr = self.defineNodeType('num')
-        #newToks = ParseResults([{'typ':typeStr, 'loc':loc}]) #create dict
-        #newToks += toks[0].copy() #add original contents
-        #return ParseResults([newToks]) #wrap in []; return.
-
-
-    #def actionbuiltInValue(self, str, loc, toks):
-        #'''
-        #Parse action for a built in value: pi .
-        #Put additional information into parse result, that would
-        #be lost otherwise. The information is stored in a dict, and put before
-        #the original parse result.
-        #'''
-        ##debug code-----------------
-        #if   self.debugSyntax == 2:
-            #return None
-        #elif self.debugSyntax == 1:
-            #return toks.copy()
-
-        ##toks is structured like this [['pi']]
-        #typeStr = self.defineNodeType('builtInVal')
-        #newToks = ParseResults([{'typ':typeStr, 'loc':loc}]) #create dict
-        #newToks += toks[0].copy() #add original contents
-        #return ParseResults([newToks]) #wrap in []; return.
 
 
     def _actionCheckIdentifier(self, str, loc, toks):
@@ -350,7 +212,6 @@ class ParseStage(object):
         expression << (expression2 | expression1)       .setName('expression')#.setDebug(True)
 
         #Relational operators : <, >, ==, ...
-        #TODO: missing are: or, and, not
         relop = L('<') | L('>') | L('<=') | L('>=') | L('==')
         boolExpression = Group(expression + relop + expression) .setParseAction(AddMetaDict('m_i2')) \
                                                                 .setName('expression2')#.setDebug(True)
@@ -389,31 +250,34 @@ class ParseStage(object):
         statementList << Group(OneOrMore(statement))                .setParseAction(AddMetaDict('stmtList'))\
                                                                     .setName('statementList')#.setDebug(True)
 
-        #..................... Class ........................................................................
+#---------- Class Def ---------------------------------------------------------------------*
         #define parameters, variables and submodels
         defRole = kw('par') | kw('var') | kw('sub') 
         attributeDef = Group(defRole + identifier + 
                              Optional(kw('as') + identifier) + ';') .setParseAction(AddMetaDict('defAttr'))\
                                                                     .setName('attributeDef')#.setDebug(True)
         #Note: For the AST this is also a statementList-'stmtList'
-        definitionList = Group(OneOrMore(attributeDef))   .setParseAction(AddMetaDict('stmtList'))\
-                                                                    .setName('definitionList')#.setDebug(True)
+#        definitionList = Group(OneOrMore(attributeDef))             .setParseAction(AddMetaDict('stmtList'))\
+#                                                                    .setName('definitionList')#.setDebug(True)
 
         #The statements (equations) that determine the system dynamics go here
         runBlock = Group(   kw('block') + kw('run') +
-                            statementList +
+                            #statementList +
+                            OneOrMore(statement) + 
                             kw('end'))                              .setParseAction(AddMetaDict('blockDef'))\
                                                                     .setName('runBlock')#.setDebug(True)
 
         #The initialization code goes here
         initBlock = Group(  kw('block') + kw('init') +
-                            statementList +
+                            #statementList +
+                            OneOrMore(statement) + 
                             kw('end'))                              .setParseAction(AddMetaDict('blockDef'))\
                                                                     .setName('initBlock')#.setDebug(True)
 
         classRole = kw('process') | kw('model') #| kw('paramset')
         classDef = Group(   classRole + identifier +
-                            Optional(definitionList) +
+                            #Optional(definitionList) +
+                            OneOrMore(attributeDef) +
                             Optional(runBlock) +
                             Optional(initBlock)  +
                             kw('end'))                              .setParseAction(AddMetaDict('classDef'))\
@@ -438,6 +302,9 @@ class ParseStage(object):
     def parseProgram(self, inString):
         '''Parse a whole program. The program is entered as a string.'''
         result = self._parser.parseString(inString)
+        #TODO: test if input string is consumed completely
+        #TODO: store loc of last parsed statement; for error message generation.
+        #TODO: catch ParseExceptions, generate UserExceptions
         return result
 
 
@@ -451,14 +318,13 @@ class AddMetaDict(object):
 
     Additionally adds type string to a central list
     (ParseStage.nodeTypes - really a set) for checking the consistency
-
-    TODO: a dict, that is added to the standard meta dict.
     '''
     def __init__(self, typeString):
         '''typeString : string to identify the node.'''
         object.__init__(self)
         self.typeString = typeString
-        ParseStage.nodeTypes.add(typeString) #add to set
+         #add to set of known type strings
+        ParseStage.nodeTypes.add(typeString)
 
 
     def __call__(self,str, loc, toks):
@@ -609,7 +475,7 @@ class ASTGenerator(object):
             nCurr.deriv = ['time']
             tok1 = 2
         #The remaining tokens are the dot separated name
-        nCurr.dat = tokList[tok1:len(tokList)]
+        nCurr.attrName = tokList[tok1:len(tokList)]
         return nCurr
 
 
@@ -740,7 +606,7 @@ class ASTGenerator(object):
         type string: 'blockDef'
         BNF:
         runBlock = Group(   kw('block') + blockName +
-                            statementList +
+                            OneOrMore(statement) + 
                             kw('end'))
         '''
         nCurr = NodeBlockDef('blockDef')
@@ -748,11 +614,13 @@ class ASTGenerator(object):
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
             setattr(nCurr, attrName, attrVal)
-        #store name of block and create the child
+        #store name of block 
         blockName = tokList[2]
-        statements = self._createSubTree(tokList[3])
-        nCurr.name = blockName
-        nCurr.kids=[statements]
+        nCurr.name = blockName     
+        #create children - each child is a statement
+        for tok in tokList[3:len(tokList)-1]:
+            child = self._createSubTree(tok)
+            nCurr.kids.append(child)
         return nCurr
 
 
@@ -763,7 +631,7 @@ class ASTGenerator(object):
         BNF:
         classRole = kw('process') | kw('model') #| kw('paramset')
         classDef = Group(   classRole + identifier +
-                            Optional(definitionList) +
+                            OneOrMore(attributeDef) +
                             Optional(runBlock) +
                             Optional(initBlock)  +
                             kw('end'))
@@ -779,7 +647,7 @@ class ASTGenerator(object):
         nCurr.className = name
         nCurr.role = role
         #create children (may or may not be present):  definitions, run block, init block
-        for tok in tokList[3:len(tokList)]:
+        for tok in tokList[3:len(tokList)-1]:
             if not isinstance(tok, list):
                 break
             child = self._createSubTree(tok)
@@ -863,39 +731,90 @@ class UserException(Exception):
     #TODO: better error message formating
     #TODO: include str in all Node(s) to facilate error message handling?
     
-    
 
+
+class IntermediateProcessGeneratorException(Exception):
+    '''Exception thrown by the ILT-Process Generator (Compiler internal error)'''
+    def __init__(self, *args, **kwargs):
+        Exception.__init__(self, *args, **kwargs)
+        
+        
+        
 class IntermediateProcessGenerator(object):
     '''
-    Generate a process for the intermediate language tree (ILT)
+    Generate process for the intermediate language tree (ILT).
+    
+    Takes a process from the AST and generates a new process. This new process 
+    contains the atributes of all submodels. The code of the submodels' blocks 
+    is inserted (imlined) into the new process' blocks.
+    The new process is a 'flattened' version of the original structured process.
     '''
     def __init__(self, astRoot):
         self.astRoot = astRoot
         '''The AST'''
         self.astClasses = {}
         '''dict of classes in ast: {'mod1':NodeClassDef}'''
-        self.astProcesses = {}
-        '''dict of processes in AST'''
+#        self.astProcesses = {}
+#        '''dict of processes in AST'''
+        self.astProcessAttributes = {}
+        '''Atributes of the original process. Dict: {('mod1', 'var1'):NodeAttrDef}'''
         self.process = NodeClassDef('Dummy') 
-        '''The process which is currently assembled'''
+        '''The new process which is currently assembled'''
         self.processAttributes = {}
-        '''Dict of attributes of the process: {('mod1', 'var1'):NodeAttrDef} '''
+        '''Attributes of the new process: {('mod1', 'var1'):NodeAttrDef}'''
         #populate self.classes and self.processes 
-        self.findClassesAndProcesses()
+        self.findClassesInAst()
 
     
-    def findClassesAndProcesses(self):
+    def findClassesInAst(self):
         '''
         Extract all class definitions from the ast and put them into self.classes.
         Additionally the process definitions go into self.processes.
         '''
         for classDef in self.astRoot:
             self.astClasses[classDef.className] = classDef
-            if classDef.role == 'process':
-                self.astProcesses[classDef.className] = classDef
+#            if classDef.role == 'process':
+#                self.astProcesses[classDef.className] = classDef
                 
 
-    def copyAttributesRecursively(self, model, namePrefix):
+    def findAttributesRecursive(self, astClass, namePrefix):
+        '''
+        Find all of the process' attributes (recursing into the sub-models)
+        and put then into self.astProcessAttributes.
+        
+        Attributes are: parameters, variables, sub-models, and functions.
+        The definition in the AST is searched NOT the new process.
+        Output is: self.astProcessAttributes
+        '''
+        #each of the class' children is a definition
+        for attrDef in astClass:
+            #get attribute name
+            if isinstance(attrDef, NodeAttrDef): #definition of data attribute or submodel
+                attrName = attrDef.attrName
+            elif isinstance(attrDef, NodeBlockDef): #definition of block (function)
+                attrName = attrDef.name
+            else:
+                raise IntermediateProcessGeneratorException('Unknown Node.' + 
+                                                            repr(attrDef))
+            #prepend prefix to attribute name 
+            longAttrName = namePrefix + [attrName]
+            longAttrNameTup = tuple(longAttrName)
+            #Check redefinition
+            if longAttrNameTup in self.astProcessAttributes:
+                raise UserException('Redefinition of: ' + str(longAttrName), attrDef.loc)
+            #put new attribute into dict.
+            self.astProcessAttributes[longAttrNameTup] = attrDef
+            
+            #recurse into submodel, if definition of submodel 
+            if isinstance(attrDef, NodeAttrDef) and attrDef.isSubmodel:                
+                #User visible error if class does not exist
+                if not attrDef.className in self.astClasses:
+                    raise UserException('Undefined class: ' + attrDef.className, attrDef.loc)
+                subModel = self.astClasses[attrDef.className]
+                self.findAttributesRecursive(subModel, longAttrName)
+        
+        
+    def copyDataAttributes(self):
         '''
         Copy variables and parameters from all submodels into the procedure
         Additionaly puts all attributes into self.processAttributes
@@ -903,58 +822,47 @@ class IntermediateProcessGenerator(object):
             model      : A class definition from the AST
             namePrefix : a list of strings. prefix for the dotted name of the class' attributes.
         '''
-        #attrbutes are defined first - in  a statement list
-        attrDefs = model[0]
-        newAttrDefs = self.process[0]
-        
-        #return if class defines no attributes
-        if not isinstance(attrDefs, NodeStmtList):
-            return
-        
-        #Iterate over the (variable, parameter, submodel) definitions
-        for defStmt in attrDefs:
-            #submodel:  recurse into the submodel.
-            if defStmt.isSubmodel:
-                className = defStmt.className
-                attrName = defStmt.attrName
-                #User visible error if class does not exist
-                if not className in self.astClasses:
-                    raise UserException('Undefined class: '+ className, defStmt.loc)
-                subModel = self.astClasses[className] #find the class definition
-                namePrefixNew = namePrefix + [attrName] #append attribute name to prefix
-                self.copyAttributesRecursively(subModel, namePrefixNew) #recurse into submodel
-            #variable or parameter: copy definition and put prefix before name
-            else:
-                newAttr = defStmt.copy()
-                newAttr.attrName = namePrefix + [defStmt.attrName]
-                newAttrDefs.appendChild(newAttr) #put into new process
-                self.processAttributes[tuple(newAttr.attrName)] = newAttr #put into dict for quick reference
+        #Iterate over the (variable, parameter, submodel, function) definitions
+        for longName, defStmt in self.astProcessAttributes.iteritems():
+            #we only care for data attributes
+            if (not isinstance(defStmt, NodeAttrDef)) or defStmt.isSubmodel:
+                continue
+            newAttr = defStmt.copy() #copy definition, 
+            newAttr.attrName = longName #exchange name with long name (a.b.c)
+            self.process.appendChild(newAttr) #put new attribute into ILT process
+            self.processAttributes[longName] = newAttr #and into quick access dict
         return
        
        
-    def copyBlockRecursively(self, block, namePrefix, newBlock, mode):
+    def copyBlockRecursive(self, block, namePrefix, newBlock, allowedBlocks):
         '''
         Copy block into newBlock recursively. 
         Copies all statements of block and all statements of blocks that are 
         executed in this block, recursively.
-            block      : A block definition 
-            namePrefix : a list of strings. prefix for all variable names.
-            newBlock   : the statements are copied here
-            mode       : 'run' or 'init'
+            block          : A block definition 
+            namePrefix     : a list of strings. prefix for all variable names.
+            newBlock       : the statements are copied here
+            allowedBlocks  : ['run'] or ['init']
         '''
-        stmtList = block.kids[0]
-        newStmtList = newBlock.kids[0]
-        
-        for statement in stmtList:
+        for statement in block:
             #Block execution statement: include the called blocks variables
             if isinstance(statement, NodeBlockExecute):
-                subModelName = statement.subModelName
-                blockName = statement.blockName
-                #Error if submodel does not exist
-                if not tuple(subModelName) in self.processAttributes:
-                    raise UserException('Undefined submodel: '
-                                        + str(subModelName), statement.loc)
-                subModelDef = self.processAttributes[tuple(subModelName)] #find definition of submodel
+                subModelName = namePrefix + [statement.subModelName]
+                subBlockName = subModelName + [statement.blockName]
+                #Error if submodel or method does not exist
+                if not tuple(subModelName) in self.astProcessAttributes:
+                    raise UserException('Undefined submodel: ' + 
+                                        str(subModelName), statement.loc)
+                if not tuple(subBlockName) in self.astProcessAttributes:
+                    raise UserException('Undefined method: ' + 
+                                        str(subBlockName), statement.loc)
+                #Check if executing (inlining) this block is allowed
+                if not (statement.blockName in allowedBlocks):
+                    raise UserException('Method can not be executed here: ' + 
+                                        str(statement.blockName), statement.loc)
+                #find definition of method, and recurse into it.
+                subBlockDef = self.astProcessAttributes[tuple(subBlockName)] 
+                self.copyBlockRecursive(subBlockDef, subModelName, newBlock, allowedBlocks)
             #Any other statement: copy statement
             else:
                 newStmt = statement.copy()
@@ -962,14 +870,11 @@ class IntermediateProcessGenerator(object):
                 for var in DepthFirstIterator(newStmt):
                     if not isinstance(var, NodeValAccess):
                         continue
-                    newAttrName = namePrefix + [var.attrName]
-                    var.attrName = newAttrName
-                    #Error if attribute does not exist
-                    if not tuple(newAttrName) in self.processAttributes:
-                        raise UserException('Undefined attribute: '
-                                            + str(newAttrName), var.loc)
+                    newAttrName = namePrefix + var.attrName
+                    var.attrName = tuple(newAttrName)
                 #put new statement into new block
-                newStmtList.appendChild(newStmt)
+                newBlock.appendChild(newStmt)
+
 
     def createProcess(self, astProc):
         '''generate ILT subtree for one process'''
@@ -977,22 +882,26 @@ class IntermediateProcessGenerator(object):
         self.process = NodeClassDef('ILTProcess')
         self.process.className = astProc.className
         self.process.role = astProc.role
-        self.process.kids.append(NodeStmtList('attributes')) #create empty attribute definition
-        #init quick reference list
+        #init quick reference lists
         self.processAttributes = {}
+        self.astProcessAttributes = {}
         
-        #create the new process' attributes
-        self.copyAttributesRecursively(astProc, [])
+        #discover all attributes 
+        self.findAttributesRecursive(astProc, [])
+        #create the new process' data attributes
+        self.copyDataAttributes()
         #create the new process' blocks (methods)
         for block in astProc:
             if not isinstance(block, NodeBlockDef):
                 continue
             newBlock = NodeBlockDef('ILTBlock') #create the new block for the procedure
             newBlock.name = block.name
-            mode = block.name #determine mode from block name (role)
-            self.copyBlockRecursively(block, [], newBlock, mode) #copy the statements
+            allowedBlocks = [block.name] #determine alowed blocks from block name (role)
+            self.copyBlockRecursive(block, [], newBlock, allowedBlocks) #copy the statements
             self.process.kids.append(newBlock) #put new block into process
         
+        #TODO: Check undefined refference
+        #TODO: Mark state variables
         return self.process
 
 
@@ -1027,6 +936,7 @@ def doTests():
     #t1 = Node('root', [Node('child1',[]),Node('child2',[])])
     #print t1
 
+#------------ testProg1 -----------------------
     testProg1 = (
 '''
 model Test
@@ -1058,6 +968,7 @@ process RunTest
 end
 ''' )
 
+#------------ testProg2 -----------------------
     testProg2 = (
 '''
 model Test
