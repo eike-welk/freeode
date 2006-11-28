@@ -153,19 +153,23 @@ class NodeAttrDef(Node):
         loc         : location in input string
         dat         : None     
         
-        attrName    : identifier; name of the attribute
-        className   : type of the attribute: Real for numbers, the name for models
-        role        : 'var', 'par' or None
-        isSubmodel  : True or False
+        attrName        : identifier; name of the attribute
+        className       : type of the attribute: Real for numbers, the class 
+                          name for sub-models.
+        role            : 'var', 'par' or None
+        isSubmodel      : True or False
+        isStateVariable : True or False
    '''
     
     def __init__(self, typ='defAttr', kids=[], loc=None, dat=None, 
-                        attrName=None, className=None, role=None, isSubmodel=None):
+                        attrName=None, className=None, role=None, 
+                        isSubmodel=None, isStateVariable=None):
         Node.__init__(self, typ, kids, loc, dat)
         self.attrName = attrName
         self.className = className
         self.role = role
         self.isSubmodel = isSubmodel
+        self.isStateVariable = isStateVariable
         
         
 class NodeValAccess(Node):
@@ -363,7 +367,24 @@ class TreePrinter(object):
                 treeStr += extraAttrStr  + '\n'
         return treeStr
 
-        
+
+
+class UserException(Exception):
+    '''Exception that transports user visible error messages'''
+    def __init__(self, message, loc=None, str=None):
+        Exception.__init__(self)
+        self.message = message
+        '''The error message'''
+        self.loc = loc
+        '''Position in the input string, where the error occured'''
+        self.str = str
+        '''When not none take this as the input string'''
+
+    def __str__(self):
+        return 'Error! ' + self.message + '\n At position: ' + str(self.loc)
+    #TODO: better error message formating
+    #TODO: include str in all Node(s) to facilate error message handling?
+
 
 
 #------------ testcode --------------------------------------------------

@@ -596,6 +596,7 @@ class ASTGenerator(object):
         else:
             nCurr.className = 'Real'
             nCurr.isSubmodel = False
+            nCurr.isStateVariable = False
             nCurr.role = roleStr
         return nCurr
 
@@ -712,35 +713,17 @@ class ASTGenerator(object):
             tokList = parseResult
         #pdb.set_trace()
         return self._createSubTree(tokList)
-
-
-
-class UserException(Exception):
-    '''Exception that transports user visible error messages'''
-    def __init__(self, message, loc=None, str=None):
-        Exception.__init__(self)
-        self.message = message
-        '''The error message'''
-        self.loc = loc
-        '''Position in the input string, where the error occured'''
-        self.str = str
-        '''When not none take this as the input string'''
-
-    def __str__(self):
-        return 'Error! ' + self.message + '\n At position: ' + str(self.loc)
-    #TODO: better error message formating
-    #TODO: include str in all Node(s) to facilate error message handling?
     
 
 
-class IntermediateProcessGeneratorException(Exception):
+class ILTGenException(Exception):
     '''Exception thrown by the ILT-Process Generator (Compiler internal error)'''
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args, **kwargs)
         
         
         
-class IntermediateProcessGenerator(object):
+class ILTProcessGenerator(object):
     '''
     Generate process for the intermediate language tree (ILT).
     
@@ -762,6 +745,9 @@ class IntermediateProcessGenerator(object):
         '''The new process which is currently assembled'''
         self.processAttributes = {}
         '''Attributes of the new process: {('mod1', 'var1'):NodeAttrDef}'''
+        self.stateVariables = {}
+        '''State variables of the new process; {('mod1', 'var1'):NodeAttrDef}'''
+        
         #populate self.classes and self.processes 
         self.findClassesInAst()
 
@@ -794,7 +780,7 @@ class IntermediateProcessGenerator(object):
             elif isinstance(attrDef, NodeBlockDef): #definition of block (function)
                 attrName = attrDef.name
             else:
-                raise IntermediateProcessGeneratorException('Unknown Node.' + 
+                raise ILTGenException('Unknown Node.' + 
                                                             repr(attrDef))
             #prepend prefix to attribute name 
             longAttrName = namePrefix + [attrName]
@@ -867,7 +853,7 @@ class IntermediateProcessGenerator(object):
             else:
                 newStmt = statement.copy()
                 #put prefix before all varible names in new Statement
-                for var in DepthFirstIterator(newStmt):
+                for var in newStmt.iterDepthFirst():
                     if not isinstance(var, NodeValAccess):
                         continue
                     newAttrName = namePrefix + var.attrName
@@ -876,49 +862,114 @@ class IntermediateProcessGenerator(object):
                 newBlock.appendChild(newStmt)
 
 
+
+    def checkUndefindedReferences(self, tree):
+        '''
+        Look at all attribute accessors and see if the attributes exist in 
+        the new process.
+        '''
+        #iterate over all nodes in the syntax tree
+        for node in tree.iterDepthFirst():
+            if not isinstance(node, NodeValAccess):
+                continue
+            if not (node.attrName) in self.processAttributes:
+                raise UserException('Undefined reference: ' + 
+                                    str(node.attrName), node.loc)
+
+
+
+    def findStateVariables(self, block):
+        '''Search for variables with a $ and put them into self.stateVariables'''
+        #self.stateVariables = {}
+        #iterate over all nodes in the syntax tree
+        for node in block.iterDepthFirst():
+            if not isinstance(node, NodeValAccess):
+                continue
+            #this variable access goes to a time derivativ, 
+            #so the variable must be a state variable
+            if node.deriv == ['time']:
+                #get definition of variable 
+                stateVarDef = self.processAttributes[node.attrName]
+                #remember: this is a state variable; in definition and in dict
+                stateVarDef.isStateVariable = True
+                self.stateVariables[node.attrName] = stateVarDef
+    
+    
+    
+    def checkRunMethodConstraints(self, block):
+        '''See if the method is a valid run method.'''
+        pass
+
+
+    
+    def checkInitMethodConstraints(self, block):
+        '''See if the method is a valid init method.'''
+        pass
+    
+    
+    
     def createProcess(self, astProc):
         '''generate ILT subtree for one process'''
         #init new process
         self.process = NodeClassDef('ILTProcess')
         self.process.className = astProc.className
         self.process.role = astProc.role
-        #init quick reference lists
+        #init quick reference dicts
         self.processAttributes = {}
         self.astProcessAttributes = {}
+        self.stateVariables = {}
         
         #discover all attributes 
         self.findAttributesRecursive(astProc, [])
         #create the new process' data attributes
         self.copyDataAttributes()
         #create the new process' blocks (methods)
+        runBlock, initBlock = None, None
         for block in astProc:
             if not isinstance(block, NodeBlockDef):
                 continue
-            newBlock = NodeBlockDef('ILTBlock') #create the new block for the procedure
+            #create the new method (block) definition
+            newBlock = NodeBlockDef('ILTBlock') 
             newBlock.name = block.name
-            allowedBlocks = [block.name] #determine alowed blocks from block name (role)
-            self.copyBlockRecursive(block, [], newBlock, allowedBlocks) #copy the statements
+            #determine which methods can be executed in this method
+            if block.name == 'run':
+                allowedBlocks = ['run'] #list of compatible methods
+                runBlock = newBlock     #remember which block is which
+            elif block.name == 'init':
+                allowedBlocks = ['init']
+                initBlock = newBlock
+            else:
+                raise UserException('Illegal method: ' + str(block.name), 
+                                    block.loc)
+            #copy the statements, and put method into new procedure
+            self.copyBlockRecursive(block, [], newBlock, allowedBlocks) 
             self.process.kids.append(newBlock) #put new block into process
         
-        #TODO: Check undefined refference
-        #TODO: Mark state variables
+        if (not runBlock) or (not initBlock):
+            raise UserException('Process must contain exactly one run method ' + 
+                                'and one init method.', astProc.loc)
+        #Check undefined refference
+        self.checkUndefindedReferences(self.process)
+        #Mark state variables
+        self.findStateVariables(runBlock)
+        #TODO: Propagate constants
         return self.process
 
-
+        
     
-class IntermediateTreeGenerator(object):
+class ILTGenerator(object):
     '''
     Generate a tree that represents the intermediate language.
     intermediate language tree (ILT)
     '''
    
     def __init__(self):
-        super(IntermediateTreeGenerator, self).__init__()
+        super(ILTGenerator, self).__init__()
    
     def createIntermediateTree(self, astRoot):
         '''generate ILT tree from AST tree'''
         iltRoot = Node('ILT')
-        procGen = IntermediateProcessGenerator(astRoot)
+        procGen = ILTProcessGenerator(astRoot)
         
         for processDef in astRoot:
             if ((not isinstance(processDef, NodeClassDef)) or 
@@ -945,7 +996,7 @@ model Test
     par q; par g;
     
     block run
-        h := V/A;
+        h := V/A_bott;
         $V := q - mu*A_o*sqrt(2*g*h);
     end
     
@@ -1000,7 +1051,7 @@ end
     if flagTestILTGenerator:
         parser = ParseStage()
         astGen = ASTGenerator()
-        iltGen = IntermediateTreeGenerator()
+        iltGen = ILTGenerator()
         
         pres = parser.parseProgram(testProg1)
         print 'parse result:'
