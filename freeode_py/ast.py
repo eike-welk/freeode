@@ -160,7 +160,6 @@ class NodeAttrDef(Node):
         isSubmodel      : True or False
         isStateVariable : True or False
    '''
-    
     def __init__(self, typ='defAttr', kids=[], loc=None, dat=None, 
                         attrName=None, className=None, role=None, 
                         isSubmodel=None, isStateVariable=None):
@@ -180,10 +179,10 @@ class NodeValAccess(Node):
         kids    :  ? slice object if attribute is an array?
         loc     : location in input string
         dat     : None
+        
         deriv   : [],['time'] or list of distibution domains
         attrName: ['proc', 'model1', 'a'], list of strings; the dot separated name.
     '''
-
     def __init__(self, typ='valA', kids=[], loc=None, dat=None, deriv=[], attrName=[]):
         '''
         deriv    : [],['time'] or list of distibution domains. Shows that
@@ -193,24 +192,41 @@ class NodeValAccess(Node):
         Node.__init__(self, typ, kids, loc, dat)
         self.deriv = deriv[:]
         self.attrName = attrName[:]
-
-
+        
+        
+class NodeAssignment(Node):
+    '''
+    AST node for an assignment: ':='
+        typ     : type string, usually: 'assign'
+        kids    : [LHS, RHS] both sides of the assignment operator
+        loc     : location in input string
+        dat     : ':='
+    '''
+    def __init__(self, typ='assign', kids=[], loc=None, dat=None):
+        super(NodeAssignment, self).__init__(typ, kids, loc, dat)
+        
+    def lhs(self):
+        '''Return the assignment's left hand side'''
+        return self.kids[0]
+    def rhs(self):
+        '''Return the assignment's right hand side'''
+        return self.kids[1]
+        
+        
 class NodeBlockExecute(Node):
     '''
     AST Node for inserting the code of a sub-model's block
     (calling a user defined template function)
     '''
-    
     def __init__(self, typ='blockExecute', kids=[], loc=None, dat=None, 
                  blockName=None, subModelName=None):
         super(NodeBlockExecute, self).__init__(typ, kids, loc, dat)
         self.blockName = blockName
         self.subModelName = subModelName
         
-
+        
 class NodeStmtList(Node):
     '''AST Node for list of statements'''
-    
     def __init__(self, typ='stmtList', kids=[], loc=None, dat=None):
         super(NodeStmtList, self).__init__(typ, kids, loc, dat)
 
@@ -225,7 +241,6 @@ class NodeBlockDef(Node):
     
     The block's childern are the statements.
     """
-    
     def __init__(self, typ='blockDef', kids=[], loc=None, dat=None, name=None):
         '''
         name : name of the block
@@ -238,7 +253,6 @@ class NodeClassDef(Node):
     """
     AST node for class definition.
     """
-    
     def __init__(self, typ='classDef', kids=[], loc=None, dat=None, name=None, role=None):
         '''
         name : classname

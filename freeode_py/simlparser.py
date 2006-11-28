@@ -22,8 +22,6 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
-from pyparsing import OneOrMore
-from ast import NodeClassDef
 
 __doc__ = \
 '''
@@ -32,8 +30,8 @@ Parser for the SIML simulation language.
 #TODO: usage (above)
 
 
-import pprint #pretty printer
-import pdb    #debuber
+#import pprint #pretty printer
+#import pdb    #debuber
 
 from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
     ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,ParseResults, ParseException, \
@@ -517,7 +515,7 @@ class ASTGenerator(object):
         BNF:
         assignment = Group(valAccess + ':=' + expression + ';')
         '''
-        nCurr = Node('assign')
+        nCurr = NodeAssignment('assign')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -881,31 +879,56 @@ class ILTProcessGenerator(object):
     def findStateVariables(self, block):
         '''Search for variables with a $ and put them into self.stateVariables'''
         #self.stateVariables = {}
-        #iterate over all nodes in the syntax tree
+        #iterate over all nodes in the syntax tree and search for variable accesses
         for node in block.iterDepthFirst():
             if not isinstance(node, NodeValAccess):
                 continue
-            #this variable access goes to a time derivativ, 
-            #so the variable must be a state variable
-            if node.deriv == ['time']:
-                #get definition of variable 
-                stateVarDef = self.processAttributes[node.attrName]
-                #remember: this is a state variable; in definition and in dict
-                stateVarDef.isStateVariable = True
-                self.stateVariables[node.attrName] = stateVarDef
+            #State variables are those that have time derivatives
+            if node.deriv != ['time']:
+                continue
+            
+            #get definition of variable 
+            stateVarDef = self.processAttributes[node.attrName]
+            #Check conceptual constraint: no $parameter allowed
+            if stateVarDef.role == 'par':
+                raise UserException('Parameters can not be state variables: ' +
+                              str(node.attrName), node.loc)
+            #remember: this is a state variable; in definition and in dict
+            stateVarDef.isStateVariable = True
+            self.stateVariables[node.attrName] = stateVarDef
     
     
     
     def checkRunMethodConstraints(self, block):
         '''See if the method is a valid run method.'''
-        pass
-
+        #iterate over all nodes in the syntax tree and search for assignments
+        for node in block.iterDepthFirst():
+            if not isinstance(node, NodeAssignment):
+                continue
+            lVal = node.lhs() #must be NodeValAccess
+            lValDef = self.processAttributes[lVal.attrName]
+            #No assignment to parameters 
+            if lValDef.role == 'par':
+                raise UserException('Illegal assignment to parameter: ' + 
+                                    str(lVal.attrName), lVal.loc)
+            #No assignment to state variables - only to their time derivatives
+            if lValDef.isStateVariable and (lVal.deriv != ['time']):
+                raise UserException('Illegal assignment to state variable: ' + 
+                                    str(lVal.attrName) + 
+                                    '. You must however assign to its time derivative. ($' + 
+                                    str(lVal.attrName) +')', lVal.loc)
 
     
     def checkInitMethodConstraints(self, block):
         '''See if the method is a valid init method.'''
-        pass
-    
+        #iterate over all nodes in the syntax tree and search for variable accesses
+        for node in block.iterDepthFirst():
+            if not isinstance(node, NodeValAccess):
+                continue
+            #$ operators are illegal in init method
+            if node.deriv == ['time']:
+                raise UserException('Time derivation illegal in init: ' +
+                                    str(node.attrName), node.loc) 
     
     
     def createProcess(self, astProc):
@@ -924,13 +947,14 @@ class ILTProcessGenerator(object):
         #create the new process' data attributes
         self.copyDataAttributes()
         #create the new process' blocks (methods)
-        runBlock, initBlock = None, None
+        runBlock, initBlock, blockCount = None, None, 0
         for block in astProc:
             if not isinstance(block, NodeBlockDef):
                 continue
             #create the new method (block) definition
             newBlock = NodeBlockDef('ILTBlock') 
             newBlock.name = block.name
+            blockCount += 1 #count the number of blocks
             #determine which methods can be executed in this method
             if block.name == 'run':
                 allowedBlocks = ['run'] #list of compatible methods
@@ -941,18 +965,23 @@ class ILTProcessGenerator(object):
             else:
                 raise UserException('Illegal method: ' + str(block.name), 
                                     block.loc)
-            #copy the statements, and put method into new procedure
+            #copy the statements, and put new method into new procedure
             self.copyBlockRecursive(block, [], newBlock, allowedBlocks) 
             self.process.kids.append(newBlock) #put new block into process
         
-        if (not runBlock) or (not initBlock):
+        if (not runBlock) or (not initBlock) or (blockCount != 2):
             raise UserException('Process must contain exactly one run method ' + 
                                 'and one init method.', astProc.loc)
-        #Check undefined refference
-        self.checkUndefindedReferences(self.process)
-        #Mark state variables
-        self.findStateVariables(runBlock)
-        #TODO: Propagate constants
+        self.checkUndefindedReferences(self.process) #Check undefined refference
+        self.findStateVariables(runBlock) #Mark state variables
+        self.checkRunMethodConstraints(runBlock)
+        self.checkInitMethodConstraints(initBlock)
+        
+        #TODO: Check correct order of assignments (or initialization).
+        #TODO: Check if all variables have been assigned; 
+        #TODO: Propagate parameters - only replace those that have not been explicitly initialized.
+        #TODO: Check if all parameters and state vars have been initialized.
+        
         return self.process
 
         
