@@ -159,19 +159,21 @@ class NodeAttrDef(Node):
         role            : 'var', 'par' or None
         isSubmodel      : True or False
         isStateVariable : True or False
+        targetName      : Name in the target language (string)
    '''
     def __init__(self, typ='defAttr', kids=[], loc=None, dat=None, 
                         attrName=None, className=None, role=None, 
-                        isSubmodel=None, isStateVariable=None):
+                        isSubmodel=None, isStateVariable=None, targetName=None):
         Node.__init__(self, typ, kids, loc, dat)
-        self.attrName = attrName
+        self.attrName = attrName #TODO: make this always a tuple. Currently AST: string ILT: tuple
         self.className = className
         self.role = role
         self.isSubmodel = isSubmodel
         self.isStateVariable = isStateVariable
+        self.targetName = targetName
         
         
-class NodeValAccess(Node):
+class NodeAttrAccess(Node):
     '''
     AST node for access to a variable or parameter.
     Has additional attribute deriv.
@@ -183,7 +185,9 @@ class NodeValAccess(Node):
         deriv   : [],['time'] or list of distibution domains
         attrName: ['proc', 'model1', 'a'], list of strings; the dot separated name.
     '''
-    def __init__(self, typ='valA', kids=[], loc=None, dat=None, deriv=[], attrName=[]):
+    #TODO: rename into NodeAttrAccess
+    def __init__(self, typ='valA', kids=[], loc=None, dat=None, deriv=[], 
+                 attrName=[], targetName=None):
         '''
         deriv    : [],['time'] or list of distibution domains. Shows that
                    derivative of variable is accessed.
@@ -191,7 +195,8 @@ class NodeValAccess(Node):
         '''
         Node.__init__(self, typ, kids, loc, dat)
         self.deriv = deriv[:]
-        self.attrName = attrName[:]
+        self.attrName = attrName[:]#TODO: change into tuple
+        self.targetName = targetName
         
         
 class NodeAssignment(Node):

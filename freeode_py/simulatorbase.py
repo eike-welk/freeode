@@ -4,24 +4,31 @@ from scipy import * # Also includes Numeric.
 import Gnuplot, Gnuplot.funcutils # @todo switch to a more well known graphics library
 
 
-class SimulatorBase:
+class SimulatorBase(object):
     """ Base class for the generated simulator classes """
 
     def __init__(self):
 ##        #Store if initial values have been computed
 ##        self._initialValuesDirty = True
-        pass
+        self._variableNameMap = {}
+        '''Maping between variable (siml) name and index in the result array'''
+        self._parameterNameMap = {}
+        '''Maping between parameter (siml) name and (data member, python name)???'''
+        self.simulationTime = 0.0
+        self.reportingInterval = 0.0
+        self.time = None
+        self._resultArray = None
         
     def help(self):
-        """Show a (this) help text."""
+        """Show the simulation objects documentation string."""
         help(self.__class__)
 
     def helpVariables(self):
         """Show list of all variables."""
-##        print "Variables of this simulation object:"
-        for i in self._resultArrayMap: 
+        for i in self._variableNameMap: 
             print "'%s', " % i,
         print
+    #TODO: add helpParameters, helpAttributes
     
     def clear(self):
         """
@@ -32,7 +39,8 @@ class SimulatorBase:
         if hasattr(self, '_resultArray'):
             del self._resultArray
 
-    def get(self, varName):
+    #TODO: write parameter, Attribute
+    def variable(self, varName):
         """
         Get a variable by name.
         
@@ -46,13 +54,13 @@ class SimulatorBase:
                         'time': vector of simulated points in time
                         'all': array of all variables
         Example:
-            >>> mySimulationObject.get('r.X')        
+            >>> mySimulationObject.variable('r.X')        
         """
         if varName == 'time':
             return self.time
         elif varName == 'all':
             return self._resultArray
-        index = self._resultArrayMap[varName]
+        index = self._variableNameMap[varName]
         return self._resultArray[:,index]
 
     def graph(self, varNames):
@@ -75,19 +83,33 @@ class SimulatorBase:
 
         varList = varNames.replace(',', ' ').split(' ')
         for varName1 in varList:
-            if not (varName1 in self._resultArrayMap): 
+            if not (varName1 in self._variableNameMap): 
                 print('Error unknown variable name: %s') % varName1
                 continue
                 
-            curve=Gnuplot.Data(self.get('time'), self.get(varName1))
+            curve=Gnuplot.Data(self.variable('time'), self.variable(varName1))
             diagram.replot(curve)
 
+    def setInitialValues(self):
+        '''
+        Compute the initial values. 
+        Dummy function; must be reimplemented in derived classes!
+        '''
+        pass
+    
+    def _outputEquations(self, y):
+        '''
+        Compute the algebraic variable from the state variables.
+        Dummy function; must be reimplemented in derived classes!
+        '''
+        pass
+    
     def simulateDynamic(self):
         """
         Perform a dynamic simulation.
         
         The results can be displayed with the graph(...) function.
-        The funcion get(...) returns the simulation result of a speciffic
+        The funcion variable(...) returns the simulation result of a speciffic
         variable as a vector.
         """
 
@@ -111,6 +133,8 @@ class SimulatorBase:
         """
         Perform a stady state simulation.
         
+        Call self.clear() before using this method!
+        
         This function computes one steady state solution, of the system of 
         differential equations. Which solution of the potentially many solutions
         is found, depends on the initial guess. A steady state solution is a 
@@ -125,10 +149,11 @@ class SimulatorBase:
         graph function still produces useful graphs with steady state simulations.
 
         The final results can be displayed with the graph(...) function.
-        The funcion get(...) returns the simulation result of a speciffic
+        The funcion variable(...) returns the simulation result of a speciffic
         variable as a vector.
         """
         
+        #TODO: Use flag self._isSteadyStateStart instead of self.time
         if not hasattr(self, 'time'):
             #this is the first call in a row of steady state simulations - setup everything
             lastResult = -1

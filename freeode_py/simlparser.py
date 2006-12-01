@@ -348,6 +348,9 @@ class ASTGeneratorException(Exception):
 
 class ASTGenerator(object):
     '''Create a syntax tree from the parsers output'''
+    #TODO: integrate this class with ParseStage. 
+    #TODO: Replace the ParseResults objects with Node objects in semantic actions.
+    #TODO: This class' methods would become the semantic actions
 
     def __init__(self):
         object.__init__(self)
@@ -462,7 +465,7 @@ class ASTGenerator(object):
         Parameter tokList has the following structure:
         [<meta dictionary>, <part1>, <part2>, <part3>, ...]
         '''
-        nCurr = NodeValAccess('valA')
+        nCurr = NodeAttrAccess('valA')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -473,7 +476,7 @@ class ASTGenerator(object):
             nCurr.deriv = ['time']
             tok1 = 2
         #The remaining tokens are the dot separated name
-        nCurr.attrName = tokList[tok1:len(tokList)]
+        nCurr.attrName = tokList[tok1:len(tokList)] #TODO: change into tuple(tokList[tok1:len(tokList)])
         return nCurr
 
 
@@ -584,6 +587,7 @@ class ASTGenerator(object):
             setattr(nCurr, attrName, attrVal)
         #These are aways present
         roleStr = tokList[1]                    #var, par, sub
+        #TODO: change attrName into tuple(tokList[2])
         nCurr.attrName = tokList[2] #identifier; name of the attribute
         #attribute is a submodel
         if roleStr == 'sub':
@@ -852,7 +856,7 @@ class ILTProcessGenerator(object):
                 newStmt = statement.copy()
                 #put prefix before all varible names in new Statement
                 for var in newStmt.iterDepthFirst():
-                    if not isinstance(var, NodeValAccess):
+                    if not isinstance(var, NodeAttrAccess):
                         continue
                     newAttrName = namePrefix + var.attrName
                     var.attrName = tuple(newAttrName)
@@ -868,7 +872,7 @@ class ILTProcessGenerator(object):
         '''
         #iterate over all nodes in the syntax tree
         for node in tree.iterDepthFirst():
-            if not isinstance(node, NodeValAccess):
+            if not isinstance(node, NodeAttrAccess):
                 continue
             if not (node.attrName) in self.processAttributes:
                 raise UserException('Undefined reference: ' + 
@@ -881,7 +885,7 @@ class ILTProcessGenerator(object):
         #self.stateVariables = {}
         #iterate over all nodes in the syntax tree and search for variable accesses
         for node in block.iterDepthFirst():
-            if not isinstance(node, NodeValAccess):
+            if not isinstance(node, NodeAttrAccess):
                 continue
             #State variables are those that have time derivatives
             if node.deriv != ['time']:
@@ -923,7 +927,7 @@ class ILTProcessGenerator(object):
         '''See if the method is a valid init method.'''
         #iterate over all nodes in the syntax tree and search for variable accesses
         for node in block.iterDepthFirst():
-            if not isinstance(node, NodeValAccess):
+            if not isinstance(node, NodeAttrAccess):
                 continue
             #$ operators are illegal in init method
             if node.deriv == ['time']:

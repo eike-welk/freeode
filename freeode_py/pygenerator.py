@@ -21,18 +21,139 @@
 from ast import *
 
 
-class ProcedureGenerator(object):
+class PyGenException(Exception):
+    '''Exception thrown by the pytrhon code generator classes'''
+    def __init__(self, *params):
+        Exception.__init__(self, *params)
+        
+        
+class ProcessGenerator(object):
     '''create python class that simulates a process'''
     
     def __init__(self):
-        super(ProcedureGenerator, self).__init__()
+        super(ProcessGenerator, self).__init__()
         
-    def createProcedure(self, iltProcedure):
+        self.iltProcess = NodeClassDef('dummy')
+        '''The input: an IL-tree of the process. It has no external dependencies.'''
+        self.outPy = ''
+        '''The process in the python programming language.'''
+        self.processPyName = ''
+        '''Python name of the process'''
+        self.parameters = {}
+        '''The parameters: dict: {('a','b'):NodeAttrDef]'''
+        self.algebraicVariables = {}
+        '''The algebraic variables: dict: {('a','b'):NodeAttrDef]'''
+        self.stateVariables = {}
+        '''The state variables: dict: {('a','b'):NodeAttrDef]'''
+        #self.pyNames = {}
+        
+        
+    def findAttributes(self):
+        '''
+        Loop over the attribute definitions and classify the attributes into 
+        parameters, slgebraic varianles, state variables.
+        Results:
+        self.parameters, self.algebraicVariables, self.stateVariables 
+        '''
+        for attrDef in self.iltProcess:
+            if not isinstance(attrDef, NodeAttrDef):
+                continue
+            if attrDef.role == 'par':
+                self.parameters[attrDef.attrName] = attrDef
+            elif attrDef.role == 'var' and not attrDef.isStateVariable:
+                self.algebraicVariables[attrDef.attrName] = attrDef
+            elif attrDef.role == 'var' and attrDef.isStateVariable:
+                self.stateVariables[attrDef.attrName] = attrDef
+            else:
+                raise PyGenException('Unknown attribute definition:\n'+ str(attrDef))
+ 
+            
+    def createAttrPyNames(self):
+        '''
+        Create python names for all attributes
+        The python names are stored in the data attribute:
+        self.targetName of NodeAttrDef and NodeAttrAccess
+        '''
+        paramPrefix = 'self.p'
+        varPrefix = 'v'
+        pyNames = {} #mapping between attribute name and python name: {('a','b'):'v_a_b'}
+        
+        #loop over all attribute definitions and create an unique python name 
+        #for each attribute
+        for attrDef in self.iltProcess:
+            if not isinstance(attrDef, NodeAttrDef):
+                continue
+            #create underline separated name string
+            pyName1 = ''
+            for namePart in attrDef.attrName:
+                pyName1 += '_' + namePart
+            #prepend variables and parameters with differnt additional strings
+            if attrDef.attrName in self.parameters:
+                pyName1 = paramPrefix + pyName1
+            else:
+                pyName1 = varPrefix + pyName1
+            #see if python name is unique; append number to make it unique
+            num, numStr = 0, ''
+            while pyName1 + numStr in pyNames:
+                num += 1
+                numStr = str(num)
+            pyName1 = pyName1 + numStr
+            #store python name 
+            pyNames[attrDef.attrName] = pyName1
+            
+        #loop over all attribute definitions and attribute accesses 
+        #and put python name there
+        for node in self.iltProcess.iterDepthFirst():
+            if   isinstance(node, NodeAttrDef):
+                node.targetName = pyNames[node.attrName]
+            elif isinstance(node, NodeAttrAccess):
+                node.targetName = pyNames[node.attrName]
+            
+            
+    def writeClassDefStart(self):
+        '''Write first few lines of class definition.'''
+        self.outPy += 'class %s(SimulatorBase): \n' % self.processPyName
+        self.outPy += '    \'\'\' \n'
+        self.outPy += '    Object to simulate process %s \n' % self.iltProcess.className
+        self.outPy += '    Definition in file: \'%s\' line: %s \n' % ('???', '???')
+        self.outPy += '    \'\'\' \n'
+        self.outPy += '    \n'
+
+        
+    def write__init__func(self):
+        '''Generate the __init__ function.'''
+        ind8 = ' '*8
+        self.outPy += '    def __init__(self): \n'
+        self.outPy += '        super(%s, self).__init__() \n' % self.processPyName
+        
+        self.outPy += ind8 + '#create all parameters with value 0 \n'
+        line1 = ind8
+        for paramDef in self.parameters.values():
+            line1 += '%s = 0; ' % paramDef.targetName
+            if len(line1) > 75:
+                self.outPy += line1 + '\n'
+                line1 = ind8
+        self.outPy += line1 + '\n'
+        
+        
+    def createProcess(self, iltProcess):
         '''
         Take part of ILT tree that defines one procedure and ouput definition 
         of python class as string
         '''
-        return 'test\n'
+        self.__init__()
+        self.iltProcess = iltProcess.copy()
+        
+        #collect information about the process
+        self.processPyName = self.iltProcess.className
+        self.findAttributes()    
+        self.createAttrPyNames()
+        
+        self.writeClassDefStart()
+        self.write__init__func()
+        
+        print self.iltProcess
+        return self.outPy
         
         
         
@@ -45,13 +166,17 @@ class ProgramGenerator(object):
     def createProgram(self, astRoot):
         '''Take an ILT and retun a python program as a string'''
         program = ''
-        procGen = ProcedureGenerator()
         
+        program += 'from scipy import * \n'
+        program += 'from simulatorbase import SimulatorBase \n'
+        program += '\n'
+        
+        procGen = ProcessGenerator()
         for procedure in astRoot:
             if not isinstance(procedure, NodeClassDef):
                 continue
             #create procedure
-            program += procGen.createProcedure(procedure)
+            program += procGen.createProcess(procedure)
             
         return program
     
@@ -144,6 +269,9 @@ end
     print 'python program:'
     print progStr
     
+    pyFile = open('/home/eike/codedir/freeode/trunk/freeode_py/test.py','w')
+    pyFile.write(progStr)
+    pyFile.close()
     
 else:
     # This will be executed in case the
