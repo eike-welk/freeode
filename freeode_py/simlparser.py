@@ -143,13 +143,13 @@ class ParseStage(object):
 
         #Values that are built into the language
         #TODO: this should be a for loop and a list (attribute)!
-        builtInValue = Group( kw('e') | kw('pi') | kw('time'))      .setParseAction(AddMetaDict('builtInVal'))\
+        builtInValue = Group( kw('pi') | kw('time'))                .setParseAction(AddMetaDict('builtInVal'))\
                                                                     .setName('builtInValue')#.setDebug(True)
 
         #Functions that are built into the language
         #TODO: this should be a for loop and a list (attribute)!
         builtInFuncName = (  kw('sin') | kw('cos') | kw('tan') |
-                             kw('sqrt') | kw('ln')               )  .setName('builtInFuncName')#.setDebug(True)
+                             kw('sqrt') | kw('exp') | kw('ln')   )  .setName('builtInFuncName')#.setDebug(True)
 
         #Integer (unsigned).
         uInteger = Word(nums)                                       .setName('uInteger')#.setDebug(True)
@@ -191,7 +191,7 @@ class ParseStage(object):
 
         #Exponentiation: a^b;
         factor1 = signedAtom                            .setName('factor1')#.setDebug(True)
-        factor2 = Group(signedAtom + '^' + factor)      .setParseAction(AddMetaDict('m_i2')) \
+        factor2 = Group(signedAtom + '**' + factor)     .setParseAction(AddMetaDict('m_i2')) \
                                                         .setName('factor2')#.setDebug(True)
         factor << (factor2 | factor1)                   .setName('factor')#.setDebug(True)
 

@@ -329,7 +329,7 @@ class NodeAttrDef(Node):
         
 class NodeBlockDef(Node):
     """
-    AST node for block (function?) definition.
+    AST node for block (method, function?) definition.
     
     A block can be seen as a method that only modifies the class' attributes.
     It has neither arguments nor return values. It is treated as an C++ inline 

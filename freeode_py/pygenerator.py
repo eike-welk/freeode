@@ -26,7 +26,87 @@ class PyGenException(Exception):
     def __init__(self, *params):
         Exception.__init__(self, *params)
         
+
+class StatementGenerator(object):
+    '''
+    Generate a statement in Python from an AST or ILT syntax tree.
+    '''
+    
+    def __init__(self):
+        super(StatementGenerator, self).__init__()
+        self.outPy = ''
+        '''The statement in the python programming language.'''
+    
+    
+    def createFormula(self, iltFormula):
+        '''
+        Take ILT sub-tree that describes a formula and 
+        convert it into a formula in the Python programming language.
+        (recursive)
         
+        arguments:
+            iltFormula : tree of Node objects
+        returns:
+            string, formula in Python language
+        '''
+        self.outPy = ''
+        #Built in value: pi, time
+        if isinstance(iltFormula, NodeBuiltInVal):
+            nameDict = {'pi':'pi', 'time':'time'}
+            return nameDict[iltFormula.dat]
+        #Built in function: sin(...) 
+        elif isinstance(iltFormula, NodeBuiltInFuncCall):
+            nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt', 
+                        'exp':'exp', 'ln':'ln' }
+            funcName = nameDict[iltFormula.dat]
+            return funcName + '(' + self.createFormula(iltFormula[0]) + ')'
+        #Number: 123.5
+        elif isinstance(iltFormula, NodeNum):
+            return iltFormula.dat
+        #pair of prentheses: ( ... )
+        elif isinstance(iltFormula, NodeParentheses):
+            return '(' + self.createFormula(iltFormula[0]) + ')'
+        #Infix operator: + - * / ^ and or
+        elif isinstance(iltFormula, NodeOpInfix2):
+            opDict = {'+':' + ', '-':' - ', '*':'*', '/':'/', '**':'**', 
+                      'and':' and ', 'or':' or '}
+            opStr = opDict[iltFormula.dat]
+            return (self.createFormula(iltFormula[0]) + opStr + 
+                    self.createFormula(iltFormula[1]))
+        #Prefix operator: - not
+        elif isinstance(iltFormula, NodeOpPrefix1):
+            opDict = {'-':' -', 'not':' not '}
+            opStr = opDict[iltFormula.dat]
+            return opStr + self.createFormula(iltFormula[0])
+        #variable or parameter
+        elif isinstance(iltFormula, NodeAttrAccess):
+            return iltFormula.targetName
+        #unknown node
+        else:
+            raise PyGenException('Unknown node in FormulaGenerator:\n' + str(iltFormula))
+
+
+    def createStatement(self, iltStmt, indent):
+        '''
+        Take ILT sub-tree and convert it into Python statement.
+        
+        arguments:
+            iltStmt : tree of Node objects
+            indent  : string of whitespace, put in front of each line
+        returns:
+            string, statement in Python language
+        '''
+        self.outPy = ''
+        
+        if isinstance(iltStmt, NodeAssignment):
+            self.outPy += indent + (iltStmt.lhs().targetName + ' = ' + 
+                                    self.createFormula(iltStmt.rhs()) + '\n')
+        else:
+            raise PyGenException('Unknown node in StatementGenerator:\n' + str(iltStmt))
+         
+        return self.outPy
+
+
 class ProcessGenerator(object):
     '''create python class that simulates a process'''
     
@@ -107,7 +187,11 @@ class ProcessGenerator(object):
             if   isinstance(node, NodeAttrDef):
                 node.targetName = pyNames[node.attrName]
             elif isinstance(node, NodeAttrAccess):
-                node.targetName = pyNames[node.attrName]
+                #derivatives get an additional ending
+                if node.deriv == ['time']:
+                    node.targetName = pyNames[node.attrName] + '_dt'
+                else:
+                    node.targetName = pyNames[node.attrName]
             
             
     def writeClassDefStart(self):
@@ -141,8 +225,16 @@ class ProcessGenerator(object):
         '''Generate the method that initializes variables and parameters'''
         ind8 = ' '*8
         self.outPy += '    def initialize(self): \n'
-        self.outPy += ind8 + 'pass'
-        
+        #search the process' init method 
+        for initMethod in self.iltProcess:
+            if isinstance(initMethod, NodeBlockDef) and \
+               initMethod.name == 'init':
+                break
+        #print the method's statements
+        stmtGen = StatementGenerator()
+        for statement in initMethod:
+            self.outPy += stmtGen.createStatement(statement, ind8)
+            
         
     def createProcess(self, iltProcess):
         '''
@@ -248,8 +340,9 @@ model Test
     end
     
     block init
-        V := 0;
-        A_bott := 1; A_o := 0.02; mu := 0.55;
+        V := sin(0);
+        A_bott := 1 + 0*(-7+5*8-6/12**2); 
+        A_o := 0.02; mu := 0.55 + 0*A_bott/pi;
         q := 0.05;
     end
 end
