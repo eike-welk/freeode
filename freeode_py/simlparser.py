@@ -363,7 +363,7 @@ class ASTGenerator(object):
         Parameter tokList has the following structure:
         [<meta dictionary>, <operator>, <expression_l>]
         '''
-        nCurr = Node('m_p1')
+        nCurr = NodeOpPrefix1('m_p1')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -381,7 +381,7 @@ class ASTGenerator(object):
         Parameter tokList has the following structure:
         [<meta dictionary>, <expression_l>, <operator>, <expression_r>]
         '''
-        nCurr = Node('m_i2')
+        nCurr = NodeOpInfix2('m_i2')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -400,7 +400,7 @@ class ASTGenerator(object):
         Parameter tokList has the following structure:
         [<meta dictionary>, <function dentifier>, '(', <expression>, ')']
         '''
-        nCurr = Node('funcCall')
+        nCurr = NodeBuiltInFuncCall('funcCall')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -417,7 +417,7 @@ class ASTGenerator(object):
         Parameter tokList has the following structure:
         [<meta dictionary>, '(', <expression>, ')']
         '''
-        nCurr = Node('paren')
+        nCurr = NodeParentheses('paren')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -433,7 +433,7 @@ class ASTGenerator(object):
         Parameter tokList has the following structure:
         [<meta dictionary>, <number>]
         '''
-        nCurr = Node('num')
+        nCurr = NodeNum('num')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
@@ -449,7 +449,7 @@ class ASTGenerator(object):
         Parameter tokList has the following structure:
         [<meta dictionary>, <identifier>]
         '''
-        nCurr = Node('builtInVal')
+        nCurr = NodeBuiltInVal('builtInVal')
         #Create an attribute for each key value pair in the meta dictionary
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():

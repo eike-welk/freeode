@@ -145,33 +145,93 @@ class Node(object):
 
 
 
-class NodeAttrDef(Node):
+class NodeBuiltInVal(Node):
     '''
-    AST node for definition of a variable, parameter or submodel.
-        typ         : type string, usually: 'defAttr'
-        kids        : []
-        loc         : location in input string
-        dat         : None     
+    Represent a built in value in the AST. 
+    Example: pi
+    
+    self.dat : string representing the value
+    '''
+    #TODO:unify built in values and parametres
+    def __init__(self, typ='builtInVal', kids=[], loc=None, dat=None):
+        super(NodeBuiltInVal, self).__init__(typ, kids, loc, dat)
+    
+    
+class NodeBuiltInFuncCall(Node):
+    '''
+    Represent a built in function in the AST. 
+    Example: sin( ... )
+    
+    self.dat  : the function's name
+    self.kids : the function's arguments 
+    '''    
+    #TODO: unify built in functions and blocks.
+    def __init__(self, typ='funcCall', kids=[], loc=None, dat=None):
+        super(NodeBuiltInFuncCall, self).__init__(typ, kids, loc, dat)
         
-        attrName        : identifier; name of the attribute
-        className       : type of the attribute: Real for numbers, the class 
-                          name for sub-models.
-        role            : 'var', 'par' or None
-        isSubmodel      : True or False
-        isStateVariable : True or False
-        targetName      : Name in the target language (string)
-   '''
-    def __init__(self, typ='defAttr', kids=[], loc=None, dat=None, 
-                        attrName=None, className=None, role=None, 
-                        isSubmodel=None, isStateVariable=None, targetName=None):
-        Node.__init__(self, typ, kids, loc, dat)
-        self.attrName = attrName #TODO: make this always a tuple. Currently AST: string ILT: tuple
-        self.className = className
-        self.role = role
-        self.isSubmodel = isSubmodel
-        self.isStateVariable = isStateVariable
-        self.targetName = targetName
         
+class NodeNum(Node):
+    '''
+    Represent a real number in the AST. 
+    Example: 123.5
+    
+    self.dat  : the number as a string
+    '''    
+    def __init__(self, typ='num', kids=[], loc=None, dat=None):
+        super(NodeNum, self).__init__(typ, kids, loc, dat)
+
+
+class NodeParentheses(Node):
+    '''
+    Represent a pair of parentheses that enclose an expression, in the AST. 
+    Example: ( ... )
+    
+    self.kids[0]  : the mathematical expression between the parentheses
+    '''    
+    def __init__(self, typ='paren', kids=[], loc=None, dat=None):
+        super(NodeParentheses, self).__init__(typ, kids, loc, dat)
+
+
+class NodeOpInfix2(Node):     
+    '''
+    AST node for a (binary) infix operator: + - * / ^ and or
+        typ     : type string, usually: 'm_i2'
+        kids    : [LHS, RHS] both sides of the operator
+        loc     : location in input string
+        dat     : operator symbol e.g.: '+'
+    '''
+    def __init__(self, typ='m_i2', kids=[], loc=None, dat=None):
+        super(NodeOpInfix2, self).__init__(typ, kids, loc, dat)
+        
+    def lhs(self):
+        '''Return the left hand side'''
+        return self.kids[0]
+    def rhs(self):
+        '''Return the right hand side'''
+        return self.kids[1]
+    def operator(self):
+        '''Return the operator (string)'''
+        return self.dat
+
+
+class NodeOpPrefix1(Node):
+    '''
+    AST node for a (unary) prefix operator: - not
+        typ     : type string, usually: 'm_p1'
+        kids    : [RHS] the term on which the operator acts
+        loc     : location in input string
+        dat     : operator symbol e.g.: '-'
+    '''
+    def __init__(self, typ='m_p1', kids=[], loc=None, dat=None):
+        super(NodeOpPrefix1, self).__init__(typ, kids, loc, dat)
+        
+    def rhs(self):
+        '''Return the right hand side'''
+        return self.kids[0]
+    def operator(self):
+        '''Return the operator (string)'''
+        return self.dat
+    
         
 class NodeAttrAccess(Node):
     '''
@@ -198,7 +258,7 @@ class NodeAttrAccess(Node):
         self.attrName = attrName[:]#TODO: change into tuple
         self.targetName = targetName
         
-        
+
 class NodeAssignment(Node):
     '''
     AST node for an assignment: ':='
@@ -231,11 +291,42 @@ class NodeBlockExecute(Node):
         
         
 class NodeStmtList(Node):
-    '''AST Node for list of statements'''
+    '''
+    AST Node for list of statements
+    Each child is a statement.
+    '''
     def __init__(self, typ='stmtList', kids=[], loc=None, dat=None):
         super(NodeStmtList, self).__init__(typ, kids, loc, dat)
 
 
+class NodeAttrDef(Node):
+    '''
+    AST node for definition of a variable, parameter or submodel.
+        typ         : type string, usually: 'defAttr'
+        kids        : []
+        loc         : location in input string
+        dat         : None     
+        
+        attrName        : identifier; name of the attribute
+        className       : type of the attribute: Real for numbers, the class 
+                          name for sub-models.
+        role            : 'var', 'par' or None
+        isSubmodel      : True or False
+        isStateVariable : True or False
+        targetName      : Name in the target language (string)
+   '''
+    def __init__(self, typ='defAttr', kids=[], loc=None, dat=None, 
+                        attrName=None, className=None, role=None, 
+                        isSubmodel=None, isStateVariable=None, targetName=None):
+        Node.__init__(self, typ, kids, loc, dat)
+        self.attrName = attrName #TODO: make this always a tuple. Currently AST: string ILT: tuple
+        self.className = className
+        self.role = role
+        self.isSubmodel = isSubmodel
+        self.isStateVariable = isStateVariable
+        self.targetName = targetName
+        
+        
 class NodeBlockDef(Node):
     """
     AST node for block (function?) definition.
