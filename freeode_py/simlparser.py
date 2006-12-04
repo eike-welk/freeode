@@ -473,10 +473,10 @@ class ASTGenerator(object):
         #Look if there is a '$' that indicates time derivatives
         tok1 = 1
         if tokList[1] == '$':
-            nCurr.deriv = ['time']
+            nCurr.deriv = ('time',)
             tok1 = 2
         #The remaining tokens are the dot separated name
-        nCurr.attrName = tokList[tok1:len(tokList)] #TODO: change into tuple(tokList[tok1:len(tokList)])
+        nCurr.attrName = tuple(tokList[tok1:len(tokList)]) 
         return nCurr
 
 
@@ -858,7 +858,7 @@ class ILTProcessGenerator(object):
                 for var in newStmt.iterDepthFirst():
                     if not isinstance(var, NodeAttrAccess):
                         continue
-                    newAttrName = namePrefix + var.attrName
+                    newAttrName = tuple(namePrefix) + var.attrName
                     var.attrName = tuple(newAttrName)
                 #put new statement into new block
                 newBlock.appendChild(newStmt)
@@ -888,7 +888,7 @@ class ILTProcessGenerator(object):
             if not isinstance(node, NodeAttrAccess):
                 continue
             #State variables are those that have time derivatives
-            if node.deriv != ['time']:
+            if node.deriv != ('time',):
                 continue
             
             #get definition of variable 
@@ -916,7 +916,7 @@ class ILTProcessGenerator(object):
                 raise UserException('Illegal assignment to parameter: ' + 
                                     str(lVal.attrName), lVal.loc)
             #No assignment to state variables - only to their time derivatives
-            if lValDef.isStateVariable and (lVal.deriv != ['time']):
+            if lValDef.isStateVariable and (lVal.deriv != ('time',)):
                 raise UserException('Illegal assignment to state variable: ' + 
                                     str(lVal.attrName) + 
                                     '. You must however assign to its time derivative. ($' + 
@@ -930,7 +930,7 @@ class ILTProcessGenerator(object):
             if not isinstance(node, NodeAttrAccess):
                 continue
             #$ operators are illegal in init method
-            if node.deriv == ['time']:
+            if node.deriv == ('time',):
                 raise UserException('Time derivation illegal in init: ' +
                                     str(node.attrName), node.loc) 
     

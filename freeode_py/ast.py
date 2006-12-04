@@ -254,9 +254,10 @@ class NodeAttrAccess(Node):
         attrName : dotted name as list of strings
         '''
         Node.__init__(self, typ, kids, loc, dat)
-        self.deriv = deriv[:]
-        self.attrName = attrName[:]#TODO: change into tuple
+        self.deriv = tuple(deriv)
+        self.attrName = tuple(attrName)
         self.targetName = targetName
+        '''dictionary with the possibly multiple names in the target language'''
         
 
 class NodeAssignment(Node):
@@ -324,7 +325,7 @@ class NodeAttrDef(Node):
         self.role = role
         self.isSubmodel = isSubmodel
         self.isStateVariable = isStateVariable
-        self.targetName = targetName
+        self.targetName = targetName #change into dict or list. vars with derivatives have multiple target names
         
         
 class NodeBlockDef(Node):

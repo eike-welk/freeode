@@ -183,13 +183,18 @@ class ProcessGenerator(object):
             
         #loop over all attribute definitions and attribute accesses 
         #and put python name there
+        timeDerivSuffix = '_dt'
         for node in self.iltProcess.iterDepthFirst():
-            if   isinstance(node, NodeAttrDef):
-                node.targetName = pyNames[node.attrName]
+            if isinstance(node, NodeAttrDef):
+                namePy = pyNames[node.attrName]
+                node.targetName = {tuple():namePy}
+                #variables with derivatives have multiple target names
+                if node.attrName in self.stateVariables:
+                    node.targetName[('time',)] = namePy + timeDerivSuffix
             elif isinstance(node, NodeAttrAccess):
                 #derivatives get an additional ending
-                if node.deriv == ['time']:
-                    node.targetName = pyNames[node.attrName] + '_dt'
+                if node.deriv == ('time',): 
+                    node.targetName = pyNames[node.attrName] + timeDerivSuffix
                 else:
                     node.targetName = pyNames[node.attrName]
             
@@ -209,12 +214,14 @@ class ProcessGenerator(object):
         ind8 = ' '*8
         self.outPy += '    def __init__(self): \n'
         self.outPy += '        super(%s, self).__init__() \n' % self.processPyName
-        
-        self.outPy += ind8 + '#create all parameters with value 0 \n'
+        self.outPy += ind8 + 'self.initialValues = None \n'
+        self.outPy += (ind8 + '#create all parameters with value 0; ' + 
+                       'to prevent runtime errors.\n')
+        #create long lines with 'param_name = 0; ...'
         line1 = ind8
         for paramDef in self.parameters.values():
-            line1 += '%s = 0; ' % paramDef.targetName
-            if len(line1) > 75:
+            line1 += '%s = 0; ' % paramDef.targetName[tuple()]
+            if len(line1) > 75: #if line long enough: begin new line
                 self.outPy += line1 + '\n'
                 line1 = ind8
         self.outPy += line1 + '\n'
@@ -222,20 +229,70 @@ class ProcessGenerator(object):
         
         
     def writeInitMethod(self):
-        '''Generate the method that initializes variables and parameters'''
-        ind8 = ' '*8
-        self.outPy += '    def initialize(self): \n'
+        '''Generate method that initializes variables and parameters'''
         #search the process' init method 
         for initMethod in self.iltProcess:
             if isinstance(initMethod, NodeBlockDef) and \
                initMethod.name == 'init':
                 break
+        #write method definition
+        ind8 = ' '*8
+        self.outPy += '    def initialize(self): \n'
+        self.outPy += ind8 + '\'\'\' \n'
+        self.outPy += ind8 + 'Compute parameter values and \n'
+        self.outPy += ind8 + 'compute initial values of state variables \n'
+        self.outPy += ind8 + '\'\'\' \n'
+        #create all variables
+        self.outPy += (ind8 + '#create all variables with value 0; ' + 
+                       'to prevent runtime errors.\n')      
+        #create long lines with 'var_name = 0; ...'
+        line1 = ind8
+        for varDef in (self.algebraicVariables.values() + 
+                       self.stateVariables.values()):
+            line1 += '%s = 0; ' % varDef.targetName[tuple()]
+            if len(line1) > 75: #if line long enough: begin new line
+                self.outPy += line1 + '\n'
+                line1 = ind8
+        self.outPy += line1 + '\n'
         #print the method's statements
+        self.outPy += ind8 + '#do computations \n'
         stmtGen = StatementGenerator()
         for statement in initMethod:
             self.outPy += stmtGen.createStatement(statement, ind8)
-            
-        
+        #assemble initial values and store them
+        self.outPy += ind8 + '#assemble initial values to array and store them \n'
+        #create long lines with 'var_ame11, var_name12, var_name13, ...'
+        line1 = ind8 + 'self.initialValues = array(['
+        for varDef in self.stateVariables.values():
+            line1 += '%s, ' % varDef.targetName[tuple()]
+            if len(line1) > 75: #if line long enough: begin new line
+                self.outPy += line1 + '\n'
+                line1 = ind8 + ' '*28 #indent of rectangular bracket
+        self.outPy += line1 + '])\n'        
+        self.outPy += '\n\n'
+    
+    
+    def writeDynamicMethod(self):
+        '''Generate the method that contains the differential equations'''
+        #search the process' init method 
+        for dynMethod in self.iltProcess:
+            if isinstance(dynMethod, NodeBlockDef) and \
+               dynMethod.name == 'run':
+                break
+        #write method definition
+        ind8 = ' '*8
+        self.outPy += '    def dynamic(self, state, time): \n'
+        self.outPy += ind8 + '\'\'\' \n'
+        self.outPy += ind8 + 'Compute time derivative of state variables. \n'
+        self.outPy += ind8 + 'This function will be called by the solver repeatedly. \n'
+        self.outPy += ind8 + '\'\'\' \n'
+        #print the method's statements
+        stmtGen = StatementGenerator()
+        for statement in dynMethod:
+            self.outPy += stmtGen.createStatement(statement, ind8)
+        self.outPy += '\n\n'
+    
+    
     def createProcess(self, iltProcess):
         '''
         Take part of ILT tree that defines one procedure and ouput definition 
@@ -249,11 +306,13 @@ class ProcessGenerator(object):
         self.findAttributes()    
         self.createAttrPyNames()
         
+        print self.iltProcess
+        
         self.writeClassDefStart()
         self.writeConstructor()
         self.writeInitMethod()
+        self.writeDynamicMethod()
         
-        print self.iltProcess
         return self.outPy
         
         
@@ -340,9 +399,9 @@ model Test
     end
     
     block init
-        V := sin(0);
-        A_bott := 1 + 0*(-7+5*8-6/12**2); 
-        A_o := 0.02; mu := 0.55 + 0*A_bott/pi;
+        V := 0;
+        A_bott := 1; 
+        A_o := 0.02; mu := 0.55;
         q := 0.05;
     end
 end
