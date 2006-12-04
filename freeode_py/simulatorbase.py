@@ -14,10 +14,19 @@ class SimulatorBase(object):
         '''Maping between variable (siml) name and index in the result array'''
         self._parameterNameMap = {}
         '''Maping between parameter (siml) name and (data member, python name)???'''
-        self.simulationTime = 0.0
-        self.reportingInterval = 0.0
+        self.simulationTime = 100.0
+        self.reportingInterval = 1.0
         self.time = None
-        self._resultArray = None
+        '''Array with times at which the solution was computed.'''
+        self.resultArray = None
+        '''Array with the simulation results'''
+        self.initialValues = None 
+        '''Array with the initial values of the state variables.'''
+        self.stateVectorLen = None
+        '''Length of the state vector'''
+        self.algebraicVarVectorLen = None
+        '''Length of vector that contains the algebraic variables'''
+        
         
     def help(self):
         """Show the simulation objects documentation string."""
@@ -36,8 +45,8 @@ class SimulatorBase(object):
         """
         if hasattr(self, 'time'):
             del self.time
-        if hasattr(self, '_resultArray'):
-            del self._resultArray
+        if hasattr(self, 'resultArray'):
+            del self.resultArray
 
     #TODO: write parameter, Attribute
     def variable(self, varName):
@@ -59,9 +68,9 @@ class SimulatorBase(object):
         if varName == 'time':
             return self.time
         elif varName == 'all':
-            return self._resultArray
+            return self.resultArray
         index = self._variableNameMap[varName]
-        return self._resultArray[:,index]
+        return self.resultArray[:,index]
 
     def graph(self, varNames):
         """
@@ -90,19 +99,31 @@ class SimulatorBase(object):
             curve=Gnuplot.Data(self.variable('time'), self.variable(varName1))
             diagram.replot(curve)
 
-    def setInitialValues(self):
+
+    def initialize(self):
         '''
         Compute the initial values. 
         Dummy function; must be reimplemented in derived classes!
         '''
         pass
     
-    def _outputEquations(self, y):
+    
+    def dynamic(self):
+        '''
+        Compute time derivative of state variables. 
+        This function will be called by the solver repeatedly. 
+        Dummy function; must be reimplemented in derived classes!
+        '''
+        pass
+    
+    
+    def outputEquations(self, y):
         '''
         Compute the algebraic variable from the state variables.
         Dummy function; must be reimplemented in derived classes!
         '''
         pass
+    
     
     def simulateDynamic(self):
         """
@@ -120,14 +141,17 @@ class SimulatorBase(object):
 ##            self._initialValues = self.setInitialValues()
 ##        self._initialValuesDirty = True;
         
-        #Compute the initial values. (They are overwritten by integrate.odeint)
-        initialValues = self.setInitialValues()
+        #Compute the initial values if necessary. 
+        if not self.initialValues:
+            self.initialize()
+        #copy initial values (They are overwritten by integrate.odeint)
+        initialValues = self.initialValues.copy()
         #create the array of output time points
         self.time = linspace(0.0, self.simulationTime, self.simulationTime/self.reportingInterval + 1) #note: no rounding is better, linspace is quite smart.
         #compute the numerical solution
-        y = integrate.odeint(self._diffStateT, initialValues, self.time)
+        y = integrate.odeint(self.dynamic, initialValues, self.time)
         #compute the algebraic variables for a second time, so they can be shown in graphs.
-        self._resultArray = self._outputEquations(y)
+        self.resultArray = self.outputEquations(y)
 
     def simulateSteadyState(self):
         """
@@ -157,23 +181,23 @@ class SimulatorBase(object):
         if not hasattr(self, 'time'):
             #this is the first call in a row of steady state simulations - setup everything
             lastResult = -1
-            self._resultArray = array([[0]], Float)
+            self.resultArray = array([[0]], Float)
             self.time = array([0], Float)
             x0 = self.setInitialValues()    #initial guess for root finder: initial values abused
             t0 = -1
         else:
-            lastResult = shape(self._resultArray)[0]-1
-            x0 = self._resultArray[lastResult, 0:self._numStates] #initial guess for root finder: last result
+            lastResult = shape(self.resultArray)[0]-1
+            x0 = self.resultArray[lastResult, 0:self._numStates] #initial guess for root finder: last result
             t0 = self.time[lastResult] 
         
         #compute the state variables of the steady state solution
-        (xmin, msg) = optimize.leastsq(self._diffStateT, x0, (0)) #funcion will also report local minima that are no roots. Caution!
-##        xmin = optimize.fsolve(self._diffStateT, x0, (0)) #function is always stuck in one (the trivial) minimum 
+        (xmin, msg) = optimize.leastsq(self.dynamic, x0, (0)) #funcion will also report local minima that are no roots. Caution!
+##        xmin = optimize.fsolve(self.dynamic, x0, (0)) #function is always stuck in one (the trivial) minimum 
         #also compute the algebraic variables
-        currRes = self._outputEquations(xmin)
+        currRes = self.outputEquations(xmin)
         #expand the storage and save the results
-        self._resultArray = resize(self._resultArray, (lastResult+2, self._numVariables))
-        self._resultArray[lastResult+1,:] = currRes[0,:]
+        self.resultArray = resize(self.resultArray, (lastResult+2, self._numVariables))
+        self.resultArray[lastResult+1,:] = currRes[0,:]
         self.time = resize(self.time, (lastResult+2,))
         self.time[lastResult+1] = t0 + 1
 
