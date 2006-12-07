@@ -1,33 +1,92 @@
 #!/usr/bin/env python
-
-import pdb
+############################################################################
+#    Copyright (C) 2006 by Eike Welk                                       #
+#    eike.welk@post.rwth-aachen.de                                         #
+#                                                                          #
+#    This program is free software; you can redistribute it and#or modify  #
+#    it under the terms of the GNU General Public License as published by  #
+#    the Free Software Foundation; either version 2 of the License, or     #
+#    (at your option) any later version.                                   #
+#                                                                          #
+#    This program is distributed in the hope that it will be useful,       #
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of        #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
+#    GNU General Public License for more details.                          #
+#                                                                          #
+#    You should have received a copy of the GNU General Public License     #
+#    along with this program; if not, write to the                         #
+#    Free Software Foundation, Inc.,                                       #
+#    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
+############################################################################
+import pygenerator
 import simlparser
 
-def main():
-    print 'Run simlparser tests ...'
-    simlparser.doTests()
 
-main()
+#import pdb
+import simlparser
+import pygenerator
 
+#------------ testProg1 -----------------------
+testProg1 = (
+'''
+model Test
+    var V; var h;
+    par A_bott; par A_o; par mu;
+    par q; par g;
+    
+    block run
+        h := V/A_bott;
+        $V := q - mu*A_o*sqrt(2*g*h);
+    end
+    
+    block init
+        V := 0;
+        A_bott := 1; 
+        A_o := 0.02; mu := 0.55;
+        q := 0.05;
+    end
+end
 
-##try to reproduce the list init and append bug, where data attributes
-##behaved like class attributes
-#class test1(object):
-    #def __init__(self, liArg=[]):
-        #self.li = liArg      #bug
-        ##self.li = liArg[:]  #works
+process RunTest
+    sub test as Test;
+    
+    block run
+        run test;
+    end
+    block init
+        init test;
+    end
+end
+''' )
 
-#a = test1()
-#b = test1()
+#-------- the code -----------------------------------------------------
+parser = simlparser.ParseStage()
+astGen = simlparser.ASTGenerator()
+iltGen = simlparser.ILTGenerator()
+progGen = pygenerator.ProgramGenerator()
 
-#a.li.append(1)
-#print a.li
-#print b.li
+pres = parser.parseProgram(testProg1)
+#print 'parse result:'
+#print pres
 
+astTree = astGen.createSyntaxTree(pres)
+#print 'AST tree:'
+#print astTree
 
+iltTree = iltGen.createIntermediateTree(astTree)
+print 'ILT tree:'
+print iltTree
 
-#pdb.set_trace()
+progStr = progGen.createProgram(iltTree)
+#print 'python program:'
+#print progStr
 
+pyFile = open('/home/eike/codedir/freeode/trunk/freeode_py/test.py','w')
+pyFile.write(progStr)
+pyFile.close()
 
-#Reload a previously imported module.
-#reload(simlparser)
+from test import RunTest
+sim = RunTest()
+sim.simulateDynamic()
+
+a=1

@@ -18,6 +18,17 @@
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
 
+
+__doc__ = \
+'''
+Generator for python code.
+
+The highlevel wrapper class is Program generator.
+Ti consomes a modified AST, the intermediate language tree (ILT) and 
+generates some python classes that perform the simulations.
+'''
+
+
 from ast import *
 
 
@@ -62,7 +73,7 @@ class StatementGenerator(object):
             return funcName + '(' + self.createFormula(iltFormula[0]) + ')'
         #Number: 123.5
         elif isinstance(iltFormula, NodeNum):
-            return iltFormula.dat
+            return 'float(%s)' % iltFormula.dat
         #pair of prentheses: ( ... )
         elif isinstance(iltFormula, NodeParentheses):
             return '(' + self.createFormula(iltFormula[0]) + ')'
@@ -269,7 +280,7 @@ class ProcessGenerator(object):
             if len(line1) > 75: #if line long enough: begin new line
                 self.outPy += line1 + '\n'
                 line1 = ind8 + ' '*28 #indent of rectangular bracket
-        self.outPy += line1 + '], Float)\n'        
+        self.outPy += line1 + '], \'float64\')\n'        
         self.outPy += ind8 + 'self.stateVectorLen = len(self.initialValues) \n'
         #assemble vector with algebraic variables to compute their total size
         self.outPy += ind8 + '#put algebraic variables into array, only to compute its size \n'
@@ -280,8 +291,8 @@ class ProcessGenerator(object):
             if len(line1) > 75: #if line long enough: begin new line
                 self.outPy += line1 + '\n'
                 line1 = ind8 + ' '*18 #indent of rectangular bracket
-        self.outPy += line1 + '], Float) \n'
-        self.outPy += ind8 + 'self.algebraicVarVectorLen = len(algVars) \n'
+        self.outPy += line1 + '], \'float64\') \n'
+        self.outPy += ind8 + 'self.algVectorLen = len(algVars) \n'
         
         self.outPy += '\n\n'
     
@@ -295,7 +306,7 @@ class ProcessGenerator(object):
                 break
         #write method definition
         ind8 = ' '*8
-        self.outPy += '    def dynamic(self, state, time): \n'
+        self.outPy += '    def dynamic(self, time, state): \n'
         self.outPy += ind8 + '\'\'\' \n'
         self.outPy += ind8 + 'Compute time derivative of state variables. \n'
         self.outPy += ind8 + 'This function will be called by the solver repeatedly. \n'
@@ -326,7 +337,7 @@ class ProcessGenerator(object):
             if len(line1) > 75: #if line long enough: begin new line
                 self.outPy += line1 + '\n'
                 line1 = ind8 + ' '*18 #indent of rectangular bracket
-        self.outPy += line1 + '], Float) \n'
+        self.outPy += line1 + '], \'float64\') \n'
         self.outPy += ind8 + 'return stateDt \n'
         #TODO: investigate method to also return the algebraic variables
         self.outPy += '\n\n'
@@ -379,7 +390,7 @@ class ProcessGenerator(object):
             if len(line1) > 75: #if line long enough: begin new line
                 self.outPy += line1 + '\n'
                 line1 = ind12 + ' '*18 #indent of rectangular bracket
-        self.outPy += line1 + '], Float) \n'
+        self.outPy += line1 + '], \'float64\') \n'
         self.outPy += ind12 + '#TODO: Store the algebraic variables. \n'
 
         self.outPy += '\n\n'
@@ -447,7 +458,7 @@ class ProgramGenerator(object):
 #------------------------------------------------------------------------------#
 
 
-from Numeric import *
+from numpy import *
 #from scipy import *
 from simulatorbase import SimulatorBase
 
