@@ -38,6 +38,23 @@ class PyGenException(Exception):
         Exception.__init__(self, *params)
         
 
+
+class StringStream(object):
+    '''Object that can replace a file for writing too.'''
+    
+    def __init__(self):
+        self._buffer = ''
+        
+    def write(self, inStr):
+        '''Put this string into the buffer'''
+        self._buffer += inStr
+        
+    def buffer(self):
+        '''Retrieve the buffer'''
+        return self._buffer
+
+
+
 class LongLineWriter(object):
     '''
     Automate writing lines with a maximum length.
@@ -45,7 +62,7 @@ class LongLineWriter(object):
     This class is usefull for writing lines with multiple statements.
     '''
     
-    def __init__(self, file=None, maxLen=80, startStr='', endStr='\\'):
+    def __init__(self, file=None, startStr='', endStr='', maxLen=80):
         '''
         Parameters:
             file     : Object with write(string) method where the 
@@ -108,30 +125,21 @@ class LongLineWriter(object):
         '''
         return self.multiLineBuf
     
-
-def makeDotName(inTuple):
-    '''
-    Create a dotted name from a tuple of strings.
-    The dotted names are parsed into (and stored as) tuples of strings.
-    '''
-    dotName = ''
-    for namePart in inTuple:
-        if dotName == '':
-            dotName = namePart
-        else:
-            dotName += '.'+namePart
-    return dotName
-
+    
 
 class StatementGenerator(object):
     '''
     Generate a statement in Python from an AST or ILT syntax tree.
     '''
     
-    def __init__(self):
+    def __init__(self, outPyFile):
+        '''
+        Arguments:
+            outPyFile : File where the Python program will be stored.
+        '''
         super(StatementGenerator, self).__init__()
-        self.outPy = ''
-        '''The statement in the python programming language.'''
+        self.outPy = outPyFile
+        '''File where the Python program will be stored.'''
     
     
     def createFormula(self, iltFormula):
@@ -140,12 +148,11 @@ class StatementGenerator(object):
         convert it into a formula in the Python programming language.
         (recursive)
         
-        arguments:
+        Arguments:
             iltFormula : tree of Node objects
-        returns:
+        Returns:
             string, formula in Python language
         '''
-        self.outPy = ''
         #Built in value: pi, time
         if isinstance(iltFormula, NodeBuiltInVal):
             nameDict = {'pi':'pi', 'time':'time'}
@@ -191,28 +198,29 @@ class StatementGenerator(object):
             indent  : string of whitespace, put in front of each line
         returns:
             string, statement in Python language
-        '''
-        self.outPy = ''
-        
+        '''      
+        outPy = self.outPy  
         if isinstance(iltStmt, NodeAssignment):
-            self.outPy += indent + (iltStmt.lhs().targetName + ' = ' + 
-                                    self.createFormula(iltStmt.rhs()) + '\n')
+            outPy.write(indent + iltStmt.lhs().targetName + ' = ' + 
+                                 self.createFormula(iltStmt.rhs()) + '\n')
         else:
             raise PyGenException('Unknown node in StatementGenerator:\n' + str(iltStmt))
-         
-        return self.outPy
 
 
 class ProcessGenerator(object):
     '''create python class that simulates a process'''
     
-    def __init__(self):
+    def __init__(self, outPyFile):
+        '''
+        Arguments:
+            outPyFile : File where the Python program will be stored.
+        '''
         super(ProcessGenerator, self).__init__()
         
         self.iltProcess = NodeClassDef('dummy')
         '''The input: an IL-tree of the process. It has no external dependencies.'''
-        self.outPy = ''
-        '''The process in the python programming language.'''
+        self.outPy = outPyFile
+        '''File where the Python program will be stored.'''
         self.processPyName = ''
         '''Python name of the process'''
         self.parameters = {}
@@ -297,29 +305,27 @@ class ProcessGenerator(object):
             
     def writeClassDefStart(self):
         '''Write first few lines of class definition.'''
-        self.outPy += 'class %s(SimulatorBase): \n' % self.processPyName
-        self.outPy += '    \'\'\' \n'
-        self.outPy += '    Object to simulate process %s \n' % self.iltProcess.className
-        self.outPy += '    Definition in file: \'%s\' line: %s \n' % ('???', '???')
-        self.outPy += '    \'\'\' \n'
-        self.outPy += '    \n'
+        self.outPy.write('class %s(SimulatorBase): \n' % self.processPyName)
+        self.outPy.write('    \'\'\' \n')
+        self.outPy.write('    Object to simulate process %s \n' % self.iltProcess.className)
+        self.outPy.write('    Definition in file: \'%s\' line: %s \n' % ('???', '???'))
+        self.outPy.write('    \'\'\' \n')
+        self.outPy.write('    \n')
 
         
     def writeConstructor(self):
         '''Generate the __init__ function.'''
+        outPy = self.outPy
         ind8 = ' '*8
-        self.outPy += '    def __init__(self): \n'
-        self.outPy += '        super(%s, self).__init__() \n' % self.processPyName
-        self.outPy += ind8 + 'self.variableNameMap = {} \n'
+        outPy.write('    def __init__(self): \n')
+        outPy.write('        super(%s, self).__init__() \n' % self.processPyName)
+        #outPy.write(ind8 + 'self.variableNameMap = {} \n')
         #create the parameters
-        self.outPy += (ind8 + '#create all parameters with value 0; ' + 
-                       'to prevent runtime errors.\n')
-        longW = LongLineWriter(startStr=ind8, endStr='')
+        outPy.write(ind8 + '#create all parameters with value 0; ' + 
+                           'to prevent runtime errors. \n')
         for paramDef in self.parameters.values():
-            longW.write('%s = 0.0; ' % paramDef.targetName[tuple()])
-        longW.endLine('')
-        self.outPy += longW.buffer()
-        self.outPy += '\n\n'
+            outPy.write(ind8 + '%s = 0.0 \n' % paramDef.targetName[tuple()])
+        outPy.write('\n\n')
         
         
     def writeInitMethod(self):
@@ -330,56 +336,46 @@ class ProcessGenerator(object):
                initMethod.name == 'init':
                 break
         #write method definition
+        outPy = self.outPy
         ind8 = ' '*8
-        self.outPy += '    def initialize(self): \n'
-        self.outPy += ind8 + '\'\'\' \n'
-        self.outPy += ind8 + 'Compute parameter values and \n'
-        self.outPy += ind8 + 'compute initial values of state variables \n'
-        self.outPy += ind8 + '\'\'\' \n'
+        outPy.write('    def initialize(self): \n')
+        outPy.write(ind8 + '\'\'\' \n')
+        outPy.write(ind8 + 'Compute parameter values and \n')
+        outPy.write(ind8 + 'compute initial values of state variables \n')
+        outPy.write(ind8 + '\'\'\' \n')
         #create all variables
-        self.outPy += (ind8 + '#create all variables with value 0; ' + 
-                       'to prevent runtime errors.\n')      
-        #create long lines with 'var_name = 0; ...'
-        line1 = ind8
+        outPy.write(ind8 + '#create all variables with value 0; ' + 
+                           'to prevent runtime errors.\n')      
         for varDef in (self.algebraicVariables.values() + 
                        self.stateVariables.values()):
-            line1 += '%s = 0.0; ' % varDef.targetName[tuple()]
-            if len(line1) > 75: #if line long enough: begin new line
-                self.outPy += line1 + '\n'
-                line1 = ind8
-        self.outPy += line1 + '\n'
+            outPy.write(ind8 + '%s = 0.0 \n' % varDef.targetName[tuple()])
         #print the method's statements
-        self.outPy += ind8 + '#do computations \n'
-        stmtGen = StatementGenerator()
+        outPy.write(ind8 + '#do computations \n')
+        stmtGen = StatementGenerator(outPy)
         for statement in initMethod:
-            self.outPy += stmtGen.createStatement(statement, ind8)
+            stmtGen.createStatement(statement, ind8)
         #put initial values into array and store them
+        outPy.write(ind8 + '#assemble initial values to array and store them \n')
         #sequence of variables in the array is determined by self.stateVariables
-        self.outPy += ind8 + '#assemble initial values to array and store them \n'
         #create long lines with 'var_ame11, var_name12, var_name13, ...'
-        line1 = ind8 + 'self.initialValues = array(['
+        lineW = LongLineWriter(outPy, ' '*16)
+        lineW.startLine(ind8 + 'self.initialValues = array([')
         for varDef in self.stateVariables.values():
-            line1 += '%s, ' % varDef.targetName[tuple()]
-            if len(line1) > 75: #if line long enough: begin new line
-                self.outPy += line1 + '\n'
-                line1 = ind8 + ' '*28 #indent of rectangular bracket
-        self.outPy += line1 + '], \'float64\') \n'        
-        self.outPy += ind8 + 'self.stateVectorLen = len(self.initialValues) \n'
+            lineW.write('%s, ' % varDef.targetName[tuple()])
+        lineW.endLine('], \'float64\')')
+        outPy.write(ind8 + 'self.stateVectorLen = len(self.initialValues) \n')
         #assemble vector with algebraic variables to compute their total size
-        self.outPy += ind8 + '#put algebraic variables into array, only to compute its size \n'
-        algVarNames = self.algebraicVariables.values()
-        line1 = ind8 + 'algVars = array(['
-        for varDef, nState in zip(algVarNames, range(len(algVarNames))):
-            line1 += '%s, ' % varDef.targetName[tuple()]
-            if len(line1) > 75: #if line long enough: begin new line
-                self.outPy += line1 + '\n'
-                line1 = ind8 + ' '*18 #indent of rectangular bracket
-        self.outPy += line1 + '], \'float64\') \n'
-        self.outPy += ind8 + 'self.algVectorLen = len(algVars) \n'
+        outPy.write(ind8 + '#put algebraic variables into array, only to compute its size \n')
+        lineW = LongLineWriter(outPy, ' '*16)
+        lineW.startLine(ind8 + 'algVars = array([')
+        for varDef in self.algebraicVariables.values():
+            lineW.write('%s, ' % varDef.targetName[tuple()])
+        lineW.endLine('], \'float64\')')
+        outPy.write(ind8 + 'self.algVectorLen = len(algVars) \n')
         #TODO: compute self.variableNameMap from the actual sizes of the variables
-        self.outPy += ind8 + '#TODO: compute self.variableNameMap from the actual sizes of the variables \n'
+        outPy.write(ind8 + '#TODO: compute self.variableNameMap from the actual sizes of the variables \n')
         #Create maping between variable names and array indices
-        longW = LongLineWriter(startStr=' '*16)
+        longW = LongLineWriter(outPy, ' '*16)
         longW.startLine(ind8 + 'self.variableNameMap = {')
         for i, varName in zip(range(len(self.stateVariables) + 
                                     len(self.algebraicVariables)),
@@ -387,8 +383,7 @@ class ProcessGenerator(object):
                               self.algebraicVariables.keys()):
             longW.write('\'%s\':%d, ' % (makeDotName(varName), i))
         longW.endLine('}')
-        self.outPy += longW.buffer()
-        self.outPy += '\n\n'
+        outPy.write('\n\n')
     
     
     def writeDynamicMethod(self):
@@ -399,42 +394,45 @@ class ProcessGenerator(object):
                dynMethod.name == 'run':
                 break
         #write method definition
+        outPy = self.outPy
         ind8 = ' '*8
-        self.outPy += '    def dynamic(self, time, state): \n'
-        self.outPy += ind8 + '\'\'\' \n'
-        self.outPy += ind8 + 'Compute time derivative of state variables. \n'
-        self.outPy += ind8 + 'This function will be called by the solver repeatedly. \n'
-        self.outPy += ind8 + '\'\'\' \n'
+        outPy.write('    def dynamic(self, time, state): \n')
+        outPy.write(ind8 + '\'\'\' \n')
+        outPy.write(ind8 + 'Compute time derivative of state variables. \n')
+        outPy.write(ind8 + 'This function will be called by the solver repeatedly. \n')
+        outPy.write(ind8 + '\'\'\' \n')
         #take the state variables out of the state vector
         #sequence of variables in the array is determined by self.stateVariables
-        self.outPy += ind8 + '#take the state variables out of the state vector \n'
-        #create long lines with 'var_ame1 = state[1]; var_name2 = state[2]; ...'
-        line1 = ind8
+        outPy.write(ind8 + '#take the state variables out of the state vector \n')
         stateVarNames = self.stateVariables.values()
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-            line1 += '%s = state[%d]; ' % (varDef.targetName[tuple()], nState)
-            if len(line1) > 75: #if line long enough: begin new line
-                self.outPy += line1 + '\n'
-                line1 = ind8 
-        self.outPy += line1 + '\n'       
-        self.outPy += ind8 + '#TODO: Create all algebraic variables? \n' 
+            outPy.write(ind8 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))  
+        outPy.write(ind8 + '#TODO: Create all algebraic variables? \n')
         #print the method's statements
-        self.outPy += ind8 + '#do computations \n'
-        stmtGen = StatementGenerator()
+        outPy.write(ind8 + '#do computations \n')
+        stmtGen = StatementGenerator(outPy)
         for statement in dynMethod:
-            self.outPy += stmtGen.createStatement(statement, ind8)
-        #assemble the time derivatives into the return vector
-        self.outPy += ind8 + '#assemble the time derivatives into the return vector \n'
-        line1 = ind8 + 'stateDt = array(['
-        for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-            line1 += '%s, ' % varDef.targetName[('time',)]
-            if len(line1) > 75: #if line long enough: begin new line
-                self.outPy += line1 + '\n'
-                line1 = ind8 + ' '*18 #indent of rectangular bracket
-        self.outPy += line1 + '], \'float64\') \n'
-        self.outPy += ind8 + 'return stateDt \n'
+            stmtGen.createStatement(statement, ind8)
+        outPy.write(ind8 + '\n')
+
         #TODO: investigate method to also return the algebraic variables
-        self.outPy += '\n\n'
+        #assemble vector with algebraic variables 
+        outPy.write(ind8 + '#put algebraic variables into array \n')
+        lineW = LongLineWriter(outPy, ' '*16)
+        lineW.startLine(ind8 + 'algVars = array([')
+        for varDef in self.algebraicVariables.values():
+            lineW.write('%s, ' % varDef.targetName[tuple()])
+        lineW.endLine('], \'float64\')')
+        #assemble the time derivatives into the return vector
+        outPy.write(ind8 + '#assemble the time derivatives into the return vector \n')
+        lineW = LongLineWriter(outPy, ' '*16)
+        lineW.startLine(ind8 + 'stateDt = array([')
+        for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
+            lineW.write('%s, ' % varDef.targetName[('time',)])
+        lineW.endLine('], \'float64\')')
+        outPy.write(ind8 + 'return stateDt \n')
+        
+        outPy.write('\n\n')
     
     
     def writeOutputEquations(self):
@@ -445,49 +443,45 @@ class ProcessGenerator(object):
                dynMethod.name == 'run':
                 break
         #write method definition
+        outPy = self.outPy
         ind8 = ' '*8
         ind12 = ' '*12
-        self.outPy += '    def outputEquations(self, simResult): \n'
-        self.outPy += ind8 + '\'\'\' \n'
-        self.outPy += ind8 + 'Compute algebraic variables for a second time. \n'
-        self.outPy += ind8 + 'This is necessary because there is (currently) way to pass \n'
-        self.outPy += ind8 + 'the algebraic variables out of the integration process. \n'
-        self.outPy += ind8 + '\'\'\' \n'
+        outPy.write('    def outputEquations(self, simResult): \n')
+        outPy.write(ind8 + '\'\'\' \n')
+        outPy.write(ind8 + 'Compute algebraic variables for a second time. \n')
+        outPy.write(ind8 + 'This is necessary because there is (currently) way to pass \n')
+        outPy.write(ind8 + 'the algebraic variables out of the integration process. \n')
+        outPy.write(ind8 + '\'\'\' \n')
         
-        self.outPy += ind8 + 'for state in simResult: \n'
-
+        outPy.write(ind8 + '#FIXME: this method is completely defunct \n')
+        outPy.write(ind8 + 'return \n')
+        outPy.write(ind8 + '\n\n')
+        
+        outPy.write(ind8 + 'for state in simResult: \n')
         #take the state variables out of the state vector
         #sequence of variables in the array is determined by self.stateVariables
-        self.outPy += ind12 + '#take the state variables out of the state vector \n'
-        #create long lines with 'var_ame1 = state[1]; var_name2 = state[2]; ...'
-        line1 = ind12
+        outPy.write(ind12 + '#take the state variables out of the state vector \n')
         stateVarNames = self.stateVariables.values()
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-            line1 += '%s = state[%d]; ' % (varDef.targetName[tuple()], nState)
-            if len(line1) > 75: #if line long enough: begin new line
-                self.outPy += line1 + '\n'
-                line1 = ind12 
-        self.outPy += line1 + '\n'        
-        self.outPy += ind12 + '#TODO: Create all algebraic variables? \n' 
-        self.outPy += ind12 + '#TODO: Only compute algebraic variables?? \n' 
+            outPy.write(ind12 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))   
+        outPy.write(ind12 + '#TODO: Create all algebraic variables? \n')
+        outPy.write(ind12 + '#TODO: Only compute algebraic variables?? \n')
         #print the statements that compute algebraic variables
-        self.outPy += ind12 + '#do computations \n'
-        stmtGen = StatementGenerator()
+        outPy.write(ind12 + '#do computations \n')
+        stmtGen = StatementGenerator(outPy)
         for statement in dynMethod:
-            self.outPy += stmtGen.createStatement(statement, ind12)
+            stmtGen.createStatement(statement, ind12)
         #assemble the algebraic variables into an array
-        self.outPy += ind12 + '#assemble the algebraic variables into an array \n'
+        outPy.write(ind12 + '#assemble the algebraic variables into an array \n')
+        lineW = LongLineWriter(outPy, ' '*16)
+        lineW.startLine(ind12 + 'algVars = array([')
         algVarNames = self.algebraicVariables.values()
-        line1 = ind12 + 'algVars = array(['
         for varDef, nState in zip(algVarNames, range(len(algVarNames))):
-            line1 += '%s, ' % varDef.targetName[tuple()]
-            if len(line1) > 75: #if line long enough: begin new line
-                self.outPy += line1 + '\n'
-                line1 = ind12 + ' '*18 #indent of rectangular bracket
-        self.outPy += line1 + '], \'float64\') \n'
-        self.outPy += ind12 + '#TODO: Store the algebraic variables. \n'
+            lineW.write('%s, ' % varDef.targetName[tuple()])
+        lineW.endLine('], \'float64\')')
+        outPy.write(ind12 + '#TODO: Store the algebraic variables. \n')
 
-        self.outPy += '\n\n'
+        outPy.write('\n\n')
 
 
 
@@ -496,7 +490,6 @@ class ProcessGenerator(object):
         Take part of ILT tree that defines one procedure and ouput definition 
         of python class as string
         '''
-        self.__init__()
         self.iltProcess = iltProcess.copy()
         
         #collect information about the process
@@ -511,17 +504,32 @@ class ProcessGenerator(object):
         self.writeInitMethod()
         self.writeDynamicMethod()
         self.writeOutputEquations()
-                
-        return self.outPy
         
         
         
 class ProgramGenerator(object):
     '''Create a program from an ILT-tree'''
     
-    def __init__(self):
+    def __init__(self, outPyFile=None, simlFileName='--no file name given--'):
+        '''
+        Arguments:
+            pyFile : file where the program will be stored, 
+                     or a StringStream for debuging.
+        '''
         super(ProgramGenerator,self).__init__(self)
-        self.outPy = ''
+        if outPyFile == None:
+            self.outPy = StringStream()
+        else:
+            self.outPy = outPyFile
+        self.simlFileName = simlFileName
+        
+        
+    def buffer(self):
+        '''
+        Return the the generated Python text in case self.outPy is a 
+        StringStream object.
+        '''
+        return self.outPy.buffer()
     
     
     def writeProgramStart(self):
@@ -529,7 +537,7 @@ class ProgramGenerator(object):
         Write first few lines of the program. 
         Method looks really ugly because of raw string usage.
         '''
-        self.outPy += \
+        self.outPy.write( 
 '''
 #------------------------------------------------------------------------------#
 #                            Warning: Do not edit!                             #
@@ -539,15 +547,15 @@ class ProgramGenerator(object):
 # Write a main routine in an other file. Use import or execfile to load        #
 # the objects defined in this file into the Python interpreter.                #
 #------------------------------------------------------------------------------#
-'''
+'''     )
         import datetime
         dt = datetime.datetime.today()
         date = dt.date().isoformat()
         time = dt.time().strftime('%H:%M:%S')
         
-        self.outPy += '# Generated by Siml version %s on %s %s. \n' % ('0.3.0', date, time)
-        self.outPy += '# Source file(s): %s' % '???'
-        self.outPy += \
+        self.outPy.write('# Generated by Siml version %s on %s %s. \n' % ('0.3.0', date, time))
+        self.outPy.write('# Source file(s): %s' % self.simlFileName)
+        self.outPy.write(
 '''
 #------------------------------------------------------------------------------#
 
@@ -557,25 +565,24 @@ from numpy import *
 from simulatorbase import SimulatorBase
 
 
-'''
+'''     )
         return
     
     
     def createProgram(self, astRoot):
-        '''Take an ILT and retun a python program as a string'''
-        self.__init__()
-        
+        '''
+        Take an ILT and create as python program from it.
+        Write the python program into the file self.outPy
+        '''
         self.writeProgramStart()
                 
-        procGen = ProcessGenerator()
-        for procedure in astRoot:
-            if not isinstance(procedure, NodeClassDef):
+        for process in astRoot:
+            if not isinstance(process, NodeClassDef):
                 continue
-            #create procedure
-            self.outPy += procGen.createProcess(procedure)
-            
-        return self.outPy
-    
+            #create process
+            procGen = ProcessGenerator(self.outPy)
+            procGen.createProcess(process)
+     
     
     
 
@@ -662,7 +669,8 @@ end
     print 'ILT tree:'
     print iltTree
 
-    progStr = progGen.createProgram(iltTree)
+    progGen.createProgram(iltTree)
+    progStr = progGen.buffer()
     print 'python program:'
     print progStr
     

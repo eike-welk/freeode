@@ -77,7 +77,8 @@ iltTree = iltGen.createIntermediateTree(astTree)
 print 'ILT tree:'
 print iltTree
 
-progStr = progGen.createProgram(iltTree)
+progGen.createProgram(iltTree)
+progStr = progGen.buffer()
 #print 'python program:'
 #print progStr
 

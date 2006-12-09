@@ -39,6 +39,7 @@ import Gnuplot, Gnuplot.funcutils # @todo switch to a more well known graphics l
 
 class SimulatorBase(object):
     """ Base class for the generated simulator classes """
+    #TODO: think about separate data storage object.
 
     def __init__(self):
 ##        #Store if initial values have been computed

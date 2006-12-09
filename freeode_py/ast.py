@@ -480,6 +480,21 @@ class TreePrinter(object):
 
 
 
+def makeDotName(inTuple):
+    '''
+    Create a dotted name from a tuple of strings.
+    The dotted names are parsed into (and stored as) tuples of strings.
+    '''
+    dotName = ''
+    for namePart in inTuple:
+        if dotName == '':
+            dotName = namePart
+        else:
+            dotName += '.'+namePart
+    return dotName
+
+
+
 class UserException(Exception):
     '''Exception that transports user visible error messages'''
     def __init__(self, message, loc=None, str=None):
