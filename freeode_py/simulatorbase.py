@@ -43,9 +43,9 @@ class SimulatorBase(object):
     def __init__(self):
 ##        #Store if initial values have been computed
 ##        self._initialValuesDirty = True
-        self._variableNameMap = {}
+        self.variableNameMap = {}
         '''Maping between variable (siml) name and index in the result array'''
-        self._parameterNameMap = {}
+        self.parameterNameMap = {}
         '''Maping between parameter (siml) name and (data member, python name)???'''
         self.simulationTime = 100.0
         self.reportingInterval = 1.0
@@ -67,7 +67,7 @@ class SimulatorBase(object):
 
     def helpVariables(self):
         """Show list of all variables."""
-        for i in self._variableNameMap: 
+        for i in self.variableNameMap: 
             print "'%s', " % i,
         print
     #TODO: add helpParameters, helpAttributes
@@ -102,7 +102,7 @@ class SimulatorBase(object):
             return self.time
         elif varName == 'all':
             return self.resultArray
-        index = self._variableNameMap[varName]
+        index = self.variableNameMap[varName]
         return self.resultArray[:,index]
 
     def graph(self, varNames):
@@ -125,7 +125,7 @@ class SimulatorBase(object):
 
         varList = varNames.replace(',', ' ').split(' ')
         for varName1 in varList:
-            if not (varName1 in self._variableNameMap): 
+            if not (varName1 in self.variableNameMap): 
                 print('Error unknown variable name: %s') % varName1
                 continue
                 

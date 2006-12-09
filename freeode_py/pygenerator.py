@@ -24,7 +24,7 @@ __doc__ = \
 Generator for python code.
 
 The highlevel wrapper class is Program generator.
-Ti consomes a modified AST, the intermediate language tree (ILT) and 
+It consumes a modified AST, the intermediate language tree (ILT) and 
 generates some python classes that perform the simulations.
 '''
 
@@ -37,6 +37,91 @@ class PyGenException(Exception):
     def __init__(self, *params):
         Exception.__init__(self, *params)
         
+
+class LongLineWriter(object):
+    '''
+    Automate writing lines with a maximum length.
+    
+    This class is usefull for writing lines with multiple statements.
+    '''
+    
+    def __init__(self, file=None, maxLen=80, startStr='', endStr='\\'):
+        '''
+        Parameters:
+            file     : Object with write(string) method where the 
+                       completed lines are put (most possibly a file). 
+                       If file=None a buffer string is used instead, that
+                       can be retrieved with the buffer() method
+            maxLen   : Maximum lenght of a line.
+            startStr : Lines start with this string (usually the indent)
+                       unless startLine(...) 
+            endStr   : Lines end with this string unless endLine(...) is called.
+        '''
+        self.file = file
+        self.multiLineBuf = ''
+        self.lineBuf = startStr
+        self.maxLen = maxLen
+        self.startStr = startStr
+        self.endStr = endStr
+    
+    def _putLine(self, lineStr):
+        '''Put the finished line into the file or into the buffer'''
+        if not self.file:
+            self.multiLineBuf += lineStr
+        else:
+            self.file.write(lineStr)
+    
+    def write(self, inStr):
+        '''
+        Put this string at he end of the current line. 
+        If the line is too long statrt a new line.
+        '''
+        if len(self.lineBuf) + len(inStr) + len(self.endStr) > self.maxLen:
+            self._putLine(self.lineBuf + self.endStr + '\n')
+            self.lineBuf = self.startStr + inStr
+        else:
+            self.lineBuf += inStr
+        #return self
+        
+    def endLine(self, finalStr):
+        '''Put inStr unconditionally at the line's end and start a new line.'''
+        self._putLine(self.lineBuf + finalStr + '\n')
+        self.lineBuf = self.startStr
+        #return self
+        
+    def startLine(self, beginStr):
+        '''
+        Begin a new line with beginStr. 
+        The normal start string (self.startStr) is omitted.
+        If the current line is not empty it is ended with self.endLine('').
+        '''
+        if self.lineBuf != self.startStr:
+            self.endLine('')
+        else:
+            self.lineBuf = beginStr
+        #return self
+        
+    def buffer(self):
+        '''
+        Return the buffer where the completed lines are.
+        Only usefull when no file object is used.
+        '''
+        return self.multiLineBuf
+    
+
+def makeDotName(inTuple):
+    '''
+    Create a dotted name from a tuple of strings.
+    The dotted names are parsed into (and stored as) tuples of strings.
+    '''
+    dotName = ''
+    for namePart in inTuple:
+        if dotName == '':
+            dotName = namePart
+        else:
+            dotName += '.'+namePart
+    return dotName
+
 
 class StatementGenerator(object):
     '''
@@ -73,7 +158,7 @@ class StatementGenerator(object):
             return funcName + '(' + self.createFormula(iltFormula[0]) + ')'
         #Number: 123.5
         elif isinstance(iltFormula, NodeNum):
-            return 'float(%s)' % iltFormula.dat
+            return str(float(iltFormula.dat))
         #pair of prentheses: ( ... )
         elif isinstance(iltFormula, NodeParentheses):
             return '(' + self.createFormula(iltFormula[0]) + ')'
@@ -136,7 +221,6 @@ class ProcessGenerator(object):
         '''The algebraic variables: dict: {('a','b'):NodeAttrDef]'''
         self.stateVariables = {}
         '''The state variables: dict: {('a','b'):NodeAttrDef]'''
-        #self.pyNames = {}
         
         
     def findAttributes(self):
@@ -146,6 +230,7 @@ class ProcessGenerator(object):
         Results:
         self.parameters, self.algebraicVariables, self.stateVariables 
         '''
+        #create dicts to find and classify attributes fast
         for attrDef in self.iltProcess:
             if not isinstance(attrDef, NodeAttrDef):
                 continue
@@ -157,7 +242,7 @@ class ProcessGenerator(object):
                 self.stateVariables[attrDef.attrName] = attrDef
             else:
                 raise PyGenException('Unknown attribute definition:\n'+ str(attrDef))
- 
+        
             
     def createAttrPyNames(self):
         '''
@@ -225,17 +310,15 @@ class ProcessGenerator(object):
         ind8 = ' '*8
         self.outPy += '    def __init__(self): \n'
         self.outPy += '        super(%s, self).__init__() \n' % self.processPyName
-        #self.outPy += ind8 + 'self.initialValues = None \n'
+        self.outPy += ind8 + 'self.variableNameMap = {} \n'
+        #create the parameters
         self.outPy += (ind8 + '#create all parameters with value 0; ' + 
                        'to prevent runtime errors.\n')
-        #create long lines with 'param_name = 0; ...'
-        line1 = ind8
+        longW = LongLineWriter(startStr=ind8, endStr='')
         for paramDef in self.parameters.values():
-            line1 += '%s = 0; ' % paramDef.targetName[tuple()]
-            if len(line1) > 75: #if line long enough: begin new line
-                self.outPy += line1 + '\n'
-                line1 = ind8
-        self.outPy += line1 + '\n'
+            longW.write('%s = 0.0; ' % paramDef.targetName[tuple()])
+        longW.endLine('')
+        self.outPy += longW.buffer()
         self.outPy += '\n\n'
         
         
@@ -260,7 +343,7 @@ class ProcessGenerator(object):
         line1 = ind8
         for varDef in (self.algebraicVariables.values() + 
                        self.stateVariables.values()):
-            line1 += '%s = 0; ' % varDef.targetName[tuple()]
+            line1 += '%s = 0.0; ' % varDef.targetName[tuple()]
             if len(line1) > 75: #if line long enough: begin new line
                 self.outPy += line1 + '\n'
                 line1 = ind8
@@ -280,7 +363,7 @@ class ProcessGenerator(object):
             if len(line1) > 75: #if line long enough: begin new line
                 self.outPy += line1 + '\n'
                 line1 = ind8 + ' '*28 #indent of rectangular bracket
-        self.outPy += line1 + '], \'float64\')\n'        
+        self.outPy += line1 + '], \'float64\') \n'        
         self.outPy += ind8 + 'self.stateVectorLen = len(self.initialValues) \n'
         #assemble vector with algebraic variables to compute their total size
         self.outPy += ind8 + '#put algebraic variables into array, only to compute its size \n'
@@ -293,7 +376,18 @@ class ProcessGenerator(object):
                 line1 = ind8 + ' '*18 #indent of rectangular bracket
         self.outPy += line1 + '], \'float64\') \n'
         self.outPy += ind8 + 'self.algVectorLen = len(algVars) \n'
-        
+        #TODO: compute self.variableNameMap from the actual sizes of the variables
+        self.outPy += ind8 + '#TODO: compute self.variableNameMap from the actual sizes of the variables \n'
+        #Create maping between variable names and array indices
+        longW = LongLineWriter(startStr=' '*16)
+        longW.startLine(ind8 + 'self.variableNameMap = {')
+        for i, varName in zip(range(len(self.stateVariables) + 
+                                    len(self.algebraicVariables)),
+                              self.stateVariables.keys() + 
+                              self.algebraicVariables.keys()):
+            longW.write('\'%s\':%d, ' % (makeDotName(varName), i))
+        longW.endLine('}')
+        self.outPy += longW.buffer()
         self.outPy += '\n\n'
     
     

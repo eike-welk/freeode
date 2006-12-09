@@ -88,5 +88,6 @@ pyFile.close()
 from test import RunTest
 sim = RunTest()
 sim.simulateDynamic()
+#sim.graph('test.V')
 
 a=1
