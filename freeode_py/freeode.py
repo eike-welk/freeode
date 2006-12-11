@@ -18,21 +18,35 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-#import pdb
-from optparse import OptionParser
-import pygenerator
-import simlparser
+from ast import UserException
 
+
+#import pdb
+import optparse
+import sys
+import simlparser
+import pygenerator
+
+
+#These global variables are defined in ast.py and are therefore accessible 
+#in all modules of the compiler
+global progVersion, inputFileName, inputFileContents
+#version of the Siml compiler
 progVersion = '0.3.0'
+#name of the Siml file which is compiled
+inputFileName = '???'
+#The contents of the input file as a string
+inputFileContents = '???'
 
 
 def parseCmdLine():
     '''Parse the command line, and find out what the user wants from us.'''
     global progVersion
     #set up parser for the command line aruments
-    usage = '%prog <input_file> [-o <output_file>] [-m | -n]\n\n' + \
-            'Compiler for the Siml simulation language.\n'
-    optPars = OptionParser(usage=usage, version='%prog ' + progVersion)
+    optPars = optparse.OptionParser(
+                usage='%prog <input_file> [-o <output_file>] [-m | -n]',
+                description='Compiler for the Siml simulation language.', 
+                version='%prog ' + progVersion)
     
     optPars.add_option('-o', '--outfile', dest='outfile', 
                        help='explicitly specify name of output file', 
@@ -53,6 +67,7 @@ def parseCmdLine():
         inputFileName = args[0]
     if inputFileName == None:
         optPars.error('no input file given')
+        
     #test extension
     inputFileExtension = inputFileName.rsplit('.',1)[1]
     if inputFileExtension.lower() != 'siml':
@@ -82,83 +97,60 @@ def parseCmdLine():
 
 def doCompile(inputFileName, outputFileName):
     '''Do the work'''
-    pass
-
-   
-def mainFunc():
-    '''the main function'''
-    inputFileName, outputFileName, genMainRoutine = parseCmdLine()
-    doCompile(inputFileName, outputFileName)
+    global inputFileContents
     
+    #open the file
+    try:
+        inputFile = open(inputFileName, 'r')
+        inputFileContents = inputFile.read()
+        inputFile.close()
+    except IOError, theError:
+        print 'error: could not read input file\n', theError
+        return
     
-mainFunc()
-
-
-def testfunc():  
-    #------------ testProg1 -----------------------
-    testProg1 = (
-    '''
-    model Test
-        var V; var h;
-        par A_bott; par A_o; par mu;
-        par q; par g;
-        
-        block run
-            h := V/A_bott;
-            $V := q - mu*A_o*sqrt(2*g*h);
-        end
-        
-        block init
-            V := 0;
-            A_bott := 1; 
-            A_o := 0.02; mu := 0.55;
-            q := 0.05;
-        end
-    end
-    
-    process RunTest
-        sub test as Test;
-        
-        block run
-            run test;
-        end
-        block init
-            init test;
-        end
-    end
-    ''' )
-    
-    #-------- the code -----------------------------------------------------
+    #create the top level objects that do the compilation
     parser = simlparser.ParseStage()
     astGen = simlparser.ASTGenerator()
     iltGen = simlparser.ILTGenerator()
     progGen = pygenerator.ProgramGenerator()
     
-    pres = parser.parseProgram(testProg1)
-    #print 'parse result:'
-    #print pres
+    #the compilation proper
+    try:
+        pres = parser.parseProgram(inputFileContents)
+        astTree = astGen.createSyntaxTree(pres)
+        iltTree = iltGen.createIntermediateTree(astTree)
+        progGen.createProgram(iltTree)
+        progStr = progGen.buffer()
+    except UserException, theError:
+        theError.str = inputFileContents
+        print theError
+        return
+    except simlparser.ParseException, theError:
+        print theError
+        return
+        
+    #write generated program to file
+    try:    
+        outputFile = open(outputFileName,'w')
+        outputFile.write(progStr)
+        outputFile.close()
+    except IOError, theError:
+        print 'error: could nor write output file\n', theError 
+        return
+ 
+   
+def mainFunc():
+    '''the main function'''
+    global inputFileName
     
-    astTree = astGen.createSyntaxTree(pres)
-    #print 'AST tree:'
-    #print astTree
+    inputFileName, outputFileName, genMainRoutine = parseCmdLine()
+    try:
+        doCompile(inputFileName, outputFileName)
+    except:
+        print 'Compiler internal error! Please file a bug report at:\n',\
+              'https://developer.berlios.de/projects/freeode/\n'
+        raise
     
-    iltTree = iltGen.createIntermediateTree(astTree)
-    print 'ILT tree:'
-    print iltTree
-    
-    progGen.createProgram(iltTree)
-    progStr = progGen.buffer()
-    #print 'python program:'
-    #print progStr
-    
-    pyFile = open('/home/eike/codedir/freeode/trunk/freeode_py/test.py','w')
-    pyFile.write(progStr)
-    pyFile.close()
-    
-    from test import RunTest
-    sim = RunTest()
-    sim.simulateDynamic()
-    #sim.graph('test.V')
-    print 'test finished'
 
-#testfunc()
+#run the compiler
+mainFunc()

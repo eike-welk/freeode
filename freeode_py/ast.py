@@ -23,17 +23,35 @@ __doc__ = \
 '''
 Implementation of an abstact syntax tree.
 Module contains specialized nodes and tools for tree handling.
+Additionaly it contins some common infrastructure used by the other modules
+of freeode.
 '''
 
 
 
 import copy
+import pyparsing
+
+
+#version of the Siml compiler
+global progVersion
+progVersion = '???'
+
+#name of the Siml file which is compiled
+global inputFileName
+inputFileName = '???'
+
+#The contents of the input file as a string
+global inputFileContents
+inputFileContents = '???'
 
 
 
 class Node(object):
     '''
-    Building block of a n-ary tree structure.  
+    Building block of a n-ary tree structure.
+    The abstract syntax tree (AST), and the intermediate language tree (ILT),
+    are made of nodes that have this class as their base class. 
     
     Usage:
     >>> t1 = Node('root 0.0', [Node('c 1.0', [Node('c 2.0',[]), Node('c 2.1',[])]), Node('c 1.1',[])])
@@ -507,9 +525,13 @@ class UserException(Exception):
         '''When not none take this as the input string'''
 
     def __str__(self):
-        return 'Error! ' + self.message + '\n At position: ' + str(self.loc)
-    #TODO: better error message formating
-    #TODO: include str in all Node(s) to facilate error message handling?
+        if self.str == None:
+            return 'Error! ' + self.message + '\n At position: ' + str(self.loc)
+        else:
+            lineno = pyparsing.lineno(self.loc, self.str)
+            col = pyparsing.col(self.loc, self.str)
+            return 'Error! %s \n' % self.message +\
+                   'Line: %d, Column: %d' % (lineno, col)
 
 
 
