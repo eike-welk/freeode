@@ -23,7 +23,7 @@ from ast import UserException
 
 #import pdb
 import optparse
-import sys
+#import sys
 import simlparser
 import pygenerator
 
@@ -118,7 +118,9 @@ def doCompile(inputFileName, outputFileName):
     try:
         pres = parser.parseProgram(inputFileContents)
         astTree = astGen.createSyntaxTree(pres)
+        #print astTree
         iltTree = iltGen.createIntermediateTree(astTree)
+        #print iltTree
         progGen.createProgram(iltTree)
         progStr = progGen.buffer()
     except UserException, theError:
@@ -137,19 +139,22 @@ def doCompile(inputFileName, outputFileName):
     except IOError, theError:
         print 'error: could nor write output file\n', theError 
         return
+    
+    print 'Compilation finished successfully.\n',\
+          'input file: %s, output file: %s' % (inputFileName, outputFileName)
  
    
 def mainFunc():
     '''the main function'''
     global inputFileName
     
-    inputFileName, outputFileName, genMainRoutine = parseCmdLine()
     try:
+        inputFileName, outputFileName, genMainRoutine = parseCmdLine()
         doCompile(inputFileName, outputFileName)
-    except:
+    except Exception:
         print 'Compiler internal error! Please file a bug report at:\n',\
               'https://developer.berlios.de/projects/freeode/\n'
-        raise
+        raise 
     
 
 #run the compiler

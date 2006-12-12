@@ -670,6 +670,7 @@ class ASTGenerator(object):
         metaDict = tokList[0]
         for attrName, attrVal in metaDict.iteritems():
             setattr(nCurr, attrName, attrVal)
+        nCurr.typ = 'AST' #make it look mor like the ILT
         #create children - each child is a class
         for tok in tokList[1:len(tokList)]:
             child = self._createSubTree(tok)
@@ -739,8 +740,8 @@ class ILTProcessGenerator(object):
         '''The AST'''
         self.astClasses = {}
         '''dict of classes in ast: {'mod1':NodeClassDef}'''
-#        self.astProcesses = {}
-#        '''dict of processes in AST'''
+        self.astProcess = NodeClassDef('Dummy') 
+        '''the original process that is now instantiated'''
         self.astProcessAttributes = {}
         '''Atributes of the original process. Dict: {('mod1', 'var1'):NodeAttrDef}'''
         self.process = NodeClassDef('Dummy') 
@@ -761,10 +762,24 @@ class ILTProcessGenerator(object):
         '''
         for classDef in self.astRoot:
             self.astClasses[classDef.className] = classDef
-#            if classDef.role == 'process':
-#                self.astProcesses[classDef.className] = classDef
                 
 
+    def addBuiltInParameters(self):
+        '''
+        Some parameters exist without beeing defined; create them here.
+        
+        -In a later stage they could be inherited from a base class.
+        -This method could be expanded into a more general mechanism for 
+         built-in values, like pi.
+        '''
+        #Put solutionparameters as first attribute into the process
+        solParAttr = NodeAttrDef(typ='built-in attribute',  loc=0,
+                                 attrName='solutionParameters', 
+                                 className='solutionParametersClass',
+                                 isSubmodel=True)
+        self.astProcess.insertChild(0, solParAttr)
+        
+        
     def findAttributesRecursive(self, astClass, namePrefix):
         '''
         Find all of the process' attributes (recursing into the sub-models)
@@ -782,14 +797,14 @@ class ILTProcessGenerator(object):
             elif isinstance(attrDef, NodeBlockDef): #definition of block (function)
                 attrName = attrDef.name
             else:
-                raise ILTGenException('Unknown Node.' + 
-                                                            repr(attrDef))
+                raise ILTGenException('Unknown Node.' + repr(attrDef))
             #prepend prefix to attribute name 
+            #TODO: clean up last remains of tuple - list mess
             longAttrName = namePrefix + [attrName]
             longAttrNameTup = tuple(longAttrName)
             #Check redefinition
             if longAttrNameTup in self.astProcessAttributes:
-                raise UserException('Redefinition of: ' + str(longAttrName), attrDef.loc)
+                raise UserException('Redefinition of: ' + makeDotName(longAttrName), attrDef.loc)
             #put new attribute into dict.
             self.astProcessAttributes[longAttrNameTup] = attrDef
             
@@ -876,7 +891,7 @@ class ILTProcessGenerator(object):
                 continue
             if not (node.attrName) in self.processAttributes:
                 raise UserException('Undefined reference: ' + 
-                                    str(node.attrName), node.loc)
+                                    makeDotName(node.attrName), node.loc)
 
 
 
@@ -896,7 +911,7 @@ class ILTProcessGenerator(object):
             #Check conceptual constraint: no $parameter allowed
             if stateVarDef.role == 'par':
                 raise UserException('Parameters can not be state variables: ' +
-                              str(node.attrName), node.loc)
+                              makeDotName(node.attrName), node.loc)
             #remember: this is a state variable; in definition and in dict
             stateVarDef.isStateVariable = True
             self.stateVariables[node.attrName] = stateVarDef
@@ -914,13 +929,13 @@ class ILTProcessGenerator(object):
             #No assignment to parameters 
             if lValDef.role == 'par':
                 raise UserException('Illegal assignment to parameter: ' + 
-                                    str(lVal.attrName), lVal.loc)
+                                    makeDotName(lVal.attrName), lVal.loc)
             #No assignment to state variables - only to their time derivatives
             if lValDef.isStateVariable and (lVal.deriv != ('time',)):
                 raise UserException('Illegal assignment to state variable: ' + 
-                                    str(lVal.attrName) + 
+                                    makeDotName(lVal.attrName) + 
                                     '. You must however assign to its time derivative. ($' + 
-                                    str(lVal.attrName) +')', lVal.loc)
+                                    makeDotName(lVal.attrName) +')', lVal.loc)
 
     
     def checkInitMethodConstraints(self, block):
@@ -935,24 +950,28 @@ class ILTProcessGenerator(object):
                                     str(node.attrName), node.loc) 
     
     
-    def createProcess(self, astProc):
+    def createProcess(self, inAstProc):
         '''generate ILT subtree for one process'''
+        #store original process
+        self.astProcess = inAstProc.copy()
         #init new process
         self.process = NodeClassDef('ILTProcess')
-        self.process.className = astProc.className
-        self.process.role = astProc.role
+        self.process.className = self.astProcess.className
+        self.process.role = self.astProcess.role
         #init quick reference dicts
         self.processAttributes = {}
         self.astProcessAttributes = {}
         self.stateVariables = {}
         
+        #add some built in attributes to the process
+        self.addBuiltInParameters()
         #discover all attributes 
-        self.findAttributesRecursive(astProc, [])
+        self.findAttributesRecursive(self.astProcess, [])
         #create the new process' data attributes
         self.copyDataAttributes()
         #create the new process' blocks (methods)
         runBlock, initBlock, blockCount = None, None, 0
-        for block in astProc:
+        for block in self.astProcess:
             if not isinstance(block, NodeBlockDef):
                 continue
             #create the new method (block) definition
@@ -975,7 +994,7 @@ class ILTProcessGenerator(object):
         
         if (not runBlock) or (not initBlock) or (blockCount != 2):
             raise UserException('Process must contain exactly one run method ' + 
-                                'and one init method.', astProc.loc)
+                                'and one init method.', self.astProcess.loc)
         self.checkUndefindedReferences(self.process) #Check undefined refference
         self.findStateVariables(runBlock) #Mark state variables
         self.checkRunMethodConstraints(runBlock)
@@ -999,17 +1018,42 @@ class ILTGenerator(object):
     def __init__(self):
         super(ILTGenerator, self).__init__()
    
+   
+    def addBuiltInClasses(self, astRoot):
+        '''
+        Some classes exist without beeing defined; create them here.
+        
+        -This method could be expanded into a more general mechanism for 
+         built-in values and functions, like pi, sin(x).
+        '''
+        #Create the solution parameters' definition
+        solPars = NodeClassDef(typ='built-in class', loc=0,
+                               name='solutionParametersClass', role='model')
+        solPars.appendChild(NodeAttrDef(typ='built-in param',  loc=0,
+                                        attrName='simulationTime', 
+                                        className='Real', role='par'))
+        solPars.appendChild(NodeAttrDef(typ='built-in param',  loc=0,
+                                        attrName='reportingInterval', 
+                                        className='Real', role='par'))
+        #add solutionparameTers to AST, and update class dict
+        astRoot.insertChild(0, solPars) 
+
+
     def createIntermediateTree(self, astRoot):
         '''generate ILT tree from AST tree'''
+        #add built ins to AST
+        self.addBuiltInClasses(astRoot)
+        #create ILT root node
         iltRoot = Node('ILT')
-        procGen = ILTProcessGenerator(astRoot)
         
+        procGen = ILTProcessGenerator(astRoot)
+        #searc for processes in the AST and instantiate them in the ILT
         for processDef in astRoot:
             if ((not isinstance(processDef, NodeClassDef)) or 
                 (not processDef.role == 'process')):
                 continue
             newProc = procGen.createProcess(processDef)
-            iltRoot.kids.append(newProc)
+            iltRoot.appendChild(newProc)
         return iltRoot
     
     

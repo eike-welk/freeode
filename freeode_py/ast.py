@@ -136,6 +136,13 @@ class Node(object):
         '''Append node to list of children'''
         self.kids.append(inNode)
         
+    def insertChild(self, index, inNode):
+        '''
+        Insert node into list of children. 
+        New child is inserted before the child at position self[index].
+        '''
+        self.kids.insert(index, inNode)
+        
     def __getitem__(self, i):
         '''Acces to childern through []'''
         return self.kids[i]

@@ -42,14 +42,15 @@ class SimulatorBase(object):
     #TODO: think about separate data storage object.
 
     def __init__(self):
-##        #Store if initial values have been computed
-##        self._initialValuesDirty = True
         self.variableNameMap = {}
         '''Maping between variable (siml) name and index in the result array'''
         self.parameterNameMap = {}
         '''Maping between parameter (siml) name and (data member, python name)???'''
-        self.simulationTime = 100.0
-        self.reportingInterval = 1.0
+        self.p_solutionParameters_simulationTime = 100.0
+        '''Duration of the simulation. Built in parameter.'''
+        self.p_solutionParameters_reportingInterval = 1.0
+        '''Interval at which the simulation results are recorded. 
+           Built in parameter.'''
         self.time = None
         '''Array with times at which the solution was computed.'''
         self.resultArray = None
@@ -181,8 +182,9 @@ class SimulatorBase(object):
         #copy initial values (They are overwritten by integrate.odeint)
         #initialValues = self.initialValues.copy()
         #create the array of output time points
-        self.time = linspace(0.0, self.simulationTime, 
-                             self.simulationTime/self.reportingInterval + 1) #note: no rounding is better, linspace is quite smart.
+        self.time = linspace(0.0, self.p_solutionParameters_simulationTime, 
+                             self.p_solutionParameters_simulationTime/
+                             self.p_solutionParameters_reportingInterval + 1) #note: no rounding is better, linspace is quite smart.
         self.resultArray = zeros((len(self.time), len(self.initialValues)))
         #create integrator object and care for intitial values
         solv = (odeInt(self.dynamic).set_integrator('vode')
