@@ -51,10 +51,10 @@ if build:
 
 
 class Grid:
-    
+
     """A simple grid class that stores the details and solution of the
     computational grid."""
-    
+
     def __init__(self, nx=10, ny=10, xmin=0.0, xmax=1.0,
                  ymin=0.0, ymax=1.0):
         self.xmin, self.xmax, self.ymin, self.ymax = xmin, xmax, ymin, ymax
@@ -62,11 +62,11 @@ class Grid:
         self.dy = float(ymax-ymin)/(ny-1)
         self.u = numpy.zeros((nx, ny), 'd')
         # used to compute the change in solution in some of the methods.
-        self.old_u = self.u.copy()        
+        self.old_u = self.u.copy()
 
-    def setBC(self, l, r, b, t):        
+    def setBC(self, l, r, b, t):
         """Sets the boundary condition given the left, right, bottom
-        and top values (or arrays)"""        
+        and top values (or arrays)"""
         self.u[0, :] = l
         self.u[-1, :] = r
         self.u[:, 0] = b
@@ -84,19 +84,19 @@ class Grid:
         self.u[:, 0] = func(x,ymin)
         self.u[:,-1] = func(x,ymax)
 
-    def computeError(self):        
+    def computeError(self):
         """Computes absolute error using an L2 norm for the solution.
         This requires that self.u and self.old_u must be appropriately
-        setup."""        
+        setup."""
         v = (self.u - self.old_u).flat
         return numpy.sqrt(numpy.dot(v,v))
-    
+
 
 class LaplaceSolver:
-    
+
     """A simple Laplacian solver that can use different schemes to
     solve the problem."""
-    
+
     def __init__(self, grid, stepper='numeric'):
         self.grid = grid
         self.setTimeStepper(stepper)
@@ -104,7 +104,7 @@ class LaplaceSolver:
     def slowTimeStep(self, dt=0.0):
         """Takes a time step using straight forward Python loops."""
         g = self.grid
-        nx, ny = g.u.shape        
+        nx, ny = g.u.shape
         dx2, dy2 = g.dx**2, g.dy**2
         dnr_inv = 0.5/(dx2 + dy2)
         u = g.u
@@ -119,7 +119,7 @@ class LaplaceSolver:
                 err += diff*diff
 
         return numpy.sqrt(err)
-        
+
     def numericTimeStep(self, dt=0.0):
         """Takes a time step using a numeric expressions."""
         g = self.grid
@@ -129,14 +129,14 @@ class LaplaceSolver:
         g.old_u = u.copy()
 
         # The actual iteration
-        u[1:-1, 1:-1] = ((u[0:-2, 1:-1] + u[2:, 1:-1])*dy2 + 
+        u[1:-1, 1:-1] = ((u[0:-2, 1:-1] + u[2:, 1:-1])*dy2 +
                          (u[1:-1,0:-2] + u[1:-1, 2:])*dx2)*dnr_inv
-        
+
         return g.computeError()
 
-    def blitzTimeStep(self, dt=0.0):        
+    def blitzTimeStep(self, dt=0.0):
         """Takes a time step using a numeric expression that has been
-        blitzed using weave."""        
+        blitzed using weave."""
         g = self.grid
         dx2, dy2 = g.dx**2, g.dy**2
         dnr_inv = 0.5/(dx2 + dy2)
@@ -150,15 +150,15 @@ class LaplaceSolver:
 
         return g.computeError()
 
-    def inlineTimeStep(self, dt=0.0):        
+    def inlineTimeStep(self, dt=0.0):
         """Takes a time step using inlined C code -- this version uses
-        blitz arrays."""        
+        blitz arrays."""
         g = self.grid
         nx, ny = g.u.shape
         dx2, dy2 = g.dx**2, g.dy**2
         dnr_inv = 0.5/(dx2 + dy2)
         u = g.u
-        
+
         code = """
                #line 120 "laplace.py"
                double tmp, err, diff;
@@ -190,7 +190,7 @@ class LaplaceSolver:
         dx2, dy2 = g.dx**2, g.dy**2
         dnr_inv = 0.5/(dx2 + dy2)
         u = g.u
-        
+
         code = """
                #line 151 "laplace.py"
                double tmp, err, diff;
@@ -231,15 +231,15 @@ class LaplaceSolver:
         """Takes a time step using a function written in Pyrex.  Use
         the given setup.py to build the extension using the command
         python setup.py build_ext --inplace.  You will need Pyrex
-        installed to run this."""        
+        installed to run this."""
         g = self.grid
         err = pyx_lap.pyrexTimeStep(g.u, g.dx, g.dy)
         return err
 
-    def setTimeStepper(self, stepper='numeric'):        
+    def setTimeStepper(self, stepper='numeric'):
         """Sets the time step scheme to be used while solving given a
         string which should be one of ['slow', 'numeric', 'blitz',
-        'inline', 'fastinline', 'fortran']."""        
+        'inline', 'fastinline', 'fortran']."""
         if stepper == 'slow':
             self.timeStep = self.slowTimeStep
         elif stepper == 'numeric':
@@ -255,16 +255,16 @@ class LaplaceSolver:
         elif stepper == 'pyrex':
             self.timeStep = self.pyrexTimeStep
         else:
-            self.timeStep = self.numericTimeStep            
-                
-    def solve(self, n_iter=0, eps=1.0e-16):        
+            self.timeStep = self.numericTimeStep
+
+    def solve(self, n_iter=0, eps=1.0e-16):
         """Solves the equation given an error precision -- eps.  If
         n_iter=0 the solving is stopped only on the eps condition.  If
         n_iter is finite then solution stops in that many iterations
         or when the error is less than eps whichever is earlier.
         Returns the error if the loop breaks on the n_iter condition
         and returns the iterations if the loop breaks on the error
-        condition."""        
+        condition."""
         err = self.timeStep()
         count = 1
 
@@ -277,9 +277,9 @@ class LaplaceSolver:
         return count
 
 
-def BC(x, y):    
+def BC(x, y):
     """Used to set the boundary condition for the grid of points.
-    Change this as you feel fit."""    
+    Change this as you feel fit."""
     return (x**2 - y**2)
 
 
@@ -306,15 +306,18 @@ def time_test(nx=500, ny=500, eps=1.0e-16, n_iter=100, stepper='numeric'):
     t = time.clock()
     s.solve(n_iter=n_iter, eps=eps)
     return time.clock() - t
-    
+
 
 def main(n=500, n_iter=100):
     print "Doing %d iterations on a %dx%d grid"%(n_iter, n, n)
     for i in ['numeric', 'blitz', 'inline', 'fastinline', 'fortran',
               'pyrex']:
-        print i,
-        sys.stdout.flush()
-        print "took", time_test(n, n, stepper=i, n_iter=n_iter), "seconds"
+        try:
+            print i,
+            sys.stdout.flush()
+            print "took", time_test(n, n, stepper=i, n_iter=n_iter), "seconds"
+        except Exception, theError:
+            print "Method %s failed! Error:\n%s" % (i, str(theError))
 
     print "slow (1 iteration)",
     sys.stdout.flush()
