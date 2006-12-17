@@ -168,36 +168,28 @@ class SimulatorBase(object):
         The funcion variable(...) returns the simulation result of a speciffic
         variable as a vector.
         """
-
-##        #The numerical integration changes the initial values, but the user maybe 
-##        #wants to compute them in advance
-##        if self._initialValuesDirty :
-##            #Compute the initial values. (They are overwritten by integrate.odeint)
-##            self._initialValues = self.setInitialValues()
-##        self._initialValuesDirty = True;
-        
         #Compute the initial values if necessary. 
         if not self.initialValues:
             self.initialize()
-        #copy initial values (They are overwritten by integrate.odeint)
-        #initialValues = self.initialValues.copy()
         #create the array of output time points
         self.time = linspace(0.0, self.p_solutionParameters_simulationTime, 
                              self.p_solutionParameters_simulationTime/
                              self.p_solutionParameters_reportingInterval + 1) #note: no rounding is better, linspace is quite smart.
         self.resultArray = zeros((len(self.time), len(self.initialValues)))
         #create integrator object and care for intitial values
-        solv = (odeInt(self.dynamic).set_integrator('vode')
-                      .set_initial_value(self.initialValues, self.time[0]))
+        solver = odeInt(self.dynamic).set_integrator('vode') \
+                                     .set_initial_value(self.initialValues, 
+                                                        self.time[0])
         self.resultArray[0] = self.initialValues
         #compute the numerical solution
         i=1
-        while solv.successful() and i < len(self.time):
-            solv.integrate(self.time[i])
-            self.resultArray[i] = solv.y
+        while solver.successful() and i < len(self.time):
+            solver.integrate(self.time[i])
+            self.resultArray[i] = solver.y
             i += 1
+        
         #y = integrate.odeint(self.dynamic, initialValues, self.time)
-        #compute the algebraic variables for a second time, so they can be shown in graphs.
+        ##compute the algebraic variables for a second time, so they can be shown in graphs.
         #self.resultArray = self.outputEquations(y)
 
     def simulateSteadyState(self):

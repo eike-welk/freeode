@@ -532,6 +532,8 @@ class UserException(Exception):
         '''When not none take this as the input string'''
 
     def __str__(self):
+        #TODO: create error message which is understood by Pydev. Format:
+        #File "/home/eike/codedir/freeode/trunk/freeode_py/simlparser.py", line 956, in createProcess
         if self.str == None:
             return 'Error! ' + self.message + '\n At position: ' + str(self.loc)
         else:

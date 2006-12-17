@@ -24,7 +24,7 @@ __doc__ = \
 Generator for python code.
 
 The highlevel wrapper class is Program generator.
-It consumes a modified AST, the intermediate language tree (ILT) and 
+It consumes a modified AST, the intermediate language tree (ILT) and
 generates some python classes that perform the simulations.
 '''
 
@@ -36,19 +36,20 @@ class PyGenException(Exception):
     '''Exception thrown by the pytrhon code generator classes'''
     def __init__(self, *params):
         Exception.__init__(self, *params)
-        
+
 
 
 class StringStream(object):
     '''Object that can replace a file for writing too.'''
-    
+    #TODO: replace with StringIO
+
     def __init__(self):
         self._buffer = ''
-        
+
     def write(self, inStr):
         '''Put this string into the buffer'''
         self._buffer += inStr
-        
+
     def buffer(self):
         '''Retrieve the buffer'''
         return self._buffer
@@ -58,20 +59,20 @@ class StringStream(object):
 class LongLineWriter(object):
     '''
     Automate writing lines with a maximum length.
-    
+
     This class is usefull for writing lines with multiple statements.
     '''
-    
+
     def __init__(self, file=None, startStr='', endStr='', maxLen=80):
         '''
         Parameters:
-            file     : Object with write(string) method where the 
-                       completed lines are put (most possibly a file). 
+            file     : Object with write(string) method where the
+                       completed lines are put (most possibly a file).
                        If file=None a buffer string is used instead, that
                        can be retrieved with the buffer() method
             maxLen   : Maximum lenght of a line.
             startStr : Lines start with this string (usually the indent)
-                       unless startLine(...) 
+                       unless startLine(...)
             endStr   : Lines end with this string unless endLine(...) is called.
         '''
         self.file = file
@@ -80,17 +81,17 @@ class LongLineWriter(object):
         self.maxLen = maxLen
         self.startStr = startStr
         self.endStr = endStr
-    
+
     def _putLine(self, lineStr):
         '''Put the finished line into the file or into the buffer'''
         if not self.file:
             self.multiLineBuf += lineStr
         else:
             self.file.write(lineStr)
-    
+
     def write(self, inStr):
         '''
-        Put this string at he end of the current line. 
+        Put this string at he end of the current line.
         If the line is too long statrt a new line.
         '''
         if len(self.lineBuf) + len(inStr) + len(self.endStr) > self.maxLen:
@@ -99,16 +100,16 @@ class LongLineWriter(object):
         else:
             self.lineBuf += inStr
         #return self
-        
+
     def endLine(self, finalStr):
         '''Put inStr unconditionally at the line's end and start a new line.'''
         self._putLine(self.lineBuf + finalStr + '\n')
         self.lineBuf = self.startStr
         #return self
-        
+
     def startLine(self, beginStr):
         '''
-        Begin a new line with beginStr. 
+        Begin a new line with beginStr.
         The normal start string (self.startStr) is omitted.
         If the current line is not empty it is ended with self.endLine('').
         '''
@@ -117,21 +118,21 @@ class LongLineWriter(object):
         else:
             self.lineBuf = beginStr
         #return self
-        
+
     def buffer(self):
         '''
         Return the buffer where the completed lines are.
         Only usefull when no file object is used.
         '''
         return self.multiLineBuf
-    
-    
+
+
 
 class StatementGenerator(object):
     '''
     Generate a statement in Python from an AST or ILT syntax tree.
     '''
-    
+
     def __init__(self, outPyFile):
         '''
         Arguments:
@@ -140,14 +141,14 @@ class StatementGenerator(object):
         super(StatementGenerator, self).__init__()
         self.outPy = outPyFile
         '''File where the Python program will be stored.'''
-    
-    
+
+
     def createFormula(self, iltFormula):
         '''
-        Take ILT sub-tree that describes a formula and 
+        Take ILT sub-tree that describes a formula and
         convert it into a formula in the Python programming language.
         (recursive)
-        
+
         Arguments:
             iltFormula : tree of Node objects
         Returns:
@@ -157,9 +158,9 @@ class StatementGenerator(object):
         if isinstance(iltFormula, NodeBuiltInVal):
             nameDict = {'pi':'pi', 'time':'time'}
             return nameDict[iltFormula.dat]
-        #Built in function: sin(...) 
+        #Built in function: sin(...)
         elif isinstance(iltFormula, NodeBuiltInFuncCall):
-            nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt', 
+            nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
                         'exp':'exp', 'ln':'ln' }
             funcName = nameDict[iltFormula.dat]
             return funcName + '(' + self.createFormula(iltFormula[0]) + ')'
@@ -171,10 +172,10 @@ class StatementGenerator(object):
             return '(' + self.createFormula(iltFormula[0]) + ')'
         #Infix operator: + - * / ^ and or
         elif isinstance(iltFormula, NodeOpInfix2):
-            opDict = {'+':' + ', '-':' - ', '*':'*', '/':'/', '**':'**', 
+            opDict = {'+':' + ', '-':' - ', '*':'*', '/':'/', '**':'**',
                       'and':' and ', 'or':' or '}
             opStr = opDict[iltFormula.dat]
-            return (self.createFormula(iltFormula[0]) + opStr + 
+            return (self.createFormula(iltFormula[0]) + opStr +
                     self.createFormula(iltFormula[1]))
         #Prefix operator: - not
         elif isinstance(iltFormula, NodeOpPrefix1):
@@ -192,16 +193,16 @@ class StatementGenerator(object):
     def createStatement(self, iltStmt, indent):
         '''
         Take ILT sub-tree and convert it into Python statement.
-        
+
         arguments:
             iltStmt : tree of Node objects
             indent  : string of whitespace, put in front of each line
         returns:
             string, statement in Python language
-        '''      
-        outPy = self.outPy  
+        '''
+        outPy = self.outPy
         if isinstance(iltStmt, NodeAssignment):
-            outPy.write(indent + iltStmt.lhs().targetName + ' = ' + 
+            outPy.write(indent + iltStmt.lhs().targetName + ' = ' +
                                  self.createFormula(iltStmt.rhs()) + '\n')
         else:
             raise PyGenException('Unknown node in StatementGenerator:\n' + str(iltStmt))
@@ -209,14 +210,14 @@ class StatementGenerator(object):
 
 class ProcessGenerator(object):
     '''create python class that simulates a process'''
-    
+
     def __init__(self, outPyFile):
         '''
         Arguments:
             outPyFile : File where the Python program will be stored.
         '''
         super(ProcessGenerator, self).__init__()
-        
+
         self.iltProcess = NodeClassDef('dummy')
         '''The input: an IL-tree of the process. It has no external dependencies.'''
         self.outPy = outPyFile
@@ -229,14 +230,14 @@ class ProcessGenerator(object):
         '''The algebraic variables: dict: {('a','b'):NodeAttrDef]'''
         self.stateVariables = {}
         '''The state variables: dict: {('a','b'):NodeAttrDef]'''
-        
-        
+
+
     def findAttributes(self):
         '''
-        Loop over the attribute definitions and classify the attributes into 
+        Loop over the attribute definitions and classify the attributes into
         parameters, slgebraic varianles, state variables.
         Results:
-        self.parameters, self.algebraicVariables, self.stateVariables 
+        self.parameters, self.algebraicVariables, self.stateVariables
         '''
         #create dicts to find and classify attributes fast
         for attrDef in self.iltProcess:
@@ -250,8 +251,8 @@ class ProcessGenerator(object):
                 self.stateVariables[attrDef.attrName] = attrDef
             else:
                 raise PyGenException('Unknown attribute definition:\n'+ str(attrDef))
-        
-            
+
+
     def createAttrPyNames(self):
         '''
         Create python names for all attributes
@@ -261,8 +262,8 @@ class ProcessGenerator(object):
         paramPrefix = 'self.p'
         varPrefix = 'v'
         pyNames = {} #mapping between attribute name and python name: {('a','b'):'v_a_b'}
-        
-        #loop over all attribute definitions and create an unique python name 
+
+        #loop over all attribute definitions and create an unique python name
         #for each attribute
         for attrDef in self.iltProcess:
             if not isinstance(attrDef, NodeAttrDef):
@@ -282,10 +283,10 @@ class ProcessGenerator(object):
                 num += 1
                 numStr = str(num)
             pyName1 = pyName1 + numStr
-            #store python name 
+            #store python name
             pyNames[attrDef.attrName] = pyName1
-            
-        #loop over all attribute definitions and attribute accesses 
+
+        #loop over all attribute definitions and attribute accesses
         #and put python name there
         timeDerivSuffix = '_dt'
         for node in self.iltProcess.iterDepthFirst():
@@ -297,12 +298,12 @@ class ProcessGenerator(object):
                     node.targetName[('time',)] = namePy + timeDerivSuffix
             elif isinstance(node, NodeAttrAccess):
                 #derivatives get an additional ending
-                if node.deriv == ('time',): 
+                if node.deriv == ('time',):
                     node.targetName = pyNames[node.attrName] + timeDerivSuffix
                 else:
                     node.targetName = pyNames[node.attrName]
-            
-            
+
+
     def writeClassDefStart(self):
         '''Write first few lines of class definition.'''
         global inputFileName
@@ -314,7 +315,7 @@ class ProcessGenerator(object):
         self.outPy.write('    \'\'\' \n')
         self.outPy.write('    \n')
 
-        
+
     def writeConstructor(self):
         '''Generate the __init__ function.'''
         outPy = self.outPy
@@ -323,16 +324,16 @@ class ProcessGenerator(object):
         outPy.write('        super(%s, self).__init__() \n' % self.processPyName)
         #outPy.write(ind8 + 'self.variableNameMap = {} \n')
         #create the parameters
-        outPy.write(ind8 + '#create all parameters with value 0; ' + 
+        outPy.write(ind8 + '#create all parameters with value 0; ' +
                            'to prevent runtime errors. \n')
         for paramDef in self.parameters.values():
             outPy.write(ind8 + '%s = 0.0 \n' % paramDef.targetName[tuple()])
         outPy.write('\n\n')
-        
-        
+
+
     def writeInitMethod(self):
         '''Generate method that initializes variables and parameters'''
-        #search the process' init method 
+        #search the process' init method
         for initMethod in self.iltProcess:
             if isinstance(initMethod, NodeBlockDef) and \
                initMethod.name == 'init':
@@ -346,9 +347,9 @@ class ProcessGenerator(object):
         outPy.write(ind8 + 'compute initial values of state variables \n')
         outPy.write(ind8 + '\'\'\' \n')
         #create all variables
-        outPy.write(ind8 + '#create all variables with value 0; ' + 
-                           'to prevent runtime errors.\n')      
-        for varDef in (self.algebraicVariables.values() + 
+        outPy.write(ind8 + '#create all variables with value 0; ' +
+                           'to prevent runtime errors.\n')
+        for varDef in (self.algebraicVariables.values() +
                        self.stateVariables.values()):
             outPy.write(ind8 + '%s = 0.0 \n' % varDef.targetName[tuple()])
         #print the method's statements
@@ -379,18 +380,18 @@ class ProcessGenerator(object):
         #Create maping between variable names and array indices
         longW = LongLineWriter(outPy, ' '*16)
         longW.startLine(ind8 + 'self.variableNameMap = {')
-        for i, varName in zip(range(len(self.stateVariables) + 
+        for i, varName in zip(range(len(self.stateVariables) +
                                     len(self.algebraicVariables)),
-                              self.stateVariables.keys() + 
+                              self.stateVariables.keys() +
                               self.algebraicVariables.keys()):
             longW.write('\'%s\':%d, ' % (makeDotName(varName), i))
         longW.endLine('}')
         outPy.write('\n\n')
-    
-    
+
+
     def writeDynamicMethod(self):
         '''Generate the method that contains the differential equations'''
-        #search the process' dynamic method 
+        #search the process' dynamic method
         for dynMethod in self.iltProcess:
             if isinstance(dynMethod, NodeBlockDef) and \
                dynMethod.name == 'run':
@@ -408,7 +409,7 @@ class ProcessGenerator(object):
         outPy.write(ind8 + '#take the state variables out of the state vector \n')
         stateVarNames = self.stateVariables.values()
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-            outPy.write(ind8 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))  
+            outPy.write(ind8 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
         outPy.write(ind8 + '#TODO: Create all algebraic variables? \n')
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
@@ -418,7 +419,7 @@ class ProcessGenerator(object):
         outPy.write(ind8 + '\n')
 
         #TODO: investigate method to also return the algebraic variables
-        #assemble vector with algebraic variables 
+        #assemble vector with algebraic variables
         outPy.write(ind8 + '#put algebraic variables into array \n')
         lineW = LongLineWriter(outPy, ' '*16)
         lineW.startLine(ind8 + 'algVars = array([')
@@ -433,13 +434,13 @@ class ProcessGenerator(object):
             lineW.write('%s, ' % varDef.targetName[('time',)])
         lineW.endLine('], \'float64\')')
         outPy.write(ind8 + 'return stateDt \n')
-        
+
         outPy.write('\n\n')
-    
-    
+
+
     def writeOutputEquations(self):
         '''Generate method that computes the algebraic variables for a second time.'''
-        #search the process' dynamic method 
+        #search the process' dynamic method
         for dynMethod in self.iltProcess:
             if isinstance(dynMethod, NodeBlockDef) and \
                dynMethod.name == 'run':
@@ -454,18 +455,18 @@ class ProcessGenerator(object):
         outPy.write(ind8 + 'This is necessary because there is (currently) way to pass \n')
         outPy.write(ind8 + 'the algebraic variables out of the integration process. \n')
         outPy.write(ind8 + '\'\'\' \n')
-        
+
         outPy.write(ind8 + '#FIXME: this method is completely defunct \n')
         outPy.write(ind8 + 'return \n')
         outPy.write(ind8 + '\n\n')
-        
+
         outPy.write(ind8 + 'for state in simResult: \n')
         #take the state variables out of the state vector
         #sequence of variables in the array is determined by self.stateVariables
         outPy.write(ind12 + '#take the state variables out of the state vector \n')
         stateVarNames = self.stateVariables.values()
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-            outPy.write(ind12 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))   
+            outPy.write(ind12 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
         outPy.write(ind12 + '#TODO: Create all algebraic variables? \n')
         outPy.write(ind12 + '#TODO: Only compute algebraic variables?? \n')
         #print the statements that compute algebraic variables
@@ -489,32 +490,32 @@ class ProcessGenerator(object):
 
     def createProcess(self, iltProcess):
         '''
-        Take part of ILT tree that defines one procedure and ouput definition 
+        Take part of ILT tree that defines one procedure and ouput definition
         of python class as string
         '''
         self.iltProcess = iltProcess.copy()
-        
+
         #collect information about the process
         self.processPyName = self.iltProcess.className
-        self.findAttributes()    
+        self.findAttributes()
         self.createAttrPyNames()
-        
+
         #print self.iltProcess
         self.writeClassDefStart()
         self.writeConstructor()
         self.writeInitMethod()
         self.writeDynamicMethod()
         self.writeOutputEquations()
-        
-        
-        
+
+
+
 class ProgramGenerator(object):
     '''Create a program from an ILT-tree'''
-    
+
     def __init__(self, outPyFile=None):
         '''
         Arguments:
-            pyFile : file where the program will be stored, 
+            pyFile : file where the program will be stored,
                      or a StringStream for debuging.
         '''
         super(ProgramGenerator,self).__init__(self)
@@ -522,22 +523,22 @@ class ProgramGenerator(object):
             self.outPy = StringStream()
         else:
             self.outPy = outPyFile
-        
-        
+
+
     def buffer(self):
         '''
-        Return the the generated Python text in case self.outPy is a 
+        Return the the generated Python text in case self.outPy is a
         StringStream object.
         '''
         return self.outPy.buffer()
-    
-    
+
+
     def writeProgramStart(self):
         '''
-        Write first few lines of the program. 
+        Write first few lines of the program.
         Method looks really ugly because of raw string usage.
         '''
-        self.outPy.write( 
+        self.outPy.write(
 '''
 #------------------------------------------------------------------------------#
 #                            Warning: Do not edit!                             #
@@ -553,7 +554,7 @@ class ProgramGenerator(object):
         date = dt.date().isoformat()
         time = dt.time().strftime('%H:%M:%S')
         global inputFileName, progVersion
-        
+
         self.outPy.write('# Generated by Siml version %s on %s %s. \n' % (progVersion, date, time))
         self.outPy.write('# Source file(s): %s' % inputFileName)
         self.outPy.write(
@@ -568,31 +569,31 @@ from simulatorbase import SimulatorBase
 
 '''     )
         return
-    
-    
+
+
     def createProgram(self, astRoot):
         '''
         Take an ILT and create as python program from it.
         Write the python program into the file self.outPy
         '''
         self.writeProgramStart()
-                
+
         for process in astRoot:
             if not isinstance(process, NodeClassDef):
                 continue
             #create process
             procGen = ProcessGenerator(self.outPy)
             procGen.createProcess(process)
-     
-    
-    
+
+
+
 
 if __name__ == '__main__':
     # Self-testing code goes here.
     #TODO: add unit tests
-    #TODO: add doctest tests. 
-    
-    
+    #TODO: add doctest tests.
+
+
     from simlparser import ParseStage, ASTGenerator, ILTGenerator
 #------------ testProg1 -----------------------
     testProg1 = (
@@ -601,15 +602,15 @@ model Test
     var V; var h;
     par A_bott; par A_o; par mu;
     par q; par g;
-    
+
     block run
         h := V/A_bott;
         $V := q - mu*A_o*sqrt(2*g*h);
     end
-    
+
     block init
         V := 0;
-        A_bott := 1; 
+        A_bott := 1;
         A_o := 0.02; mu := 0.55;
         q := 0.05;
     end
@@ -617,7 +618,7 @@ end
 
 process RunTest
     sub test as Test;
-    
+
     block run
         run test;
     end
@@ -643,29 +644,29 @@ end
 
 process RunTest
     sub test as Test;
-    
+
     block run
         run test;
     end
-    
+
     block init
         init test;
     end
-end 
+end
 ''' )
 
     parser = ParseStage()
     astGen = ASTGenerator()
     iltGen = ILTGenerator()
     progGen = ProgramGenerator()
-    
+
     pres = parser.parseProgram(testProg1)
     print 'parse result:'
     #print pres
     astTree = astGen.createSyntaxTree(pres)
     #print 'AST tree:'
     print astTree
- 
+
     iltTree = iltGen.createIntermediateTree(astTree)
     print 'ILT tree:'
     print iltTree
@@ -674,11 +675,11 @@ end
     progStr = progGen.buffer()
     print 'python program:'
     print progStr
-    
+
     pyFile = open('/home/eike/codedir/freeode/trunk/freeode_py/test.py','w')
     pyFile.write(progStr)
     pyFile.close()
-    
+
 else:
     # This will be executed in case the
     #    source has been imported as a

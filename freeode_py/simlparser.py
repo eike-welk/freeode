@@ -1001,7 +1001,6 @@ class ILTProcessGenerator(object):
         self.checkInitMethodConstraints(initBlock)
         
         #TODO: Check correct order of assignments (or initialization).
-        #TODO: Check if all variables have been assigned; 
         #TODO: Propagate parameters - only replace those that have not been explicitly initialized.
         #TODO: Check if all parameters and state vars have been initialized.
         

@@ -23,7 +23,7 @@ from ast import UserException
 
 #import pdb
 import optparse
-#import sys
+import sys
 import simlparser
 import pygenerator
 
@@ -106,7 +106,7 @@ def doCompile(inputFileName, outputFileName):
         inputFile.close()
     except IOError, theError:
         print 'error: could not read input file\n', theError
-        return
+        sys.exit(1)
     
     #create the top level objects that do the compilation
     parser = simlparser.ParseStage()
@@ -123,13 +123,15 @@ def doCompile(inputFileName, outputFileName):
         #print iltTree
         progGen.createProgram(iltTree)
         progStr = progGen.buffer()
+    #errors from freeode
     except UserException, theError:
         theError.str = inputFileContents
         print theError
-        return
+        sys.exit(1)
+    #errors from pyparsing
     except simlparser.ParseException, theError:
         print theError
-        return
+        sys.exit(1)
         
     #write generated program to file
     try:    
@@ -151,11 +153,16 @@ def mainFunc():
     try:
         inputFileName, outputFileName, genMainRoutine = parseCmdLine()
         doCompile(inputFileName, outputFileName)
+    except SystemExit:
+        raise #for sys.exit() - the error message was already printed
     except Exception:
         print 'Compiler internal error! Please file a bug report at:\n',\
               'https://developer.berlios.de/projects/freeode/\n'
         raise 
     
+    # 'return with success'
+    sys.exit(0)
+
 
 #run the compiler
 mainFunc()
