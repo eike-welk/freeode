@@ -34,8 +34,8 @@ Parser for the SIML simulation language.
 #import pdb    #debuber
 
 from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
-    ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,ParseResults, ParseException, \
-    ParseFatalException
+    ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,ParseResults,  \
+    ParseFatalException, StringEnd # ParseException,
 
 from ast import *
 
@@ -278,11 +278,12 @@ class ParseStage(object):
                             OneOrMore(attributeDef) +
                             Optional(runBlock) +
                             Optional(initBlock)  +
+                            #TODO: Optional(finalBlock)  + #Method where graps are displayed and vars are stored
                             kw('end'))                              .setParseAction(AddMetaDict('classDef'))\
                                                                     .setName('classDef')#.setDebug(True)
 
-        program = Group(OneOrMore(classDef))                        .setParseAction(AddMetaDict('program'))\
-                                                                    .setName('program')#.setDebug(True)
+        program = Group(OneOrMore(classDef)) + StringEnd()          .setParseAction(AddMetaDict('program'))\
+                                                                    #.setName('program')#.setDebug(True)
         #................ End of language definition ..................................................
 
         #determine start symbol
