@@ -171,17 +171,21 @@ class SimulatorBase(object):
         #Compute the initial values if necessary. 
         if not self.initialValues:
             self.initialize()
-        #create the array of output time points
+        #create the array of output time points. Note: no rounding is better
         self.time = linspace(0.0, self.p_solutionParameters_simulationTime, 
                              self.p_solutionParameters_simulationTime/
-                             self.p_solutionParameters_reportingInterval + 1) #note: no rounding is better, linspace is quite smart.
+                             self.p_solutionParameters_reportingInterval + 1) 
+        #Create space for storing simulation results
+        #dim 1: time; dim 2: the different variables 
+        #-> vector of variables (state and algebraic) lies horizontally 
         self.resultArray = zeros((len(self.time), len(self.initialValues)))
+        self.resultArray[0] = self.initialValues
         #create integrator object and care for intitial values
         solver = odeInt(self.dynamic).set_integrator('vode') \
                                      .set_initial_value(self.initialValues, 
                                                         self.time[0])
-        self.resultArray[0] = self.initialValues
         #compute the numerical solution
+        #TODO: deal with the state variables
         i=1
         while solver.successful() and i < len(self.time):
             solver.integrate(self.time[i])

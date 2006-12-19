@@ -24,6 +24,7 @@ from ast import UserException
 #import pdb
 import optparse
 import sys
+import pyparsing
 import simlparser
 import pygenerator
 
@@ -129,8 +130,8 @@ def doCompile(inputFileName, outputFileName):
         print theError
         sys.exit(1)
     #errors from pyparsing
-    except simlparser.ParseException, theError:
-        print theError
+    except pyparsing.ParseException, theError:
+        print 'error: ', theError
         sys.exit(1)
         
     #write generated program to file
