@@ -398,8 +398,8 @@ class ProcessGenerator(object):
                 break
         #write method definition
         outPy = self.outPy
-        ind8 = ' '*8
-        outPy.write('    def dynamic(self, time, state): \n')
+        ind8 = ' '*8; ind12 = ' '*12; ind16 = ' '*16
+        outPy.write('    def dynamic(self, time, state, returnAlgVars=False): \n')
         outPy.write(ind8 + '\'\'\' \n')
         outPy.write(ind8 + 'Compute time derivative of state variables. \n')
         outPy.write(ind8 + 'This function will be called by the solver repeatedly. \n')
@@ -410,7 +410,7 @@ class ProcessGenerator(object):
         stateVarNames = self.stateVariables.values()
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
             outPy.write(ind8 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
-        outPy.write(ind8 + '#TODO: Create all algebraic variables? \n')
+        #outPy.write(ind8 + '#TODO: Create all algebraic variables? \n')
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
@@ -418,73 +418,77 @@ class ProcessGenerator(object):
             stmtGen.createStatement(statement, ind8)
         outPy.write(ind8 + '\n')
 
-        #TODO: investigate method to also return the algebraic variables
+        #return either state variables or algebraic variables
+        outPy.write(ind8 + 'if returnAlgVars: \n')
         #assemble vector with algebraic variables
-        outPy.write(ind8 + '#put algebraic variables into array \n')
-        lineW = LongLineWriter(outPy, ' '*16)
-        lineW.startLine(ind8 + 'algVars = array([')
+        outPy.write(ind12 + '#put algebraic variables into array \n')
+        lineW = LongLineWriter(outPy, ind16)
+        lineW.startLine(ind12 + 'algVars = array([')
         for varDef in self.algebraicVariables.values():
             lineW.write('%s, ' % varDef.targetName[tuple()])
         lineW.endLine('], \'float64\')')
+        outPy.write(ind12 + 'return algVars \n')
+        
+        outPy.write(ind8 + 'else: \n')
         #assemble the time derivatives into the return vector
-        outPy.write(ind8 + '#assemble the time derivatives into the return vector \n')
-        lineW = LongLineWriter(outPy, ' '*16)
-        lineW.startLine(ind8 + 'stateDt = array([')
+        outPy.write(ind12 + '#assemble the time derivatives into the return vector \n')
+        lineW = LongLineWriter(outPy, ind16)
+        lineW.startLine(ind12 + 'stateDt = array([')
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
             lineW.write('%s, ' % varDef.targetName[('time',)])
         lineW.endLine('], \'float64\')')
-        outPy.write(ind8 + 'return stateDt \n')
+        outPy.write(ind12 + 'return stateDt \n')
 
         outPy.write('\n\n')
 
 
-    def writeOutputEquations(self):
-        '''Generate method that computes the algebraic variables for a second time.'''
-        #search the process' dynamic method
-        for dynMethod in self.iltProcess:
-            if isinstance(dynMethod, NodeBlockDef) and \
-               dynMethod.name == 'run':
-                break
-        #write method definition
-        outPy = self.outPy
-        ind8 = ' '*8
-        ind12 = ' '*12
-        outPy.write('    def outputEquations(self, simResult): \n')
-        outPy.write(ind8 + '\'\'\' \n')
-        outPy.write(ind8 + 'Compute algebraic variables for a second time. \n')
-        outPy.write(ind8 + 'This is necessary because there is (currently) way to pass \n')
-        outPy.write(ind8 + 'the algebraic variables out of the integration process. \n')
-        outPy.write(ind8 + '\'\'\' \n')
-
-        outPy.write(ind8 + '#FIXME: this method is completely defunct \n')
-        outPy.write(ind8 + 'return \n')
-        outPy.write(ind8 + '\n\n')
-
-        outPy.write(ind8 + 'for state in simResult: \n')
-        #take the state variables out of the state vector
-        #sequence of variables in the array is determined by self.stateVariables
-        outPy.write(ind12 + '#take the state variables out of the state vector \n')
-        stateVarNames = self.stateVariables.values()
-        for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-            outPy.write(ind12 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
-        outPy.write(ind12 + '#TODO: Create all algebraic variables? \n')
-        outPy.write(ind12 + '#TODO: Only compute algebraic variables?? \n')
-        #print the statements that compute algebraic variables
-        outPy.write(ind12 + '#do computations \n')
-        stmtGen = StatementGenerator(outPy)
-        for statement in dynMethod:
-            stmtGen.createStatement(statement, ind12)
-        #assemble the algebraic variables into an array
-        outPy.write(ind12 + '#assemble the algebraic variables into an array \n')
-        lineW = LongLineWriter(outPy, ' '*16)
-        lineW.startLine(ind12 + 'algVars = array([')
-        algVarNames = self.algebraicVariables.values()
-        for varDef, nState in zip(algVarNames, range(len(algVarNames))):
-            lineW.write('%s, ' % varDef.targetName[tuple()])
-        lineW.endLine('], \'float64\')')
-        outPy.write(ind12 + '#TODO: Store the algebraic variables. \n')
-
-        outPy.write('\n\n')
+#    def writeOutputEquations(self):
+#        '''Generate method that computes the algebraic variables for a second time.'''
+#        #search the process' dynamic method
+#        for dynMethod in self.iltProcess:
+#            if isinstance(dynMethod, NodeBlockDef) and \
+#               dynMethod.name == 'run':
+#                break
+#        #write method definition
+#        outPy = self.outPy
+#        ind8 = ' '*8
+#        ind12 = ' '*12
+#        outPy.write('    def outputEquations(self, simResult): \n')
+#        outPy.write(ind8 + '\'\'\' \n')
+#        outPy.write(ind8 + 'Compute algebraic variables for a second time. \n')
+#        outPy.write(ind8 + 'This is necessary because there is (currently) way to pass \n')
+#        outPy.write(ind8 + 'the algebraic variables out of the integration process. \n')
+#        outPy.write(ind8 + '\'\'\' \n')
+#
+#        outPy.write(ind8 + '#FIXME: this method is completely defunct \n')
+#        outPy.write(ind8 + 'return \n')
+#        outPy.write(ind8 + '\n\n')
+#
+#        outPy.write(ind8 + 'for state in simResult: \n')
+#        #take the state variables out of the state vector
+#        #sequence of variables in the array is determined by self.stateVariables
+#        outPy.write(ind12 + '#take the state variables out of the state vector \n')
+#        stateVarNames = self.stateVariables.values()
+#        for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
+#            outPy.write(ind12 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
+#        outPy.write(ind12 + '#TODO: Create all algebraic variables? \n')
+#        outPy.write(ind12 + '#TODO: Only compute algebraic variables?? \n')
+#        #print the statements that compute algebraic variables
+#        outPy.write(ind12 + '#do computations \n')
+#        stmtGen = StatementGenerator(outPy)
+#        for statement in dynMethod:
+#            stmtGen.createStatement(statement, ind12)
+#        #assemble the algebraic variables into an array
+#        outPy.write(ind12 + '#assemble the algebraic variables into an array \n')
+#        lineW = LongLineWriter(outPy, ' '*16)
+#        lineW.startLine(ind12 + 'algVars = array([')
+#        algVarNames = self.algebraicVariables.values()
+#        for varDef, nState in zip(algVarNames, range(len(algVarNames))):
+#            lineW.write('%s, ' % varDef.targetName[tuple()])
+#        lineW.endLine('], \'float64\')')
+#        outPy.write(ind12 + '#TODO: Store the algebraic variables. \n')
+#
+#        outPy.write('\n\n')
 
 
 
@@ -505,7 +509,7 @@ class ProcessGenerator(object):
         self.writeConstructor()
         self.writeInitMethod()
         self.writeDynamicMethod()
-        self.writeOutputEquations()
+        #self.writeOutputEquations()
 
 
 

@@ -143,7 +143,7 @@ class SimulatorBase(object):
         pass
     
     
-    def dynamic(self, t, y):
+    def dynamic(self, t, y, returnAlgVars=False):
         '''
         Compute time derivative of state variables. 
         This function will be called by the solver repeatedly. 
@@ -178,8 +178,8 @@ class SimulatorBase(object):
         #Create space for storing simulation results
         #dim 1: time; dim 2: the different variables 
         #-> vector of variables (state and algebraic) lies horizontally 
-        self.resultArray = zeros((len(self.time), len(self.initialValues)))
-        self.resultArray[0] = self.initialValues
+        self.resultArray = zeros((len(self.time), self.stateVectorLen + self.algVectorLen))
+        self.resultArray[0,0:self.stateVectorLen] = self.initialValues
         #create integrator object and care for intitial values
         solver = odeInt(self.dynamic).set_integrator('vode') \
                                      .set_initial_value(self.initialValues, 
@@ -188,9 +188,21 @@ class SimulatorBase(object):
         #TODO: deal with the state variables
         i=1
         while solver.successful() and i < len(self.time):
+#            y0 = self.resultArray[i-1]
+#            tStart = self.time[i-1]
+#            tEnd = self.time[i]
+            #do time step
             solver.integrate(self.time[i])
-            self.resultArray[i] = solver.y
+            #save state vars (and time)
+            self.time[i] = solver.t #in case solver does not hit end time
+            self.resultArray[i,0:self.stateVectorLen] = solver.y
+            #compute algebraic variables (again)
+            self.resultArray[i,self.stateVectorLen:] = \
+                    self.dynamic(solver.t, solver.y, returnAlgVars=True)
             i += 1
+        #generate run time error
+        if not solver.successful():
+            print 'error: simulation was terminated'
         
         #y = integrate.odeint(self.dynamic, initialValues, self.time)
         ##compute the algebraic variables for a second time, so they can be shown in graphs.
@@ -220,6 +232,8 @@ class SimulatorBase(object):
         variable as a vector.
         """
         
+        raise Exception('This method is currently broken!')
+    
         #TODO: Use flag self._isSteadyStateStart instead of self.time
         if not hasattr(self, 'time'):
             #this is the first call in a row of steady state simulations - setup everything
