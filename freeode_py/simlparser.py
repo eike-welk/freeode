@@ -282,12 +282,15 @@ class ParseStage(object):
                             kw('end'))                              .setParseAction(AddMetaDict('classDef'))\
                                                                     .setName('classDef')#.setDebug(True)
 
-        program = Group(OneOrMore(classDef)) + StringEnd()          .setParseAction(AddMetaDict('program'))\
-                                                                    #.setName('program')#.setDebug(True)
+        program = Group(OneOrMore(classDef))                        .setParseAction(AddMetaDict('program'))\
+                                                                    .setName('program')#.setDebug(True)
+        
+        #special rule against incomplete parsing and faillure without error message
+        file = program + StringEnd()
         #................ End of language definition ..................................................
 
         #determine start symbol
-        startSymbol = program
+        startSymbol = file
         #set up comments
         singleLineCommentCpp = '//' + restOfLine
         singleLineCommentPy = '#' + restOfLine
@@ -297,13 +300,10 @@ class ParseStage(object):
         return startSymbol
 
 
-    #TODO: Maybe write: parseExpression, parseMemAccess, ...
     def parseProgram(self, inString):
         '''Parse a whole program. The program is entered as a string.'''
         result = self._parser.parseString(inString)
-        #TODO: test if input string is consumed completely
         #TODO: store loc of last parsed statement; for error message generation.
-        #TODO: catch ParseExceptions, generate UserExceptions
         return result
 
 
