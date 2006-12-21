@@ -1,0 +1,36 @@
+model Tank
+    var V; var h; var qOut;
+    par A_bott; par A_o; par mu;
+    par q; par g;
+
+    block run
+        h := V/A_bott;
+        qOut := mu*A_o*sqrt(2*g*h);
+        $V := q - qOut;
+    end
+
+    block init
+        V := 0;
+        A_bott := 1.2;
+        A_o := 0.02; mu := 0.55; g := 9.81; 
+        q := 0.05;
+    end
+end
+
+process FillTank
+    sub t as Tank;
+	par mu;
+	par g;
+	
+    block run
+        run t;
+    end
+    block init
+    	mu := 0.55;
+    	g := 9.81;
+        init t;
+        solutionParameters.simulationTime := 150;
+        solutionParameters.reportingInterval := 1;
+    end
+end
+
