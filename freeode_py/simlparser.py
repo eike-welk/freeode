@@ -788,7 +788,13 @@ class ILTProcessGenerator(object):
         
         Attributes are: parameters, variables, sub-models, and functions.
         The definition in the AST is searched NOT the new process.
-        Output is: self.astProcessAttributes
+        
+        Arguments:
+            astClass   : class definition from the AST
+            namePrefix : tuple of strings. Prefix for the dotted name of the 
+                         class' attributes.
+        Output: 
+            self.astProcessAttributes : dict: {('mod1', 'var1'):NodeAttrDef} 
         '''
         #each of the class' children is a definition
         for attrDef in astClass:
@@ -800,14 +806,12 @@ class ILTProcessGenerator(object):
             else:
                 raise ILTGenException('Unknown Node.' + repr(attrDef))
             #prepend prefix to attribute name 
-            #TODO: clean up last remains of tuple - list mess
-            longAttrName = namePrefix + [attrName]
-            longAttrNameTup = tuple(longAttrName)
+            longAttrName = namePrefix + (attrName,)
             #Check redefinition
-            if longAttrNameTup in self.astProcessAttributes:
+            if longAttrName in self.astProcessAttributes:
                 raise UserException('Redefinition of: ' + makeDotName(longAttrName), attrDef.loc)
             #put new attribute into dict.
-            self.astProcessAttributes[longAttrNameTup] = attrDef
+            self.astProcessAttributes[longAttrName] = attrDef
             
             #recurse into submodel, if definition of submodel 
             if isinstance(attrDef, NodeAttrDef) and attrDef.isSubmodel:                
@@ -823,8 +827,6 @@ class ILTProcessGenerator(object):
         Copy variables and parameters from all submodels into the procedure
         Additionaly puts all attributes into self.processAttributes
         arguments:
-            model      : A class definition from the AST
-            namePrefix : a list of strings. prefix for the dotted name of the class' attributes.
         '''
         #Iterate over the (variable, parameter, submodel, function) definitions
         for longName, defStmt in self.astProcessAttributes.iteritems():
@@ -896,11 +898,21 @@ class ILTProcessGenerator(object):
 
 
 
-    def findStateVariables(self, block):
-        '''Search for variables with a $ and put them into self.stateVariables'''
-        #self.stateVariables = {}
+    def findStateVariables(self, dynamicMethod):
+        '''
+        Search for variables with a $ and mark them:
+            1.: in their definition set isStateVariable = True
+            2.: put them into self.stateVariables.
+        Arguments:
+            dynamicMethod : method definition that is searched (always the 
+                            dynamic/run method)
+        output:
+            self.stateVariables    : dict: {('a','b'):NodeAttrDef(...)}
+            definition of variable : isStateVariable = True if variable is 
+                                     state variable
+        '''
         #iterate over all nodes in the syntax tree and search for variable accesses
-        for node in block.iterDepthFirst():
+        for node in dynamicMethod.iterDepthFirst():
             if not isinstance(node, NodeAttrAccess):
                 continue
             #State variables are those that have time derivatives
@@ -916,6 +928,38 @@ class ILTProcessGenerator(object):
             #remember: this is a state variable; in definition and in dict
             stateVarDef.isStateVariable = True
             self.stateVariables[node.attrName] = stateVarDef
+    
+    
+    
+    def findParameters(self):
+        '''Search for parameters (in the new procress) and return a dict'''
+        #attrDef = NodeAttrDef()
+        paramDict = {}
+        #iterate over all nodes in the syntax tree and search for variable accesses
+        for name, attrDef in self.processAttributes.iteritems():
+            #we only want to see parameters
+            if attrDef.role != 'par':
+                continue
+            #put parameter definition in dict
+            paramDict[name] = attrDef
+        return paramDict
+    
+    
+    
+    def propagateParameters(self, initMethod):
+        '''
+        Rename parameters in a way, that the values of common parameters need
+        only be initialized in the process.
+        '''
+        parameters = self.findParameters()
+        #classify parameters in: explicitly initialized, and not initialized
+        initedParams = {}
+        notInitedParams = {}
+        #for each  initedParams: search for notInitedParam that has same end
+        #if found remember rename action
+        #rename all attribute accesses
+        #delete renamed parameters
+        #error for still uninitialized parameters
     
     
     
@@ -949,6 +993,8 @@ class ILTProcessGenerator(object):
             if node.deriv == ('time',):
                 raise UserException('Time derivation illegal in init: ' +
                                     str(node.attrName), node.loc) 
+        #TODO: All state variables must get initial values
+        #TODO: All parameters must get values
     
     
     def createProcess(self, inAstProc):
@@ -967,7 +1013,7 @@ class ILTProcessGenerator(object):
         #add some built in attributes to the process
         self.addBuiltInParameters()
         #discover all attributes 
-        self.findAttributesRecursive(self.astProcess, [])
+        self.findAttributesRecursive(self.astProcess, tuple())
         #create the new process' data attributes
         self.copyDataAttributes()
         #create the new process' blocks (methods)
@@ -998,6 +1044,7 @@ class ILTProcessGenerator(object):
                                 'and one init method.', self.astProcess.loc)
         self.checkUndefindedReferences(self.process) #Check undefined refference
         self.findStateVariables(runBlock) #Mark state variables
+        self.propagateParameters(initBlock) #rename some parameters
         self.checkRunMethodConstraints(runBlock)
         self.checkInitMethodConstraints(initBlock)
         

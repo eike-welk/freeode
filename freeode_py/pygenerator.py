@@ -235,7 +235,7 @@ class ProcessGenerator(object):
     def findAttributes(self):
         '''
         Loop over the attribute definitions and classify the attributes into
-        parameters, slgebraic varianles, state variables.
+        parameters, algebraic variables, state variables.
         Results:
         self.parameters, self.algebraicVariables, self.stateVariables
         '''
