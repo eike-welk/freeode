@@ -411,6 +411,7 @@ class ProcessGenerator(object):
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
             outPy.write(ind8 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
         #outPy.write(ind8 + '#TODO: Create all algebraic variables? \n')
+        
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)

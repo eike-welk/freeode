@@ -946,13 +946,19 @@ class ILTProcessGenerator(object):
     
     
     
-    def isTailOf(self, tail, bigSeq):
+    def isPossibleParamPropagation(self, tail, bigSeq):
         '''
-        Test if bigSeq ends with tail.
+        Test for parameter propagation
         
         isTailOf((2,3), (1,2,3)) -> True
         isTailOf((2,3), (1,2,3,4)) -> False
         
+        Desired operation:
+        Example: 
+          propagate: mu   --> m1.mu, m2.mu        
+          propagate: m1.l --> m1.sm1.l, m1.sm2.l  
+          no       : m1.l --> m2.l, l             
+
         Special case tail == bigSeq: return True
         Arguments:
             tail   : sequence
@@ -1007,20 +1013,45 @@ class ILTProcessGenerator(object):
         #for each initialized parametr: search for not initialized Parameter 
         #to which the value can be propagated. (that has same name but is 
         #deeper in the model hierarchy.)
+        #Example: 
+        #  propagate: mu   --> m1.mu, m2.mu        
+        #  propagate: m1.l --> m1.sm1.l, m1.sm2.l  
+        #  no       : m1.l --> m2.l, l             
+        #FIXME: Algo does not work as expected!!!!
         initedParams = list(initedParams)
         #start with the names with the most dots (defined deep in submodels)
         initedParams.sort(key=len, reverse=True)
         paramReplaceDict = {}
         for iPar in initedParams:
             for nPar in notInitedParams.copy():
-                if self.isTailOf(iPar, nPar):
+                if self.isPossibleParamPropagation(iPar, nPar): #FIXME: isTailOf is wrong function
                     #we found parameter to rename 
                     paramReplaceDict[nPar] = iPar #remember rename action
                     notInitedParams.remove(nPar)  #we cared for this parameter
-        print paramReplaceDict
-        #rename all attribute accesses
-        #delete renamed parameters
-        #error for still uninitialized parameters
+        #print paramReplaceDict
+             
+        #TODO: error for still uninitialized parameters
+        if len(notInitedParams) > 0:
+            pass
+       
+        #rename all attribute accesses according to paramReplaceDict
+        for accPar in self.process.iterDepthFirst():
+            if not isinstance(accPar, NodeAttrAccess):
+                continue
+            oldParamName = accPar.attrName
+            if not oldParamName in paramReplaceDict:
+                continue
+            accPar.attrName = paramReplaceDict[oldParamName]
+            
+        #delete replaced parameters
+        for i in range(len(self.process)-1, -1, -1):
+            defPar = self.process[i]
+            if not isinstance(defPar, NodeAttrDef):
+                continue
+            parName = defPar.attrName
+            if not parName in paramReplaceDict:
+                continue
+            self.process.delChild(i)
     
     
     

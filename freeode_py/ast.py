@@ -143,6 +143,10 @@ class Node(object):
         '''
         self.kids.insert(index, inNode)
         
+    def delChild(self, index):
+        '''Delete child at specified index'''
+        del self.kids[index]
+        
     def __getitem__(self, i):
         '''Acces to childern through []'''
         return self.kids[i]
@@ -261,28 +265,24 @@ class NodeOpPrefix1(Node):
 class NodeAttrAccess(Node):
     '''
     AST node for access to a variable or parameter.
-    Has additional attribute deriv.
+    Data attributes:
         typ     : type string, usually: 'valA'
         kids    :  ? slice object if attribute is an array?
         loc     : location in input string
         dat     : None
         
-        deriv   : [],['time'] or list of distibution domains
-        attrName: ['proc', 'model1', 'a'], list of strings; the dot separated name.
+        deriv      : [],['time'] or list of distibution domains
+        attrName   : ['proc', 'model1', 'a'], list of strings; the dot separated name.
+        targetName : ??? name in the target language TODO:clarify this
     '''
-    #TODO: rename into NodeAttrAccess
     def __init__(self, typ='valA', kids=[], loc=None, dat=None, deriv=[], 
                  attrName=[], targetName=None):
-        '''
-        deriv    : [],['time'] or list of distibution domains. Shows that
-                   derivative of variable is accessed.
-        attrName : dotted name as list of strings
-        '''
-        Node.__init__(self, typ, kids, loc, dat)
+        super(NodeAttrAccess, self).__init__(typ, kids, loc, dat)
         self.deriv = tuple(deriv)
         self.attrName = tuple(attrName)
         self.targetName = targetName
-        '''dictionary with the possibly multiple names in the target language'''
+        '''??? dictionary with the possibly multiple names in the target language 
+        TODO:clarify this; comment belongs to NodeAttrDef.'''
         
 
 class NodeAssignment(Node):
