@@ -946,17 +946,78 @@ class ILTProcessGenerator(object):
     
     
     
+    def isTailOf(self, tail, bigSeq):
+        '''
+        Test if bigSeq ends with tail.
+        
+        isTailOf((2,3), (1,2,3)) -> True
+        isTailOf((2,3), (1,2,3,4)) -> False
+        
+        Special case tail == bigSeq: return True
+        Arguments:
+            tail   : sequence
+            bigSeq : sequence
+        Return:
+            True if the last elements of bigSeq are equal to tail. 
+            False otherwise.
+        '''
+        if len(tail) > len(bigSeq):
+            return False
+        for i in range(-1, -len(tail)-1, -1):
+            if tail[i] != bigSeq[i]:
+                return False
+        return True
+    
+    
+    
     def propagateParameters(self, initMethod):
         '''
-        Rename parameters in a way, that the values of common parameters need
-        only be initialized in the process.
+        Propagate parameter values from models high in the hierarchy to their 
+        sub-models. Both conditions must be true, for Parameter propagation to 
+        happen:
+        1.: Both parameters have the same name (in high level model and in 
+            child model)
+        2.: Parameter is not initialized in child model
+
+        This is currently done by deleting parameters in the child models
+        and accessing parameters in the high level models instead.
+        
+        Arguments:
+            initMethod : Definition of init method in ILT; for identifying 
+                         those parameters that are initialized
+        Output:
+            Deletes parameters;
+            changes attribute accessors, in whole process.
         '''
         parameters = self.findParameters()
-        #classify parameters in: explicitly initialized, and not initialized
-        initedParams = {}
-        notInitedParams = {}
-        #for each  initedParams: search for notInitedParam that has same end
-        #if found remember rename action
+        #classify parameters in: 1. explicitly initialized, 2. not initialized
+        initedParams = set()
+        for assignStmt in initMethod.iterDepthFirst():
+            #we want to look at assignments
+            if not isinstance(assignStmt, NodeAssignment):
+                continue
+            #those assignments must assign values to parameters
+            accPar = assignStmt.lhs()
+            if not accPar.attrName in parameters:
+                continue
+            #OK, this parameter is initialized, remember it
+            initedParams.add(accPar.attrName)
+        notInitedParams = set(parameters.keys()) - initedParams
+        
+        #for each initialized parametr: search for not initialized Parameter 
+        #to which the value can be propagated. (that has same name but is 
+        #deeper in the model hierarchy.)
+        initedParams = list(initedParams)
+        #start with the names with the most dots (defined deep in submodels)
+        initedParams.sort(key=len, reverse=True)
+        paramReplaceDict = {}
+        for iPar in initedParams:
+            for nPar in notInitedParams.copy():
+                if self.isTailOf(iPar, nPar):
+                    #we found parameter to rename 
+                    paramReplaceDict[nPar] = iPar #remember rename action
+                    notInitedParams.remove(nPar)  #we cared for this parameter
+        print paramReplaceDict
         #rename all attribute accesses
         #delete renamed parameters
         #error for still uninitialized parameters

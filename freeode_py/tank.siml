@@ -12,7 +12,9 @@ model Tank
     block init
         V := 0;
         A_bott := 1.2;
-        A_o := 0.02; mu := 0.55; g := 9.81; 
+        A_o := 0.02; 
+        mu := 0.55; 
+        #g := 9.81; 
         q := 0.05;
     end
 end
