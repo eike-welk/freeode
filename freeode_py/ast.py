@@ -17,8 +17,6 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-
-
 __doc__ = \
 '''
 Implementation of an abstact syntax tree.
@@ -543,6 +541,34 @@ class UserException(Exception):
                    'Line: %d, Column: %d' % (lineno, col)
 
 
+
+class MultiErrorException(UserException):
+    '''Exception with many (ure visible) error messages'''
+    def __init__(self, errTupList, str=None):
+        '''
+        Arguments:
+            errTupList : iterable (list) with tuples (message, loc)
+            str        : The source program as a string
+        '''
+        #init base class with first error; at least kind of sensible
+        msg1, loc1 = errTupList[0] 
+        UserException.__init__(self, msg1, loc1, str)
+        self.errTupList = errTupList
+        '''iterable (list) with tuples (message, loc)'''
+        
+    def __str__(self):
+        #TODO: create error message which is understood by Pydev.
+        errMsg = 'Error!\n'
+        for msg1, loc1 in self.errTupList:
+            lineno, col = 0, 0
+            if self.str:
+                lineno = pyparsing.lineno(loc1, self.str)
+                col = pyparsing.col(loc1, self.str)
+            errMsg += '%s \n' % msg1 +\
+                      'Line: %d, Column: %d\n' % (lineno, col)
+        return errMsg  
+
+        
 
 #------------ testcode --------------------------------------------------
 if __name__ == '__main__':

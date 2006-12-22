@@ -1,7 +1,9 @@
 model Tank
     var V; var h; var qOut;
     par A_bott; par A_o; par mu;
-    par q; par g;
+    par q; par g; 
+    #par foo;
+    #par foo2;
 
     block run
         h := V/A_bott;
@@ -23,6 +25,7 @@ process FillTank
     sub t as Tank;
 	par mu;
 	par g;
+	#par bar;
 	
     block run
         run t;

@@ -946,31 +946,34 @@ class ILTProcessGenerator(object):
     
     
     
-    def isPossibleParamPropagation(self, tail, bigSeq):
+    def isPossibleParamPropagation(self, highParam, lowParam):
         '''
         Test for parameter propagation
         
-        isTailOf((2,3), (1,2,3)) -> True
-        isTailOf((2,3), (1,2,3,4)) -> False
-        
-        Desired operation:
         Example: 
           propagate: mu   --> m1.mu, m2.mu        
           propagate: m1.l --> m1.sm1.l, m1.sm2.l  
           no       : m1.l --> m2.l, l             
 
-        Special case tail == bigSeq: return True
         Arguments:
-            tail   : sequence
-            bigSeq : sequence
+            tail   : tuple of strings
+            bigSeq : tuple of strings
         Return:
             True if the last elements of bigSeq are equal to tail. 
             False otherwise.
         '''
-        if len(tail) > len(bigSeq):
+        #name of high level parameter must be shorter (otherwise it 
+        #is not from higher level)
+        if not (len(highParam) < len(lowParam)):
             return False
-        for i in range(-1, -len(tail)-1, -1):
-            if tail[i] != bigSeq[i]:
+        #last parts of names must be same. (Propagate to parameters of same 
+        #name, but at lower level in hierarchy)
+        if not (highParam[-1] == lowParam[-1]):
+            return False
+        #both parameters must start with same sequence
+        #(both parameters must be from the same branch in the hierarchy)
+        for i in range(0, len(highParam)-1):
+            if not (highParam[i] == lowParam[i]):
                 return False
         return True
     
@@ -1017,22 +1020,29 @@ class ILTProcessGenerator(object):
         #  propagate: mu   --> m1.mu, m2.mu        
         #  propagate: m1.l --> m1.sm1.l, m1.sm2.l  
         #  no       : m1.l --> m2.l, l             
-        #FIXME: Algo does not work as expected!!!!
         initedParams = list(initedParams)
         #start with the names with the most dots (defined deep in submodels)
         initedParams.sort(key=len, reverse=True)
         paramReplaceDict = {}
         for iPar in initedParams:
             for nPar in notInitedParams.copy():
-                if self.isPossibleParamPropagation(iPar, nPar): #FIXME: isTailOf is wrong function
+                if self.isPossibleParamPropagation(iPar, nPar): 
                     #we found parameter to rename 
                     paramReplaceDict[nPar] = iPar #remember rename action
                     notInitedParams.remove(nPar)  #we cared for this parameter
         #print paramReplaceDict
              
-        #TODO: error for still uninitialized parameters
+        #raise error for all still uninitialized parameters
         if len(notInitedParams) > 0:
-            pass
+            msg = 'In process %s' % self.astProcess.className
+            loc = self.astProcess.loc
+            errList = [(msg, loc)]
+            #mention all uninited params
+            for nPar in notInitedParams:
+                msg = 'Uninitialized prameter: %s' % makeDotName(parameters[nPar].attrName)
+                loc = parameters[nPar].loc
+                errList.append((msg, loc))
+            raise MultiErrorException(errList)
        
         #rename all attribute accesses according to paramReplaceDict
         for accPar in self.process.iterDepthFirst():
