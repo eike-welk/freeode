@@ -660,11 +660,11 @@ class ILTProcessGenerator(object):
         '''The AST'''
         self.astClasses = {}
         '''dict of classes in ast: {'mod1':NodeClassDef}'''
-        self.astProcess = NodeClassDef('Dummy') 
+        self.astProcess = NodeClassDef() #dummy for pydev's completion
         '''the original process that is now instantiated'''
         self.astProcessAttributes = {}
         '''Atributes of the original process. Dict: {('mod1', 'var1'):NodeAttrDef}'''
-        self.process = NodeClassDef('Dummy') 
+        self.process = NodeClassDef() #dummy for pydev's completion
         '''The new process which is currently assembled'''
         self.processAttributes = {}
         '''Attributes of the new process: {('mod1', 'var1'):NodeAttrDef}'''
@@ -693,8 +693,7 @@ class ILTProcessGenerator(object):
          built-in values, like pi.
         '''
         #Put solutionparameters as first attribute into the process
-        solParAttr = NodeAttrDef(typ='built-in attribute',  loc=0,
-                                 attrName='solutionParameters', 
+        solParAttr = NodeAttrDef(loc=0, attrName='solutionParameters', 
                                  className='solutionParametersClass',
                                  isSubmodel=True)
         self.astProcess.insertChild(0, solParAttr)
@@ -1023,7 +1022,7 @@ class ILTProcessGenerator(object):
         #store original process
         self.astProcess = inAstProc.copy()
         #init new process
-        self.process = NodeClassDef('ILTProcess')
+        self.process = NodeClassDef()
         self.process.className = self.astProcess.className
         self.process.role = self.astProcess.role
         #init quick reference dicts
@@ -1043,7 +1042,7 @@ class ILTProcessGenerator(object):
             if not isinstance(block, NodeBlockDef):
                 continue
             #create the new method (block) definition
-            newBlock = NodeBlockDef('ILTBlock') 
+            newBlock = NodeBlockDef() 
             newBlock.name = block.name
             blockCount += 1 #count the number of blocks
             #determine which methods can be executed in this method
@@ -1095,13 +1094,11 @@ class ILTGenerator(object):
          built-in values and functions, like pi, sin(x).
         '''
         #Create the solution parameters' definition
-        solPars = NodeClassDef(typ='built-in class', loc=0,
-                               name='solutionParametersClass', role='model')
-        solPars.appendChild(NodeAttrDef(typ='built-in param',  loc=0,
-                                        attrName='simulationTime', 
+        solPars = NodeClassDef(loc=0, name='solutionParametersClass', 
+                               role='model')
+        solPars.appendChild(NodeAttrDef(loc=0, attrName='simulationTime', 
                                         className='Real', role='par'))
-        solPars.appendChild(NodeAttrDef(typ='built-in param',  loc=0,
-                                        attrName='reportingInterval', 
+        solPars.appendChild(NodeAttrDef(loc=0, attrName='reportingInterval', 
                                         className='Real', role='par'))
         #add solutionparameTers to AST, and update class dict
         astRoot.insertChild(0, solPars) 
@@ -1112,7 +1109,7 @@ class ILTGenerator(object):
         #add built ins to AST
         self.addBuiltInClasses(astRoot)
         #create ILT root node
-        iltRoot = Node('ILT')
+        iltRoot = NodeProgram()
         
         procGen = ILTProcessGenerator(astRoot)
         #searc for processes in the AST and instantiate them in the ILT

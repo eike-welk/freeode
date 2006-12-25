@@ -218,7 +218,7 @@ class ProcessGenerator(object):
         '''
         super(ProcessGenerator, self).__init__()
 
-        self.iltProcess = NodeClassDef('dummy')
+        self.iltProcess = NodeClassDef() #dummy for code completion
         '''The input: an IL-tree of the process. It has no external dependencies.'''
         self.outPy = outPyFile
         '''File where the Python program will be stored.'''
@@ -599,7 +599,7 @@ if __name__ == '__main__':
     #TODO: add doctest tests.
 
 
-    from simlparser import ParseStage, ASTGenerator, ILTGenerator
+    from simlparser import ParseStage, ILTGenerator
 #------------ testProg1 -----------------------
     testProg1 = (
 '''
@@ -623,11 +623,15 @@ end
 
 process RunTest
     sub test as Test;
+    par g;
 
     block run
         run test;
     end
     block init
+        g := 9.81;
+        solutionParameters.simulationTime := 100;
+        solutionParameters.reportingInterval := 1;
         init test;
     end
 end
@@ -661,15 +665,11 @@ end
 ''' )
 
     parser = ParseStage()
-    astGen = ASTGenerator()
     iltGen = ILTGenerator()
     progGen = ProgramGenerator()
 
-    pres = parser.parseProgram(testProg1)
-    print 'parse result:'
-    #print pres
-    astTree = astGen.createSyntaxTree(pres)
-    #print 'AST tree:'
+    astTree = parser.parseProgram(testProg1)
+    print 'AST tree:'
     print astTree
 
     iltTree = iltGen.createIntermediateTree(astTree)
