@@ -111,14 +111,12 @@ def doCompile(inputFileName, outputFileName):
     
     #create the top level objects that do the compilation
     parser = simlparser.ParseStage()
-    astGen = simlparser.ASTGenerator()
     iltGen = simlparser.ILTGenerator()
     progGen = pygenerator.ProgramGenerator()
     
     #the compilation proper
     try:
-        pres = parser.parseProgram(inputFileContents)
-        astTree = astGen.createSyntaxTree(pres)
+        astTree = parser.parseProgram(inputFileContents)
         #print astTree
         iltTree = iltGen.createIntermediateTree(astTree)
         #print iltTree
@@ -131,7 +129,7 @@ def doCompile(inputFileName, outputFileName):
         sys.exit(1)
     #errors from pyparsing
     except pyparsing.ParseException, theError:
-        print 'error: ', theError
+        print 'syntax error: ', theError
         sys.exit(1)
         
     #write generated program to file

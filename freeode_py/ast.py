@@ -84,11 +84,11 @@ class Node(object):
         #**kwargs : is a dict of keyword arguments
         #Code for derived classes: super(A, self).__init__(*args, **kwds)
         super(Node, self).__init__()
-        self.typ = typ      # type string
+        self.typ = typ      # TODO: remove? rename? type string
         #self.parent = None
         self.kids = kids[:] # list of children
         self.loc  = loc     # the location in the program
-        self.dat = dat      # whatever is appropriate
+        self.dat = dat      # TODO: remove! whatever is appropriate
 
 
     def __repr__(self):
@@ -283,6 +283,19 @@ class NodeAttrAccess(Node):
         TODO:clarify this; comment belongs to NodeAttrDef.'''
         
 
+class NodeIfStmt(Node):
+    '''
+    AST Node for an if ... the ... else statement
+    Data attributes:
+        typ     : type string, usually: 'valA'
+        kids    : [<condition>, <then staements>, <else statements>]
+        loc     : location in input string
+        dat     : None
+    '''
+    def __init__(self, typ='if', kids=[], loc=None, dat=None):
+        super(NodeIfStmt, self).__init__(typ, kids, loc, dat)
+        
+        
 class NodeAssignment(Node):
     '''
     AST node for an assignment: ':='
@@ -383,7 +396,12 @@ class NodeClassDef(Node):
         self.role = role
 
 
-
+class NodeProgram(Node):
+    '''Root node of the program'''
+    def __init__(self, typ='program', kids=[], loc=None, dat=None):
+        super(NodeProgram, self).__init__(typ, kids, loc, dat)
+        
+        
 class DepthFirstIterator(object):
     """
     Iterate over each node of a (AST) tree, in a depth first fashion.

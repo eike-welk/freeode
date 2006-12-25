@@ -43,6 +43,13 @@ from ast import *
 #pp = pprint.PrettyPrinter(indent=4) 
 
 
+
+class ParseActionException(Exception):
+    '''Exception raised by the parse actions of the parser'''
+    pass
+
+
+
 class ParseStage(object):
     '''
     The syntax definition (BNF) resides here.
@@ -51,39 +58,37 @@ class ParseStage(object):
     modfied through parse actions by this class.
 
     The program is entered as a string.
-    ParseResult objects can be converted to nested lists: ['1', '+', ['2', '*', '3']]
+    The parse* methods return a tree of Node objects; the abstract syntax 
+    tree (AST)
 
     Usage:
     parser = ParseStage()
-    result = parser.parseProgram('0+1+2+3+4')
+    result = parser.parseExpression('0+1+2+3+4')
+    result = parser.parseProgram(inString)
     '''
 
-
-    debugSyntax = 0
+    noTreeModification = 0
     '''
     Define how much the parse result is modified, for easier debuging.
     0: normal operation. Compilaton does not work otherwise.
-    1: No additional information and no reordering, but copy ParseResult;
-    2: Do not modify parse result (from pyParsing library).
+    1: Do not modify parse result (from pyParsing library).
+    
+    ParseResult objects are printed as nested lists: ['1', '+', ['2', '*', '3']]
     '''
+
 
     keywords = set([])
     '''
     List of all keywords (filled by _defineLanguageSyntax() and defineKeyword).
     '''
 
-    nodeTypes = set([])
-    '''
-    List of all type strings, that identify the nodes in the parse result.
-    Filled by defineNodeType() in the semantic actions; or by the AddMetaDict
-    object.
-    '''
-
 
     def __init__(self):
         object.__init__(self)
-        self._parser = self._defineLanguageSyntax() #Create parser object
+        self._parser = None
+        self._expressionParser = None
         '''The parser object from pyParsing'''
+        self._defineLanguageSyntax() #Create parser object
 
 
     def defineKeyword(self, inString):
@@ -94,12 +99,6 @@ class ParseStage(object):
         '''
         ParseStage.keywords.add(inString)
         return Keyword(inString)
-
-
-    def defineNodeType(self, inString):
-        '''Store type string (in ParseStage.nodeTypes) and return it.'''
-        ParseStage.nodeTypes.add(inString)
-        return inString
 
 
 #------------- Parse Actions -------------------------------------------------*
@@ -119,15 +118,307 @@ class ParseStage(object):
         Tries to see wether it is equal to a keyword.
         Does not change any parse results
         '''
-##        #debug code-----------------
-##        if   self.debugSyntax == 2:
-##            return
         #toks is structured like this: ['a1']
         if toks[0] in self.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
             #raise ParseException(str, loc, 'Identifier same as keyword: %s' % toks[0])
             raise ParseFatalException(
                 str, loc, 'Identifier same as keyword: %s' % toks[0] )
+
+
+    def _actionBuiltInValue(self, str, loc, toks):
+        '''
+        Create AST node for a built in value: pi, time
+        tokList has the following structure:
+        [<identifier>]
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        #create AST node
+        nCurr = NodeBuiltInVal()
+        nCurr.loc = loc #Store position 
+        nCurr.dat = tokList[0] #Store the built in value's name
+        return nCurr
+    
+    
+    def _actionNumber(self, str, loc, toks):
+        '''
+        Create node for a number: 5.23
+        tokList has the following structure:
+        [<number>]
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeNum()
+        nCurr.loc = loc #Store position 
+        nCurr.dat = tokList[0] #Store the number
+        return nCurr    
+    
+    
+    def _actionFunctionCall(self, str, loc, toks):
+        '''
+        Create node for function call: sin(2.1)
+        tokList has the following structure:
+        [<function dentifier>, '(', <expression>, ')']
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeBuiltInFuncCall()
+        nCurr.loc = loc #Store position 
+        nCurr.dat = tokList[0]  #function dentifier
+        nCurr.kids=[tokList[2]] #child expression
+        return nCurr
+
+
+    def _actionParenthesesPair(self, str, loc, toks):
+        '''
+        Create node for a pair of parentheses that enclose an expression: (...)
+        tokList has the following structure:
+        ['(', <expression>, ')']
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeParentheses()
+        nCurr.loc = loc #Store position 
+        nCurr.kids = [tokList[1]] #store child expression
+        return nCurr
+
+
+    def _actionPrefixOp(self, str, loc, toks):
+        '''
+        Create node for math prefix operators: -
+        tokList has the following structure:
+        [<operator>, <expression_l>]
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeOpPrefix1()
+        nCurr.loc = loc #Store position 
+        nCurr.dat = tokList[0]  #Store operator
+        nCurr.kids=[tokList[1]] #Store child tree
+        return nCurr
+
+
+    def _actionInfixOp(self, str, loc, toks):
+        '''
+        Create node for math infix operators: + - * / ^
+        tokList has the following structure:
+        [<expression_l>, <operator>, <expression_r>]
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeOpInfix2()
+        nCurr.loc = loc #Store position 
+        #create children and store operator
+        lhsTree = tokList[0]   #child lhs
+        nCurr.dat = tokList[1] #operator
+        rhsTree = tokList[2]   #child rhs
+        nCurr.kids=[lhsTree, rhsTree]
+        return nCurr
+
+
+    def _actionAttributeAccess(self, str, loc, toks):
+        '''
+        Create node for acces to a variable or parameter: bb.ccc.dd
+        tokList has the following structure:
+        [<part1>, <part2>, <part3>, ...]
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeAttrAccess()
+        nCurr.loc = loc #Store position 
+        #Look if there is a '$' that indicates time derivatives
+        if tokList[0] == '$':
+            nCurr.deriv = ('time',)
+            del tokList[0]
+        #The remaining tokens are the dot separated name
+        nCurr.attrName = tuple(tokList)
+        return nCurr
+
+
+    def _actionIfStatement(self, str, loc, toks):
+        '''
+        Create node for if - then - else statement.
+        BNF:
+        ifStatement = Group(
+                    kw('if') + boolExpression + kw('then') +
+                    statementList +
+                    Optional(kw('else') + statementList) +
+                    kw('end'))
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeIfStmt()
+        nCurr.loc = loc #Store position 
+        #if ... then ... end
+        if len(tokList) == 5:
+            condition = tokList[1]
+            thenStmts = tokList[3]
+            nCurr.kids=[condition, thenStmts]
+        #if ... then ... else ... end
+        elif len(tokList) == 7:
+            condition = tokList[1]
+            thenStmts = tokList[3]
+            elseStmts = tokList[5]
+            nCurr.kids=[condition, thenStmts, elseStmts]
+        else:
+            raise ParseActionException('Broken >if< statement! loc: ' + str(nCurr.loc))
+        return nCurr
+
+
+    def _actionAssignment(self, str, loc, toks):
+        '''
+        Create node for assignment: a := 2*b
+        BNF:
+        assignment = Group(valAccess + ':=' + expression + ';')
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeAssignment()
+        nCurr.loc = loc #Store position 
+        #create children and store operator
+        lhsTree = tokList[0]   #child lhs
+        nCurr.dat = tokList[1] #operator
+        rhsTree = tokList[2]   #child rhs
+        nCurr.kids=[lhsTree, rhsTree]
+        return nCurr
+
+
+    def _createBlockExecute(self, str, loc, toks):
+        '''
+        Create node for execution of a block (insertion of the code): run foo
+        BNF:
+        blockName = kw('run') | kw('init') #| kw('insert')
+        blockExecute = Group(blockName + subModelName + ';')
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeBlockExecute()
+        nCurr.loc = loc #Store position 
+        nCurr.blockName = tokList[0]    #block name - operator
+        nCurr.subModelName = tokList[1] #Name of model from where block is taken
+        return nCurr
+
+
+    def _actionStatementList(self, str, loc, toks):
+        '''
+        Create node for list of statements: a:=1; b:=2; ...
+        BNF:
+        statementList << Group(OneOrMore(statement))
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeStmtList()
+        nCurr.loc = loc #Store position 
+        #create children - each child is a statement
+        for tok in tokList:
+            nCurr.kids.append(tok)
+        return nCurr
+
+
+    def _actionAttrDefinition(self, str, loc, toks):
+        '''
+        Create node for defining parameterr, variable or submodel: var foo;
+        BNF:
+        defRole = kw('par') | kw('var') | kw('sub') 
+        attributeDef = Group(defRole + identifier + 
+                             Optional(kw('as') + identifier + ';'))
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeAttrDef()
+        nCurr.loc = loc #Store position 
+        #These are aways present
+        roleStr = tokList[0]                    #var, par, sub
+        #TODO: change attrName into tuple(tokList[1]) ?
+        nCurr.attrName = tokList[1] #identifier; name of the attribute
+        #attribute is a submodel
+        if roleStr == 'sub':
+            nCurr.className = tokList[3]
+            nCurr.isSubmodel = True
+            nCurr.role = None
+        #attribute is a variable or parameter
+        else:
+            nCurr.className = 'Real'
+            nCurr.isSubmodel = False
+            nCurr.isStateVariable = False
+            nCurr.role = roleStr
+        return nCurr
+
+
+    def _actionBlockDefinition(self, str, loc, toks):
+        '''
+        Create node for definition of a block: block run a:=1; end
+        BNF:
+        runBlock = Group(   kw('block') + blockName +
+                            OneOrMore(statement) + 
+                            kw('end'))
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeBlockDef()
+        nCurr.loc = loc #Store position 
+        #store name of block 
+        nCurr.name = tokList[1]
+        #create children - each child is a statement
+        for tok in tokList[2:len(tokList)-1]:
+            nCurr.kids.append(tok)
+        return nCurr
+
+
+    def _actionClassDef(self, str, loc, toks):
+        '''
+        Create node for definition of a class: model foo ... end
+        BNF:
+        classRole = kw('process') | kw('model') #| kw('paramset')
+        classDef = Group(   classRole + identifier +
+                            OneOrMore(attributeDef) +
+                            Optional(runBlock) +
+                            Optional(initBlock)  +
+                            kw('end'))
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeClassDef()
+        nCurr.loc = loc #Store position 
+        #store role and class name - these are always present
+        nCurr.role = tokList[0]
+        nCurr.className = tokList[1]
+        #create children (may or may not be present):  definitions, run block, init block
+        for tok in tokList[2:len(tokList)-1]:
+            nCurr.kids.append(tok)
+        return nCurr
+
+
+    def _actionProgram(self, str, loc, toks):
+        '''
+        Create the root node of a program.
+        BNF:
+        program = Group(OneOrMore(classDef))
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeProgram()
+        nCurr.loc = loc #Store position 
+        #create children - each child is a class
+        for tok in tokList:
+            nCurr.kids.append(tok)
+        return nCurr
 
 
 #------------------- BNF --------------------------------------------------------*
@@ -143,7 +434,7 @@ class ParseStage(object):
 
         #Values that are built into the language
         #TODO: this should be a for loop and a list (attribute)!
-        builtInValue = Group( kw('pi') | kw('time'))                .setParseAction(AddMetaDict('builtInVal'))\
+        builtInValue = Group( kw('pi') | kw('time'))                .setParseAction(self._actionBuiltInValue)\
                                                                     .setName('builtInValue')#.setDebug(True)
 
         #Functions that are built into the language
@@ -158,7 +449,7 @@ class ParseStage(object):
         uNumber = Group( Combine(
                     uInteger +
                     Optional('.' + Optional(uInteger)) +
-                    Optional(eE + Word('+-'+nums, nums))))          .setParseAction(AddMetaDict('num'))\
+                    Optional(eE + Word('+-'+nums, nums))))          .setParseAction(self._actionNumber)\
                                                                     .setName('uNumber')#.setDebug(True)
 
         # .............. Mathematical expression .............................................................
@@ -173,9 +464,9 @@ class ParseStage(object):
         #sin(2*a), (a+2), a.b.c(2.5:3.5))
         #Function call, parenthesis and memory access can however contain
         #expressions.
-        funcCall = Group( builtInFuncName + '(' + expression + ')') .setParseAction(AddMetaDict('funcCall')) \
+        funcCall = Group( builtInFuncName + '(' + expression + ')') .setParseAction(self._actionFunctionCall) \
                                                                     .setName('funcCall')#.setDebug(True)
-        parentheses = Group('(' + expression + ')')                 .setParseAction(AddMetaDict('paren')) \
+        parentheses = Group('(' + expression + ')')                 .setParseAction(self._actionParenthesesPair) \
                                                                     .setName('parentheses')#.setDebug(True)
         atom = (    uNumber | builtInValue | funcCall |
                     valAccess | parentheses               )         .setName('atom')#.setDebug(True)
@@ -185,33 +476,34 @@ class ParseStage(object):
         #required for exponentiation. Precedence decreases towards the bottom.
         #Unary minus: -a, not a;
         negop = '-' | kw('not')
-        unaryMinus = Group(negop + signedAtom)          .setParseAction(AddMetaDict('m_p1')) \
+        unaryMinus = Group(negop + signedAtom)          .setParseAction(self._actionPrefixOp) \
                                                         .setName('unaryMinus')#.setDebug(True)
         signedAtom << (atom | unaryMinus)               .setName('signedAtom')#.setDebug(True)
 
         #Exponentiation: a^b;
         factor1 = signedAtom                            .setName('factor1')#.setDebug(True)
-        factor2 = Group(signedAtom + '**' + factor)     .setParseAction(AddMetaDict('m_i2')) \
+        factor2 = Group(signedAtom + '**' + factor)     .setParseAction(self._actionInfixOp) \
                                                         .setName('factor2')#.setDebug(True)
         factor << (factor2 | factor1)                   .setName('factor')#.setDebug(True)
 
         #multiplicative operations: a*b; a/b
         multop = L('*') | L('/') | L('and')
         term1 = factor                                  .setName('term1')#.setDebug(True)
-        term2 = Group(factor + multop + term)           .setParseAction(AddMetaDict('m_i2')) \
+        term2 = Group(factor + multop + term)           .setParseAction(self._actionInfixOp) \
                                                         .setName('term2')#.setDebug(True)
         term << (term2 | term1)                         .setName('term')#.setDebug(True)
 
         #additive operations: a+b; a-b
         addop  = L('+') | L('-') | L('or')
         expression1 = term                              .setName('expression1')#.setDebug(True)
-        expression2 = Group(term + addop + expression)  .setParseAction(AddMetaDict('m_i2')) \
+        expression2 = Group(term + addop + expression)  .setParseAction(self._actionInfixOp) \
                                                         .setName('expression2')#.setDebug(True)
         expression << (expression2 | expression1)       .setName('expression')#.setDebug(True)
 
         #Relational operators : <, >, ==, ...
+        #FIXME: expressions with ond, or, ... don't work
         relop = L('<') | L('>') | L('<=') | L('>=') | L('==')
-        boolExpression = Group(expression + relop + expression) .setParseAction(AddMetaDict('m_i2')) \
+        boolExpression = Group(expression + relop + expression) .setParseAction(self._actionInfixOp) \
                                                                 .setName('expression2')#.setDebug(True)
         #................ End mathematical expression ................................................---
 
@@ -224,7 +516,7 @@ class ParseStage(object):
         dotSup = Literal('.').suppress()
         valAccess << Group( Optional('$') +
                             identifier +
-                            ZeroOrMore(dotSup  + identifier) )  .setParseAction(AddMetaDict('valA')) \
+                            ZeroOrMore(dotSup  + identifier) )  .setParseAction(self._actionAttributeAccess) \
                                                                 .setName('valAccess')#.setDebug(True)
 
         #..................... Statements ..............................................................
@@ -234,25 +526,25 @@ class ParseStage(object):
                         kw('if') + boolExpression + kw('then') +
                         statementList +
                         Optional(kw('else') + statementList) +
-                        kw('end'))                                  .setParseAction(AddMetaDict('ifStmt'))\
+                        kw('end'))                                  .setParseAction(self._actionIfStatement)\
                                                                     .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
-        assignment = Group(valAccess + ':=' + expression + ';')     .setParseAction(AddMetaDict('assign'))\
+        assignment = Group(valAccess + ':=' + expression + ';')     .setParseAction(self._actionAssignment)\
                                                                     .setName('assignment')#.setDebug(True)
         #execute a block - insert code of a child model
         blockName = kw('run') | kw('init') #| kw('insert')
-        blockExecute = Group(blockName + identifier + ';')          .setParseAction(AddMetaDict('blockExecute'))\
+        blockExecute = Group(blockName + identifier + ';')          .setParseAction(self._createBlockExecute)\
                                                                     .setName('blockExecute')#.setDebug(True)
 
         statement = (blockExecute | ifStatement | assignment)       .setName('statement')#.setDebug(True)
-        statementList << Group(OneOrMore(statement))                .setParseAction(AddMetaDict('stmtList'))\
+        statementList << Group(OneOrMore(statement))                .setParseAction(self._actionStatementList)\
                                                                     .setName('statementList')#.setDebug(True)
 
 #---------- Class Def ---------------------------------------------------------------------*
         #define parameters, variables and submodels
         defRole = kw('par') | kw('var') | kw('sub') 
         attributeDef = Group(defRole + identifier + 
-                             Optional(kw('as') + identifier) + ';') .setParseAction(AddMetaDict('defAttr'))\
+                             Optional(kw('as') + identifier) + ';') .setParseAction(self._actionAttrDefinition)\
                                                                     .setName('attributeDef')#.setDebug(True)
         #Note: For the AST this is also a statementList-'stmtList'
 #        definitionList = Group(OneOrMore(attributeDef))             .setParseAction(AddMetaDict('stmtList'))\
@@ -262,14 +554,14 @@ class ParseStage(object):
         runBlock = Group(   kw('block') + kw('run') +
                             #statementList +
                             OneOrMore(statement) + 
-                            kw('end'))                              .setParseAction(AddMetaDict('blockDef'))\
+                            kw('end'))                              .setParseAction(self._actionBlockDefinition)\
                                                                     .setName('runBlock')#.setDebug(True)
 
         #The initialization code goes here
         initBlock = Group(  kw('block') + kw('init') +
                             #statementList +
                             OneOrMore(statement) + 
-                            kw('end'))                              .setParseAction(AddMetaDict('blockDef'))\
+                            kw('end'))                              .setParseAction(self._actionBlockDefinition)\
                                                                     .setName('initBlock')#.setDebug(True)
 
         classRole = kw('process') | kw('model') #| kw('paramset')
@@ -278,11 +570,11 @@ class ParseStage(object):
                             OneOrMore(attributeDef) +
                             Optional(runBlock) +
                             Optional(initBlock)  +
-                            #TODO: Optional(finalBlock)  + #Method where graps are displayed and vars are stored
-                            kw('end'))                              .setParseAction(AddMetaDict('classDef'))\
+                            #TODO: Optional(finalBlock)  + #Method where graphs are displayed and vars are stored
+                            kw('end'))                              .setParseAction(self._actionClassDef)\
                                                                     .setName('classDef')#.setDebug(True)
 
-        program = Group(OneOrMore(classDef))                        .setParseAction(AddMetaDict('program'))\
+        program = Group(OneOrMore(classDef))                        .setParseAction(self._actionProgram)\
                                                                     .setName('program')#.setDebug(True)
         
         #special rule against incomplete parsing and faillure without error message
@@ -296,428 +588,55 @@ class ParseStage(object):
         singleLineCommentPy = '#' + restOfLine
         startSymbol.ignore(singleLineCommentCpp)
         startSymbol.ignore(singleLineCommentPy)
-
-        return startSymbol
+        #store parsers
+        self._parser = startSymbol
+        self._expressionParser = expression
+        
+    
+    def parseExpression(self, inString):
+        '''Parse a single expression. Example: 2*a+b'''
+        return self._expressionParser.parseString(inString).asList()[0]
 
 
     def parseProgram(self, inString):
         '''Parse a whole program. The program is entered as a string.'''
-        result = self._parser.parseString(inString)
+        result = self._parser.parseString(inString).asList()[0]
         #TODO: store loc of last parsed statement; for error message generation.
         return result
 
 
 
-class AddMetaDict(object):
-    '''
-    Functor class to add a dict to a ParseResults object in a semantic action.
-    The meta dict contains (at least) the result's type and the location in the
-    input string:
-    {'typ':'foo', 'loc':23}
+#class AddMetaDict(object):
+#    '''
+#    Functor class to add a dict to a ParseResults object in a semantic action.
+#    The meta dict contains (at least) the result's type and the location in the
+#    input string:
+#    {'typ':'foo', 'loc':23}
+#
+#    Additionally adds type string to a central list
+#    (ParseStage.nodeTypes - really a set) for checking the consistency
+#    '''
+#    def __init__(self, typeString):
+#        '''typeString : string to identify the node.'''
+#        object.__init__(self)
+#        self.typeString = typeString
+#         #add to set of known type strings
+#        ParseStage.nodeTypes.add(typeString)
+#
+#
+#    def __call__(self,str, loc, toks):
+#        '''The parse action that adds the dict.'''
+#        #debug code-----------------
+#        if   ParseStage.noTreeModification == 2:
+#            return None
+#        elif ParseStage.noTreeModification == 1:
+#            return toks.copy()
+#
+#        #toks is structured like this [['pi']]
+#        newToks = ParseResults([{'typ':self.typeString, 'loc':loc}]) #create dict
+#        newToks += toks[0].copy() #add original contents
+#        return ParseResults([newToks]) #wrap in []; return.
 
-    Additionally adds type string to a central list
-    (ParseStage.nodeTypes - really a set) for checking the consistency
-    '''
-    def __init__(self, typeString):
-        '''typeString : string to identify the node.'''
-        object.__init__(self)
-        self.typeString = typeString
-         #add to set of known type strings
-        ParseStage.nodeTypes.add(typeString)
-
-
-    def __call__(self,str, loc, toks):
-        '''The parse action that adds the dict.'''
-        #debug code-----------------
-        if   ParseStage.debugSyntax == 2:
-            return None
-        elif ParseStage.debugSyntax == 1:
-            return toks.copy()
-
-        #toks is structured like this [['pi']]
-        newToks = ParseResults([{'typ':self.typeString, 'loc':loc}]) #create dict
-        newToks += toks[0].copy() #add original contents
-        return ParseResults([newToks]) #wrap in []; return.
-
-
-
-class ASTGeneratorException(Exception):
-    '''Exception raised by the ASTGenerator class'''
-    pass
-
-
-
-class ASTGenerator(object):
-    '''Create a syntax tree from the parsers output'''
-    #TODO: integrate this class with ParseStage. 
-    #TODO: Replace the ParseResults objects with Node objects in semantic actions.
-    #TODO: This class' methods would become the semantic actions
-
-    def __init__(self):
-        object.__init__(self)
-        pass
-
-
-    def _createPrefixOp(self, tokList):
-        '''
-        Create node for math prefix operators: -
-        Parameter tokList has the following structure:
-        [<meta dictionary>, <operator>, <expression_l>]
-        '''
-        nCurr = NodeOpPrefix1('m_p1')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #create the child and store operator
-        nCurr.dat = tokList[1]                     #operator
-        childTree = self._createSubTree(tokList[2]) #child
-        nCurr.kids=[childTree]
-        return nCurr
-
-
-    def _createInfixOp(self, tokList):
-        '''
-        Create node for math infix operators: + - * / ^
-        Parameter tokList has the following structure:
-        [<meta dictionary>, <expression_l>, <operator>, <expression_r>]
-        '''
-        nCurr = NodeOpInfix2('m_i2')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #create children and store operator
-        lhsTree = self._createSubTree(tokList[1]) #child lhs
-        nCurr.dat = tokList[2]                    #operator
-        rhsTree = self._createSubTree(tokList[3]) #child rhs
-        nCurr.kids=[lhsTree, rhsTree]
-        return nCurr
-
-
-    def _createFunctionCall(self, tokList):
-        '''
-        Create node for function call: sin(2.1)
-        Parameter tokList has the following structure:
-        [<meta dictionary>, <function dentifier>, '(', <expression>, ')']
-        '''
-        nCurr = NodeBuiltInFuncCall('funcCall')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #store child expession and function name
-        nCurr.dat = tokList[1]                       #function dentifier
-        nCurr.kids=[self._createSubTree(tokList[3])] #child expression
-        return nCurr
-
-
-    def _createParenthesePair(self, tokList):
-        '''
-        Create node for a pair of parentheses that enclose an expression: (...)
-        Parameter tokList has the following structure:
-        [<meta dictionary>, '(', <expression>, ')']
-        '''
-        nCurr = NodeParentheses('paren')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #Create and store child expression
-        nCurr.kids = [self._createSubTree(tokList[2])]
-        return nCurr
-
-
-    def _createNumber(self, tokList):
-        '''
-        Create node for a number: 5.23
-        Parameter tokList has the following structure:
-        [<meta dictionary>, <number>]
-        '''
-        nCurr = NodeNum('num')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #Store the number
-        nCurr.dat = tokList[1]
-        return nCurr
-
-
-    def _createBuiltInValue(self, tokList):
-        '''
-        Create node for a built in value: pi, time
-        Parameter tokList has the following structure:
-        [<meta dictionary>, <identifier>]
-        '''
-        nCurr = NodeBuiltInVal('builtInVal')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #Store the built in value's name
-        nCurr.dat = tokList[1]
-        return nCurr
-
-
-    def _createValueAccess(self, tokList):
-        '''
-        Create node for acces to a variable or parameter: bb.ccc.dd
-        Parameter tokList has the following structure:
-        [<meta dictionary>, <part1>, <part2>, <part3>, ...]
-        '''
-        nCurr = NodeAttrAccess('valA')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #Look if there is a '$' that indicates time derivatives
-        tok1 = 1
-        if tokList[1] == '$':
-            nCurr.deriv = ('time',)
-            tok1 = 2
-        #The remaining tokens are the dot separated name
-        nCurr.attrName = tuple(tokList[tok1:len(tokList)]) 
-        return nCurr
-
-
-    def _createIfStatement(self, tokList):
-        '''
-        Create node for if - then - else statement.
-        type string: 'ifStmt'
-        BNF:
-        ifStatement = Group(
-                    kw('if') + boolExpression + kw('then') +
-                    statementList +
-                    Optional(kw('else') + statementList) +
-                    kw('end'))
-        '''
-        nCurr = Node('ifStmt')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #create children
-        if len(tokList) == 5:
-            condition = self._createSubTree(tokList[2])
-            thenStmts = self._createSubTree(tokList[4])
-            nCurr.kids=[condition, thenStmts]
-        elif len(tokList) == 7:
-            condition = self._createSubTree(tokList[2])
-            thenStmts = self._createSubTree(tokList[4])
-            elseStmts = self._createSubTree(tokList[6])
-            nCurr.kids=[condition, thenStmts, elseStmts]
-        else:
-            raise ASTGeneratorException('Broken >if< statement! loc: ' + str(nCurr.loc))
-        return nCurr
-
-
-    def _createAssignment(self, tokList):
-        '''
-        Create node for assignment: a := 2*b
-        type string: 'assign'
-        BNF:
-        assignment = Group(valAccess + ':=' + expression + ';')
-        '''
-        nCurr = NodeAssignment('assign')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #create children and store operator
-        lhsTree = self._createSubTree(tokList[1]) #child lhs
-        nCurr.dat = tokList[2]                    #operator
-        rhsTree = self._createSubTree(tokList[3]) #child rhs
-        nCurr.kids=[lhsTree, rhsTree]
-        return nCurr
-
-
-    def _createBlockExecute(self, tokList):
-        '''
-        Create node for execution of a block (insertion of the code): run foo
-        type string: 'blockExecute'
-        BNF:
-        blockName = kw('run') | kw('init') #| kw('insert')
-        blockExecute = Group(blockName + subModelName + ';')
-        '''
-        nCurr = NodeBlockExecute('blockExecute')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #Store the data
-        blockName = tokList[1]                    #block name - operator
-        modelName = tokList[2]                    #Name of model from where block is taken
-        nCurr.blockName = blockName
-        nCurr.subModelName = modelName
-        return nCurr
-
-
-    def _createStatementList(self, tokList):
-        '''
-        Create node for list of statements: a:=1; b:=2; ...
-        type string: 'stmtList'
-        BNF:
-        statementList << Group(OneOrMore(statement))
-        '''
-        nCurr = NodeStmtList('stmtList')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #create children - each child is a statement
-        for tok in tokList[1:len(tokList)]:
-            child = self._createSubTree(tok)
-            nCurr.kids.append(child)
-        return nCurr
-
-
-    def _createAttrDefinition(self, tokList):
-        '''
-        Create node for defining parameterr, variable or submodel: var foo;
-        type string: 'defAttr'
-        BNF:
-        defRole = kw('par') | kw('var') | kw('sub') 
-        attributeDef = Group(defRole + identifier + 
-                             Optional(kw('as') + identifier + ';'))
-        '''
-        nCurr = NodeAttrDef('defAttr')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #These are aways present
-        roleStr = tokList[1]                    #var, par, sub
-        #TODO: change attrName into tuple(tokList[2])
-        nCurr.attrName = tokList[2] #identifier; name of the attribute
-        #attribute is a submodel
-        if roleStr == 'sub':
-            nCurr.className = tokList[4]
-            nCurr.isSubmodel = True
-            nCurr.role = None
-        #attribute is a variable or parameter
-        else:
-            nCurr.className = 'Real'
-            nCurr.isSubmodel = False
-            nCurr.isStateVariable = False
-            nCurr.role = roleStr
-        return nCurr
-
-
-    def _createBlockDefinition(self, tokList):
-        '''
-        Create node for definition of a block: block run a:=1; end
-        type string: 'blockDef'
-        BNF:
-        runBlock = Group(   kw('block') + blockName +
-                            OneOrMore(statement) + 
-                            kw('end'))
-        '''
-        nCurr = NodeBlockDef('blockDef')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #store name of block 
-        blockName = tokList[2]
-        nCurr.name = blockName     
-        #create children - each child is a statement
-        for tok in tokList[3:len(tokList)-1]:
-            child = self._createSubTree(tok)
-            nCurr.kids.append(child)
-        return nCurr
-
-
-    def _createClassDef(self, tokList):
-        '''
-        Create node for definition of a class: model foo ... end
-        type string: 'classDef'
-        BNF:
-        classRole = kw('process') | kw('model') #| kw('paramset')
-        classDef = Group(   classRole + identifier +
-                            OneOrMore(attributeDef) +
-                            Optional(runBlock) +
-                            Optional(initBlock)  +
-                            kw('end'))
-        '''
-        nCurr = NodeClassDef('classDef')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        #store role and class name - these are always present
-        role = tokList[1]
-        name = tokList[2]
-        nCurr.className = name
-        nCurr.role = role
-        #create children (may or may not be present):  definitions, run block, init block
-        for tok in tokList[3:len(tokList)-1]:
-            if not isinstance(tok, list):
-                break
-            child = self._createSubTree(tok)
-            nCurr.kids.append(child)
-        return nCurr
-
-
-    def _createProgram(self, tokList):
-        '''
-        Create the root node of a program.
-        type string: 'program'
-        BNF:
-        program = Group(OneOrMore(classDef))
-        '''
-        nCurr = Node('program')
-        #Create an attribute for each key value pair in the meta dictionary
-        metaDict = tokList[0]
-        for attrName, attrVal in metaDict.iteritems():
-            setattr(nCurr, attrName, attrVal)
-        nCurr.typ = 'AST' #make it look mor like the ILT
-        #create children - each child is a class
-        for tok in tokList[1:len(tokList)]:
-            child = self._createSubTree(tok)
-            nCurr.kids.append(child)
-        return nCurr
-
-
-    funcDict = {
-        'm_p1':_createPrefixOp, 'm_i2':_createInfixOp,
-        'funcCall':_createFunctionCall, 'paren':_createParenthesePair,
-        'num':_createNumber, 'builtInVal':_createBuiltInValue,
-        'valA':_createValueAccess, 'ifStmt':_createIfStatement,
-        'assign':_createAssignment, 'blockExecute':_createBlockExecute,
-        'stmtList':_createStatementList, 'defAttr':_createAttrDefinition,
-        'blockDef':_createBlockDefinition, 'classDef':_createClassDef,
-        'program':_createProgram }
-    '''Dictionary with type string and node creator function.'''
-
-
-    def _createSubTree(self, tokList):
-        '''Central dispatcher function for recursive tree construction.
-        tokList is a nested list.'''
-
-        #First list item is a dict with meta information.
-        metaDict = tokList[0]
-        if not isinstance(metaDict, type({})):
-            raise ASTGeneratorException('Node has no metadict!')
-
-        nType = metaDict['typ']             #Get node type.
-        creatorFunc = self.funcDict[nType]  #Find matching creator function
-        return creatorFunc(self, tokList)   #call ceator function
-
-
-    def createSyntaxTree(self, parseResult):
-        '''
-        Create the syntax tree from a ParseResult.
-        parameter parseResult: ParseResult object, or nested list.
-        '''
-        if isinstance(parseResult, ParseResults): #Parse result objects
-            tokList = parseResult.asList()        #must be converted to lists
-            tokList = tokList[0]     #remove one pair of square brackets
-        else:
-            tokList = parseResult
-        #pdb.set_trace()
-        return self._createSubTree(tokList)
-    
 
 
 class ILTGenException(Exception):
@@ -1234,13 +1153,17 @@ model Test
 end
 
 process RunTest
+    par g;
     sub test as Test;
     
     block run
         run test;
     end
     block init
+        g := 9.81;
         init test;
+        solutionParameters.simulationTime := 100;
+        solutionParameters.reportingInterval := 1;
     end
 end
 ''' )
@@ -1276,13 +1199,9 @@ end
     #flagTestILTGenerator = False
     if flagTestILTGenerator:
         parser = ParseStage()
-        astGen = ASTGenerator()
         iltGen = ILTGenerator()
         
-        pres = parser.parseProgram(testProg1)
-        print 'parse result:'
-        print pres
-        astTree = astGen.createSyntaxTree(pres)
+        astTree = parser.parseProgram(testProg1)
         print 'AST tree:'
         print astTree
  
@@ -1291,21 +1210,6 @@ end
         print iltTree
         
         
-    #test the AST generator ------------------------------------------------------------------
-    #flagTestASTGenerator = True
-    flagTestASTGenerator = False
-    if flagTestASTGenerator:
-        parser = ParseStage()
-        treeGen = ASTGenerator()
-
-        pres = parser.parseProgram(testProg1)
-        print 'parse result:'
-        print pres
-        astTree = treeGen.createSyntaxTree(pres)
-        print 'tree:'
-##        print tree
-        TreePrinter(astTree).printTree()
-
     #test the parser ----------------------------------------------------------------------
     #flagTestParser = True
     flagTestParser = False
@@ -1317,40 +1221,24 @@ end
         #print parser.parseProgram('model test par a; end')
 
 
-        print parser.parseProgram(testProg2)
+        #print parser.parseProgram(testProg2)
 
-        #print parser.parseProgram('a:=0+1;b:=2+3+4;')
+        print parser.parseProgram(testProg1)
         #print parser.parseProgram('if a==0 then b:=-1; else b:=2+3+4; a:=1; end')
-        #print parser.parseProgram('0*1*2*3*4')
-        #print parser.parseProgram('0^1^2^3^4')
-        #print parser.parseProgram('0+1*2+3+4')
-        #print parser.parseProgram('0*1^2*3*4')
-        #print parser.parseProgram('0+(1+2)+3+4')
-        #print parser.parseProgram('-0+1+--2*-3--4')
-        #print parser.parseProgram('-aa.a+bb.b+--cc.c*-dd.d--ee.e+f')
-        #print parser.parseProgram('0+sin(2+3*4)+5')
-        #print parser.parseProgram('0+a1.a2+bb.b1.b2+3+4 #comment')
-        #print parser.parseProgram('0.123+1.2e3')
-        #parser.parseProgram('0+1*2^3^4+5+6*7+8+9')
+        #print parser.parseExpression('0*1*2*3*4').asList()[0]
+        #print parser.parseExpression('0^1^2^3^4')
+        #print parser.parseExpression('0+1*2+3+4').asList()[0]
+        #print parser.parseExpression('0*1^2*3*4')
+        #print parser.parseExpression('0+(1+2)+3+4')
+        #print parser.parseExpression('-0+1+--2*-3--4')
+        #print parser.parseExpression('-aa.a+bb.b+--cc.c*-dd.d--ee.e+f').asList()[0]
+        #print parser.parseExpression('time+0+sin(2+3*4)+5').asList()[0]
+        #print parser.parseExpression('0+a1.a2+bb.b1.b2+3+4 #comment')
+        #print parser.parseExpression('0.123+1.2e3')
+        #parser.parseExpression('0+1*2^3^4+5+6*7+8+9')
 
         print 'keywords:'
         print parser.keywords
-        print 'node types'
-        print parser.nodeTypes
-    
-    #Check if the parser and the AST generator use the same type strings ---------------------------------
-    #to identify the nodes.
-    typeStrParser = ParseStage.nodeTypes
-    typeStrASTGenerator = set(ASTGenerator.funcDict.keys())
-    print
-    if typeStrASTGenerator == typeStrParser:
-        print 'Parser and AST generator use the same type strings.'
-    else:
-        print 'Error: Parser and AST generator use DIFFERENT type strings!'
-        print 'Type strings only in parser: '
-        print typeStrParser.difference(typeStrASTGenerator)
-        print 'Type strings only in AST generator: '
-        print typeStrASTGenerator.difference(typeStrParser)
 
 
 ##    pdb.set_trace()
