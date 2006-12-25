@@ -1,0 +1,310 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+ <HEAD>
+   <TITLE> more features on Python symbolic math
+   </TITLE>
+   <LINK REL="Index" HREF="index.html" >
+   <LINK REL="made" HREF="mailto:kragen%40pobox.com">
+   <META NAME="robots" CONTENT="index,nofollow">
+   
+   <LINK REL="Previous"  HREF="000277.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>more features on Python symbolic math
+   </H1>
+    <B>Kragen Sitaker
+    </B> 
+    <A HREF="mailto:kragen%40pobox.com"
+       TITLE="more features on Python symbolic math">kragen@pobox.com
+       </A><BR>
+    <I>Sat, 30 Dec 2000 23:47:36 -0500 (EST)</I>
+    <P><UL>
+        <LI> Previous message: <A HREF="000277.html">Simple symbolic math system in Python
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#278">[ date ]</a>
+              <a href="thread.html#278">[ thread ]</a>
+              <a href="subject.html#278">[ subject ]</a>
+              <a href="author.html#278">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Along with some advocacy.  :)
+
+&lt;<A HREF="mailto:kragen@pobox.com">kragen@pobox.com</A>&gt;       Kragen Sitaker     &lt;<A HREF="http://www.pobox.com/~kragen/">http://www.pobox.com/~kragen/</A>&gt;
+Perilous to all of us are the devices of an art deeper than we possess
+ourselves.
+       -- Gandalf the White [J.R.R. Tolkien, &quot;The Two Towers&quot;, Bk 3, Ch. XI]
+
+---------- Forwarded message ----------
+Date: Sat, 30 Dec 2000 23:46:26 -0500 (EST)
+From: Kragen &lt;<A HREF="mailto:kragen@kirk.dnaco.net">kragen@kirk.dnaco.net</A>&gt;
+To: (name removed to protect the innocent)
+Subject: symbolic math
+
+I thought I'd engage in a little bit of advocacy, and simultaneously
+get to know Python and symbolic computation a little better.  :)
+
+Here's a bit of Python code that implements some basic algebraic
+manipulation, including symbolic differentiation.  I think it
+illustrates some of the advantages of higher-level languages.
+
+- ordinary algebraic expressions can be used to build up algebraic
+  expressions for manipulation; you can do this in C++ with some nifty
+  template hacks Todd Veldhuizen did.
+- the interpreted nature of the language makes it possible to run a
+  suite of 44 regression tests every time the code is compiled (adding
+  an extra 6 milliseconds of the 40-millisecond-or-so compile time)
+- garbage collection means you can pass around algebraic expressions as
+  easily as you can pass around integers, without worrying about memory leaks
+- rock-solid memory abstraction (type safety, bounds-checking, and
+  garbage collection) means that program failures are deterministic and
+  close to the bug
+- first-class procedures and lambda expressions make it easy to specify
+  dispatch tables like opmap and derivmap
+- late binding makes it possible to feed formulas into routines
+  expecting numbers and have them output more formulas; however, this
+  is far from perfect.  While the standard arithmetic operators can be
+  and are overridden, the math library functions like sqrt() can't,
+  because they're not methods of the numbers.  This is more useful when
+  you want to feed virtual files, virtual network connections, or
+  virtual collections to routines expecting the real thing.
+
+Other advantages, like aggregate operations like those in STL and the
+rapid feedback of an interactive interpreter, are not apparent here.
+
+This program is not a shining example of OO design; it could benefit
+from a few Visitors, I think, and it abuses isinstance() in several
+places.
+
+I don't think you could develop something like this in an afternoon in
+C++ --- although you could probably do it in a week.
+
+I'd be interested to learn if I'm overly pessimistic about C++.
+
+# Kragen Sitaker, 2000-12-30.
+# Some simple symbolic math.
+# Allows you to add, subtract, etc., simple formulas -- using the ordinary
+# Python operations.  Implements all of the standard arithmetic operations.
+# Once you have a formula, you can print it out as a string, evaluate it
+# for particular values of its variables, call 'simplified()' to get a
+# simplified version, check to see if it's exactly identical to some other
+# formula, or (in some cases --- if you've used only +, -, and *)
+# take its symbolic derivative.  See the test() routine at the end for details.
+# Symbolic derivatives will generally need to be simplified() to taste very
+# good.
+
+# Not intended for serious use; it's just a quick hack I wrote this afternoon.
+
+# Some things it might be fun to add:
+# - a compile() method that returns a Python code object that would give you
+#   faster evaluation
+# - a continued-fraction output mode a la HAKMEM
+# - symbolic derivatives that cover more operations
+# - better simplifications ( ((x + x) + (2 * x)) should simplify to (3 * x) )
+# - unary operations: negation, transcendentals
+# - better printing: a + b + c + d should print as a + b + c + d, not
+#   as (((a + b) + c) + d)
+# - other symbolic manipulations
+
+# things inherit from Formula to get the glue that turns Python
+# expressions into representations of expressions
+class Formula:
+    def __complex__(self): return complex(self.eval({}))
+    def __int__(self): return int(self.eval({}))
+    def __long__(self): return long(self.eval({}))
+    def __float__(self): return float(self.eval({}))
+    def __pos__(self): return self  # positive
+    def __add__(self, other): return Binop('+', self, other)
+    def __radd__(self, other): return Binop('+', other, self)
+    def __sub__(self, other): return Binop('-', self, other)
+    def __rsub__(self, other): return Binop('-', other, self)
+    def __mul__(self, other): return Binop('*', self, other)
+    def __rmul__(self, other): return Binop('*', other, self)
+    def __div__(self, other): return Binop('/', self, other)
+    def __rdiv__(self, other): return Binop('/', other, self)
+    def __pow__(self, other): return Binop('**', self, other)
+    def __rpow__(self, other): return Binop('**', other, self)
+
+    # one out of place: syntactic sugar for 'eval'
+    # this lets me say f.where(x = 2) instead of f.eval({'x':2})
+    def where(self, **vars): return self.eval(vars)
+
+# simplify an addition expression by dropping zeroes
+def simplify_add(a, b):
+    if a.identical(mkf(0)): return b
+    elif b.identical(mkf(0)): return a
+    else: return Binop('+', a, b)
+
+# simplify a multiplication expression by dropping ones and converting
+# 0 * anything to 0
+def simplify_multiply(a, b):
+    if a.identical(mkf(0)) or b.identical(mkf(0)): return mkf(0)
+    elif a.identical(mkf(1)): return b
+    elif b.identical(mkf(1)): return a
+    else: return Binop('*', a, b)
+
+def simplify_subtract(a, b):
+    if b.identical(mkf(0)): return a
+    else: return Binop('-', a, b)
+
+# Binary operation class
+class Binop(Formula):
+    opmap = { '+': lambda a, b: a + b,
+              '*': lambda a, b: a * b,
+              '-': lambda a, b: a - b,
+              '/': lambda a, b: a / b,
+              '**': lambda a, b: a ** b }
+    def __init__(self, op, value1, value2):
+        self.op = op
+        self.values = mkf(value1), mkf(value2)
+    def __str__(self):
+        return &quot;(%s %s %s)&quot; % (self.values[0], self.op, self.values[1])
+    def eval(self, env):
+        return self.opmap[self.op](self.values[0].eval(env),
+                                   self.values[1].eval(env))
+    # the partial derivative with respect to some variable 'var'
+    derivmap = { '+': lambda a, b, var: a.derivative(var) + b.derivative(var),
+                 '-': lambda a, b, var: a.derivative(var) - b.derivative(var),
+                 '*': lambda a, b, var: (a * b.derivative(var) +
+                                         b * a.derivative(var)) };
+    def derivative(self, var):
+        return self.derivmap[self.op](self.values[0], self.values[1], var)
+
+    # very basic simplifications
+    simplifymap = { '+': simplify_add,
+                    '*': simplify_multiply,
+                    '-': simplify_subtract};
+    def simplified(self):
+        if self.simplifymap.has_key(self.op):
+            return self.simplifymap[self.op](self.values[0].simplified(),
+                                             self.values[1].simplified())
+        else:
+            return self
+
+    def identical(self, other):
+        return (isinstance(other, Binop) and other.op == self.op and
+                other.values[0].identical(self.values[0]) and
+                other.values[1].identical(self.values[1]))
+
+
+class Variable(Formula):
+    def __init__(self, name): self._name = name
+    def eval(self, environment): return environment[self._name]
+    def __str__(self): return self._name
+    def derivative(self, var):
+        if self._name == var._name: return mkf(1)
+        else: return mkf(0)
+    def identical(self, other):
+        return isinstance(other, Variable) and other._name == self._name
+    def simplified(self): return self
+class Constant(Formula):
+    def __init__(self, value): self._value = value
+    def eval(self, env): return self._value
+    def __str__(self): return str(self._value)
+    def derivative(self, var): return 0
+    def identical(self, other):
+        return isinstance(other, Constant) and other._value == self._value
+    def simplified(self): return self
+
+# make formula
+def mkf(value):
+    if type(value) in (type(1), type(1L), type(1.5), type(1j)):
+        return Constant(value)
+    elif type(value) is type(&quot;hi&quot;):
+        return Variable(value)
+    elif isinstance(value, Formula):
+        return value
+    else:
+        raise TypeError, (&quot;Can't make formula from&quot;, value)
+
+class Vars:
+    def __getattr__(self, name): return Variable(name)
+vars = Vars()
+
+def test():
+    assert mkf(2365).eval({}) == 2365
+    one = mkf(1)
+    assert str(one) == '1'
+    assert one.eval({}) == 1
+    assert isinstance(one + one, Formula)
+    assert (one + one).eval({}) == 2
+    assert str(one + one) == '(1 + 1)'
+    x = vars.x
+    assert isinstance(x, Variable)
+    assert x.eval({'x': 37}) == 37
+    assert (one + x).eval({'x': 108}) == 109
+    assert str(one + x) == '(1 + x)'
+    got_error = 0
+    try:
+        x.eval({})
+    except KeyError:
+        got_error = 1
+    assert got_error
+    assert (1 + one).eval({}) == 2
+    assert (2 * mkf(3)).eval({}) == 6
+    assert (mkf(2) * 3).eval({}) == 6
+    assert (14 - one).eval({}) == 13
+    assert (one - 14).eval({}) == -13
+    assert int(one) == 1
+    seven = (14 / mkf(2))
+    assert isinstance(seven, Formula)
+    assert seven.eval({}) == 7
+    assert float(seven) == 7.0
+    assert int(+one) == 1
+    got_error = 0
+    try:
+        z = mkf(test)
+    except TypeError:
+        got_error = 1
+    assert got_error
+    two_to_the_x = (2 ** x)
+    assert str(two_to_the_x) == '(2 ** x)'
+    assert two_to_the_x.eval({'x': 20}) == 1048576
+    assert two_to_the_x.where(x=20) == 1048576
+    assert (x ** 2).eval({'x': 13}) == 169
+    formula = (x + 1)/((x * x) - +two_to_the_x)
+    assert str(formula) == '((x + 1) / ((x * x) - (2 ** x)))', str(formula)
+    assert (x / 1).eval({'x': 36}) == 36
+    assert long(one) == 1L
+    assert complex(one) == 1+0j
+    i = mkf(1j)
+    assert complex(i) == 1j
+
+    y = vars.y
+    assert x.derivative(x).simplified().identical(mkf(1))
+    assert x.derivative(y).simplified().identical(mkf(0))
+    assert (x * y).derivative(x).simplified().identical(y)
+    assert (x + y).derivative(x).simplified().identical(mkf(1))
+    assert (x - y).derivative(x).simplified().identical(mkf(1))
+    assert two_to_the_x.simplified().identical(two_to_the_x)
+
+test()
+
+-- 
+&lt;<A HREF="mailto:kragen@pobox.com">kragen@pobox.com</A>&gt;       Kragen Sitaker     &lt;<A HREF="http://www.pobox.com/~kragen/">http://www.pobox.com/~kragen/</A>&gt;
+Perilous to all of us are the devices of an art deeper than we possess
+ourselves.
+       -- Gandalf the White [J.R.R. Tolkien, &quot;The Two Towers&quot;, Bk 3, Ch. XI]
+
+
+
+</PRE>
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI> Previous message: <A HREF="000277.html">Simple symbolic math system in Python
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#278">[ date ]</a>
+              <a href="thread.html#278">[ thread ]</a>
+              <a href="subject.html#278">[ subject ]</a>
+              <a href="author.html#278">[ author ]</a>
+         </LI>
+       </UL>
+</body></html>
