@@ -21,6 +21,7 @@
 
 from subprocess import Popen, PIPE, STDOUT
 import sys
+from pylab import *
 
 #execute the compiler
 proc = Popen(['python', 'freeode.py', 'tank.siml'], shell=False, #bufsize=1000,
@@ -43,3 +44,6 @@ sim.simulateDynamic()
 
 #show some results
 sim.graph('t.V t.h t.qOut')
+
+show()
+#raw_input('Press any key to continue ...')

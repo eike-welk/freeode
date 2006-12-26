@@ -28,14 +28,14 @@ and not by the Siml compiler.
 '''
 
 
-from numpy import *
+#from numpy import *
+from pylab import *
 
 import scipy.integrate.ode as odeInt
 import scipy.optimize.minpack as minpack
 
 #from scipy import integrate
 import Gnuplot, Gnuplot.funcutils # @todo switch to a more well known graphics library
-
 
 class SimulatorBase(object):
     """ Base class for the generated simulator classes """
@@ -107,6 +107,7 @@ class SimulatorBase(object):
         index = self.variableNameMap[varName]
         return self.resultArray[:,index]
 
+
     def graph(self, varNames):
         """
         Show one or several variables in a graph.
@@ -119,7 +120,12 @@ class SimulatorBase(object):
         Example:
             >>> mySimulationObject.graph('r.X r.mu')
         """
+        #self._graphGnuplot(varNames)
+        self._grapMatPlotLib(varNames)
+        
 
+    def _graphGnuplot(self, varNames):
+        '''Create plots with gnuplot. Called by graph()'''
         diagram=Gnuplot.Gnuplot(debug=0, persist=1)
         diagram('set data style lines')
         diagram.title(varNames)
@@ -130,11 +136,27 @@ class SimulatorBase(object):
             if not (varName1 in self.variableNameMap): 
                 print('Error unknown variable name: %s') % varName1
                 continue
-                
             curve=Gnuplot.Data(self.variable('time'), self.variable(varName1))
             diagram.replot(curve)
 
 
+    def _grapMatPlotLib(self, varNames):
+        '''Create plots with matplotlib. Called by graph()'''
+        figure() #create new figure window
+        
+        timeVect = self.variable('time')
+        varList = varNames.replace(',', ' ').split(' ')
+        for varName1 in varList:
+            if not (varName1 in self.variableNameMap): 
+                print('Error unknown variable name: %s') % varName1
+                continue
+            varVect = self.variable(varName1)
+            plot(timeVect, varVect, label=varName1)
+            
+        xlabel('time')
+        #ylabel(varNames)
+        legend()
+        
     def initialize(self):
         '''
         Compute the initial values. 
@@ -178,7 +200,9 @@ class SimulatorBase(object):
         #Create space for storing simulation results
         #dim 1: time; dim 2: the different variables 
         #-> vector of variables (state and algebraic) lies horizontally 
-        self.resultArray = zeros((len(self.time), self.stateVectorLen + self.algVectorLen))
+        self.resultArray = zeros((len(self.time), 
+                                  self.stateVectorLen + self.algVectorLen), 
+                                 'float64')
         self.resultArray[0,0:self.stateVectorLen] = self.initialValues
         #create integrator object and care for intitial values
         solver = odeInt(self.dynamic).set_integrator('vode') \
