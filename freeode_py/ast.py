@@ -630,46 +630,160 @@ class MultiErrorException(UserException):
         
 
 #------------ testcode --------------------------------------------------
+import unittest
+
+class TestAST(unittest.TestCase):
+    
+    def setUp(self):
+        '''perform common setup tasks for each test'''
+        #create test data; loc is abused as number for node identification
+        self.tree1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 
+                               2, 'branch'),  
+                          Node([],5,'leaf')], 1, 'root')
+
+    def test__init__(self):
+        n1 = Node()
+        n2 = Node([],1,'test')
+        self.assertEqual(n2.loc, 1)
+        self.assertEqual(n2.dat, 'test')
+        self.assertRaises(TypeError, self.raise__init__1)
+    def raise__init__1(self):
+        Node('test')
+    
+    #missing: test__repr__
+    
+    def test__str__(self):
+        #test printing and line wraping (it must not crash)
+        #create additional node with many big attributes
+        nBig = Node([])
+        nBig.test1 = 'qworieoqwiruuqrw'
+        nBig.test2 = 'qworieoqwiruuqrw'
+        nBig.test3 = 'qworieoqwiruuqrw'
+        nBig.test4 = 'qworieoqwiruuqrw'
+        nBig.test5 = 'qworieoqwiruuqrw'
+        nBig.test6 = 'qworieoqwiruuqrw'
+        nBig.test7 = 'qworieoqwiruuqrw'
+        nBig.test8 = 'qworieoqwiruuqrw'
+        nBig.test9 = 'qworieoqwiruuqrw'
+        self.tree1[0][1].appendChild(nBig)
+        str1 = self.tree1.__str__()
+        #to see it:
+        #print
+        #print self.tree1
+        
+    def test__iter__(self):
+        #iteration, immediate children
+        l = []
+        for node1 in self.tree1:
+            l.append(node1.loc)
+        self.assertEqual(l, [2, 5])
+        
+    def test__len__(self):   
+        self.assertEqual(2, len(self.tree1))
+    
+    def test__appendChild__(self):  
+        self.tree1.appendChild(Node(loc=10))
+        self.assertEqual(3, len(self.tree1))    #one child added
+        self.assertEqual(10, self.tree1[2].loc) #at the end
+        self.assertRaises(TypeError, self.raise__appendChild__)
+    def raise__appendChild__(self):
+        #append child checks the type
+        self.tree1.appendChild('qwert')
+        
+    def test__insertChild__(self):
+        self.tree1.insertChild(0, Node(loc=10))
+        self.assertEqual(3, len(self.tree1))    #one child added
+        self.assertEqual(10, self.tree1[0].loc) #at the begining
+        self.assertRaises(TypeError, self.raise__insertChild__)
+    def raise__insertChild__(self):
+        #append child checks the type
+        self.tree1.insertChild(0, 'qwert')
+        
+    def test__delChild(self):
+        self.tree1.delChild(0)
+        self.assertEqual(1, len(self.tree1))   #one child removed
+        self.assertEqual(5, self.tree1[0].loc) #at the begining
+        
+    def test__getitem__(self):
+#        print
+#        print self.tree1 #in case you need an overwiew
+        self.assertEqual(1, self.tree1.loc) 
+        self.assertEqual(2, self.tree1[0].loc) 
+        self.assertEqual(3, self.tree1[0][0].loc) 
+        
+    def testIterDepthFirst(self):
+        #iteration, all child nodes recursive
+        l = []
+        for node1 in self.tree1.iterDepthFirst():
+            l.append(node1.loc)
+        self.assertEqual(l, [1, 2, 3, 4, 5])
+        #iteration, all child nodes recursive also depth is returned
+        l = []
+        for node1, depth in self.tree1.iterDepthFirst(returnDepth=True):
+            line = 'dat: %s, depth; %d' % (node1.dat, depth)
+            l.append(line)
+        self.assertEqual(l, ['dat: root, depth; 0', 
+                             'dat: branch, depth; 1', 
+                             'dat: leaf, depth; 2', 
+                             'dat: leaf, depth; 2', 
+                             'dat: leaf, depth; 1'])
+    
+    def testCopy(self):
+        tree2 = self.tree1.copy() #create deep copy
+        #assert that values are equal
+        self.assertEqual(len(tree2), len(self.tree1))
+        self.assertEqual(tree2.loc, self.tree1.loc) 
+        self.assertEqual(tree2[0].loc, self.tree1[0].loc) 
+        self.assertEqual(tree2[0][0].loc, self.tree1[0][0].loc) 
+        #assert that copy created new objects
+        self.assertNotEqual(id(tree2), id(self.tree1))
+        self.assertNotEqual(id(tree2[0]), id(self.tree1[0])) 
+        self.assertNotEqual(id(tree2[0][0]), id(self.tree1[0][0])) 
+
+        
+        
 if __name__ == '__main__':
     # Self-testing code goes here.
-    #TODO: add unit tests
+
     #perform the doctests
     def doDoctest():
         import doctest
         doctest.testmod()   
     doDoctest()
     
-    print 'Test the AST:'
-    t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'), 
-               Node([],5,'leaf')], 1, 'root')
-    print 'print the tree'
-    print t1
+    #perform the unit tests
+    #unittest.main() #exits interpreter
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestAST)
+    unittest.TextTestRunner(verbosity=2).run(suite)
     
-    print 'test line wrapping'
-    nBig = Node([])
-    nBig.test1 = 'qworieoqwiruuqrw'
-    nBig.test2 = 'qworieoqwiruuqrw'
-    nBig.test3 = 'qworieoqwiruuqrw'
-    nBig.test4 = 'qworieoqwiruuqrw'
-    nBig.test5 = 'qworieoqwiruuqrw'
-    nBig.test6 = 'qworieoqwiruuqrw'
-    nBig.test7 = 'qworieoqwiruuqrw'
-    nBig.test8 = 'qworieoqwiruuqrw'
-    nBig.test9 = 'qworieoqwiruuqrw'
-    t1[0][1].appendChild(nBig)
-    print t1
-
-    print 'iterating over only the children of a node:'
-    for n in t1:
-        print n.loc
-
-    print 'iterating over the whole tree:'
-    for n,d in t1.iterDepthFirst(returnDepth=True):
-        print n.dat, 'depth: ', d
+#    print 'Test the AST:'
+#    t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'), 
+#               Node([],5,'leaf')], 1, 'root')
+#    print 'print the tree'
+#    print t1
+#    
+#    print 'test line wrapping'
+#    nBig = Node([])
+#    nBig.test1 = 'qworieoqwiruuqrw'
+#    nBig.test2 = 'qworieoqwiruuqrw'
+#    nBig.test3 = 'qworieoqwiruuqrw'
+#    nBig.test4 = 'qworieoqwiruuqrw'
+#    nBig.test5 = 'qworieoqwiruuqrw'
+#    nBig.test6 = 'qworieoqwiruuqrw'
+#    nBig.test7 = 'qworieoqwiruuqrw'
+#    nBig.test8 = 'qworieoqwiruuqrw'
+#    nBig.test9 = 'qworieoqwiruuqrw'
+#    t1[0][1].appendChild(nBig)
+#    print t1
+#
+#    print 'iterating over only the children of a node:'
+#    for n in t1:
+#        print n.loc
+#
+#    print 'iterating over the whole tree:'
+#    for n,d in t1.iterDepthFirst(returnDepth=True):
+#        print n.dat, 'depth: ', d
         
-    
-
-    
 else:
     # This will be executed in case the
     #    source has been imported as a
