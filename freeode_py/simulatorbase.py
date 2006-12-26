@@ -126,7 +126,7 @@ class SimulatorBase(object):
         '''Create plots with gnuplot. Called by graph()'''
         diagram=Gnuplot.Gnuplot(debug=0, persist=1)
         diagram('set data style lines')
-        diagram.title(varNames)S
+        diagram.title(varNames)
         diagram.xlabel('Time')
 
         varList = varNames.replace(',', ' ').split(' ')
