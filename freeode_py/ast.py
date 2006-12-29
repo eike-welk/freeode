@@ -294,11 +294,11 @@ class NodeIfStmt(Node):
         
 class NodeAssignment(Node):
     '''
-    AST node for an assignment: ':='
+    AST node for an assignment: '='
         typ     : type string, usually: 'assign'
         kids    : [LHS, RHS] both sides of the assignment operator
         loc     : location in input string
-        dat     : ':='
+        dat     : '='
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeAssignment, self).__init__(kids, loc, dat)
@@ -371,20 +371,16 @@ class NodeAttrDef(Node):
         className       : type of the attribute; possibly dotted name: ('aa', 'bb')
         role            : Is this attribute a state or algebraic variable, 
                           or a parameter? must be AttributeRole subclass.
-        isSubmodel      : True or False
-        isStateVariable : True or False
         targetName      : Name in the target language (dict). TODO: show structure of dict
                           Variables with derivatives have multiple target names
    '''
     def __init__(self, kids=[], loc=None, dat=None, 
-                        attrName=None, multiAttrNames=None, className=None, role=RoleAny, 
-                        isSubmodel=None, isStateVariable=None, targetName=None):
+                        attrName=None, className=None, role=RoleAny, targetName=None):
         super(NodeAttrDef, self).__init__(kids, loc, dat)
         self.attrName = attrName 
         self.className = className
         self.role = role
-        #self.isSubmodel = isSubmodel #TODO: rename into isAtomic
-        self.isStateVariable = isStateVariable #TODO: remove. can be expressed with role
+        #self.isAtomic = isAtomic 
         self.targetName = targetName 
     
     

@@ -277,9 +277,9 @@ class ParseStage(object):
 
     def _actionAssignment(self, str, loc, toks):
         '''
-        Create node for assignment: a := 2*b
+        Create node for assignment: a = 2*b
         BNF:
-        assignment = Group(valAccess + ':=' + expression + ';')
+        assignment = Group(valAccess + '=' + expression + ';')
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
@@ -313,7 +313,7 @@ class ParseStage(object):
 
     def _actionStatementList(self, str, loc, toks):
         '''
-        Create node for list of statements: a:=1; b:=2; ...
+        Create node for list of statements: a=1; b=2; ...
         BNF:
         statementList << Group(OneOrMore(statement))
         '''
@@ -362,7 +362,10 @@ class ParseStage(object):
             if toks.attrRole == 'parameter':
                 attrDef.role = RoleParameter
             else:
-                attrDef.role = RoleVariable
+                #we do not know if variable or parameter; submodels will be 
+                #labled variables even thoug these categories don't apply 
+                #to them.
+                attrDef.role = RoleVariable 
             attrDefList.appendChild(attrDef)
         #Special case: only one attribute defined 
         if len(attrDefList) == 1:
@@ -373,7 +376,7 @@ class ParseStage(object):
 
     def _actionBlockDefinition(self, str, loc, toks):
         '''
-        Create node for definition of a block: block run a:=1; end
+        Create node for definition of a block: block run a=1; end
         BNF:
         runBlock = Group(   kw('block') + blockName +
                             OneOrMore(statement) + 
@@ -544,7 +547,7 @@ class ParseStage(object):
                         kw('end'))                                  .setParseAction(self._actionIfStatement)\
                                                                     .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
-        assignment = Group(valAccess + ':=' + expression + ';')     .setParseAction(self._actionAssignment)\
+        assignment = Group(valAccess + '=' + expression + ';')     .setParseAction(self._actionAssignment)\
                                                                     .setName('assignment')#.setDebug(True)
         #execute a block - insert code of a child model
         blockName = kw('run') | kw('init') #| kw('insert')
@@ -849,16 +852,24 @@ class ILTProcessGenerator(object):
     def findStateVariables(self, dynamicMethod):
         '''
         Search for variables with a $ and mark them:
-            1.: in their definition set isStateVariable = True
+            1.: in their definition set role = RoleStateVariable; 
             2.: put them into self.stateVariables.
+        All other variables are considered algebraic variables and in their
+        definition role = RoleAlgebraicVariable.
         Arguments:
             dynamicMethod : method definition that is searched (always the 
                             dynamic/run method)
         output:
             self.stateVariables    : dict: {('a','b'):NodeAttrDef(...)}
-            definition of variable : isStateVariable = True if variable is 
-                                     state variable
+            definition of variable : role = RoleStateVariable if variable is 
+                                     state variable; 
+                                     role = RoleAlgebraicVariable otherwise.
         '''
+        #initialization: in all variable definitions set role = RoleAlgebraicVariable
+        for varDef in self.processAttributes.itervalues():
+            if varDef.role != RoleVariable:
+                continue
+            varDef.role = RoleAlgebraicVariable
         #iterate over all nodes in the syntax tree and search for variable accesses
         for node in dynamicMethod.iterDepthFirst():
             if not isinstance(node, NodeAttrAccess):
@@ -866,15 +877,15 @@ class ILTProcessGenerator(object):
             #State variables are those that have time derivatives
             if node.deriv != ('time',):
                 continue
-            
+            #OK, there is a '$' operator; the thing is a state variable
             #get definition of variable 
             stateVarDef = self.processAttributes[node.attrName]
             #Check conceptual constraint: no $parameter allowed
-            if stateVarDef.role == 'par':
+            if stateVarDef.role == RoleParameter:
                 raise UserException('Parameters can not be state variables: ' +
                               makeDotName(node.attrName), node.loc)
             #remember: this is a state variable; in definition and in dict
-            stateVarDef.isStateVariable = True
+            stateVarDef.role = RoleStateVariable
             self.stateVariables[node.attrName] = stateVarDef
     
     
@@ -1022,11 +1033,11 @@ class ILTProcessGenerator(object):
             lVal = node.lhs() #must be NodeValAccess
             lValDef = self.processAttributes[lVal.attrName]
             #No assignment to parameters 
-            if lValDef.role == 'par':
+            if lValDef.role == RoleParameter:
                 raise UserException('Illegal assignment to parameter: ' + 
                                     makeDotName(lVal.attrName), lVal.loc)
             #No assignment to state variables - only to their time derivatives
-            if lValDef.isStateVariable and (lVal.deriv != ('time',)):
+            if lValDef.role == RoleStateVariable and (lVal.deriv != ('time',)):
                 raise UserException('Illegal assignment to state variable: ' + 
                                     makeDotName(lVal.attrName) + 
                                     '. You must however assign to its time derivative. ($' + 
@@ -1191,14 +1202,14 @@ model Test
     data A_bott, A_o, mu, q, g: Real parameter;
     
     block run
-        h := V/A_bott;
-        $V := q - mu*A_o*sqrt(2*g*h);
+        h = V/A_bott;
+        $V = q - mu*A_o*sqrt(2*g*h);
     end
     
     block init
-        V := 0;
-        A_bott := 1; A_o := 0.02; mu := 0.55;
-        q := 0.05;
+        V = 0;
+        A_bott = 1; A_o = 0.02; mu = 0.55;
+        q = 0.05;
     end
 end
 
@@ -1210,10 +1221,10 @@ process RunTest
         run test;
     end
     block init
-        g := 9.81;
+        g = 9.81;
         init test;
-        solutionParameters.simulationTime := 100;
-        solutionParameters.reportingInterval := 1;
+        solutionParameters.simulationTime = 100;
+        solutionParameters.reportingInterval = 1;
     end
 end
 ''' )
@@ -1225,10 +1236,10 @@ model Test
     var a;
 
     block run
-        $a := 0.5;
+        $a = 0.5;
     end
     block init
-        a := 1;
+        a = 1;
     end
 end
 
@@ -1274,7 +1285,7 @@ end
         #print parser.parseProgram(testProg2)
 
         print parser.parseProgram(testProg1)
-        #print parser.parseProgram('if a==0 then b:=-1; else b:=2+3+4; a:=1; end')
+        #print parser.parseProgram('if a==0 then b=-1; else b=2+3+4; a=1; end')
         #print parser.parseExpression('0*1*2*3*4').asList()[0]
         #print parser.parseExpression('0^1^2^3^4')
         #print parser.parseExpression('0+1*2+3+4').asList()[0]

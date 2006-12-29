@@ -245,9 +245,9 @@ class ProcessGenerator(object):
                 continue
             if attrDef.role == RoleParameter:
                 self.parameters[attrDef.attrName] = attrDef
-            elif attrDef.role == RoleVariable and not attrDef.isStateVariable: #TODO: RoleStateVariable
+            elif attrDef.role == RoleAlgebraicVariable: 
                 self.algebraicVariables[attrDef.attrName] = attrDef
-            elif attrDef.role == RoleVariable and attrDef.isStateVariable:
+            elif attrDef.role == RoleStateVariable:
                 self.stateVariables[attrDef.attrName] = attrDef
             else:
                 raise PyGenException('Unknown attribute definition:\n'+ str(attrDef))
@@ -608,14 +608,14 @@ model Test
     data A_bott, A_o, mu, q, g: Real parameter;
     
     block run
-        h := V/A_bott;
-        $V := q - mu*A_o*sqrt(2*g*h);
+        h = V/A_bott;
+        $V = q - mu*A_o*sqrt(2*g*h);
     end
     
     block init
-        V := 0;
-        A_bott := 1; A_o := 0.02; mu := 0.55;
-        q := 0.05;
+        V = 0;
+        A_bott = 1; A_o = 0.02; mu = 0.55;
+        q = 0.05;
     end
 end
 
@@ -627,10 +627,10 @@ process RunTest
         run test;
     end
     block init
-        g := 9.81;
+        g = 9.81;
         init test;
-        solutionParameters.simulationTime := 100;
-        solutionParameters.reportingInterval := 1;
+        solutionParameters.simulationTime = 100;
+        solutionParameters.reportingInterval = 1;
     end
 end
 ''' )
@@ -642,10 +642,10 @@ model Test
     var a;
 
     block run
-        $a := 0.5;
+        $a = 0.5;
     end
     block init
-        a := 1;
+        a = 1;
     end
 end
 

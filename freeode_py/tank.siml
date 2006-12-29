@@ -3,18 +3,18 @@ model Tank
     data A_bott, A_o, mu, qIn, g: Real parameter;
 
     block run
-        h := V/A_bott;
-        qOut := mu*A_o*sqrt(2*g*h);
-        $V := qIn - qOut;
+        h = V/A_bott;
+        qOut = mu*A_o*sqrt(2*g*h);
+        $V = qIn - qOut;
     end
 
     block init
-        V := 0;
-        A_bott := 1.2;
-        A_o := 0.02; 
-        mu := 0.55; 
-        #g := 9.81; 
-        qIn := 0.05;
+        V = 0;
+        A_bott = 1.2;
+        A_o = 0.02; 
+        mu = 0.55; 
+        #g = 9.81; 
+        qIn = 0.05;
     end
 end
 
@@ -26,10 +26,10 @@ process FillTank
         run t;
     end
     block init
-        g := 9.81;
+        g = 9.81;
         init t;
-        solutionParameters.simulationTime := 150;
-        solutionParameters.reportingInterval := 1;
+        solutionParameters.simulationTime = 150;
+        solutionParameters.reportingInterval = 1;
     end
 end
 
