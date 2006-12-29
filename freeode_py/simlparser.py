@@ -22,6 +22,7 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
+from pyparsing import ZeroOrMore
 from symbol import classdef
 
 __doc__ = \
@@ -327,7 +328,7 @@ class ParseStage(object):
             nCurr.kids.append(tok)
         return nCurr
 
-#---- _actionAttrDefinition ---------------------------
+
     def _actionAttrDefinition(self, str, loc, toks):
         '''
         Create node for defining parameter, variable or submodel: 
@@ -373,25 +374,29 @@ class ParseStage(object):
         else:
             return attrDefList #return list with multiple definitions
         
-
-    def _actionBlockDefinition(self, str, loc, toks):
+#--- _actionFuncDefinition -----------------------------------------------
+    def _actionFuncDefinition(self, str, loc, toks):
         '''
-        Create node for definition of a block: block run a=1; end
+        Create node for definition of a (member) function: 
+            func init(): a=1; end
         BNF:
-        runBlock = Group(   kw('block') + blockName +
-                            OneOrMore(statement) + 
-                            kw('end'))
-        '''
+        memberFuncDef = Group(kw('func') 
+                              + identifier                           .setResultsName('funcName') 
+                              + '(' + ')' + ':'
+                              + ZeroOrMore(statement)                .setResultsName('funcBody', True)
+                              + kw('end'))        '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeBlockDef()
+        tokList = toks.asList()[0] #there always seems to be 
+        toks = toks[0]             #an extra pair of brackets
+        nCurr = NodeFuncDef()
         nCurr.loc = loc #Store position 
         #store name of block 
-        nCurr.name = (tokList[1],)
+        nCurr.name = (toks.funcName,)
         #create children - each child is a statement
-        for tok in tokList[2:len(tokList)-1]:
-            nCurr.kids.append(tok)
+        statements = toks.funcBody.asList()[0]
+        for stmt1 in statements:
+            nCurr.appendChild(stmt1)
         return nCurr
 
 
@@ -577,28 +582,19 @@ class ParseStage(object):
                              + Optional(attrRole)                    .setResultsName('attrRole') 
                              + ';')                                  .setParseAction(self._actionAttrDefinition)\
                                                                      .setName('attributeDef')#.setDebug(True)
-
-        #The statements (equations) that determine the system dynamics go here
-        runBlock = Group(   kw('block') + kw('run') +
-                            #statementList +
-                            OneOrMore(statement) + 
-                            kw('end'))                              .setParseAction(self._actionBlockDefinition)\
-                                                                    .setName('runBlock')#.setDebug(True)
-
-        #The initialization code goes here
-        initBlock = Group(  kw('block') + kw('init') +
-                            #statementList +
-                            OneOrMore(statement) + 
-                            kw('end'))                              .setParseAction(self._actionBlockDefinition)\
-                                                                    .setName('initBlock')#.setDebug(True)
-
+        #define member function (method) - function arguments are currently missing
+        memberFuncDef = Group(kw('func') 
+                              + identifier                           .setResultsName('funcName') 
+                              + '(' + ')' + ':'
+                              + ZeroOrMore(statement)                .setResultsName('funcBody', True)
+                              + kw('end'))                           .setParseAction(self._actionFuncDefinition)\
+                                                                     .setName('runBlock')#.setDebug(True)
+        #definition of a class (process, model, type?)
         classRole = kw('process') | kw('model') #| kw('paramset')
         classDef = Group(   classRole + identifier +
                             #Optional(definitionList) +
                             OneOrMore(attributeDef) +
-                            Optional(runBlock) +
-                            Optional(initBlock)  +
-                            #TODO: Optional(finalBlock)  + #Method where graphs are displayed and vars are stored
+                            ZeroOrMore(memberFuncDef) +
                             kw('end'))                              .setParseAction(self._actionClassDef)\
                                                                     .setName('classDef')#.setDebug(True)
 
@@ -748,7 +744,7 @@ class ILTProcessGenerator(object):
             #get attribute name
             if isinstance(attrDef, NodeAttrDef): #definition of data attribute or submodel
                 attrName = attrDef.attrName
-            elif isinstance(attrDef, NodeBlockDef): #definition of block (function)
+            elif isinstance(attrDef, NodeFuncDef): #definition of block (function)
                 attrName = attrDef.name
             else:
                 raise ILTGenException('Unknown Node.' + repr(attrDef))
@@ -1079,14 +1075,16 @@ class ILTProcessGenerator(object):
         self.copyDataAttributes()
         #create the new process' blocks (methods)
         runBlock, initBlock, blockCount = None, None, 0
+        #TODO: add function 'final': Method where graphs are displayed and vars are stored
         for block in self.astProcess:
-            if not isinstance(block, NodeBlockDef):
+            if not isinstance(block, NodeFuncDef):
                 continue
             #create the new method (block) definition
-            newBlock = NodeBlockDef() 
+            newBlock = NodeFuncDef() 
             newBlock.name = block.name
             blockCount += 1 #count the number of blocks
             #determine which methods can be executed in this method
+            #TODO: change 'run' to 'dynamic'
             if block.name == ('run',):
                 allowedBlocks = [('run',)] #list of compatible methods
                 runBlock = newBlock     #remember which block is which
@@ -1201,12 +1199,12 @@ model Test
     data V, h: Real;
     data A_bott, A_o, mu, q, g: Real parameter;
     
-    block run
+    func run():
         h = V/A_bott;
         $V = q - mu*A_o*sqrt(2*g*h);
     end
     
-    block init
+    func init():
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
         q = 0.05;
@@ -1217,10 +1215,11 @@ process RunTest
     data g: Real parameter;
     data test: Test;
     
-    block run
+    func run():
         run test;
     end
-    block init
+    
+    func init():
         g = 9.81;
         init test;
         solutionParameters.simulationTime = 100;

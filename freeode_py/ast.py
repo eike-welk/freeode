@@ -98,7 +98,6 @@ class Node(object):
         #appendChild checks the type
         for child in kids:
             self.appendChild(child)
-            
         self.loc  = loc
         '''the location in the program'''
         self.dat = dat      
@@ -241,7 +240,6 @@ class NodeParentheses(Node):
 class NodeOpInfix2(Node):     
     '''
     AST node for a (binary) infix operator: + - * / ^ and or
-        typ     : type string, usually: 'm_i2'
         kids    : [LHS, RHS] both sides of the operator
         loc     : location in input string
         dat     : operator symbol e.g.: '+'
@@ -263,8 +261,7 @@ class NodeOpInfix2(Node):
 class NodeOpPrefix1(Node):
     '''
     AST node for a (unary) prefix operator: - not
-        typ     : type string, usually: 'm_p1'
-        kids    : [RHS] the term on which the operator acts
+       kids    : [RHS] the term on which the operator acts
         loc     : location in input string
         dat     : operator symbol e.g.: '-'
     '''
@@ -283,7 +280,6 @@ class NodeIfStmt(Node):
     '''
     AST Node for an if ... the ... else statement
     Data attributes:
-        typ     : type string, usually: 'valA'
         kids    : [<condition>, <then staements>, <else statements>]
         loc     : location in input string
         dat     : None
@@ -295,7 +291,6 @@ class NodeIfStmt(Node):
 class NodeAssignment(Node):
     '''
     AST node for an assignment: '='
-        typ     : type string, usually: 'assign'
         kids    : [LHS, RHS] both sides of the assignment operator
         loc     : location in input string
         dat     : '='
@@ -361,7 +356,6 @@ class RoleAlgebraicVariable(RoleVariable):
 class NodeAttrDef(Node):
     '''
     AST node for definition of a variable, parameter or submodel.
-        typ         : type string, usually: 'defAttr'
         kids        : []
         loc         : location in input string
         dat         : None     
@@ -394,7 +388,6 @@ class NodeAttrAccess(Node):
     '''
     AST node for access to a variable or parameter.
     Data attributes:
-        typ     : type string, usually: 'valA'
         kids    :  ? slice object if attribute is an array?
         loc     : location in input string
         dat     : None
@@ -413,7 +406,7 @@ class NodeAttrAccess(Node):
         self.targetName = targetName
                 
 
-class NodeBlockDef(Node):
+class NodeFuncDef(Node):
     """
     AST node for block (method, function?) definition.
     
@@ -422,12 +415,15 @@ class NodeBlockDef(Node):
     function or template.
     
     The block's childern are the statements.
+    Data attributes:
+        kids :  The statements, the block's code.
+        loc  : location in input string
+        dat  : None
+        
+        name : name of the block; tuple of strings: ('init',)
     """
     def __init__(self, kids=[], loc=None, dat=None, name=None):
-        '''
-        name : name of the block
-        '''
-        super(NodeBlockDef, self).__init__(kids, loc, dat)
+        super(NodeFuncDef, self).__init__(kids, loc, dat)
         self.name = name
 
 

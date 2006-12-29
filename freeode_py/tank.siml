@@ -2,13 +2,13 @@ model Tank
     data V, h, qOut: Real;
     data A_bott, A_o, mu, qIn, g: Real parameter;
 
-    block run
+    func run():
         h = V/A_bott;
         qOut = mu*A_o*sqrt(2*g*h);
         $V = qIn - qOut;
     end
 
-    block init
+    func init():
         V = 0;
         A_bott = 1.2;
         A_o = 0.02; 
@@ -22,10 +22,10 @@ process FillTank
     data t: Tank;
 	data g: Real parameter;
 	
-    block run
+    func run():
         run t;
     end
-    block init
+    func init():
         g = 9.81;
         init t;
         solutionParameters.simulationTime = 150;

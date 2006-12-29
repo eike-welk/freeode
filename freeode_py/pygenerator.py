@@ -335,7 +335,7 @@ class ProcessGenerator(object):
         '''Generate method that initializes variables and parameters'''
         #search the process' init method
         for initMethod in self.iltProcess:
-            if isinstance(initMethod, NodeBlockDef) and \
+            if isinstance(initMethod, NodeFuncDef) and \
                initMethod.name == ('init',):
                 break
         #write method definition
@@ -393,7 +393,7 @@ class ProcessGenerator(object):
         '''Generate the method that contains the differential equations'''
         #search the process' dynamic method
         for dynMethod in self.iltProcess:
-            if isinstance(dynMethod, NodeBlockDef) and \
+            if isinstance(dynMethod, NodeFuncDef) and \
                dynMethod.name == ('run',):
                 break
         #write method definition
