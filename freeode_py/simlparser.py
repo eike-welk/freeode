@@ -22,6 +22,7 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
+from symbol import classdef
 
 __doc__ = \
 '''
@@ -305,8 +306,8 @@ class ParseStage(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeBlockExecute()
         nCurr.loc = loc #Store position 
-        nCurr.blockName = tokList[0]    #block name - operator
-        nCurr.subModelName = tokList[1] #Name of model from where block is taken
+        nCurr.blockName = (tokList[0],)    #block name - operator
+        nCurr.subModelName = (tokList[1],) #Name of model from where block is taken
         return nCurr
 
 
@@ -326,37 +327,49 @@ class ParseStage(object):
             nCurr.kids.append(tok)
         return nCurr
 
-
+#---- _actionAttrDefinition ---------------------------
     def _actionAttrDefinition(self, str, loc, toks):
         '''
-        Create node for defining parameterr, variable or submodel: var foo;
+        Create node for defining parameter, variable or submodel: 
+            'data foo, bar: baz.boo parameter;
+        One such statement can define multiple parmeters; and an individual
+        NodeAttrDef is created for each. They are returned together inside a 
+        list node of type NodeAttrDefMulti.
         BNF:
-        defRole = kw('par') | kw('var') | kw('sub') 
-        attributeDef = Group(defRole + identifier + 
-                             Optional(kw('as') + identifier + ';'))
+        attrNameList = Group( identifier + 
+                                ZeroOrMore(',' + identifier))
+        attrRole = kw('parameter') | kw('variable')
+        #parse 'data foo, bar: baz.boo parameter;
+        attributeDef = Group(kw('data') 
+                             + attrNameList                          .setResultsName('attrNameList') 
+                             + ':' + dotIdentifier                   .setResultsName('className') 
+                             + Optional(attrRole)                    .setResultsName('attrRole') 
+                             + ';')                                  
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeAttrDef()
-        nCurr.loc = loc #Store position 
-        #These are aways present
-        roleStr = tokList[0]                    #var, par, sub
-        #TODO: change attrName into tuple(tokList[1]) ?
-        nCurr.attrName = tokList[1] #identifier; name of the attribute
-        #attribute is a submodel
-        if roleStr == 'sub':
-            nCurr.className = tokList[3]
-            nCurr.isSubmodel = True
-            nCurr.role = None
-        #attribute is a variable or parameter
+        #tokList = toks.asList()[0] #there always seems to be 
+        toks = toks[0]             #an extra pair of brackets
+        #multiple attributes can be defined in a single statement
+        #Create a node for each of them and put them into a statemnt list
+        attrDefList = NodeAttrDefMulti(loc=loc)
+        nameList = toks.attrNameList.asList()
+        for name in nameList:
+            attrDef = NodeAttrDef(loc=loc)
+            attrDef.attrName = tuple([name]) #store attribute name
+            attrDef.className = tuple(toks.className.asList())  #store class name
+            #store the role 
+            if toks.attrRole == 'parameter':
+                attrDef.role = RoleParameter
+            else:
+                attrDef.role = RoleVariable
+            attrDefList.appendChild(attrDef)
+        #Special case: only one attribute defined 
+        if len(attrDefList) == 1:
+            return attrDefList[0] #take it out of the list and return it
         else:
-            nCurr.className = 'Real'
-            nCurr.isSubmodel = False
-            nCurr.isStateVariable = False
-            nCurr.role = roleStr
-        return nCurr
-
+            return attrDefList #return list with multiple definitions
+        
 
     def _actionBlockDefinition(self, str, loc, toks):
         '''
@@ -372,7 +385,7 @@ class ParseStage(object):
         nCurr = NodeBlockDef()
         nCurr.loc = loc #Store position 
         #store name of block 
-        nCurr.name = tokList[1]
+        nCurr.name = (tokList[1],)
         #create children - each child is a statement
         for tok in tokList[2:len(tokList)-1]:
             nCurr.kids.append(tok)
@@ -397,7 +410,7 @@ class ParseStage(object):
         nCurr.loc = loc #Store position 
         #store role and class name - these are always present
         nCurr.role = tokList[0]
-        nCurr.className = tokList[1]
+        nCurr.className = (tokList[1],)
         #create children (may or may not be present):  definitions, run block, init block
         for tok in tokList[2:len(tokList)-1]:
             nCurr.kids.append(tok)
@@ -514,18 +527,20 @@ class ParseStage(object):
         #Compound identifiers for variables or parameters 'aaa.bbb'.
         #TODO: add slices: aaa.bbb(2:3)
         dotSup = Literal('.').suppress()
+        dotIdentifier = Group(identifier +
+                              ZeroOrMore(dotSup + identifier))  .setName('dotIdentifier')#.setDebug(True)
         valAccess << Group( Optional('$') +
                             identifier +
-                            ZeroOrMore(dotSup  + identifier) )  .setParseAction(self._actionAttributeAccess) \
+                            ZeroOrMore(dotSup + identifier) )   .setParseAction(self._actionAttributeAccess) \
                                                                 .setName('valAccess')#.setDebug(True)
 
         #..................... Statements ..............................................................
         statementList = Forward()
         #Flow control - if then else
         ifStatement = Group(
-                        kw('if') + boolExpression + kw('then') +
+                        kw('if') + boolExpression + ':' +
                         statementList +
-                        Optional(kw('else') + statementList) +
+                        Optional(kw('else:') + statementList) +
                         kw('end'))                                  .setParseAction(self._actionIfStatement)\
                                                                     .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
@@ -542,13 +557,23 @@ class ParseStage(object):
 
 #---------- Class Def ---------------------------------------------------------------------*
         #define parameters, variables and submodels
-        defRole = kw('par') | kw('var') | kw('sub') 
-        attributeDef = Group(defRole + identifier + 
-                             Optional(kw('as') + identifier) + ';') .setParseAction(self._actionAttrDefinition)\
-                                                                    .setName('attributeDef')#.setDebug(True)
-        #Note: For the AST this is also a statementList-'stmtList'
-#        definitionList = Group(OneOrMore(attributeDef))             .setParseAction(AddMetaDict('stmtList'))\
-#                                                                    .setName('definitionList')#.setDebug(True)
+#        defRole = kw('par') | kw('var') | kw('sub') 
+#        attributeDef = Group(defRole + identifier + 
+#                             Optional(kw('as') + identifier) + ';') .setParseAction(self._actionAttrDefinition)\
+#                                                                    .setName('attributeDef')#.setDebug(True)
+        #define parameters, variables and submodels
+        #parse: 'foo, bar, baz
+        commaSup = Literal(',').suppress()
+        attrNameList = Group( identifier + 
+                                ZeroOrMore(commaSup + identifier))   .setName('attrNameList')
+        attrRole = kw('parameter') | kw('variable')
+        #parse 'data foo, bar: baz.boo parameter;
+        attributeDef = Group(kw('data') 
+                             + attrNameList                          .setResultsName('attrNameList') 
+                             + ':' + dotIdentifier                   .setResultsName('className') 
+                             + Optional(attrRole)                    .setResultsName('attrRole') 
+                             + ';')                                  .setParseAction(self._actionAttrDefinition)\
+                                                                     .setName('attributeDef')#.setDebug(True)
 
         #The statements (equations) that determine the system dynamics go here
         runBlock = Group(   kw('block') + kw('run') +
@@ -670,6 +695,8 @@ class ILTProcessGenerator(object):
         '''Attributes of the new process: {('mod1', 'var1'):NodeAttrDef}'''
         self.stateVariables = {}
         '''State variables of the new process; {('mod1', 'var1'):NodeAttrDef}'''
+        self.atomicClasses = set([('Real',),('Distribution',),('DistributionDomain',)])
+        '''Classes that have no internal structure'''
         
         #populate self.classes and self.processes 
         self.findClassesInAst()
@@ -693,9 +720,8 @@ class ILTProcessGenerator(object):
          built-in values, like pi.
         '''
         #Put solutionparameters as first attribute into the process
-        solParAttr = NodeAttrDef(loc=0, attrName='solutionParameters', 
-                                 className='solutionParametersClass',
-                                 isSubmodel=True)
+        solParAttr = NodeAttrDef(loc=0, attrName=('solutionParameters',), 
+                                 className=('solutionParametersClass',))
         self.astProcess.insertChild(0, solParAttr)
         
         
@@ -724,7 +750,7 @@ class ILTProcessGenerator(object):
             else:
                 raise ILTGenException('Unknown Node.' + repr(attrDef))
             #prepend prefix to attribute name 
-            longAttrName = namePrefix + (attrName,)
+            longAttrName = namePrefix + attrName
             #Check redefinition
             if longAttrName in self.astProcessAttributes:
                 raise UserException('Redefinition of: ' + makeDotName(longAttrName), attrDef.loc)
@@ -732,10 +758,13 @@ class ILTProcessGenerator(object):
             self.astProcessAttributes[longAttrName] = attrDef
             
             #recurse into submodel, if definition of submodel 
-            if isinstance(attrDef, NodeAttrDef) and attrDef.isSubmodel:                
+            if isinstance(attrDef, NodeAttrDef) and \
+              (not attrDef.className in self.atomicClasses):                
                 #User visible error if class does not exist
                 if not attrDef.className in self.astClasses:
-                    raise UserException('Undefined class: ' + attrDef.className, attrDef.loc)
+                    raise UserException('Undefined class: ' 
+                                        + makeDotName(attrDef.className), 
+                                        attrDef.loc)
                 subModel = self.astClasses[attrDef.className]
                 self.findAttributesRecursive(subModel, longAttrName)
         
@@ -748,8 +777,9 @@ class ILTProcessGenerator(object):
         '''
         #Iterate over the (variable, parameter, submodel, function) definitions
         for longName, defStmt in self.astProcessAttributes.iteritems():
-            #we only care for data attributes
-            if (not isinstance(defStmt, NodeAttrDef)) or defStmt.isSubmodel:
+            #we only want atomic data! No user defined classes, no methods
+            if (not isinstance(defStmt, NodeAttrDef)) or \
+               (not defStmt.className in self.atomicClasses):
                 continue
             newAttr = defStmt.copy() #copy definition, 
             newAttr.attrName = longName #exchange name with long name (a.b.c)
@@ -764,15 +794,15 @@ class ILTProcessGenerator(object):
         Copies all statements of block and all statements of blocks that are 
         executed in this block, recursively.
             block          : A block definition 
-            namePrefix     : a list of strings. prefix for all variable names.
+            namePrefix     : a tuple of strings. prefix for all variable names.
             newBlock       : the statements are copied here
             allowedBlocks  : ['run'] or ['init']
         '''
         for statement in block:
             #Block execution statement: include the called blocks variables
             if isinstance(statement, NodeBlockExecute):
-                subModelName = namePrefix + [statement.subModelName]
-                subBlockName = subModelName + [statement.blockName]
+                subModelName = namePrefix + statement.subModelName
+                subBlockName = subModelName + statement.blockName
                 #Error if submodel or method does not exist
                 if not tuple(subModelName) in self.astProcessAttributes:
                     raise UserException('Undefined submodel: ' + 
@@ -856,7 +886,7 @@ class ILTProcessGenerator(object):
         #iterate over all nodes in the syntax tree and search for variable accesses
         for name, attrDef in self.processAttributes.iteritems():
             #we only want to see parameters
-            if attrDef.role != 'par':
+            if attrDef.role != RoleParameter:
                 continue
             #put parameter definition in dict
             paramDict[name] = attrDef
@@ -1046,18 +1076,18 @@ class ILTProcessGenerator(object):
             newBlock.name = block.name
             blockCount += 1 #count the number of blocks
             #determine which methods can be executed in this method
-            if block.name == 'run':
-                allowedBlocks = ['run'] #list of compatible methods
+            if block.name == ('run',):
+                allowedBlocks = [('run',)] #list of compatible methods
                 runBlock = newBlock     #remember which block is which
-            elif block.name == 'init':
-                allowedBlocks = ['init']
+            elif block.name == ('init',):
+                allowedBlocks = [('init',)]
                 initBlock = newBlock
             else:
-                raise UserException('Illegal method: ' + str(block.name), 
+                raise UserException('Illegal method: ' + makeDotName(block.name), 
                                     block.loc)
             #copy the statements, and put new method into new procedure
-            self.copyBlockRecursive(block, [], newBlock, allowedBlocks) 
-            self.process.kids.append(newBlock) #put new block into process
+            self.copyBlockRecursive(block, tuple(), newBlock, allowedBlocks) 
+            self.process.appendChild(newBlock) #put new block into process
         
         if (not runBlock) or (not initBlock) or (blockCount != 2):
             raise UserException('Process must contain exactly one run method ' + 
@@ -1094,25 +1124,49 @@ class ILTGenerator(object):
          built-in values and functions, like pi, sin(x).
         '''
         #Create the solution parameters' definition
-        solPars = NodeClassDef(loc=0, name='solutionParametersClass', 
+        solPars = NodeClassDef(loc=0, name=('solutionParametersClass',), 
                                role='model')
-        solPars.appendChild(NodeAttrDef(loc=0, attrName='simulationTime', 
-                                        className='Real', role='par'))
-        solPars.appendChild(NodeAttrDef(loc=0, attrName='reportingInterval', 
-                                        className='Real', role='par'))
+        solPars.appendChild(NodeAttrDef(loc=0, attrName=('simulationTime',), 
+                                        className=('Real',), role=RoleParameter))
+        solPars.appendChild(NodeAttrDef(loc=0, attrName=('reportingInterval',), 
+                                        className=('Real',), role=RoleParameter))
         #add solutionparameTers to AST, and update class dict
         astRoot.insertChild(0, solPars) 
 
 
+
+    def replaceMultiAttributeDefinitions(self, astRoot):
+        '''
+        Some attribute definitions are in statement lists. Take them out
+        and put them one level higher.
+        '''
+        #iterate over all class definitions
+        for classDef in astRoot:
+            if not isinstance(classDef, NodeClassDef):
+                continue
+            #iterate over all attribute definitions
+            for i in range(len(classDef)):
+                attrDefList = classDef[i]
+                if not isinstance(attrDefList, NodeAttrDefMulti):
+                    continue
+                #put the attribute definitions one level up into NodeClassDef
+                for attrDef in attrDefList:
+                    classDef.insertChild(i+1, attrDef)
+                #remove the list
+                classDef.delChild(i)
+                
+            
     def createIntermediateTree(self, astRoot):
         '''generate ILT tree from AST tree'''
         #add built ins to AST
         self.addBuiltInClasses(astRoot)
+        #possible replacements in ech class of ast
+        self.replaceMultiAttributeDefinitions(astRoot)
         #create ILT root node
         iltRoot = NodeProgram()
         
         procGen = ILTProcessGenerator(astRoot)
-        #searc for processes in the AST and instantiate them in the ILT
+        #search for processes in the AST and instantiate them in the ILT
         for processDef in astRoot:
             if ((not isinstance(processDef, NodeClassDef)) or 
                 (not processDef.role == 'process')):
@@ -1133,9 +1187,8 @@ def doTests():
     testProg1 = (
 '''
 model Test
-    var V; var h;
-    par A_bott; par A_o; par mu;
-    par q; par g;
+    data V, h: Real;
+    data A_bott, A_o, mu, q, g: Real parameter;
     
     block run
         h := V/A_bott;
@@ -1150,8 +1203,8 @@ model Test
 end
 
 process RunTest
-    par g;
-    sub test as Test;
+    data g: Real parameter;
+    data test: Test;
     
     block run
         run test;

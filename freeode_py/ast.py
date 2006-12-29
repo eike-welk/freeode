@@ -279,29 +279,6 @@ class NodeOpPrefix1(Node):
         return self.dat
     
         
-class NodeAttrAccess(Node):
-    '''
-    AST node for access to a variable or parameter.
-    Data attributes:
-        typ     : type string, usually: 'valA'
-        kids    :  ? slice object if attribute is an array?
-        loc     : location in input string
-        dat     : None
-        
-        deriv      : [],['time'] or list of distibution domains
-        attrName   : ['proc', 'model1', 'a'], list of strings; the dot separated name.
-        targetName : ??? name in the target language TODO:clarify this
-    '''
-    def __init__(self, kids=[], loc=None, dat=None, deriv=[], 
-                 attrName=[], targetName=None):
-        super(NodeAttrAccess, self).__init__(kids, loc, dat)
-        self.deriv = tuple(deriv)
-        self.attrName = tuple(attrName)
-        self.targetName = targetName
-        '''??? dictionary with the possibly multiple names in the target language 
-        TODO:clarify this; comment belongs to NodeAttrDef.'''
-        
-
 class NodeIfStmt(Node):
     '''
     AST Node for an if ... the ... else statement
@@ -355,6 +332,32 @@ class NodeStmtList(Node):
         super(NodeStmtList, self).__init__(kids, loc, dat)
 
 
+class AttributeRole(object):
+    '''
+    Constants to denote the role of an attribute.
+    
+    Intention to create someting like 
+    enums. Classes are objects in python; not only 
+    class instances.
+    '''
+    pass
+class RoleAny(AttributeRole):
+    '''The attribute's role is undecided'''
+    pass
+class RoleParameter(AttributeRole):
+    '''The attribute is a parameter'''
+    pass
+class RoleVariable(AttributeRole):
+    '''The attribute is a state or algebraic variable'''
+    pass
+class RoleStateVariable(RoleVariable):
+    '''The attribute is a state variable'''
+    pass
+class RoleAlgebraicVariable(RoleVariable):
+    '''The attribute is an algebraic variable'''
+    pass
+
+
 class NodeAttrDef(Node):
     '''
     AST node for definition of a variable, parameter or submodel.
@@ -363,26 +366,57 @@ class NodeAttrDef(Node):
         loc         : location in input string
         dat         : None     
         
-        attrName        : identifier; name of the attribute
-        className       : type of the attribute: Real for numbers, the class 
-                          name for sub-models.
-        role            : 'var', 'par' or None
+        attrName        : name of the attribute. can be dotted name which is stored 
+                          as a tuple of strings: ('aa', 'bb')
+        className       : type of the attribute; possibly dotted name: ('aa', 'bb')
+        role            : Is this attribute a state or algebraic variable, 
+                          or a parameter? must be AttributeRole subclass.
         isSubmodel      : True or False
         isStateVariable : True or False
-        targetName      : Name in the target language (list)
+        targetName      : Name in the target language (dict). TODO: show structure of dict
+                          Variables with derivatives have multiple target names
    '''
     def __init__(self, kids=[], loc=None, dat=None, 
-                        attrName=None, className=None, role=None, 
+                        attrName=None, multiAttrNames=None, className=None, role=RoleAny, 
                         isSubmodel=None, isStateVariable=None, targetName=None):
         super(NodeAttrDef, self).__init__(kids, loc, dat)
-        self.attrName = attrName #TODO: make this always a tuple. Currently AST: string ILT: tuple
+        self.attrName = attrName 
         self.className = className
         self.role = role
-        self.isSubmodel = isSubmodel
-        self.isStateVariable = isStateVariable
-        self.targetName = targetName #change into dict or list. vars with derivatives have multiple target names
+        #self.isSubmodel = isSubmodel #TODO: rename into isAtomic
+        self.isStateVariable = isStateVariable #TODO: remove. can be expressed with role
+        self.targetName = targetName 
+    
+    
+class NodeAttrDefMulti(NodeStmtList):
+    '''A list of attribute definitions.'''
+    def __init__(self, kids=[], loc=None, dat=None):
+        super(NodeAttrDefMulti, self).__init__(kids, loc, dat)
+       
+    
+class NodeAttrAccess(Node):
+    '''
+    AST node for access to a variable or parameter.
+    Data attributes:
+        typ     : type string, usually: 'valA'
+        kids    :  ? slice object if attribute is an array?
+        loc     : location in input string
+        dat     : None
         
-        
+        deriv      : Denote if a derivation operator acted on the attribute. 
+                     Empty tuple means no derivation took place. can be:
+                     (,),('time',) or tuple of distibution domains
+        attrName   : ['proc', 'model1', 'a'], list of strings; the dot separated name.
+        targetName : name in the target language (string)
+    '''
+    def __init__(self, kids=[], loc=None, dat=None, deriv=None, 
+                 attrName=None, targetName=None):
+        super(NodeAttrAccess, self).__init__(kids, loc, dat)
+        self.deriv = deriv
+        self.attrName = attrName
+        self.targetName = targetName
+                
+
 class NodeBlockDef(Node):
     """
     AST node for block (method, function?) definition.

@@ -243,11 +243,11 @@ class ProcessGenerator(object):
         for attrDef in self.iltProcess:
             if not isinstance(attrDef, NodeAttrDef):
                 continue
-            if attrDef.role == 'par':
+            if attrDef.role == RoleParameter:
                 self.parameters[attrDef.attrName] = attrDef
-            elif attrDef.role == 'var' and not attrDef.isStateVariable:
+            elif attrDef.role == RoleVariable and not attrDef.isStateVariable: #TODO: RoleStateVariable
                 self.algebraicVariables[attrDef.attrName] = attrDef
-            elif attrDef.role == 'var' and attrDef.isStateVariable:
+            elif attrDef.role == RoleVariable and attrDef.isStateVariable:
                 self.stateVariables[attrDef.attrName] = attrDef
             else:
                 raise PyGenException('Unknown attribute definition:\n'+ str(attrDef))
@@ -336,7 +336,7 @@ class ProcessGenerator(object):
         #search the process' init method
         for initMethod in self.iltProcess:
             if isinstance(initMethod, NodeBlockDef) and \
-               initMethod.name == 'init':
+               initMethod.name == ('init',):
                 break
         #write method definition
         outPy = self.outPy
@@ -394,7 +394,7 @@ class ProcessGenerator(object):
         #search the process' dynamic method
         for dynMethod in self.iltProcess:
             if isinstance(dynMethod, NodeBlockDef) and \
-               dynMethod.name == 'run':
+               dynMethod.name == ('run',):
                 break
         #write method definition
         outPy = self.outPy
@@ -604,35 +604,33 @@ if __name__ == '__main__':
     testProg1 = (
 '''
 model Test
-    var V; var h;
-    par A_bott; par A_o; par mu;
-    par q; par g;
-
+    data V, h: Real;
+    data A_bott, A_o, mu, q, g: Real parameter;
+    
     block run
         h := V/A_bott;
         $V := q - mu*A_o*sqrt(2*g*h);
     end
-
+    
     block init
         V := 0;
-        A_bott := 1;
-        A_o := 0.02; mu := 0.55;
+        A_bott := 1; A_o := 0.02; mu := 0.55;
         q := 0.05;
     end
 end
 
 process RunTest
-    sub test as Test;
-    par g;
-
+    data g: Real parameter;
+    data test: Test;
+    
     block run
         run test;
     end
     block init
         g := 9.81;
+        init test;
         solutionParameters.simulationTime := 100;
         solutionParameters.reportingInterval := 1;
-        init test;
     end
 end
 ''' )
