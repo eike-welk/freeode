@@ -22,9 +22,6 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
-from pyparsing import ZeroOrMore
-from symbol import classdef
-
 __doc__ = \
 '''
 Parser for the SIML simulation language.
@@ -297,18 +294,21 @@ class ParseStage(object):
 
     def _createBlockExecute(self, str, loc, toks):
         '''
-        Create node for execution of a block (insertion of the code): run foo
+        Create node for execution of a block (insertion of the code): 
+            call foo.init()
         BNF:
-        blockName = kw('run') | kw('init') #| kw('insert')
-        blockExecute = Group(blockName + subModelName + ';')
+        blockExecute = Group(kw('call') 
+                             + dotIdentifier    .setResultsName('funcName')
+                             + '(' + ')'
+                             + ';')             .setParseAction(self._createBlockExecute)\
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        #tokList = toks.asList()[0] #there always seems to be 
+        toks = toks[0]             #an extra pair of brackets
         nCurr = NodeBlockExecute()
         nCurr.loc = loc #Store position 
-        nCurr.blockName = (tokList[0],)    #block name - operator
-        nCurr.subModelName = (tokList[1],) #Name of model from where block is taken
+        nCurr.blockName = tuple(toks.funcName)    #full (dotted) function name
         return nCurr
 
 
@@ -374,7 +374,7 @@ class ParseStage(object):
         else:
             return attrDefList #return list with multiple definitions
         
-#--- _actionFuncDefinition -----------------------------------------------
+
     def _actionFuncDefinition(self, str, loc, toks):
         '''
         Create node for definition of a (member) function: 
@@ -387,7 +387,7 @@ class ParseStage(object):
                               + kw('end'))        '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        tokList = toks.asList()[0] #there always seems to be 
+        #tokList = toks.asList()[0] #there always seems to be 
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeFuncDef()
         nCurr.loc = loc #Store position 
@@ -419,7 +419,7 @@ class ParseStage(object):
         #store role and class name - these are always present
         nCurr.role = tokList[0]
         nCurr.className = (tokList[1],)
-        #create children (may or may not be present):  definitions, run block, init block
+        #create children (may or may not be present):  definitions, dynamic block, init block
         for tok in tokList[2:len(tokList)-1]:
             nCurr.kids.append(tok)
         return nCurr
@@ -552,11 +552,14 @@ class ParseStage(object):
                         kw('end'))                                  .setParseAction(self._actionIfStatement)\
                                                                     .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
-        assignment = Group(valAccess + '=' + expression + ';')     .setParseAction(self._actionAssignment)\
+        assignment = Group(valAccess + '=' + expression + ';')      .setParseAction(self._actionAssignment)\
                                                                     .setName('assignment')#.setDebug(True)
-        #execute a block - insert code of a child model
-        blockName = kw('run') | kw('init') #| kw('insert')
-        blockExecute = Group(blockName + identifier + ';')          .setParseAction(self._createBlockExecute)\
+        #execute a block - insert code of a child model 
+        #function arguments are currently missing
+        blockExecute = Group(kw('call') 
+                             + dotIdentifier                        .setResultsName('funcName')
+                             + '(' + ')'
+                             + ';')                                 .setParseAction(self._createBlockExecute)\
                                                                     .setName('blockExecute')#.setDebug(True)
 
         statement = (blockExecute | ifStatement | assignment)       .setName('statement')#.setDebug(True)
@@ -565,15 +568,10 @@ class ParseStage(object):
 
 #---------- Class Def ---------------------------------------------------------------------*
         #define parameters, variables and submodels
-#        defRole = kw('par') | kw('var') | kw('sub') 
-#        attributeDef = Group(defRole + identifier + 
-#                             Optional(kw('as') + identifier) + ';') .setParseAction(self._actionAttrDefinition)\
-#                                                                    .setName('attributeDef')#.setDebug(True)
-        #define parameters, variables and submodels
         #parse: 'foo, bar, baz
         commaSup = Literal(',').suppress()
-        attrNameList = Group( identifier + 
-                                ZeroOrMore(commaSup + identifier))   .setName('attrNameList')
+        attrNameList = Group(identifier 
+                             + ZeroOrMore(commaSup + identifier))    .setName('attrNameList')
         attrRole = kw('parameter') | kw('variable')
         #parse 'data foo, bar: baz.boo parameter;
         attributeDef = Group(kw('data') 
@@ -588,11 +586,10 @@ class ParseStage(object):
                               + '(' + ')' + ':'
                               + ZeroOrMore(statement)                .setResultsName('funcBody', True)
                               + kw('end'))                           .setParseAction(self._actionFuncDefinition)\
-                                                                     .setName('runBlock')#.setDebug(True)
+                                                                     .setName('memberFuncDef')#.setDebug(True)
         #definition of a class (process, model, type?)
         classRole = kw('process') | kw('model') #| kw('paramset')
         classDef = Group(   classRole + identifier +
-                            #Optional(definitionList) +
                             OneOrMore(attributeDef) +
                             ZeroOrMore(memberFuncDef) +
                             kw('end'))                              .setParseAction(self._actionClassDef)\
@@ -787,7 +784,7 @@ class ILTProcessGenerator(object):
         return
        
        
-    def copyBlockRecursive(self, block, namePrefix, newBlock, allowedBlocks):
+    def copyBlockRecursive(self, block, namePrefix, newBlock, illegalBlocks):
         '''
         Copy block into newBlock recursively. 
         Copies all statements of block and all statements of blocks that are 
@@ -795,27 +792,28 @@ class ILTProcessGenerator(object):
             block          : A block definition 
             namePrefix     : a tuple of strings. prefix for all variable names.
             newBlock       : the statements are copied here
-            allowedBlocks  : ['run'] or ['init']
+            illegalBlocks  : blocks (functions) that can not be called 
+                             (included) in this context.
         '''
         for statement in block:
             #Block execution statement: include the called blocks variables
             if isinstance(statement, NodeBlockExecute):
-                subModelName = namePrefix + statement.subModelName
-                subBlockName = subModelName + statement.blockName
+                subBlockName = namePrefix + statement.blockName #dotted block name
+                subModelName = subBlockName[:-1] #name of model, where block is defined
                 #Error if submodel or method does not exist
-                if not tuple(subModelName) in self.astProcessAttributes:
+                if not subModelName in self.astProcessAttributes:
                     raise UserException('Undefined submodel: ' + 
                                         str(subModelName), statement.loc)
-                if not tuple(subBlockName) in self.astProcessAttributes:
+                if not subBlockName in self.astProcessAttributes:
                     raise UserException('Undefined method: ' + 
                                         str(subBlockName), statement.loc)
                 #Check if executing (inlining) this block is allowed
-                if not (statement.blockName in allowedBlocks):
+                if statement.blockName in illegalBlocks:
                     raise UserException('Method can not be executed here: ' + 
                                         str(statement.blockName), statement.loc)
                 #find definition of method, and recurse into it.
-                subBlockDef = self.astProcessAttributes[tuple(subBlockName)] 
-                self.copyBlockRecursive(subBlockDef, subModelName, newBlock, allowedBlocks)
+                subBlockDef = self.astProcessAttributes[subBlockName] 
+                self.copyBlockRecursive(subBlockDef, subModelName, newBlock, illegalBlocks)
             #Any other statement: copy statement
             else:
                 newStmt = statement.copy()
@@ -823,11 +821,10 @@ class ILTProcessGenerator(object):
                 for var in newStmt.iterDepthFirst():
                     if not isinstance(var, NodeAttrAccess):
                         continue
-                    newAttrName = tuple(namePrefix) + var.attrName
-                    var.attrName = tuple(newAttrName)
+                    newAttrName = namePrefix + var.attrName
+                    var.attrName = newAttrName
                 #put new statement into new block
                 newBlock.appendChild(newStmt)
-
 
 
     def checkUndefindedReferences(self, tree):
@@ -1020,8 +1017,8 @@ class ILTProcessGenerator(object):
     
     
     
-    def checkRunMethodConstraints(self, block):
-        '''See if the method is a valid run method.'''
+    def checkDynamicMethodConstraints(self, block):
+        '''See if the method is a valid dynamic method.'''
         #iterate over all nodes in the syntax tree and search for assignments
         for node in block.iterDepthFirst():
             if not isinstance(node, NodeAssignment):
@@ -1074,7 +1071,8 @@ class ILTProcessGenerator(object):
         #create the new process' data attributes
         self.copyDataAttributes()
         #create the new process' blocks (methods)
-        runBlock, initBlock, blockCount = None, None, 0
+        dynamicBlock, initBlock, blockCount = None, None, 0
+        principalBlocks = set([('dynamic',),('init',),('final',)])
         #TODO: add function 'final': Method where graphs are displayed and vars are stored
         for block in self.astProcess:
             if not isinstance(block, NodeFuncDef):
@@ -1084,27 +1082,26 @@ class ILTProcessGenerator(object):
             newBlock.name = block.name
             blockCount += 1 #count the number of blocks
             #determine which methods can be executed in this method
-            #TODO: change 'run' to 'dynamic'
-            if block.name == ('run',):
-                allowedBlocks = [('run',)] #list of compatible methods
-                runBlock = newBlock     #remember which block is which
+            if block.name == ('dynamic',):
+                illegalBlocks = principalBlocks - set([('dynamic',)])
+                dynamicBlock = newBlock     #remember which block is which
             elif block.name == ('init',):
-                allowedBlocks = [('init',)]
+                illegalBlocks = principalBlocks - set([('init',)])
                 initBlock = newBlock
             else:
                 raise UserException('Illegal method: ' + makeDotName(block.name), 
                                     block.loc)
             #copy the statements, and put new method into new procedure
-            self.copyBlockRecursive(block, tuple(), newBlock, allowedBlocks) 
+            self.copyBlockRecursive(block, tuple(), newBlock, illegalBlocks) 
             self.process.appendChild(newBlock) #put new block into process
         
-        if (not runBlock) or (not initBlock) or (blockCount != 2):
-            raise UserException('Process must contain exactly one run method ' + 
+        if (not dynamicBlock) or (not initBlock) or (blockCount != 2):
+            raise UserException('Process must contain exactly one dynamic method ' + 
                                 'and one init method.', self.astProcess.loc)
         self.checkUndefindedReferences(self.process) #Check undefined refference
-        self.findStateVariables(runBlock) #Mark state variables
+        self.findStateVariables(dynamicBlock) #Mark state variables
         self.propagateParameters(initBlock) #rename some parameters
-        self.checkRunMethodConstraints(runBlock)
+        self.checkDynamicMethodConstraints(dynamicBlock)
         self.checkInitMethodConstraints(initBlock)
         
         #TODO: Check correct order of assignments (or initialization).
@@ -1149,6 +1146,7 @@ class ILTGenerator(object):
         Some attribute definitions are in statement lists. Take them out
         and put them one level higher.
         '''
+        #TODO: integrate into ILTProcessGenerator.findAttributesRecursive
         #iterate over all class definitions
         for classDef in astRoot:
             if not isinstance(classDef, NodeClassDef):
@@ -1199,7 +1197,7 @@ model Test
     data V, h: Real;
     data A_bott, A_o, mu, q, g: Real parameter;
     
-    func run():
+    func dynamic():
         h = V/A_bott;
         $V = q - mu*A_o*sqrt(2*g*h);
     end
@@ -1215,45 +1213,20 @@ process RunTest
     data g: Real parameter;
     data test: Test;
     
-    func run():
-        run test;
+    func dynamic():
+        call test.dynamic();
     end
     
     func init():
         g = 9.81;
-        init test;
+        call test.init();
         solutionParameters.simulationTime = 100;
         solutionParameters.reportingInterval = 1;
     end
 end
 ''' )
 
-#------------ testProg2 -----------------------
-    testProg2 = (
-'''
-model Test
-    var a;
 
-    block run
-        $a = 0.5;
-    end
-    block init
-        a = 1;
-    end
-end
-
-process RunTest
-    sub test as Test;
-    
-    block run
-        run test;
-    end
-    
-    block init
-        init test;
-    end
-end 
-''' )
     #test the intermedite tree generator ------------------------------------------------------------------
     flagTestILTGenerator = True
     #flagTestILTGenerator = False

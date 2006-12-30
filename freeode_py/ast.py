@@ -308,14 +308,20 @@ class NodeAssignment(Node):
         
 class NodeBlockExecute(Node):
     '''
-    AST Node for inserting the code of a sub-model's block
-    (calling a user defined template function)
+    AST Node for inserting the code of a sub-model's block.
+    Similar to calling a user defined template function.
+    Data attributes:
+        kids        : []
+        loc         : location in input string
+        dat         : None     
+        
+        blockName   : Dotted name of the block. Tuple of strings:
+                      ('model1','init')
+        
     '''
-    def __init__(self, kids=[], loc=None, dat=None, 
-                 blockName=None, subModelName=None):
+    def __init__(self, kids=[], loc=None, dat=None, blockName=None):
         super(NodeBlockExecute, self).__init__(kids, loc, dat)
         self.blockName = blockName
-        self.subModelName = subModelName
         
         
 class NodeStmtList(Node):
@@ -356,6 +362,7 @@ class RoleAlgebraicVariable(RoleVariable):
 class NodeAttrDef(Node):
     '''
     AST node for definition of a variable, parameter or submodel.
+    Data attributes:
         kids        : []
         loc         : location in input string
         dat         : None     

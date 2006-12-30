@@ -394,7 +394,7 @@ class ProcessGenerator(object):
         #search the process' dynamic method
         for dynMethod in self.iltProcess:
             if isinstance(dynMethod, NodeFuncDef) and \
-               dynMethod.name == ('run',):
+               dynMethod.name == ('dynamic',):
                 break
         #write method definition
         outPy = self.outPy
@@ -461,7 +461,7 @@ class ProcessGenerator(object):
 #        outPy.write(ind8 + 'the algebraic variables out of the integration process. \n')
 #        outPy.write(ind8 + '\'\'\' \n')
 #
-#        outPy.write(ind8 + '#FIXME: this method is completely defunct \n')
+#        outPy.write(ind8 + '#TODO: this method is completely defunct \n')
 #        outPy.write(ind8 + 'return \n')
 #        outPy.write(ind8 + '\n\n')
 #
@@ -607,12 +607,12 @@ model Test
     data V, h: Real;
     data A_bott, A_o, mu, q, g: Real parameter;
     
-    block run
+    func dynamic():
         h = V/A_bott;
         $V = q - mu*A_o*sqrt(2*g*h);
     end
     
-    block init
+    func init():
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
         q = 0.05;
@@ -623,41 +623,14 @@ process RunTest
     data g: Real parameter;
     data test: Test;
     
-    block run
-        run test;
+    func dynamic():
+        test.dynamic();
     end
-    block init
+    func init():
         g = 9.81;
-        init test;
+        test.init();
         solutionParameters.simulationTime = 100;
         solutionParameters.reportingInterval = 1;
-    end
-end
-''' )
-
-#------------ testProg2 -----------------------
-    testProg2 = (
-'''
-model Test
-    var a;
-
-    block run
-        $a = 0.5;
-    end
-    block init
-        a = 1;
-    end
-end
-
-process RunTest
-    sub test as Test;
-
-    block run
-        run test;
-    end
-
-    block init
-        init test;
     end
 end
 ''' )

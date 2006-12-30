@@ -18,7 +18,6 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-from ast import UserException
 
 
 #import pdb
@@ -27,6 +26,7 @@ import sys
 import pyparsing
 import simlparser
 import pygenerator
+from ast import UserException
 
 
 #These global variables are defined in ast.py and are therefore accessible 

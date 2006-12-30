@@ -2,7 +2,7 @@ model Tank
     data V, h, qOut: Real;
     data A_bott, A_o, mu, qIn, g: Real parameter;
 
-    func run():
+    func dynamic():
         h = V/A_bott;
         qOut = mu*A_o*sqrt(2*g*h);
         $V = qIn - qOut;
@@ -22,12 +22,12 @@ process FillTank
     data t: Tank;
 	data g: Real parameter;
 	
-    func run():
-        run t;
+    func dynamic():
+        call t.dynamic();
     end
     func init():
         g = 9.81;
-        init t;
+        call t.init();
         solutionParameters.simulationTime = 150;
         solutionParameters.reportingInterval = 1;
     end
