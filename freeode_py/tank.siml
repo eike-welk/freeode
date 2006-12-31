@@ -1,4 +1,4 @@
-model Tank
+class Tank(model):
     data V, h, qOut: Real;
     data A_bott, A_o, mu, qIn, g: Real parameter;
 
@@ -18,7 +18,7 @@ model Tank
     end
 end
 
-process FillTank
+class FillTank(process):
     data t: Tank;
 	data g: Real parameter;
 	

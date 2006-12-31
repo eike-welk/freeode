@@ -603,7 +603,7 @@ if __name__ == '__main__':
 #------------ testProg1 -----------------------
     testProg1 = (
 '''
-model Test
+class Test(m.model):
     data V, h: Real;
     data A_bott, A_o, mu, q, g: Real parameter;
     
@@ -619,16 +619,17 @@ model Test
     end
 end
 
-process RunTest
+class RunTest(process):
     data g: Real parameter;
     data test: Test;
     
     func dynamic():
-        test.dynamic();
+        call test.dynamic();
     end
+    
     func init():
         g = 9.81;
-        test.init();
+        call test.init();
         solutionParameters.simulationTime = 100;
         solutionParameters.reportingInterval = 1;
     end

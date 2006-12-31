@@ -402,26 +402,30 @@ class ParseStage(object):
 
     def _actionClassDef(self, str, loc, toks):
         '''
-        Create node for definition of a class: model foo ... end
+        Create node for definition of a class: 
+            class foo(model): ... end
         BNF:
-        classRole = kw('process') | kw('model') #| kw('paramset')
-        classDef = Group(   classRole + identifier +
-                            OneOrMore(attributeDef) +
-                            Optional(runBlock) +
-                            Optional(initBlock)  +
-                            kw('end'))
+        classDef = Group(kw('class') 
+                         + identifier                 .setResultsName('className')
+                         + '(' + dotIdentifier        .setResultsName('superName')
+                         + ')' + ':' 
+                         + OneOrMore(attributeDef)    .setResultsName('attributeDef', True)
+                         + ZeroOrMore(memberFuncDef)  .setResultsName('memberFuncDef', True)
+                         + kw('end'))
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        #tokList = toks.asList()[0] #there always seems to be 
+        toks = toks[0]             #an extra pair of brackets
         nCurr = NodeClassDef()
         nCurr.loc = loc #Store position 
-        #store role and class name - these are always present
-        nCurr.role = tokList[0]
-        nCurr.className = (tokList[1],)
+        #store class name and name of super class
+        nCurr.className = (toks.className,)
+        nCurr.superName = tuple(toks.superName)
         #create children (may or may not be present):  definitions, dynamic block, init block
-        for tok in tokList[2:len(tokList)-1]:
-            nCurr.kids.append(tok)
+        body = toks.attributeDef.asList()[0] + toks.memberFuncDef.asList()[0]
+        for stmt1 in body:
+            nCurr.appendChild(stmt1)
         return nCurr
 
 
@@ -588,12 +592,21 @@ class ParseStage(object):
                               + kw('end'))                           .setParseAction(self._actionFuncDefinition)\
                                                                      .setName('memberFuncDef')#.setDebug(True)
         #definition of a class (process, model, type?)
-        classRole = kw('process') | kw('model') #| kw('paramset')
-        classDef = Group(   classRole + identifier +
-                            OneOrMore(attributeDef) +
-                            ZeroOrMore(memberFuncDef) +
-                            kw('end'))                              .setParseAction(self._actionClassDef)\
-                                                                    .setName('classDef')#.setDebug(True)
+        classDef = Group(kw('class') 
+                         + identifier                                .setResultsName('className')
+                         + '(' + dotIdentifier                       .setResultsName('superName')
+                         + ')' + ':' 
+                         + OneOrMore(attributeDef)                   .setResultsName('attributeDef', True)
+                         + ZeroOrMore(memberFuncDef)                 .setResultsName('memberFuncDef', True)
+                         + kw('end'))                                .setParseAction(self._actionClassDef)\
+                                                                     .setName('classDef')#.setDebug(True)
+#        #definition of a class (process, model, type?)
+#        classRole = kw('process') | kw('model') #| kw('paramset')
+#        classDef = Group(   classRole + identifier +
+#                            OneOrMore(attributeDef) +
+#                            ZeroOrMore(memberFuncDef) +
+#                            kw('end'))                              .setParseAction(self._actionClassDef)\
+#                                                                    .setName('classDef')#.setDebug(True)
 
         program = Group(OneOrMore(classDef))                        .setParseAction(self._actionProgram)\
                                                                     .setName('program')#.setDebug(True)
@@ -1058,7 +1071,7 @@ class ILTProcessGenerator(object):
         #init new process
         self.process = NodeClassDef()
         self.process.className = self.astProcess.className
-        self.process.role = self.astProcess.role
+        self.process.superName = self.astProcess.superName
         #init quick reference dicts
         self.processAttributes = {}
         self.astProcessAttributes = {}
@@ -1130,8 +1143,8 @@ class ILTGenerator(object):
          built-in values and functions, like pi, sin(x).
         '''
         #Create the solution parameters' definition
-        solPars = NodeClassDef(loc=0, name=('solutionParametersClass',), 
-                               role='model')
+        solPars = NodeClassDef(loc=0, className=('solutionParametersClass',), 
+                               superName=('model',))
         solPars.appendChild(NodeAttrDef(loc=0, attrName=('simulationTime',), 
                                         className=('Real',), role=RoleParameter))
         solPars.appendChild(NodeAttrDef(loc=0, attrName=('reportingInterval',), 
@@ -1176,7 +1189,7 @@ class ILTGenerator(object):
         #search for processes in the AST and instantiate them in the ILT
         for processDef in astRoot:
             if ((not isinstance(processDef, NodeClassDef)) or 
-                (not processDef.role == 'process')):
+                (not processDef.superName == ('process',))):
                 continue
             newProc = procGen.createProcess(processDef)
             iltRoot.appendChild(newProc)
@@ -1193,7 +1206,7 @@ def doTests():
 #------------ testProg1 -----------------------
     testProg1 = (
 '''
-model Test
+class Test(m.model):
     data V, h: Real;
     data A_bott, A_o, mu, q, g: Real parameter;
     
@@ -1209,7 +1222,7 @@ model Test
     end
 end
 
-process RunTest
+class RunTest(process):
     data g: Real parameter;
     data test: Test;
     

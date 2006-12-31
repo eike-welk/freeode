@@ -423,7 +423,7 @@ class NodeFuncDef(Node):
     
     The block's childern are the statements.
     Data attributes:
-        kids :  The statements, the block's code.
+        kids : The statements, the block's code.
         loc  : location in input string
         dat  : None
         
@@ -437,19 +437,29 @@ class NodeFuncDef(Node):
 class NodeClassDef(Node):
     """
     AST node for class definition.
+    Data attributes:
+        kids      : The statements, the block's code.
+        loc       : location in input string
+        dat       : None
+        
+        className : name of the class defined here.
+        superName : name of the class, from which this class inherits;
+                    usually"process", "model" 
     """
-    def __init__(self, kids=[], loc=None, dat=None, name=None, role=None):
-        '''
-        name : classname
-        role : "process", "model" 
-        '''
+    def __init__(self, kids=[], loc=None, dat=None, className=None, superName=None):
         super(NodeClassDef, self).__init__(kids, loc, dat)
-        self.className = name
-        self.role = role
+        self.className = className
+        self.superName = superName
 
 
 class NodeProgram(Node):
-    '''Root node of the program'''
+    '''
+    Root node of the program
+    Data attributes:
+        kids      : Definitions, the program's code.
+        loc       : location in input string (~0)
+        dat       : None
+'''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeProgram, self).__init__(kids, loc, dat)
         
