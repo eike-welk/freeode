@@ -292,12 +292,12 @@ class ParseStage(object):
         return nCurr
 
 
-    def _createBlockExecute(self, str, loc, toks):
+    def _actionFuncExecute(self, str, loc, toks):
         '''
-        Create node for execution of a block (insertion of the code): 
+        Create node for execution of a function (insertion of the code): 
             call foo.init()
         BNF:
-        blockExecute = Group(kw('call') 
+        funcExecute = Group(kw('call') 
                              + dotIdentifier    .setResultsName('funcName')
                              + '(' + ')'
                              + ';')             .setParseAction(self._createBlockExecute)\
@@ -306,9 +306,9 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be 
         toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeBlockExecute()
+        nCurr = NodeFuncExecute()
         nCurr.loc = loc #Store position 
-        nCurr.blockName = tuple(toks.funcName)    #full (dotted) function name
+        nCurr.funcName = tuple(toks.funcName)    #full (dotted) function name
         return nCurr
 
 
@@ -458,12 +458,10 @@ class ParseStage(object):
         L = Literal # Usage: L('+')
 
         #Values that are built into the language
-        #TODO: this should be a for loop and a list (attribute)!
         builtInValue = Group( kw('pi') | kw('time'))                .setParseAction(self._actionBuiltInValue)\
                                                                     .setName('builtInValue')#.setDebug(True)
 
         #Functions that are built into the language
-        #TODO: this should be a for loop and a list (attribute)!
         builtInFuncName = (  kw('sin') | kw('cos') | kw('tan') |
                              kw('sqrt') | kw('exp') | kw('ln')   )  .setName('builtInFuncName')#.setDebug(True)
 
@@ -533,11 +531,9 @@ class ParseStage(object):
         #................ End mathematical expression ................................................---
 
         #................ Identifiers ...................................................................
-        #TODO: check for keywods -  .setParseAction(self.actionCheckIdentifier) \
         identifier = Word(alphas, alphas+nums+'_')              .setName('identifier')#.setDebug(True)
 
         #Compound identifiers for variables or parameters 'aaa.bbb'.
-        #TODO: add slices: aaa.bbb(2:3)
         dotSup = Literal('.').suppress()
         dotIdentifier = Group(identifier +
                               ZeroOrMore(dotSup + identifier))  .setName('dotIdentifier')#.setDebug(True)
@@ -560,13 +556,13 @@ class ParseStage(object):
                                                                     .setName('assignment')#.setDebug(True)
         #execute a block - insert code of a child model 
         #function arguments are currently missing
-        blockExecute = Group(kw('call') 
+        funcExecute = Group(kw('call') 
                              + dotIdentifier                        .setResultsName('funcName')
                              + '(' + ')'
-                             + ';')                                 .setParseAction(self._createBlockExecute)\
+                             + ';')                                 .setParseAction(self._actionFuncExecute)\
                                                                     .setName('blockExecute')#.setDebug(True)
 
-        statement = (blockExecute | ifStatement | assignment)       .setName('statement')#.setDebug(True)
+        statement = (funcExecute | ifStatement | assignment)       .setName('statement')#.setDebug(True)
         statementList << Group(OneOrMore(statement))                .setParseAction(self._actionStatementList)\
                                                                     .setName('statementList')#.setDebug(True)
 
@@ -796,8 +792,8 @@ class ILTProcessGenerator(object):
             self.processAttributes[longName] = newAttr #and into quick access dict
         return
        
-       
-    def copyBlockRecursive(self, block, namePrefix, newBlock, illegalBlocks):
+    
+    def copyFuncRecursive(self, block, namePrefix, newBlock, illegalBlocks):
         '''
         Copy block into newBlock recursively. 
         Copies all statements of block and all statements of blocks that are 
@@ -810,8 +806,8 @@ class ILTProcessGenerator(object):
         '''
         for statement in block:
             #Block execution statement: include the called blocks variables
-            if isinstance(statement, NodeBlockExecute):
-                subBlockName = namePrefix + statement.blockName #dotted block name
+            if isinstance(statement, NodeFuncExecute):
+                subBlockName = namePrefix + statement.funcName #dotted block name
                 subModelName = subBlockName[:-1] #name of model, where block is defined
                 #Error if submodel or method does not exist
                 if not subModelName in self.astProcessAttributes:
@@ -821,12 +817,12 @@ class ILTProcessGenerator(object):
                     raise UserException('Undefined method: ' + 
                                         str(subBlockName), statement.loc)
                 #Check if executing (inlining) this block is allowed
-                if statement.blockName in illegalBlocks:
+                if statement.funcName in illegalBlocks:
                     raise UserException('Method can not be executed here: ' + 
-                                        str(statement.blockName), statement.loc)
+                                        str(statement.funcName), statement.loc)
                 #find definition of method, and recurse into it.
                 subBlockDef = self.astProcessAttributes[subBlockName] 
-                self.copyBlockRecursive(subBlockDef, subModelName, newBlock, illegalBlocks)
+                self.copyFuncRecursive(subBlockDef, subModelName, newBlock, illegalBlocks)
             #Any other statement: copy statement
             else:
                 newStmt = statement.copy()
@@ -1077,49 +1073,53 @@ class ILTProcessGenerator(object):
         self.astProcessAttributes = {}
         self.stateVariables = {}
         
-        #add some built in attributes to the process
+        #add some built in attributes to the AST process
+        #this will be gone once inheritance is implemented
         self.addBuiltInParameters()
         #discover all attributes 
         self.findAttributesRecursive(self.astProcess, tuple())
         #create the new process' data attributes
         self.copyDataAttributes()
-        #create the new process' blocks (methods)
-        dynamicBlock, initBlock, blockCount = None, None, 0
-        principalBlocks = set([('dynamic',),('init',),('final',)])
-        #TODO: add function 'final': Method where graphs are displayed and vars are stored
-        for block in self.astProcess:
-            if not isinstance(block, NodeFuncDef):
-                continue
-            #create the new method (block) definition
-            newBlock = NodeFuncDef() 
-            newBlock.name = block.name
-            blockCount += 1 #count the number of blocks
-            #determine which methods can be executed in this method
-            if block.name == ('dynamic',):
-                illegalBlocks = principalBlocks - set([('dynamic',)])
-                dynamicBlock = newBlock     #remember which block is which
-            elif block.name == ('init',):
-                illegalBlocks = principalBlocks - set([('init',)])
-                initBlock = newBlock
-            else:
-                raise UserException('Illegal method: ' + makeDotName(block.name), 
-                                    block.loc)
-            #copy the statements, and put new method into new procedure
-            self.copyBlockRecursive(block, tuple(), newBlock, illegalBlocks) 
-            self.process.appendChild(newBlock) #put new block into process
         
-        if (not dynamicBlock) or (not initBlock) or (blockCount != 2):
-            raise UserException('Process must contain exactly one dynamic method ' + 
-                                'and one init method.', self.astProcess.loc)
+        #these are the prosess' main functions.
+        #if they are not defined an empty function is created
+        principalFuncs = set([('dynamic',),('init',),('final',)])
+        #create dynamic function
+        dynamicFunc = NodeFuncDef(name=('dynamic',)) #create new ILT function
+        self.process.appendChild(dynamicFunc) #put new function into process
+        #if function is defined in the AST, copy it into the new ILT function
+        if ('dynamic',) in self.astProcessAttributes:
+            #set of functions that should not appear in dynamic function
+            illegalFuncs = principalFuncs - set([('dynamic',)]) \
+                           | set([('load',), ('store',), ('graph',)])
+            #copy the function's statements from AST to ILT; recursive
+            self.copyFuncRecursive(self.astProcessAttributes[('dynamic',)], 
+                                    tuple(), dynamicFunc, illegalFuncs)
+        #create init function
+        initFunc = NodeFuncDef(name=('init',)) 
+        self.process.appendChild(initFunc) #put new block into process
+        if ('init',) in self.astProcessAttributes:
+            illegalFuncs = principalFuncs - set([('init',)])
+            self.copyFuncRecursive(self.astProcessAttributes[('init',)], 
+                                    tuple(), initFunc, illegalFuncs) 
+        #create final function
+        finalFunc = NodeFuncDef(name=('final',))
+        self.process.appendChild(finalFunc) #put new block into process
+        if ('final',) in self.astProcessAttributes:
+            illegalFuncs = principalFuncs - set([('final',)])
+            self.copyFuncRecursive(self.astProcessAttributes[('final',)], 
+                                    tuple(), finalFunc, illegalFuncs) 
+
         self.checkUndefindedReferences(self.process) #Check undefined refference
-        self.findStateVariables(dynamicBlock) #Mark state variables
-        self.propagateParameters(initBlock) #rename some parameters
-        self.checkDynamicMethodConstraints(dynamicBlock)
-        self.checkInitMethodConstraints(initBlock)
+        self.findStateVariables(dynamicFunc) #Mark state variables
+        self.propagateParameters(initFunc) #rename some parameters
+        self.checkDynamicMethodConstraints(dynamicFunc)
+        self.checkInitMethodConstraints(initFunc)
         
         #TODO: Check correct order of assignments (or initialization).
-        #TODO: Propagate parameters - only replace those that have not been explicitly initialized.
         #TODO: Check if all parameters and state vars have been initialized.
+        #TODO: add function 'final': Method where graphs are displayed and vars are stored
+        #TODO: add methods for final function: store, (load), graph
         
         return self.process
 
@@ -1159,7 +1159,7 @@ class ILTGenerator(object):
         Some attribute definitions are in statement lists. Take them out
         and put them one level higher.
         '''
-        #TODO: integrate into ILTProcessGenerator.findAttributesRecursive
+        #FIXME: integrate into ILTProcessGenerator.findAttributesRecursive
         #iterate over all class definitions
         for classDef in astRoot:
             if not isinstance(classDef, NodeClassDef):

@@ -307,7 +307,6 @@ class ProcessGenerator(object):
     def writeClassDefStart(self):
         '''Write first few lines of class definition.'''
         global inputFileName
-        #TODO: compute line from global inputFileContents
         self.outPy.write('class %s(SimulatorBase): \n' % self.processPyName)
         self.outPy.write('    \'\'\' \n')
         self.outPy.write('    Object to simulate process %s \n' % self.iltProcess.className)

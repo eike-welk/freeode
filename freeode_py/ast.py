@@ -306,22 +306,22 @@ class NodeAssignment(Node):
         return self.kids[1]
         
         
-class NodeBlockExecute(Node):
+class NodeFuncExecute(Node):
     '''
-    AST Node for inserting the code of a sub-model's block.
+    AST Node for inserting the code of a sub-model's member function.
     Similar to calling a user defined template function.
     Data attributes:
         kids        : []
         loc         : location in input string
         dat         : None     
         
-        blockName   : Dotted name of the block. Tuple of strings:
+        funcName   : Dotted name of the block. Tuple of strings:
                       ('model1','init')
         
     '''
-    def __init__(self, kids=[], loc=None, dat=None, blockName=None):
-        super(NodeBlockExecute, self).__init__(kids, loc, dat)
-        self.blockName = blockName
+    def __init__(self, kids=[], loc=None, dat=None, funcName=None):
+        super(NodeFuncExecute, self).__init__(kids, loc, dat)
+        self.funcName = funcName
         
         
 class NodeStmtList(Node):
