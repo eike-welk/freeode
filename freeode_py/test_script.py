@@ -43,7 +43,7 @@ sim = tank.FillTank()
 sim.simulateDynamic()
 
 #show some results
-sim.graph('t.V t.h t.qOut')
+sim.graph('t.V t.h t.qOut0 t.qOut1')
 
 show()
 #raw_input('Press any key to continue ...')

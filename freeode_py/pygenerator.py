@@ -17,8 +17,6 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-
-
 __doc__ = \
 '''
 Generator for python code.
@@ -173,6 +171,8 @@ class StatementGenerator(object):
         #Infix operator: + - * / ^ and or
         elif isinstance(iltFormula, NodeOpInfix2):
             opDict = {'+':' + ', '-':' - ', '*':'*', '/':'/', '**':'**',
+                      '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ', 
+                      '==':' == ', '!=':' != ',
                       'and':' and ', 'or':' or '}
             opStr = opDict[iltFormula.dat]
             return (self.createFormula(iltFormula[0]) + opStr +
@@ -190,22 +190,53 @@ class StatementGenerator(object):
             raise PyGenException('Unknown node in FormulaGenerator:\n' + str(iltFormula))
 
 
-    def createStatement(self, iltStmt, indent):
+    def create1Statement(self, iltStmt, indent):
         '''
-        Take ILT sub-tree and convert it into Python statement.
+        Take ILT sub-tree and convert it into one 
+        Python statement.
 
         arguments:
             iltStmt : tree of Node objects
             indent  : string of whitespace, put in front of each line
-        returns:
-            string, statement in Python language
+        output:
+            self.outPy - text is written to object
         '''
         outPy = self.outPy
+        ind4 = ' '*4
+        #Assignment 
         if isinstance(iltStmt, NodeAssignment):
             outPy.write(indent + iltStmt.lhs().targetName + ' = ' +
                                  self.createFormula(iltStmt.rhs()) + '\n')
+        #if statement
+        elif isinstance(iltStmt, NodeIfStmt):
+            outPy.write(indent + 'if ' 
+                               + self.createFormula(iltStmt.condition()) 
+                               + ':\n')
+            self.createStatements(iltStmt.ifTruePart(), indent + ind4)
+            outPy.write(indent + 'else: \n')
+            self.createStatements(iltStmt.elsePart(), indent + ind4)
         else:
-            raise PyGenException('Unknown node in StatementGenerator:\n' + str(iltStmt))
+            raise PyGenException('Unknown node in StatementGenerator:\n' 
+                                 + str(iltStmt))
+
+
+    def createStatements(self, stmtList, indent):
+        '''
+        Take NodeStmtList or NodeFuncDef and convert
+        into multiple Python statements.
+        
+        arguments:
+            stmtList : Node object that contains statements as children
+            indent   : string of whitespace, put in front of each line
+        output:
+            self.outPy - text is written to object
+        '''
+        if len(stmtList) == 0:
+            self.outPy.write(indent + 'pass \n')
+            return
+        for stmt1 in stmtList:
+            self.create1Statement(stmt1, indent)
+
 
 
 class ProcessGenerator(object):
@@ -351,11 +382,13 @@ class ProcessGenerator(object):
         for varDef in (self.algebraicVariables.values() +
                        self.stateVariables.values()):
             outPy.write(ind8 + '%s = 0.0 \n' % varDef.targetName[tuple()])
+            
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
-        for statement in initMethod:
-            stmtGen.createStatement(statement, ind8)
+        stmtGen.createStatements(initMethod, ind8)
+        outPy.write(ind8 + '\n')
+
         #put initial values into array and store them
         outPy.write(ind8 + '#assemble initial values to array and store them \n')
         #sequence of variables in the array is determined by self.stateVariables
@@ -414,8 +447,7 @@ class ProcessGenerator(object):
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
-        for statement in dynMethod:
-            stmtGen.createStatement(statement, ind8)
+        stmtGen.createStatements(dynMethod, ind8)
         outPy.write(ind8 + '\n')
 
         #return either state variables or algebraic variables
@@ -544,14 +576,14 @@ class ProgramGenerator(object):
         '''
         self.outPy.write(
 '''
-#------------------------------------------------------------------------------#
+################################################################################
 #                            Warning: Do not edit!                             #
 #                                                                              #
 # This file is generated, it will be overwritten every time the source file(s) #
 # is/are changed.                                                              #
 # Write a main routine in an other file. Use import or execfile to load        #
 # the objects defined in this file into the Python interpreter.                #
-#------------------------------------------------------------------------------#
+################################################################################
 '''     )
         import datetime
         dt = datetime.datetime.today()
@@ -563,7 +595,7 @@ class ProgramGenerator(object):
         self.outPy.write('# Source file(s): %s' % inputFileName)
         self.outPy.write(
 '''
-#------------------------------------------------------------------------------#
+################################################################################
 
 
 from numpy import *

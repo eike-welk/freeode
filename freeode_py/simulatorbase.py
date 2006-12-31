@@ -17,8 +17,6 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-
-
 __doc__ = \
 '''
 Basic infrastructure for the generated simulator classes.
@@ -67,12 +65,13 @@ class SimulatorBase(object):
         """Show the simulation object's documentation."""
         help(self.__class__)
 
+    #TODO: change to: helpAttributes(self), also help about parameter names
     def helpVariables(self):
         """Show list of all variables."""
         for i in self.variableNameMap:
             print "'%s', " % i,
         print
-    #TODO: add helpParameters, helpAttributes
+
 
     def clear(self):
         """
@@ -83,7 +82,7 @@ class SimulatorBase(object):
         if hasattr(self, 'resultArray'):
             del self.resultArray
 
-    #TODO: write parameter, Attribute
+    #TODO: change to: attribute(self, attrName), also return parameters
     def variable(self, varName):
         """
         Get a variable by name.

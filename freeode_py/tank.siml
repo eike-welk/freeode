@@ -1,19 +1,24 @@
 class Tank(model):
-    data V, h, qOut: Real;
-    data A_bott, A_o, mu, qIn, g: Real parameter;
+    data V, h, qOut0, qOut1: Real;
+    data A_bott, Ao, h1, mu, qIn, g: Real parameter;
 
     func dynamic():
         h = V/A_bott;
-        qOut = mu*A_o*sqrt(2*g*h);
-        $V = qIn - qOut;
+        qOut0 = mu*Ao*sqrt(2*g*h); #hole in bottom
+        if h > h1:
+        	qOut1 = mu*Ao*sqrt(2*g*(h-h1)); #hole at height h1
+        else:
+        	qOut1 = 0;
+        end
+        $V = qIn - qOut0 - qOut1;
     end
 
     func init():
         V = 0;
         A_bott = 1.2;
-        A_o = 0.02; 
+        Ao = 0.02; 
+        h1 = 0.5;
         mu = 0.55; 
-        #g = 9.81; 
         qIn = 0.05;
     end
 end

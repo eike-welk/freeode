@@ -280,12 +280,21 @@ class NodeIfStmt(Node):
     '''
     AST Node for an if ... the ... else statement
     Data attributes:
-        kids    : [<condition>, <then staements>, <else statements>]
+        kids    : [<condition>, <then statements>, <else statements>]
         loc     : location in input string
         dat     : None
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeIfStmt, self).__init__(kids, loc, dat)
+    def condition(self):
+        return self.kids[0]
+    def ifTruePart(self):
+        return self.kids[1]
+    def elsePart(self):
+        if len(self.kids) == 3:
+            return self.kids[2]
+        else:
+            return NodeStmtList()
         
         
 class NodeAssignment(Node):

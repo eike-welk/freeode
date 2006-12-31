@@ -26,7 +26,6 @@ __doc__ = \
 '''
 Parser for the SIML simulation language.
 '''
-#TODO: usage (above)
 
 
 #import pprint #pretty printer
@@ -244,13 +243,12 @@ class ParseStage(object):
 
     def _actionIfStatement(self, str, loc, toks):
         '''
-        Create node for if - then - else statement.
+        Create node for if ... : ... else: ... statement.
         BNF:
-        ifStatement = Group(
-                    kw('if') + boolExpression + kw('then') +
-                    statementList +
-                    Optional(kw('else') + statementList) +
-                    kw('end'))
+        ifStatement = Group(kw('if') + boolExpression + ':' 
+                            + statementList 
+                            + Optional(kw('else') +':' + statementList)
+                            + kw('end'))                            
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
@@ -263,10 +261,10 @@ class ParseStage(object):
             thenStmts = tokList[3]
             nCurr.kids=[condition, thenStmts]
         #if ... then ... else ... end
-        elif len(tokList) == 7:
+        elif len(tokList) == 8:
             condition = tokList[1]
             thenStmts = tokList[3]
-            elseStmts = tokList[5]
+            elseStmts = tokList[6]
             nCurr.kids=[condition, thenStmts, elseStmts]
         else:
             raise ParseActionException('Broken >if< statement! loc: ' + str(nCurr.loc))
@@ -545,11 +543,10 @@ class ParseStage(object):
         #..................... Statements ..............................................................
         statementList = Forward()
         #Flow control - if then else
-        ifStatement = Group(
-                        kw('if') + boolExpression + ':' +
-                        statementList +
-                        Optional(kw('else:') + statementList) +
-                        kw('end'))                                  .setParseAction(self._actionIfStatement)\
+        ifStatement = Group(kw('if') + boolExpression + ':' 
+                            + statementList 
+                            + Optional(kw('else') +':' + statementList) 
+                            + kw('end'))                            .setParseAction(self._actionIfStatement)\
                                                                     .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
         assignment = Group(valAccess + '=' + expression + ';')      .setParseAction(self._actionAssignment)\
@@ -739,26 +736,36 @@ class ILTProcessGenerator(object):
         The definition in the AST is searched NOT the new process.
         
         Arguments:
-            astClass   : class definition from the AST
+            astClass   : class definition from the AST (NodeClassDef), 
+                         or NodeAttrDefMulti, NodeStmtList
             namePrefix : tuple of strings. Prefix for the dotted name of the 
                          class' attributes.
         Output: 
             self.astProcessAttributes : dict: {('mod1', 'var1'):NodeAttrDef} 
         '''
-        #each of the class' children is a definition
+        #each of the class' children is a definition or a list of definitions
         for attrDef in astClass:
-            #get attribute name
-            if isinstance(attrDef, NodeAttrDef): #definition of data attribute or submodel
+            #inspect Node type 
+            #list of definitions - look into list: recurse
+            if isinstance(attrDef, (NodeAttrDefMulti, NodeStmtList)):
+                self.findAttributesRecursive(attrDef, namePrefix)#note same name prefix
+                continue #do not create an attribute for the list Node 
+            #definition of data attribute or submodel: get name, store attribute
+            elif isinstance(attrDef, NodeAttrDef): 
                 attrName = attrDef.attrName
-            elif isinstance(attrDef, NodeFuncDef): #definition of block (function)
+            #definition of method (function): get name, store attribute
+            elif isinstance(attrDef, NodeFuncDef): 
                 attrName = attrDef.name
             else:
                 raise ILTGenException('Unknown Node.' + repr(attrDef))
+            
+            #store attribute in dict
             #prepend prefix to attribute name 
             longAttrName = namePrefix + attrName
             #Check redefinition
             if longAttrName in self.astProcessAttributes:
-                raise UserException('Redefinition of: ' + makeDotName(longAttrName), attrDef.loc)
+                raise UserException('Redefinition of: ' + 
+                                    makeDotName(longAttrName), attrDef.loc)
             #put new attribute into dict.
             self.astProcessAttributes[longAttrName] = attrDef
             
@@ -1056,9 +1063,7 @@ class ILTProcessGenerator(object):
             if node.deriv == ('time',):
                 raise UserException('Time derivation illegal in init: ' +
                                     str(node.attrName), node.loc) 
-        #TODO: All state variables must get initial values
-        #TODO: All parameters must get values
-    
+            
     
     def createProcess(self, inAstProc):
         '''generate ILT subtree for one process'''
@@ -1118,8 +1123,8 @@ class ILTProcessGenerator(object):
         
         #TODO: Check correct order of assignments (or initialization).
         #TODO: Check if all parameters and state vars have been initialized.
-        #TODO: add function 'final': Method where graphs are displayed and vars are stored
-        #TODO: add methods for final function: store, (load), graph
+        #FIXME: add function 'final': Method where graphs are displayed and vars are stored
+        #FIXME: add methods for final function: store, (load), graph
         
         return self.process
 
@@ -1151,37 +1156,15 @@ class ILTGenerator(object):
                                         className=('Real',), role=RoleParameter))
         #add solutionparameTers to AST, and update class dict
         astRoot.insertChild(0, solPars) 
-
-
-
-    def replaceMultiAttributeDefinitions(self, astRoot):
-        '''
-        Some attribute definitions are in statement lists. Take them out
-        and put them one level higher.
-        '''
-        #FIXME: integrate into ILTProcessGenerator.findAttributesRecursive
-        #iterate over all class definitions
-        for classDef in astRoot:
-            if not isinstance(classDef, NodeClassDef):
-                continue
-            #iterate over all attribute definitions
-            for i in range(len(classDef)):
-                attrDefList = classDef[i]
-                if not isinstance(attrDefList, NodeAttrDefMulti):
-                    continue
-                #put the attribute definitions one level up into NodeClassDef
-                for attrDef in attrDefList:
-                    classDef.insertChild(i+1, attrDef)
-                #remove the list
-                classDef.delChild(i)
-                
-            
+    
+    
     def createIntermediateTree(self, astRoot):
         '''generate ILT tree from AST tree'''
         #add built ins to AST
         self.addBuiltInClasses(astRoot)
-        #possible replacements in ech class of ast
-        self.replaceMultiAttributeDefinitions(astRoot)
+#        #possible replacements in ech class of ast
+#        self.replaceMultiAttributeDefinitions(astRoot)
+#        print astRoot
         #create ILT root node
         iltRoot = NodeProgram()
         
