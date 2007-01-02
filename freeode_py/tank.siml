@@ -11,6 +11,7 @@ class Tank(model):
         	qOut1 = 0;
         end
         $V = qIn - qOut0 - qOut1;
+        #print 'h: ', h, 'time: ', time;
     end
 
     func init():
@@ -35,6 +36,11 @@ class FillTank(process):
         call t.init();
         solutionParameters.simulationTime = 150;
         solutionParameters.reportingInterval = 1;
+    end
+    func final():
+    	store;
+    	graph t.V, t.h, t.qOut0, t.qOut1;
+    	print 'Simulation finished.';
     end
 end
 

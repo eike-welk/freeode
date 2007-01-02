@@ -17,6 +17,11 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
+from ast import NodeGraphStmt
+from ast import Node
+from ast import NodeStoreStmt
+from ast import NodePrintStmt
+from ast import Node
 __doc__ = \
 '''
 Generator for python code.
@@ -165,6 +170,9 @@ class StatementGenerator(object):
         #Number: 123.5
         elif isinstance(iltFormula, NodeNum):
             return str(float(iltFormula.dat))
+        #String: 'hello world'
+        elif isinstance(iltFormula, NodeString):
+            return '\'' + iltFormula.dat + '\''
         #pair of prentheses: ( ... )
         elif isinstance(iltFormula, NodeParentheses):
             return '(' + self.createFormula(iltFormula[0]) + ')'
@@ -215,6 +223,27 @@ class StatementGenerator(object):
             self.createStatements(iltStmt.ifTruePart(), indent + ind4)
             outPy.write(indent + 'else: \n')
             self.createStatements(iltStmt.elsePart(), indent + ind4)
+        #print statement
+        elif isinstance(iltStmt, NodePrintStmt):
+            line = indent + 'print '
+            for expr in iltStmt:
+                line += self.createFormula(expr) + ', '
+            #take awway last comma if newline is wanted
+            if iltStmt.newline:
+                line = line[:-2]
+            outPy.write(line + '\n')
+        #store statement
+        elif isinstance(iltStmt, NodeStoreStmt):
+            print 'warning: store statement is not implemented yet'
+            outPy.write(indent + "print 'warning: store statement is not implemented yet' \n")
+        #graph statement
+        elif isinstance(iltStmt, NodeGraphStmt):
+            outPy.write(indent + 'self.graph(\'')
+            for expr in iltStmt:
+                if not isinstance(expr, NodeAttrAccess):
+                    raise UserException('Arguments of graph statement must be variable names.')
+                outPy.write(makeDotName(expr.attrName) + ' ')
+            outPy.write('\') \n')
         else:
             raise PyGenException('Unknown node in StatementGenerator:\n' 
                                  + str(iltStmt))
@@ -474,56 +503,32 @@ class ProcessGenerator(object):
         outPy.write('\n\n')
 
 
-#    def writeOutputEquations(self):
-#        '''Generate method that computes the algebraic variables for a second time.'''
-#        #search the process' dynamic method
-#        for dynMethod in self.iltProcess:
-#            if isinstance(dynMethod, NodeBlockDef) and \
-#               dynMethod.name == 'run':
-#                break
-#        #write method definition
-#        outPy = self.outPy
-#        ind8 = ' '*8
-#        ind12 = ' '*12
-#        outPy.write('    def outputEquations(self, simResult): \n')
-#        outPy.write(ind8 + '\'\'\' \n')
-#        outPy.write(ind8 + 'Compute algebraic variables for a second time. \n')
-#        outPy.write(ind8 + 'This is necessary because there is (currently) way to pass \n')
-#        outPy.write(ind8 + 'the algebraic variables out of the integration process. \n')
-#        outPy.write(ind8 + '\'\'\' \n')
-#
-#        outPy.write(ind8 + '#TODO: this method is completely defunct \n')
-#        outPy.write(ind8 + 'return \n')
-#        outPy.write(ind8 + '\n\n')
-#
-#        outPy.write(ind8 + 'for state in simResult: \n')
-#        #take the state variables out of the state vector
-#        #sequence of variables in the array is determined by self.stateVariables
-#        outPy.write(ind12 + '#take the state variables out of the state vector \n')
-#        stateVarNames = self.stateVariables.values()
-#        for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-#            outPy.write(ind12 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
-#        outPy.write(ind12 + '#TODO: Create all algebraic variables? \n')
-#        outPy.write(ind12 + '#TODO: Only compute algebraic variables?? \n')
-#        #print the statements that compute algebraic variables
-#        outPy.write(ind12 + '#do computations \n')
-#        stmtGen = StatementGenerator(outPy)
-#        for statement in dynMethod:
-#            stmtGen.createStatement(statement, ind12)
-#        #assemble the algebraic variables into an array
-#        outPy.write(ind12 + '#assemble the algebraic variables into an array \n')
-#        lineW = LongLineWriter(outPy, ' '*16)
-#        lineW.startLine(ind12 + 'algVars = array([')
-#        algVarNames = self.algebraicVariables.values()
-#        for varDef, nState in zip(algVarNames, range(len(algVarNames))):
-#            lineW.write('%s, ' % varDef.targetName[tuple()])
-#        lineW.endLine('], \'float64\')')
-#        outPy.write(ind12 + '#TODO: Store the algebraic variables. \n')
-#
-#        outPy.write('\n\n')
 
-
-
+    def writeFinalMethod(self):
+        '''Generate the method that dispays/saves results after the simulation.'''
+        #search the process' dynamic method
+        for finMethod in self.iltProcess:
+            if isinstance(finMethod, NodeFuncDef) and \
+               finMethod.name == ('final',):
+                break
+        #write method definition
+        outPy = self.outPy
+        ind8 = ' '*8; ind12 = ' '*12; ind16 = ' '*16
+        outPy.write('    def final(self): \n')
+        outPy.write(ind8 + '\'\'\' \n')
+        outPy.write(ind8 + 'Display and save simulation results. \n')
+        outPy.write(ind8 + 'This function will be called once; after the simulation results \n')
+        outPy.write(ind8 + 'have been computed. \n')
+        outPy.write(ind8 + '\'\'\' \n')
+        #TODO: create all variables, with values from the last iteration
+        #genrate code for the statements
+        outPy.write(ind8 + '#the final method\'s statements \n')
+        stmtGen = StatementGenerator(outPy)
+        stmtGen.createStatements(finMethod, ind8)
+        outPy.write(ind8 + '\n')
+        
+        
+        
     def createProcess(self, iltProcess):
         '''
         Take part of ILT tree that defines one procedure and ouput definition
@@ -541,6 +546,7 @@ class ProcessGenerator(object):
         self.writeConstructor()
         self.writeInitMethod()
         self.writeDynamicMethod()
+        self.writeFinalMethod()
         #self.writeOutputEquations()
 
 

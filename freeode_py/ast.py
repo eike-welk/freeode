@@ -219,19 +219,36 @@ class NodeNum(Node):
     '''
     Represent a real number in the AST. 
     Example: 123.5
-    
-    self.dat  : the number as a string
+    Data attributes:    
+        kids    : []
+        loc     : location in input string
+        dat     : the number as a string
     '''    
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeNum, self).__init__(kids, loc, dat)
+
+
+class NodeString(Node):
+    '''
+    Represent a string in the AST. 
+    Example: 'hello world'
+    Data attributes:    
+        kids    : []
+        loc     : location in input string
+        dat     : the string
+    '''    
+    def __init__(self, kids=[], loc=None, dat=None):
+        super(NodeString, self).__init__(kids, loc, dat)
 
 
 class NodeParentheses(Node):
     '''
     Represent a pair of parentheses that enclose an expression, in the AST. 
     Example: ( ... )
-    
-    self.kids[0]  : the mathematical expression between the parentheses
+    Data attributes:    
+        kids[0] : the mathematical expression between the parentheses
+        loc     : location in input string
+        dat     : None
     '''    
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeParentheses, self).__init__(kids, loc, dat)
@@ -240,6 +257,7 @@ class NodeParentheses(Node):
 class NodeOpInfix2(Node):     
     '''
     AST node for a (binary) infix operator: + - * / ^ and or
+    Data attributes:    
         kids    : [LHS, RHS] both sides of the operator
         loc     : location in input string
         dat     : operator symbol e.g.: '+'
@@ -326,11 +344,50 @@ class NodeFuncExecute(Node):
         
         funcName   : Dotted name of the block. Tuple of strings:
                       ('model1','init')
-        
     '''
     def __init__(self, kids=[], loc=None, dat=None, funcName=None):
         super(NodeFuncExecute, self).__init__(kids, loc, dat)
         self.funcName = funcName
+        
+        
+class NodePrintStmt(Node):
+    '''
+    AST Node for printing something to stdout.
+    Data attributes:
+        kids        : the expressions of the argument list
+        loc         : location in input string
+        dat         : None     
+        
+        newline     : if True: add newline to end of output;
+                      if False: don't add newline.
+    '''
+    def __init__(self, kids=[], loc=None, dat=None, newline=True):
+        super(NodePrintStmt, self).__init__(kids, loc, dat)
+        self.newline = newline
+        
+        
+class NodeGraphStmt(Node):
+    '''
+    AST Node for creating a graph.
+    Data attributes:
+        kids        : the expressions of the argument list
+        loc         : location in input string
+        dat         : None     
+    '''
+    def __init__(self, kids=[], loc=None, dat=None):
+        super(NodeGraphStmt, self).__init__(kids, loc, dat)
+        
+        
+class NodeStoreStmt(Node):
+    '''
+    AST Node for storing variables
+    Data attributes:
+        kids        : the expressions of the argument list
+        loc         : location in input string
+        dat         : None     
+    '''
+    def __init__(self, kids=[], loc=None, dat=None):
+        super(NodeStoreStmt, self).__init__(kids, loc, dat)
         
         
 class NodeStmtList(Node):

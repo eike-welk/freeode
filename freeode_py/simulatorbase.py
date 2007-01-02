@@ -172,12 +172,22 @@ class SimulatorBase(object):
         pass
 
 
-    def outputEquations(self, y):
-        '''
-        Compute the algebraic variable from the state variables.
+    def final(self): 
+        ''' 
+        Display and save simulation results. 
+        This function will be called once; after the simulation results 
+        have been computed. 
         Dummy function; must be reimplemented in derived classes!
-        '''
+        ''' 
         pass
+    
+    
+#    def outputEquations(self, y):
+#        '''
+#        Compute the algebraic variable from the state variables.
+#        Dummy function; must be reimplemented in derived classes!
+#        '''
+#        pass
 
 
     def simulateDynamic(self):
@@ -225,10 +235,10 @@ class SimulatorBase(object):
         #generate run time error
         if not solver.successful():
             print 'error: simulation was terminated'
+            #return
+        #run final function
+        self.final()
 
-        #y = integrate.odeint(self.dynamic, initialValues, self.time)
-        ##compute the algebraic variables for a second time, so they can be shown in graphs.
-        #self.resultArray = self.outputEquations(y)
 
     def simulateSteadyState(self):
         """

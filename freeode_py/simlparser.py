@@ -22,6 +22,8 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
+import string
+from pyparsing import QuotedString
 __doc__ = \
 '''
 Parser for the SIML simulation language.
@@ -152,6 +154,21 @@ class ParseStage(object):
         nCurr = NodeNum()
         nCurr.loc = loc #Store position 
         nCurr.dat = tokList[0] #Store the number
+        return nCurr    
+    
+    
+    def _actionString(self, str, loc, toks):
+        '''
+        Create node for a string: 'qwert'
+        tokList has the following structure:
+        [<string>]
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        nCurr = NodeString()
+        nCurr.loc = loc #Store position 
+        nCurr.dat = tokList #Store the string
         return nCurr    
     
     
@@ -309,6 +326,63 @@ class ParseStage(object):
         nCurr.funcName = tuple(toks.funcName)    #full (dotted) function name
         return nCurr
 
+    
+    def _actionPrintStmt(self, str, loc, toks):
+        '''
+        Create node for print statement: 
+            print 'hello', foo.x
+        BNF:
+        printStmt = Group(kw('print') + exprList  .setResultsName('argList') 
+                          + Optional(',')         .setResultsName('trailComma') 
+                          + ';')                  .setParseAction(self._actionPrintStmt)\
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        #tokList = toks.asList()[0] #there always seems to be 
+        toks = toks[0]             #an extra pair of brackets
+        nCurr = NodePrintStmt()
+        nCurr.loc = loc #Store position 
+        nCurr.kids = toks.argList.asList()
+        if toks.trailComma:
+            nCurr.newline = False
+        return nCurr
+    
+
+    def _actionGraphStmt(self, str, loc, toks):
+        '''
+        Create node for graph statement: 
+            graph foo.x, foo.p
+        BNF:
+        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList') 
+                          + ';')                  .setParseAction(self._actionDebug)\
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        #tokList = toks.asList()[0] #there always seems to be 
+        toks = toks[0]             #an extra pair of brackets
+        nCurr = NodeGraphStmt()
+        nCurr.loc = loc #Store position 
+        nCurr.kids = toks.argList.asList()
+        return nCurr
+    
+
+    def _actionStoreStmt(self, str, loc, toks):
+        '''
+        Create node for graph statement: 
+            graph foo.x, foo.p
+        BNF:
+        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList') 
+                          + ';')                  .setParseAction(self._actionDebug)\
+        '''
+        if self.noTreeModification:
+            return None #No parse result modifications for debuging
+        #tokList = toks.asList()[0] #there always seems to be 
+        toks = toks[0]             #an extra pair of brackets
+        nCurr = NodeStoreStmt()
+        nCurr.loc = loc #Store position 
+        nCurr.kids = toks.argList.asList()
+        return nCurr
+    
 
     def _actionStatementList(self, str, loc, toks):
         '''
@@ -472,6 +546,9 @@ class ParseStage(object):
                     Optional('.' + Optional(uInteger)) +
                     Optional(eE + Word('+-'+nums, nums))))          .setParseAction(self._actionNumber)\
                                                                     .setName('uNumber')#.setDebug(True)
+        #string
+        stringConst = QuotedString(quoteChar='\'', escChar='\\')    .setParseAction(self._actionString)\
+                                                                    .setName('string')#.setDebug(True)
 
         # .............. Mathematical expression .............................................................
         #'Forward declarations' for recursive rules
@@ -489,8 +566,8 @@ class ParseStage(object):
                                                                     .setName('funcCall')#.setDebug(True)
         parentheses = Group('(' + expression + ')')                 .setParseAction(self._actionParenthesesPair) \
                                                                     .setName('parentheses')#.setDebug(True)
-        atom = (    uNumber | builtInValue | funcCall |
-                    valAccess | parentheses               )         .setName('atom')#.setDebug(True)
+        atom = ( uNumber | stringConst | builtInValue | 
+                 funcCall | valAccess | parentheses     )           .setName('atom')#.setDebug(True)
 
         #The basic mathematical operations: -a+b*c^d.
         #All operations have right-to-left associativity; althoug this is only
@@ -549,8 +626,9 @@ class ParseStage(object):
                             + kw('end'))                            .setParseAction(self._actionIfStatement)\
                                                                     .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
-        assignment = Group(valAccess + '=' + expression + ';')      .setParseAction(self._actionAssignment)\
-                                                                    .setName('assignment')#.setDebug(True)
+        #TODO: should be boolExpression. Why does boolExpression not work?
+        assignment = Group(valAccess + '=' + expression + ';')       .setParseAction(self._actionAssignment)\
+                                                                     .setName('assignment')#.setDebug(True)
         #execute a block - insert code of a child model 
         #function arguments are currently missing
         funcExecute = Group(kw('call') 
@@ -558,15 +636,33 @@ class ParseStage(object):
                              + '(' + ')'
                              + ';')                                 .setParseAction(self._actionFuncExecute)\
                                                                     .setName('blockExecute')#.setDebug(True)
+        #parse: '2, foo.bar, 3*sin(baz)
+        commaSup = Literal(',').suppress()
+        exprList = Group(expression 
+                         + ZeroOrMore(commaSup + expression))    .setName('exprList')
+        #print something to stdout 
+        printStmt = Group(kw('print') + exprList                     .setResultsName('argList') 
+                          + Optional(',')                            .setResultsName('trailComma') 
+                          + ';')                                     .setParseAction(self._actionPrintStmt)\
+                                                                     .setName('printStmt')#.setDebug(True)
+#---show graphs 
+        graphStmt = Group(kw('graph') + exprList                     .setResultsName('argList') 
+                          + ';')                                     .setParseAction(self._actionGraphStmt)\
+                                                                     .setName('graphStmt')#.setDebug(True)
+        #store to disk
+        storeStmt = Group(kw('store') + Group(Optional(stringConst)) .setResultsName('argList') 
+                          + ';')                                     .setParseAction(self._actionStoreStmt)\
+                                                                     .setName('storeStmt')#.setDebug(True)
 
-        statement = (funcExecute | ifStatement | assignment)       .setName('statement')#.setDebug(True)
-        statementList << Group(OneOrMore(statement))                .setParseAction(self._actionStatementList)\
-                                                                    .setName('statementList')#.setDebug(True)
+        statement = (storeStmt | graphStmt | printStmt | 
+                     funcExecute | ifStatement | assignment)         .setName('statement')#.setDebug(True)
+        statementList << Group(OneOrMore(statement))                 .setParseAction(self._actionStatementList)\
+                                                                     .setName('statementList')#.setDebug(True)
 
 #---------- Class Def ---------------------------------------------------------------------*
         #define parameters, variables and submodels
+        #commaSup = Literal(',').suppress()
         #parse: 'foo, bar, baz
-        commaSup = Literal(',').suppress()
         attrNameList = Group(identifier 
                              + ZeroOrMore(commaSup + identifier))    .setName('attrNameList')
         attrRole = kw('parameter') | kw('variable')
@@ -593,13 +689,6 @@ class ParseStage(object):
                          + ZeroOrMore(memberFuncDef)                 .setResultsName('memberFuncDef', True)
                          + kw('end'))                                .setParseAction(self._actionClassDef)\
                                                                      .setName('classDef')#.setDebug(True)
-#        #definition of a class (process, model, type?)
-#        classRole = kw('process') | kw('model') #| kw('paramset')
-#        classDef = Group(   classRole + identifier +
-#                            OneOrMore(attributeDef) +
-#                            ZeroOrMore(memberFuncDef) +
-#                            kw('end'))                              .setParseAction(self._actionClassDef)\
-#                                                                    .setName('classDef')#.setDebug(True)
 
         program = Group(OneOrMore(classDef))                        .setParseAction(self._actionProgram)\
                                                                     .setName('program')#.setDebug(True)
@@ -1196,6 +1285,7 @@ class Test(m.model):
     func dynamic():
         h = V/A_bott;
         $V = q - mu*A_o*sqrt(2*g*h);
+        print 'h: ', h,;
     end
     
     func init():
@@ -1218,6 +1308,11 @@ class RunTest(process):
         call test.init();
         solutionParameters.simulationTime = 100;
         solutionParameters.reportingInterval = 1;
+    end
+    func final():
+        store;
+        graph test.V, test.h;
+        print 'Simulation finished successfully.';
     end
 end
 ''' )
