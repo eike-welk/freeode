@@ -22,25 +22,26 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
-import string
-from pyparsing import QuotedString
 __doc__ = \
 '''
 Parser for the SIML simulation language.
 '''
 
 
-#import pprint #pretty printer
-#import pdb    #debuber
+
+#import pdb    #debuger
 
 from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
-    ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,ParseResults,  \
-    ParseFatalException, StringEnd # ParseException,
+    ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,  \
+    ParseFatalException, StringEnd, sglQuotedString, ParserElement
+    # ParseException, ParseResults, QuotedString
 
 from ast import *
 
 
-#pp = pprint.PrettyPrinter(indent=4) 
+
+#Enable a fast parsing mode with caching. May not always work.
+ParserElement.enablePackrat()
 
 
 
@@ -86,9 +87,13 @@ class ParseStage(object):
     def __init__(self):
         object.__init__(self)
         self._parser = None
+        '''The parser object for the whole program (from pyParsing).'''
         self._expressionParser = None
-        '''The parser object from pyParsing'''
-        self._defineLanguageSyntax() #Create parser object
+        '''The parser for expressions'''
+        self.lastStmtLocator = StoreLoc()
+        '''Object to remember location of last parsed statement; for 
+           error message creation.'''
+        self._defineLanguageSyntax() #Create parser objects
 
 
     def defineKeyword(self, inString):
@@ -168,7 +173,8 @@ class ParseStage(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeString()
         nCurr.loc = loc #Store position 
-        nCurr.dat = tokList #Store the string
+        #nCurr.dat = tokList #Store the string
+        nCurr.dat = tokList[1:-1] #Store the string; remove quotes 
         return nCurr    
     
     
@@ -547,11 +553,14 @@ class ParseStage(object):
                     Optional(eE + Word('+-'+nums, nums))))          .setParseAction(self._actionNumber)\
                                                                     .setName('uNumber')#.setDebug(True)
         #string
-        stringConst = QuotedString(quoteChar='\'', escChar='\\')    .setParseAction(self._actionString)\
+#        stringConst = QuotedString(quoteChar='\'', escChar='\\')    .setParseAction(self._actionString)\
+#                                                                    .setName('string')#.setDebug(True)
+        stringConst = sglQuotedString                               .setParseAction(self._actionString)\
                                                                     .setName('string')#.setDebug(True)
 
         # .............. Mathematical expression .............................................................
         #'Forward declarations' for recursive rules
+        boolExpression = Forward()
         expression = Forward()
         term =  Forward()
         factor = Forward()
@@ -599,10 +608,11 @@ class ParseStage(object):
         expression << (expression2 | expression1)       .setName('expression')#.setDebug(True)
 
         #Relational operators : <, >, ==, ...
-        #FIXME: expressions with ond, or, ... don't work
         relop = L('<') | L('>') | L('<=') | L('>=') | L('==')
-        boolExpression = Group(expression + relop + expression) .setParseAction(self._actionInfixOp) \
-                                                                .setName('expression2')#.setDebug(True)
+        boolExpr1 = expression
+        boolExpr2 = Group(expression + relop + boolExpression)  .setParseAction(self._actionInfixOp) \
+                                                                .setName('boolExpr2')#.setDebug(True)
+        boolExpression << (boolExpr2 | boolExpr1)               .setName('boolExpression')#.setDebug(True)
         #................ End mathematical expression ................................................---
 
         #................ Identifiers ...................................................................
@@ -623,19 +633,18 @@ class ParseStage(object):
         ifStatement = Group(kw('if') + boolExpression + ':' 
                             + statementList 
                             + Optional(kw('else') +':' + statementList) 
-                            + kw('end'))                            .setParseAction(self._actionIfStatement)\
-                                                                    .setName('ifStatement')#.setDebug(True)
+                            + kw('end'))                             .setParseAction(self._actionIfStatement)\
+                                                                     .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
-        #TODO: should be boolExpression. Why does boolExpression not work?
-        assignment = Group(valAccess + '=' + expression + ';')       .setParseAction(self._actionAssignment)\
+        assignment = Group(valAccess + '=' + boolExpression + ';')       .setParseAction(self._actionAssignment)\
                                                                      .setName('assignment')#.setDebug(True)
         #execute a block - insert code of a child model 
         #function arguments are currently missing
         funcExecute = Group(kw('call') 
-                             + dotIdentifier                        .setResultsName('funcName')
+                             + dotIdentifier                         .setResultsName('funcName')
                              + '(' + ')'
-                             + ';')                                 .setParseAction(self._actionFuncExecute)\
-                                                                    .setName('blockExecute')#.setDebug(True)
+                             + ';')                                  .setParseAction(self._actionFuncExecute)\
+                                                                     .setName('blockExecute')#.setDebug(True)
         #parse: '2, foo.bar, 3*sin(baz)
         commaSup = Literal(',').suppress()
         exprList = Group(expression 
@@ -645,7 +654,7 @@ class ParseStage(object):
                           + Optional(',')                            .setResultsName('trailComma') 
                           + ';')                                     .setParseAction(self._actionPrintStmt)\
                                                                      .setName('printStmt')#.setDebug(True)
-#---show graphs 
+        #---show graphs 
         graphStmt = Group(kw('graph') + exprList                     .setResultsName('argList') 
                           + ';')                                     .setParseAction(self._actionGraphStmt)\
                                                                      .setName('graphStmt')#.setDebug(True)
@@ -655,7 +664,8 @@ class ParseStage(object):
                                                                      .setName('storeStmt')#.setDebug(True)
 
         statement = (storeStmt | graphStmt | printStmt | 
-                     funcExecute | ifStatement | assignment)         .setName('statement')#.setDebug(True)
+                     funcExecute | ifStatement | assignment)         .setParseAction(self.lastStmtLocator)\
+                                                                     .setName('statement')#.setDebug(True)
         statementList << Group(OneOrMore(statement))                 .setParseAction(self._actionStatementList)\
                                                                      .setName('statementList')#.setDebug(True)
 
@@ -706,7 +716,7 @@ class ParseStage(object):
         startSymbol.ignore(singleLineCommentPy)
         #store parsers
         self._parser = startSymbol
-        self._expressionParser = expression
+        self._expressionParser = boolExpression
         
     
     def parseExpression(self, inString):
@@ -717,42 +727,33 @@ class ParseStage(object):
     def parseProgram(self, inString):
         '''Parse a whole program. The program is entered as a string.'''
         result = self._parser.parseString(inString).asList()[0]
-        #TODO: store loc of last parsed statement; for error message generation.
+        #loc of last parsed statement is stored in self.lastStmtLocator; 
+        #for error message generation.
+        #TODO: catch parse errors and generate better error messages 
+        #TODO: from them, with sored location of last statement.
         return result
 
 
 
-#class AddMetaDict(object):
-#    '''
-#    Functor class to add a dict to a ParseResults object in a semantic action.
-#    The meta dict contains (at least) the result's type and the location in the
-#    input string:
-#    {'typ':'foo', 'loc':23}
-#
-#    Additionally adds type string to a central list
-#    (ParseStage.nodeTypes - really a set) for checking the consistency
-#    '''
-#    def __init__(self, typeString):
-#        '''typeString : string to identify the node.'''
-#        object.__init__(self)
-#        self.typeString = typeString
-#         #add to set of known type strings
-#        ParseStage.nodeTypes.add(typeString)
-#
-#
-#    def __call__(self,str, loc, toks):
-#        '''The parse action that adds the dict.'''
-#        #debug code-----------------
-#        if   ParseStage.noTreeModification == 2:
-#            return None
-#        elif ParseStage.noTreeModification == 1:
-#            return toks.copy()
-#
-#        #toks is structured like this [['pi']]
-#        newToks = ParseResults([{'typ':self.typeString, 'loc':loc}]) #create dict
-#        newToks += toks[0].copy() #add original contents
-#        return ParseResults([newToks]) #wrap in []; return.
-
+class StoreLoc(object):
+    '''
+    Functor class to store the location of a parsed pattern.
+    The location is stored in the data member:
+        self.loc
+        
+    An instance of this class is given to a parser as a parse action.
+    every time the parser succeeds the __call__ method is executed, and 
+    the location of the parser's match is stored.
+    '''
+    def __init__(self):
+        super(StoreLoc, self).__init__()
+        self.loc = None
+        '''The stored location or None, if parse action is never executed.'''
+        
+    def __call__(self, str, loc, toks):
+        '''The parse action that stores the location.'''
+        self.loc = loc
+        
 
 
 class ILTGenException(Exception):

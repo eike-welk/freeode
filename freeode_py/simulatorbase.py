@@ -130,6 +130,8 @@ class SimulatorBase(object):
 
         varList = varNames.replace(',', ' ').split(' ')
         for varName1 in varList:
+            if len(varName1) == 0:
+                continue
             if not (varName1 in self.variableNameMap):
                 print('Error unknown variable name: %s') % varName1
                 continue
@@ -144,6 +146,8 @@ class SimulatorBase(object):
         timeVect = self.variable('time')
         varList = varNames.replace(',', ' ').split(' ')
         for varName1 in varList:
+            if len(varName1) == 0:
+                continue
             if not (varName1 in self.variableNameMap):
                 print('Error unknown variable name: %s') % varName1
                 continue
