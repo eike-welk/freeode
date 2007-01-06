@@ -37,6 +37,7 @@ import pyparsing
 global progVersion
 progVersion = '0.3.0'
 
+progRevision = '$REVISION$'
 
 
 class Node(object):
