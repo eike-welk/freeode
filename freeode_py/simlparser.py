@@ -844,6 +844,11 @@ class ILTProcessGenerator(object):
         Additionally the process definitions go into self.processes.
         '''
         for classDef in self.astRoot:
+            #check for duplicate classes
+            if classDef.className in self.astClasses:
+                raise UserException('Redefinition of class: %s' 
+                                    % makeDotName(classDef.className), 
+                                    classDef.loc)
             self.astClasses[classDef.className] = classDef
                 
 
@@ -861,7 +866,7 @@ class ILTProcessGenerator(object):
         self.astProcess.insertChild(0, solParAttr)
         
         
-    def findAttributesRecursive(self, astClass, namePrefix):
+    def findAttributesRecursive(self, astClass, namePrefix=tuple(), recursionDepth=0):
         '''
         Find all of the process' attributes (recursing into the sub-models)
         and put then into self.astProcessAttributes.
@@ -877,12 +882,19 @@ class ILTProcessGenerator(object):
         Output: 
             self.astProcessAttributes : dict: {('mod1', 'var1'):NodeAttrDef} 
         '''
+        #check recursion depth
+        maxRecursionDepth = 100
+        if recursionDepth > maxRecursionDepth:
+            raise UserException('maximum submodel nesting depth (%d) exeeded' 
+                                % (maxRecursionDepth), 
+                                astClass.loc)
         #each of the class' children is a definition or a list of definitions
         for attrDef in astClass:
             #inspect Node type 
             #list of definitions - look into list: recurse
             if isinstance(attrDef, NodeStmtList):
-                self.findAttributesRecursive(attrDef, namePrefix)#note same name prefix
+                self.findAttributesRecursive(attrDef, namePrefix, #note same name prefix
+                                             recursionDepth+1)
                 continue #do not create an attribute for the list Node 
             #definition of data attribute or submodel: get name, store attribute
             elif isinstance(attrDef, NodeAttrDef): 
@@ -912,7 +924,8 @@ class ILTProcessGenerator(object):
                                         + makeDotName(attrDef.className), 
                                         attrDef.loc)
                 subModel = self.astClasses[attrDef.className]
-                self.findAttributesRecursive(subModel, longAttrName)
+                self.findAttributesRecursive(subModel, longAttrName, 
+                                             recursionDepth+1)
         
         
     def copyDataAttributes(self):
