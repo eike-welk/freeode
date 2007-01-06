@@ -28,14 +28,17 @@ Parser for the SIML simulation language.
 '''
 
 
-
-#import pdb    #debuger
-
+#import debuger
+#import pdb    
+#import operation system stuff
+import sys
+import os
+#import parser library
 from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
     ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,  \
     ParseFatalException, StringEnd, sglQuotedString, ParserElement
     # ParseException, ParseResults, QuotedString
-
+#import our own syntax tree classes
 from ast import *
 
 
@@ -54,18 +57,22 @@ class ParseActionException(Exception):
 class ParseStage(object):
     '''
     The syntax definition (BNF) resides here.
-    Mainly a wrapper for the Pyparsing library and therefore combines lexer
-    and parser. The Pyparsing library generates a ParseResult object which is
-    modfied through parse actions by this class.
+    Mainly a wrapper for the Pyparsing library. It combines lexer
+    and parser. 
+    The Pyparsing library generates a ParseResult objects. These objects 
+    are replaced by ast.Node objects (really opjects inheriting from ast.Node)
+    in the parse actions of this class.
 
-    The program is entered as a string.
+    Normally a file name is given to the class, and a tree of Node ojects is 
+    returned. The program can also be entered as a string.
+    Additionally the class can parse parts of a program: expressions.
+    
     The parse* methods return a tree of Node objects; the abstract syntax 
     tree (AST)
 
     Usage:
     parser = ParseStage()
     result = parser.parseExpression('0+1+2+3+4')
-    result = parser.parseProgram(inString)
     '''
 
     noTreeModification = 0
@@ -90,10 +97,15 @@ class ParseStage(object):
         '''The parser object for the whole program (from pyParsing).'''
         self._expressionParser = None
         '''The parser for expressions'''
-        self.lastStmtLocator = StoreLoc()
+        self._lastStmtLocator = StoreLoc(self)
         '''Object to remember location of last parsed statement; for 
            error message creation.'''
-        self._defineLanguageSyntax() #Create parser objects
+        self.progFileName = None
+        '''Name of SIML program file, that will be parsed'''
+        self.inputString = None
+        '''String that will be parsed'''
+        #Create parser objects
+        self._defineLanguageSyntax() 
 
 
     def defineKeyword(self, inString):
@@ -106,6 +118,11 @@ class ParseStage(object):
         return Keyword(inString)
 
 
+    def createTextLocation(self, atChar):
+        '''Create a text location object at the given char'''
+        return TextLocation(atChar, self.inputString, self.progFileName)
+    
+    
 #------------- Parse Actions -------------------------------------------------*
     def _actionDebug(self, str, loc, toks):
         '''Parse action for debuging.'''
@@ -114,7 +131,7 @@ class ParseStage(object):
         print loc
         print toks
         print '-------------------'
-        return toks
+        return None
 
 
     def _actionCheckIdentifier(self, str, loc, toks):
@@ -142,7 +159,7 @@ class ParseStage(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         #create AST node
         nCurr = NodeBuiltInVal()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         nCurr.dat = tokList[0] #Store the built in value's name
         return nCurr
     
@@ -157,7 +174,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeNum()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         nCurr.dat = tokList[0] #Store the number
         return nCurr    
     
@@ -172,7 +189,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeString()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         #nCurr.dat = tokList #Store the string
         nCurr.dat = tokList[1:-1] #Store the string; remove quotes 
         return nCurr    
@@ -188,7 +205,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeBuiltInFuncCall()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         nCurr.dat = tokList[0]  #function dentifier
         nCurr.kids=[tokList[2]] #child expression
         return nCurr
@@ -204,7 +221,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeParentheses()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         nCurr.kids = [tokList[1]] #store child expression
         return nCurr
 
@@ -219,7 +236,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpPrefix1()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         nCurr.dat = tokList[0]  #Store operator
         nCurr.kids=[tokList[1]] #Store child tree
         return nCurr
@@ -235,7 +252,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpInfix2()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         #create children and store operator
         lhsTree = tokList[0]   #child lhs
         nCurr.dat = tokList[1] #operator
@@ -254,7 +271,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeAttrAccess()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         #Look if there is a '$' that indicates time derivatives
         if tokList[0] == '$':
             nCurr.deriv = ('time',)
@@ -277,7 +294,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeIfStmt()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         #if ... then ... end
         if len(tokList) == 5:
             condition = tokList[1]
@@ -304,7 +321,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeAssignment()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         #create children and store operator
         lhsTree = tokList[0]   #child lhs
         nCurr.dat = tokList[1] #operator
@@ -328,7 +345,7 @@ class ParseStage(object):
         #tokList = toks.asList()[0] #there always seems to be 
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeFuncExecute()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         nCurr.funcName = tuple(toks.funcName)    #full (dotted) function name
         return nCurr
 
@@ -347,7 +364,7 @@ class ParseStage(object):
         #tokList = toks.asList()[0] #there always seems to be 
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodePrintStmt()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         nCurr.kids = toks.argList.asList()
         if toks.trailComma:
             nCurr.newline = False
@@ -367,7 +384,7 @@ class ParseStage(object):
         #tokList = toks.asList()[0] #there always seems to be 
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeGraphStmt()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         nCurr.kids = toks.argList.asList()
         return nCurr
     
@@ -385,7 +402,7 @@ class ParseStage(object):
         #tokList = toks.asList()[0] #there always seems to be 
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeStoreStmt()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         nCurr.kids = toks.argList.asList()
         return nCurr
     
@@ -400,7 +417,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeStmtList()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         #create children - each child is a statement
         for tok in tokList:
             nCurr.kids.append(tok)
@@ -431,10 +448,10 @@ class ParseStage(object):
         toks = toks[0]             #an extra pair of brackets
         #multiple attributes can be defined in a single statement
         #Create a node for each of them and put them into a statemnt list
-        attrDefList = NodeAttrDefMulti(loc=loc)
+        attrDefList = NodeStmtList(loc=self.createTextLocation(loc)) 
         nameList = toks.attrNameList.asList()
         for name in nameList:
-            attrDef = NodeAttrDef(loc=loc)
+            attrDef = NodeAttrDef(loc=self.createTextLocation(loc))
             attrDef.attrName = tuple([name]) #store attribute name
             attrDef.className = tuple(toks.className.asList())  #store class name
             #store the role 
@@ -468,7 +485,7 @@ class ParseStage(object):
         #tokList = toks.asList()[0] #there always seems to be 
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeFuncDef()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         #store name of block 
         nCurr.name = (toks.funcName,)
         #create children - each child is a statement
@@ -496,7 +513,7 @@ class ParseStage(object):
         #tokList = toks.asList()[0] #there always seems to be 
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeClassDef()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         #store class name and name of super class
         nCurr.className = (toks.className,)
         nCurr.superName = tuple(toks.superName)
@@ -517,7 +534,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeProgram()
-        nCurr.loc = loc #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position 
         #create children - each child is a class
         for tok in tokList:
             nCurr.kids.append(tok)
@@ -664,7 +681,7 @@ class ParseStage(object):
                                                                      .setName('storeStmt')#.setDebug(True)
 
         statement = (storeStmt | graphStmt | printStmt | 
-                     funcExecute | ifStatement | assignment)         .setParseAction(self.lastStmtLocator)\
+                     funcExecute | ifStatement | assignment)         .setParseAction(self._lastStmtLocator)\
                                                                      .setName('statement')#.setDebug(True)
         statementList << Group(OneOrMore(statement))                 .setParseAction(self._actionStatementList)\
                                                                      .setName('statementList')#.setDebug(True)
@@ -719,19 +736,43 @@ class ParseStage(object):
         self._expressionParser = boolExpression
         
     
-    def parseExpression(self, inString):
+    def parseExpressionStr(self, inString):
         '''Parse a single expression. Example: 2*a+b'''
+        self.inputString = inString
         return self._expressionParser.parseString(inString).asList()[0]
 
 
-    def parseProgram(self, inString):
+    def parseProgramStr(self, inString):
         '''Parse a whole program. The program is entered as a string.'''
+        self.inputString = inString
         result = self._parser.parseString(inString).asList()[0]
-        #loc of last parsed statement is stored in self.lastStmtLocator; 
-        #for error message generation.
-        #TODO: catch parse errors and generate better error messages 
-        #TODO: from them, with sored location of last statement.
         return result
+
+
+    def parseProgramFile(self, fileName):
+        '''Parse a whole program. The program's file name is supplied.'''
+        #open and read the file
+        try:
+            inputFile = open(fileName, 'r')
+            inputFileContents = inputFile.read()
+            inputFile.close()
+        except IOError, theError:
+            print 'error: could not read input file\n', theError
+            sys.exit(1)
+        self.progFileName = os.getcwd() + '/' + fileName
+        #parse the program
+        try:
+            astTree = self.parseProgramStr(inputFileContents)
+        except pyparsing.ParseException, theError:
+            #see if there is the loc of a successfully parsed statement
+            if not self._lastStmtLocator.loc:
+                raise theError # no: raise old error
+            #make new error with loc of a successfully parsed statement
+            loc = self._lastStmtLocator.loc
+            msg = 'syntax error: last parsed statement was:'
+            msgPyParsing = str(theError) + '\n'
+            raise UserException(msgPyParsing + msg, loc)
+        return astTree
 
 
 
@@ -745,14 +786,17 @@ class StoreLoc(object):
     every time the parser succeeds the __call__ method is executed, and 
     the location of the parser's match is stored.
     '''
-    def __init__(self):
+    def __init__(self, parser):
         super(StoreLoc, self).__init__()
         self.loc = None
         '''The stored location or None, if parse action is never executed.'''
+        self.parser = parser
+        '''Parser for which this class works'''
         
     def __call__(self, str, loc, toks):
         '''The parse action that stores the location.'''
-        self.loc = loc
+        self.loc = TextLocation(loc, self.parser.inputString, 
+                                self.parser.progFileName)
         
 
 
@@ -837,7 +881,7 @@ class ILTProcessGenerator(object):
         for attrDef in astClass:
             #inspect Node type 
             #list of definitions - look into list: recurse
-            if isinstance(attrDef, (NodeAttrDefMulti, NodeStmtList)):
+            if isinstance(attrDef, NodeStmtList):
                 self.findAttributesRecursive(attrDef, namePrefix)#note same name prefix
                 continue #do not create an attribute for the list Node 
             #definition of data attribute or submodel: get name, store attribute
@@ -1163,6 +1207,7 @@ class ILTProcessGenerator(object):
         self.process = NodeClassDef()
         self.process.className = self.astProcess.className
         self.process.superName = self.astProcess.superName
+        self.process.loc = self.astProcess.loc
         #init quick reference dicts
         self.processAttributes = {}
         self.astProcessAttributes = {}
@@ -1213,8 +1258,6 @@ class ILTProcessGenerator(object):
         
         #TODO: Check correct order of assignments (or initialization).
         #TODO: Check if all parameters and state vars have been initialized.
-        #FIXME: add function 'final': Method where graphs are displayed and vars are stored
-        #FIXME: add methods for final function: store, (load), graph
         
         return self.process
 
@@ -1257,6 +1300,7 @@ class ILTGenerator(object):
 #        print astRoot
         #create ILT root node
         iltRoot = NodeProgram()
+        iltRoot.loc = astRoot.loc
         
         procGen = ILTProcessGenerator(astRoot)
         #search for processes in the AST and instantiate them in the ILT
@@ -1326,7 +1370,7 @@ end
         parser = ParseStage()
         iltGen = ILTGenerator()
         
-        astTree = parser.parseProgram(testProg1)
+        astTree = parser.parseProgramStr(testProg1)
         print 'AST tree:'
         print astTree
  
@@ -1348,7 +1392,7 @@ end
 
         #print parser.parseProgram(testProg2)
 
-        print parser.parseProgram(testProg1)
+        print parser.parseProgramStr(testProg1)
         #print parser.parseProgram('if a==0 then b=-1; else b=2+3+4; a=1; end')
         #print parser.parseExpression('0*1*2*3*4').asList()[0]
         #print parser.parseExpression('0^1^2^3^4')

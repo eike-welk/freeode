@@ -19,7 +19,7 @@ class Tank(model):
         A_bott = 1.2;
         Ao = 0.02; 
         h1 = 0.5;
-        mu = 0.55; 
+        mu = 0.55;
         qIn = 0.05;
     end
 end

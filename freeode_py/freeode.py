@@ -26,28 +26,18 @@ import sys
 import pyparsing
 import simlparser
 import pygenerator
+import ast #for ast.progVersion
 from ast import UserException
 
-
-#These global variables are defined in ast.py and are therefore accessible 
-#in all modules of the compiler
-global progVersion, inputFileName, inputFileContents
-#version of the Siml compiler
-progVersion = '0.3.0'
-#name of the Siml file which is compiled
-inputFileName = '???'
-#The contents of the input file as a string
-inputFileContents = '???'
 
 
 def parseCmdLine():
     '''Parse the command line, and find out what the user wants from us.'''
-    global progVersion
     #set up parser for the command line aruments
     optPars = optparse.OptionParser(
                 usage='%prog <input_file> [-o <output_file>] [-m | -n]',
                 description='Compiler for the Siml simulation language.', 
-                version='%prog ' + progVersion)
+                version='%prog ' + ast.progVersion)
     
     optPars.add_option('-o', '--outfile', dest='outfile', 
                        help='explicitly specify name of output file', 
@@ -98,17 +88,6 @@ def parseCmdLine():
 
 def doCompile(inputFileName, outputFileName):
     '''Do the work'''
-    global inputFileContents
-    
-    #open the file
-    try:
-        inputFile = open(inputFileName, 'r')
-        inputFileContents = inputFile.read()
-        inputFile.close()
-    except IOError, theError:
-        print 'error: could not read input file\n', theError
-        sys.exit(1)
-    
     #create the top level objects that do the compilation
     parser = simlparser.ParseStage()
     iltGen = simlparser.ILTGenerator()
@@ -116,7 +95,7 @@ def doCompile(inputFileName, outputFileName):
     
     #the compilation proper
     try:
-        astTree = parser.parseProgram(inputFileContents)
+        astTree = parser.parseProgramFile(inputFileName)
         #print astTree
         iltTree = iltGen.createIntermediateTree(astTree)
         #print iltTree
@@ -124,10 +103,9 @@ def doCompile(inputFileName, outputFileName):
         progStr = progGen.buffer()
     #errors from freeode
     except UserException, theError:
-        theError.str = inputFileContents
         print theError
         sys.exit(1)
-    #errors from pyparsing
+    #errors from pyparsing. Don't remove: parser may re-raise pyparsing errors.
     except pyparsing.ParseException, theError:
         print 'syntax error: ', theError
         sys.exit(1)
@@ -147,8 +125,6 @@ def doCompile(inputFileName, outputFileName):
    
 def mainFunc():
     '''the main function'''
-    global inputFileName
-    
     try:
         inputFileName, outputFileName, genMainRoutine = parseCmdLine()
         doCompile(inputFileName, outputFileName)

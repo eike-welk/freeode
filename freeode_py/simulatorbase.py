@@ -221,12 +221,8 @@ class SimulatorBase(object):
                                      .set_initial_value(self.initialValues,
                                                         self.time[0])
         #compute the numerical solution
-        #TODO: deal with the state variables
         i=1
         while solver.successful() and i < len(self.time):
-#            y0 = self.resultArray[i-1]
-#            tStart = self.time[i-1]
-#            tEnd = self.time[i]
             #do time step
             solver.integrate(self.time[i])
             #save state vars (and time)

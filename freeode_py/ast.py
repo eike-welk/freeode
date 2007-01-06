@@ -31,17 +31,11 @@ import copy
 import pyparsing
 
 
-#version of the Siml compiler
+
+#version of the Siml compiler.
+#global variable defined here is valid for all parts of the program.
 global progVersion
-progVersion = '???'
-
-#name of the Siml file which is compiled
-global inputFileName
-inputFileName = '???'
-
-#The contents of the input file as a string
-global inputFileContents
-inputFileContents = '???'
+progVersion = '0.3.0'
 
 
 
@@ -98,6 +92,7 @@ class Node(object):
         #appendChild checks the type
         for child in kids:
             self.appendChild(child)
+        #the node's location in the parsed text
         self.loc  = loc
         '''the location in the program'''
         self.dat = dat      
@@ -197,7 +192,6 @@ class NodeBuiltInVal(Node):
     
     self.dat : string representing the value
     '''
-    #TODO:unify built in values and parametres
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeBuiltInVal, self).__init__(kids, loc, dat)
     
@@ -210,7 +204,6 @@ class NodeBuiltInFuncCall(Node):
     self.dat  : the function's name
     self.kids : the function's arguments 
     '''    
-    #TODO: unify built in functions and blocks.
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeBuiltInFuncCall, self).__init__(kids, loc, dat)
         
@@ -438,8 +431,10 @@ class NodeAttrDef(Node):
         className       : type of the attribute; possibly dotted name: ('aa', 'bb')
         role            : Is this attribute a state or algebraic variable, 
                           or a parameter? must be AttributeRole subclass.
-        targetName      : Name in the target language (dict). TODO: show structure of dict
-                          Variables with derivatives have multiple target names
+        targetName      : Name in the target language (dict). 
+                          Variables with derivatives have multiple target names.
+                          Example:
+                          {():'v_foo', ('time',):'v_foo_dt'}
    '''
     def __init__(self, kids=[], loc=None, dat=None, 
                         attrName=None, className=None, role=RoleAny, targetName=None):
@@ -450,12 +445,6 @@ class NodeAttrDef(Node):
         #self.isAtomic = isAtomic 
         self.targetName = targetName 
     
-    
-class NodeAttrDefMulti(NodeStmtList):
-    '''A list of attribute definitions.'''
-    def __init__(self, kids=[], loc=None, dat=None):
-        super(NodeAttrDefMulti, self).__init__(kids, loc, dat)
-       
     
 class NodeAttrAccess(Node):
     '''
@@ -688,55 +677,77 @@ def makeDotName(inTuple):
 
 class UserException(Exception):
     '''Exception that transports user visible error messages'''
-    def __init__(self, message, loc=None, str=None):
+    def __init__(self, message, loc=None):
         Exception.__init__(self)
         self.message = message
         '''The error message'''
         self.loc = loc
-        '''Position in the input string, where the error occured'''
-        self.str = str
-        '''When not none take this as the input string'''
+        '''Position in the input string, where the error occured. 
+        Includes input string and file name'''
 
     def __str__(self):
-        #TODO: create error message which is understood by Pydev. Format:
-        #File "/home/eike/codedir/freeode/trunk/freeode_py/simlparser.py", line 956, in createProcess
-        if self.str == None:
-            return 'Error! ' + self.message + '\n At position: ' + str(self.loc)
-        else:
-            lineno = pyparsing.lineno(self.loc, self.str)
-            col = pyparsing.col(self.loc, self.str)
-            return 'Error! %s \n' % self.message +\
-                   'Line: %d, Column: %d' % (lineno, col)
+       return 'Error! %s \n' % self.message + str(self.loc)
 
 
 
 class MultiErrorException(UserException):
-    '''Exception with many (ure visible) error messages'''
-    def __init__(self, errTupList, str=None):
+    '''Exception with many (user visible) error messages'''
+    def __init__(self, errTupList):
         '''
         Arguments:
             errTupList : iterable (list) with tuples (message, loc)
-            str        : The source program as a string
         '''
         #init base class with first error; at least kind of sensible
         msg1, loc1 = errTupList[0] 
-        UserException.__init__(self, msg1, loc1, str)
+        UserException.__init__(self, msg1, loc1)
         self.errTupList = errTupList
         '''iterable (list) with tuples (message, loc)'''
         
     def __str__(self):
-        #TODO: create error message which is understood by Pydev.
         errMsg = 'Error!\n'
         for msg1, loc1 in self.errTupList:
-            lineno, col = 0, 0
-            if self.str:
-                lineno = pyparsing.lineno(loc1, self.str)
-                col = pyparsing.col(loc1, self.str)
-            errMsg += '%s \n' % msg1 +\
-                      'Line: %d, Column: %d\n' % (lineno, col)
+            errMsg += '%s \n    %s \n' % (msg1, str(self.loc))
         return errMsg  
 
         
+
+class TextLocation(object):
+    '''
+    Store the location of parsed pattern, or error.
+    
+    Includes the file's contents and the file's name.
+    Object is intended to be stored in a Node's self.loc 
+    data member.
+    '''
+    def __init__(self, atChar=None, textString=None, fileName=None):
+        super(TextLocation, self).__init__()
+        self.atChar = atChar
+        self.str = textString
+        self.name = fileName
+        
+    def lineNo(self):
+        '''Compute the line number of the stored location.'''
+        if self.atChar and self.str:
+            return pyparsing.lineno(self.atChar, self.str)
+        else:
+            return 0
+        
+    def col(self):
+        '''Compute the column of the stored location.'''
+        if self.atChar and self.str:
+            return pyparsing.col(self.atChar, self.str)
+        else:
+            return 0
+    
+    def fileName(self):
+        '''Return the filename.'''
+        return str(self.name)
+    
+    def __str__(self):
+        '''Return meaningfull string'''
+        return 'File "' + self.fileName() + '", line ' + str(self.lineNo())
+
+
 
 #------------ testcode --------------------------------------------------
 import unittest

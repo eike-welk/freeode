@@ -17,11 +17,6 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-from ast import NodeGraphStmt
-from ast import Node
-from ast import NodeStoreStmt
-from ast import NodePrintStmt
-from ast import Node
 __doc__ = \
 '''
 Generator for python code.
@@ -31,7 +26,8 @@ It consumes a modified AST, the intermediate language tree (ILT) and
 generates some python classes that perform the simulations.
 '''
 
-
+import StringIO
+import ast
 from ast import *
 
 
@@ -39,23 +35,6 @@ class PyGenException(Exception):
     '''Exception thrown by the pytrhon code generator classes'''
     def __init__(self, *params):
         Exception.__init__(self, *params)
-
-
-
-class StringStream(object):
-    '''Object that can replace a file for writing too.'''
-    #TODO: replace with StringIO
-
-    def __init__(self):
-        self._buffer = ''
-
-    def write(self, inStr):
-        '''Put this string into the buffer'''
-        self._buffer += inStr
-
-    def buffer(self):
-        '''Retrieve the buffer'''
-        return self._buffer
 
 
 
@@ -234,14 +213,17 @@ class StatementGenerator(object):
             outPy.write(line + '\n')
         #store statement
         elif isinstance(iltStmt, NodeStoreStmt):
+            #TODO: implement store statement
             print 'warning: store statement is not implemented yet'
-            outPy.write(indent + "print 'warning: store statement is not implemented yet' \n")
+            outPy.write(indent + 
+                        "print 'warning: store statement is not implemented yet' \n")
         #graph statement
         elif isinstance(iltStmt, NodeGraphStmt):
             outPy.write(indent + 'self.graph(\'')
             for expr in iltStmt:
                 if not isinstance(expr, NodeAttrAccess):
-                    raise UserException('Arguments of graph statement must be variable names.')
+                    raise UserException('Arguments of graph statement must be variable names.', 
+                                        iltStmt.loc)
                 outPy.write(makeDotName(expr.attrName) + ' ')
             outPy.write('\') \n')
         else:
@@ -366,11 +348,13 @@ class ProcessGenerator(object):
 
     def writeClassDefStart(self):
         '''Write first few lines of class definition.'''
-        global inputFileName
         self.outPy.write('class %s(SimulatorBase): \n' % self.processPyName)
         self.outPy.write('    \'\'\' \n')
-        self.outPy.write('    Object to simulate process %s \n' % self.iltProcess.className)
-        self.outPy.write('    Definition in file: \'%s\' line: %s \n' % (inputFileName, '???'))
+        self.outPy.write('    Object to simulate process %s \n' 
+                         % self.iltProcess.className)
+        self.outPy.write('    Definition in\n    file: \'%s\'\n    line: %s \n' 
+                         % (self.iltProcess.loc.fileName(), 
+                            self.iltProcess.loc.lineNo()))
         self.outPy.write('    \'\'\' \n')
         self.outPy.write('    \n')
 
@@ -437,7 +421,7 @@ class ProcessGenerator(object):
         lineW.endLine('], \'float64\')')
         outPy.write(ind8 + 'self.algVectorLen = len(algVars) \n')
         #TODO: compute self.variableNameMap from the actual sizes of the variables
-        outPy.write(ind8 + '#TODO: compute self.variableNameMap from the actual sizes of the variables \n')
+        outPy.write(ind8 + '#Create maping between variable names and array indices \n')
         #Create maping between variable names and array indices
         longW = LongLineWriter(outPy, ' '*16)
         longW.startLine(ind8 + 'self.variableNameMap = {')
@@ -520,7 +504,7 @@ class ProcessGenerator(object):
         outPy.write(ind8 + 'This function will be called once; after the simulation results \n')
         outPy.write(ind8 + 'have been computed. \n')
         outPy.write(ind8 + '\'\'\' \n')
-        #TODO: create all variables, with values from the last iteration
+        #TODO: create all variables, with values from the last iteration?
         #genrate code for the statements
         outPy.write(ind8 + '#the final method\'s statements \n')
         stmtGen = StatementGenerator(outPy)
@@ -561,8 +545,10 @@ class ProgramGenerator(object):
                      or a StringStream for debuging.
         '''
         super(ProgramGenerator,self).__init__(self)
+        self.iltRoot = None
+        '''root of intermediate language tree'''
         if outPyFile == None:
-            self.outPy = StringStream()
+            self.outPy = StringIO.StringIO()
         else:
             self.outPy = outPyFile
 
@@ -572,7 +558,7 @@ class ProgramGenerator(object):
         Return the the generated Python text in case self.outPy is a
         StringStream object.
         '''
-        return self.outPy.buffer()
+        return self.outPy.getvalue()
 
 
     def writeProgramStart(self):
@@ -595,10 +581,9 @@ class ProgramGenerator(object):
         dt = datetime.datetime.today()
         date = dt.date().isoformat()
         time = dt.time().strftime('%H:%M:%S')
-        global inputFileName, progVersion
 
-        self.outPy.write('# Generated by Siml version %s on %s %s. \n' % (progVersion, date, time))
-        self.outPy.write('# Source file(s): %s' % inputFileName)
+        self.outPy.write('# Generated by Siml version %s on %s %s. \n' % (ast.progVersion, date, time))
+        self.outPy.write('# Source file(s): %s' % self.iltRoot.loc.fileName())
         self.outPy.write(
 '''
 ################################################################################
@@ -613,14 +598,16 @@ from simulatorbase import SimulatorBase
         return
 
 
-    def createProgram(self, astRoot):
+    def createProgram(self, iltRoot):
         '''
         Take an ILT and create as python program from it.
         Write the python program into the file self.outPy
         '''
+        self.iltRoot = iltRoot
+        
         self.writeProgramStart()
 
-        for process in astRoot:
+        for process in iltRoot:
             if not isinstance(process, NodeClassDef):
                 continue
             #create process
@@ -677,7 +664,7 @@ end
     iltGen = ILTGenerator()
     progGen = ProgramGenerator()
 
-    astTree = parser.parseProgram(testProg1)
+    astTree = parser.parseProgramStr(testProg1)
     print 'AST tree:'
     print astTree
 
