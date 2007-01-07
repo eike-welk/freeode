@@ -517,9 +517,13 @@ class ParseStage(object):
         #store class name and name of super class
         nCurr.className = (toks.className,)
         nCurr.superName = tuple(toks.superName)
-        #create children (may or may not be present):  definitions, dynamic block, init block
-        body = toks.attributeDef.asList()[0] + toks.memberFuncDef.asList()[0]
-        for stmt1 in body:
+        #create children (may or may not be present):  data, functions
+        data, funcs = [], [] #special cases for empty edinitions necessary
+        if len(toks.attributeDef) > 0:
+            data = toks.attributeDef.asList()[0]
+        if len(toks.memberFuncDef) > 0:
+            funcs =  toks.memberFuncDef.asList()[0]
+        for stmt1 in data + funcs:
             nCurr.appendChild(stmt1)
         return nCurr
 
@@ -712,7 +716,7 @@ class ParseStage(object):
                          + identifier                                .setResultsName('className')
                          + '(' + dotIdentifier                       .setResultsName('superName')
                          + ')' + ':' 
-                         + OneOrMore(attributeDef)                   .setResultsName('attributeDef', True)
+                         + ZeroOrMore(attributeDef)                  .setResultsName('attributeDef', True)
                          + ZeroOrMore(memberFuncDef)                 .setResultsName('memberFuncDef', True)
                          + kw('end'))                                .setParseAction(self._actionClassDef)\
                                                                      .setName('classDef')#.setDebug(True)
@@ -966,14 +970,14 @@ class ILTProcessGenerator(object):
                 #Error if submodel or method does not exist
                 if not subModelName in self.astProcessAttributes:
                     raise UserException('Undefined submodel: ' + 
-                                        str(subModelName), statement.loc)
+                                        makeDotName(subModelName), statement.loc)
                 if not subBlockName in self.astProcessAttributes:
                     raise UserException('Undefined method: ' + 
-                                        str(subBlockName), statement.loc)
+                                        makeDotName(subBlockName), statement.loc)
                 #Check if executing (inlining) this block is allowed
                 if statement.funcName in illegalBlocks:
                     raise UserException('Method can not be executed here: ' + 
-                                        str(statement.funcName), statement.loc)
+                                        makeDotName(statement.funcName), statement.loc)
                 #find definition of method, and recurse into it.
                 subBlockDef = self.astProcessAttributes[subBlockName] 
                 self.copyFuncRecursive(subBlockDef, subModelName, newBlock, illegalBlocks)

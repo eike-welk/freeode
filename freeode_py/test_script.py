@@ -24,7 +24,9 @@ import sys
 from pylab import *
 
 #execute the compiler
-proc = Popen(['python', 'freeode.py', 'tank.siml'], shell=False, #bufsize=1000,
+#proc = Popen(['python', 'freeode.py', 'tank.siml'], shell=False, #bufsize=1000,
+#             stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
+proc = Popen(['python', 'freeode.py', 'tuned_abs_damper.siml'], shell=False, #bufsize=1000,
              stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
 (procStdin, procComboOut) = (proc.stdin, proc.stdout)
 #stop when compiler error is detected
@@ -36,10 +38,12 @@ if retStr.lower().find('error') != -1:
     
 
 #import the generated python program
-import tank
+#import tank
+import tuned_abs_damper
 
 #create simulation object and do the simulation
-sim = tank.FillTank() 
+#sim = tank.FillTank() 
+sim = tuned_abs_damper.Experiment1()
 sim.simulateDynamic()
 
 #show some results

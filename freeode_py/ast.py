@@ -707,6 +707,8 @@ class MultiErrorException(UserException):
         errMsg = 'Error!\n'
         for msg1, loc1 in self.errTupList:
             errMsg += '%s \n    %s \n' % (msg1, str(self.loc))
+        errMsg += '------------------------\n'
+        errMsg += 'Total: %d Error(s).' % len(self.errTupList)
         return errMsg  
 
         
