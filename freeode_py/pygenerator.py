@@ -26,8 +26,8 @@ It consumes a modified AST, the intermediate language tree (ILT) and
 generates some python classes that perform the simulations.
 '''
 
-import StringIO
-import ast
+import cStringIO
+import ast #necessary for ast.progVersion
 from ast import *
 
 
@@ -550,7 +550,7 @@ class ProgramGenerator(object):
         self.iltRoot = None
         '''root of intermediate language tree'''
         if outPyFile == None:
-            self.outPy = StringIO.StringIO()
+            self.outPy = cStringIO.StringIO()
         else:
             self.outPy = outPyFile
 
