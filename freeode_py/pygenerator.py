@@ -532,6 +532,8 @@ class ProcessGenerator(object):
         self.writeDynamicMethod()
         self.writeFinalMethod()
         #self.writeOutputEquations()
+        
+        self.outPy.write('\n\n')
 
 
 
@@ -627,7 +629,7 @@ if __name__ == '__main__':
 #------------ testProg1 -----------------------
     testProg1 = (
 '''
-class Test(m.model):
+class Test(Model):
     data V, h: Real;
     data A_bott, A_o, mu, q, g: Real parameter;
     

@@ -498,7 +498,7 @@ class ParseStage(object):
     def _actionClassDef(self, str, loc, toks):
         '''
         Create node for definition of a class: 
-            class foo(model): ... end
+            class foo(Model): ... end
         BNF:
         classDef = Group(kw('class') 
                          + identifier                 .setResultsName('className')
@@ -1299,7 +1299,7 @@ class ILTGenerator(object):
         '''
         #Create the solution parameters' definition
         solPars = NodeClassDef(loc=0, className=('solutionParametersClass',), 
-                               superName=('model',))
+                               superName=('Model',))
         solPars.appendChild(NodeAttrDef(loc=0, attrName=('simulationTime',), 
                                         className=('Real',), role=RoleParameter))
         solPars.appendChild(NodeAttrDef(loc=0, attrName=('reportingInterval',), 
@@ -1323,7 +1323,7 @@ class ILTGenerator(object):
         #search for processes in the AST and instantiate them in the ILT
         for processDef in astRoot:
             if ((not isinstance(processDef, NodeClassDef)) or 
-                (not processDef.superName == ('process',))):
+                (not processDef.superName == ('Process',))):
                 continue
             newProc = procGen.createProcess(processDef)
             iltRoot.appendChild(newProc)

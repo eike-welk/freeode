@@ -1,0 +1,164 @@
+# Simulation of a Tuned Mass Damper
+# And of a Dynamic Absorber (which I don'T quite understand)
+#
+#
+#
+#   x1                x2
+#-------->|      |-------->|
+#         |      |         |
+#
+#         |-> Fe
+#         +------+   c2    +------+
+#         |      |/\/\/\/\/|      |
+#         |      |   d2    |      |
+#   c1    |      | |-----  |  m2  | Tuned Damper
+#/\/\/\/\/|      |=|   ]===|      |  (same resonance as structure, high damping)
+#         |      | |-----  |      |
+#         |  m1  |         +------+
+#   d1    |      |
+# |-----  |vibra-|   c3    +------+
+#=|   ]===|ting  |/\/\/\/\/|      |
+# |-----  |struc-|   d3    |      |
+#         |ture  | |-----  |  m3  | Dynamic absorber
+#         |      |=|   ]===|      |  (higher resonance frequency, low damping)
+#         |      | |-----  |      |
+#         +------+         +------+
+#
+#
+#                |   x3    |
+#                |-------->|
+#
+#
+#
+# Usually: m2 = 0.01...0.05 m1
+#
+# D = d/sqrt(c*m) :damping
+# if D>1 then: damping is strong
+
+
+#create vibration with linearly increasing frequency
+#output x
+class FrequencySweepGenerator(Model):
+    data fMin, fMax, rampDuration: Real parameter;
+    data x, frequ: Real;
+
+    func dynamic():
+        frequ = fMin + time*(fMax-fMin)/rampDuration;
+        x = sin(time*2*pi*frequ);
+    end
+
+    func init():
+        fMin = 1;
+        fMax = 10;
+        rampDuration = 100;
+    end
+end
+
+class Resonator(Model):
+    data c, d, m: Real parameter;
+    #Damp, omega: Real parameter;
+    data x, v: Real;    #state variables
+    data F: Real; #external force
+
+    func dynamic():
+        $v = (-c*x - d*v + F)/m;
+        $x = v;
+    end
+
+    func init():
+        m = 1; c = 1; d = 0;
+        #Damp = d/sqrt(c*m); #damping
+        #omega = sqrt(c/m);  #circular frequency
+        x = 0;
+        v = 0;
+    end
+end
+
+
+class ResonatorDamped(Model):
+    data c, d, m: Real parameter;
+    data x, v: Real;    #state variables
+    data F: Real; #external force
+
+    #Damper
+    data c2, d2, m2: Real parameter;
+    data x2, v2: Real;    #state variables
+
+    func dynamic():
+        $v = (-c*x - d*v + F + c2*(x2-x))/m;
+        $x = v;
+
+        $v2 = (-c2*(x2-x) - d2*v2)/m2;
+        $x2 = v2;
+    end
+
+    func init():
+        m = 1; c = 1; d = 0;
+        x = 0; v = 0;
+
+        m2 = 1; c2 = 1; d2 = 0;
+        x2 = 0; v2 = 0;
+    end
+end
+
+
+class Experiment1(Process):
+    data sweep: FrequencySweepGenerator;
+    data AmpFe :Real parameter;
+    data st1: ResonatorDamped;
+
+
+    func dynamic():
+        call sweep.dynamic();
+        st1.F = AmpFe*sweep.x;
+        call st1.dynamic();
+    end
+
+    func init():
+        call sweep.init();
+        sweep.fMin = 0.80; sweep.fMax=1.12;
+        sweep.rampDuration = 50;
+        AmpFe = 10;
+
+        call st1.init();
+        st1.m = 100; st1.c = 5000; st1.d = 20;
+        st1.x = 0;
+        st1.m2 = 2; st1.c2 = 100; st1.d2 = 2;
+        st1.x2 = 0;
+
+        solutionParameters.simulationTime = 50;
+        solutionParameters.reportingInterval = 0.01;
+    end
+
+    func final():
+        graph st1.x, st1.x2; #, st1.v;
+        graph sweep.frequ; #, sweep.x;
+    end
+end
+
+
+class StepExperiment(Process):
+    #data sweep: FrequencySweepGenerator;
+    data st1: Resonator;
+
+    func dynamic():
+        #call sweep.dynamic();
+        st1.F = 0;
+        call st1.dynamic();
+    end
+
+    func init():
+        #call sweep.init();
+        call st1.init();
+        st1.m = 100; st1.c = 5000; st1.d = 50;
+        st1.x = 1;
+
+        solutionParameters.simulationTime = 10;
+        solutionParameters.reportingInterval = 0.01;
+    end
+
+    func final():
+        graph st1.x, st1.v;
+        #graph sweep.frequ, sweep.x;
+    end
+end

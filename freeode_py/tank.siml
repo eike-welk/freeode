@@ -1,4 +1,4 @@
-class Tank(model):
+class Tank(Model):
     data V, h, qOut0, qOut1: Real;
     data A_bott, Ao, h1, mu, qIn, g: Real parameter;
 
@@ -6,9 +6,9 @@ class Tank(model):
         h = V/A_bott;
         qOut0 = mu*Ao*sqrt(2*g*h); #hole in bottom
         if h > h1:
-        	qOut1 = mu*Ao*sqrt(2*g*(h-h1)); #hole at height h1
+            qOut1 = mu*Ao*sqrt(2*g*(h-h1)); #hole at height h1
         else:
-        	qOut1 = 0;
+            qOut1 = 0;
         end
         $V = qIn - qOut0 - qOut1;
         #print 'h: ', h, 'time: ', time;
@@ -17,7 +17,7 @@ class Tank(model):
     func init():
         V = 0;
         A_bott = 1.2;
-        Ao = 0.02; 
+        Ao = 0.02;
         h1 = 0.5;
         mu = 0.55;
         qIn = 0.05;
@@ -25,10 +25,10 @@ class Tank(model):
 end
 
 
-class FillTank(process):
+class FillTank(Process):
     data t: Tank;
-	data g: Real parameter;
-	
+    data g: Real parameter;
+
     func dynamic():
         call t.dynamic();
     end
@@ -39,9 +39,9 @@ class FillTank(process):
         solutionParameters.reportingInterval = 1;
     end
     func final():
-    	store;
-    	graph t.V, t.h, t.qOut0, t.qOut1;
-    	print 'Simulation finished.';
+        store;
+        graph t.V, t.h, t.qOut0, t.qOut1;
+        print 'Simulation finished.';
     end
 end
 
