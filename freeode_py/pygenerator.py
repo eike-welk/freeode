@@ -32,7 +32,7 @@ from ast import *
 
 
 class PyGenException(Exception):
-    '''Exception thrown by the pytrhon code generator classes'''
+    '''Exception thrown by the python code generator classes'''
     def __init__(self, *params):
         Exception.__init__(self, *params)
 

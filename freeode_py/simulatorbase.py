@@ -332,7 +332,9 @@ def parseCommandLineOptions(simulationClassList):
                        help='list the available simulations', 
                        )
     optPars.add_option('-r', '--run', dest='run',
-                       help='run the specified simulation',
+                       help='run the specified simulation. (number counts ' 
+                          + 'from top of file; or special value "all" which ' 
+                          + 'is equivalent to giving no options)',
                        metavar='<number>')
     optPars.add_option('-i', '--interactive', dest='interactive',
                        action="store_true", default=False,
@@ -353,11 +355,14 @@ def parseCommandLineOptions(simulationClassList):
         sys.exit(0) #exit successfully
         
     #user has said which simulation procedure should be run
-    if options.run:
+    if options.run == 'all': #special argument 'all': -r all
+        runSimulations(simulationClassList)
+        show()
+        sys.exit(0)
+    elif options.run: #argument is int number: -r 2
         num = int(options.run)
         if num < 0 or num >= len(simulationClassList):
             optPars.error('invalid number of simulation object')
-        #print 'Freeode (%s) main function ...' % ast.progVersion
         runSimulations(simulationClassList[num])
         show()
         sys.exit(0)
