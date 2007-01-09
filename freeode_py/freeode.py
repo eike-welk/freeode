@@ -23,6 +23,8 @@
 #import pdb
 import optparse
 import sys
+import os
+import stat
 import pyparsing
 import simlparser
 import pygenerator
@@ -35,20 +37,20 @@ def parseCmdLine():
     '''Parse the command line, and find out what the user wants from us.'''
     #set up parser for the command line aruments
     optPars = optparse.OptionParser(
-                usage='%prog <input_file> [-o <output_file>] [-m | -n]',
+                usage='%prog <input_file> [-o <output_file>]',
                 description='Compiler for the Siml simulation language.', 
                 version='%prog ' + ast.progVersion)
     
     optPars.add_option('-o', '--outfile', dest='outfile', 
                        help='explicitly specify name of output file', 
                        metavar='<output_file>')
-    optPars.add_option('-m', '--genmain', dest='genmain',
-                       action="store_true", default=False,
-                       help='generate main routine, that starts the ' + \
-                            'simulation (currently non functional)')
-    optPars.add_option('-n', '--nomain', dest='genmain',
-                       action="store_false", 
-                       help='do not generate a main routine [default]')
+#    optPars.add_option('-m', '--genmain', dest='genmain',
+#                       action="store_true", default=False,
+#                       help='generate main routine, that starts the ' + \
+#                            'simulation (currently non functional)')
+#    optPars.add_option('-n', '--nomain', dest='genmain',
+#                       action="store_false", 
+#                       help='do not generate a main routine [default]')
     #do the parsing
     (options, args) = optPars.parse_args()
     
@@ -74,16 +76,16 @@ def parseCmdLine():
         baseName = inputFileName.rsplit('.',1)[0]
         outputFileName = baseName + '.py'
     
-    #care for main routine flag
-    if options.genmain:
-        optPars.error('main routine generation does currently not work')
-    genMainRoutine = options.genmain
+#    #care for main routine flag
+#    if options.genmain:
+#        optPars.error('main routine generation does currently not work')
+#    genMainRoutine = options.genmain
     
 #    print 'inputFileName: ', inputFileName, \
 #          ', outputFileName: ', outputFileName, \
 #          ', genMainRoutine: ', genMainRoutine
           
-    return (inputFileName, outputFileName, genMainRoutine)
+    return (inputFileName, outputFileName)
           
 
 def doCompile(inputFileName, outputFileName):
@@ -115,6 +117,9 @@ def doCompile(inputFileName, outputFileName):
         outputFile = open(outputFileName,'w')
         outputFile.write(progStr)
         outputFile.close()
+        #make genrated program executable
+        modeBits = os.stat(outputFileName).st_mode
+        os.chmod(outputFileName, modeBits | stat.S_IEXEC)
     except IOError, theError:
         print 'error: could nor write output file\n', theError 
         return
@@ -126,7 +131,7 @@ def doCompile(inputFileName, outputFileName):
 def mainFunc():
     '''the main function'''
     try:
-        inputFileName, outputFileName, genMainRoutine = parseCmdLine()
+        inputFileName, outputFileName = parseCmdLine()
         doCompile(inputFileName, outputFileName)
     except SystemExit:
         raise #for sys.exit() - the error message was already printed
