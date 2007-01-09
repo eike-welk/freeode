@@ -452,6 +452,7 @@ class ProcessGenerator(object):
         #take the state variables out of the state vector
         #sequence of variables in the array is determined by self.stateVariables
         outPy.write(ind8 + '#take the state variables out of the state vector \n')
+        #TODO: use enumerate(...) ?
         stateVarNames = self.stateVariables.values()
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
             outPy.write(ind8 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
@@ -540,7 +541,7 @@ class ProcessGenerator(object):
 class ProgramGenerator(object):
     '''Create a program from an ILT-tree'''
 
-    def __init__(self, outPyFile=None):
+    def __init__(self):
         '''
         Arguments:
             pyFile : file where the program will be stored,
@@ -549,10 +550,10 @@ class ProgramGenerator(object):
         super(ProgramGenerator,self).__init__(self)
         self.iltRoot = None
         '''root of intermediate language tree'''
-        if outPyFile == None:
-            self.outPy = cStringIO.StringIO()
-        else:
-            self.outPy = outPyFile
+        self.outPy = cStringIO.StringIO()
+        '''buffer for generated python code; with file interface'''
+        self.processClassNames = []
+        '''names of the generated classes.'''
 
 
     def buffer(self):
@@ -569,7 +570,7 @@ class ProgramGenerator(object):
         Method looks really ugly because of raw string usage.
         '''
         self.outPy.write(
-'''
+'''#!/usr/bin/env python
 ################################################################################
 #                            Warning: Do not edit!                             #
 #                                                                              #
@@ -594,12 +595,33 @@ class ProgramGenerator(object):
 from numpy import *
 #from scipy import *
 from simulatorbase import SimulatorBase
+from simulatorbase import simulatorMainFunc
 
 
 '''     )
         return
 
+    def writeProgramEnd(self):
+        '''Write last part of program, such as main routine.'''
+        self.outPy.write(
+'''
 
+#Main function - executed when file (module) runs as an independent program.
+#When file is imported into other programs, test will fail.
+if __name__ == '__main__':
+    simulatorClasses = ['''     )
+        #create list with generated classes
+        for name in self.processClassNames:
+            self.outPy.write(makeDotName(name) + ', ')
+        self.outPy.write(']')
+        self.outPy.write(
+''' 
+    simulatorMainFunc(simulatorClasses)
+
+'''     )
+        return
+        
+        
     def createProgram(self, iltRoot):
         '''
         Take an ILT and create as python program from it.
@@ -609,13 +631,17 @@ from simulatorbase import SimulatorBase
         
         self.writeProgramStart()
 
+        #every class definition in the ILT is a process (currently) 
+        #create code for it
         for process in iltRoot:
             if not isinstance(process, NodeClassDef):
                 continue
+            self.processClassNames.append(process.className)
             #create process
             procGen = ProcessGenerator(self.outPy)
             procGen.createProcess(process)
-
+        
+        self.writeProgramEnd()
 
 
 

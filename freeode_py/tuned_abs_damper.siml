@@ -43,8 +43,8 @@ class FrequencySweepGenerator(Model):
     data x, frequ: Real;
 
     func dynamic():
-        frequ = fMin + time*(fMax-fMin)/rampDuration;
-        x = sin(time*2*pi*frequ);
+		frequ = fMin + time*(fMax-fMin)/rampDuration;
+		x = sin(time*2*pi*frequ);
     end
 
     func init():

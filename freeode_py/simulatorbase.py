@@ -26,14 +26,24 @@ and not by the Siml compiler.
 '''
 
 
+
 #from numpy import *
-from pylab import *
+from numpy import array, linspace, zeros, shape, ones, resize
+
+#from pylab import *
+from pylab import figure, xlabel, plot, legend, show
 
 import scipy.integrate.ode as odeInt
 import scipy.optimize.minpack as minpack
 
-#from scipy import integrate
-import Gnuplot, Gnuplot.funcutils # @todo switch to a more well known graphics library
+##try to import the gnuplot lib 
+#try:
+#    import Gnuplot, Gnuplot.funcutils 
+#    exist_gnuplot_lib = True
+#except:
+#    exist_gnuplot_lib = False
+
+
 
 class SimulatorBase(object):
     """ Base class for the generated simulator classes """
@@ -121,22 +131,22 @@ class SimulatorBase(object):
         self._graphMatPlotLib(varNames)
 
 
-    def _graphGnuplot(self, varNames):
-        '''Create plots with gnuplot. Called by graph()'''
-        diagram=Gnuplot.Gnuplot(debug=0, persist=1)
-        diagram('set data style lines')
-        diagram.title(varNames)
-        diagram.xlabel('Time')
-
-        varList = varNames.replace(',', ' ').split(' ')
-        for varName1 in varList:
-            if len(varName1) == 0:
-                continue
-            if not (varName1 in self.variableNameMap):
-                print('Error unknown variable name: %s') % varName1
-                continue
-            curve=Gnuplot.Data(self.variable('time'), self.variable(varName1))
-            diagram.replot(curve)
+#    def _graphGnuplot(self, varNames):
+#        '''Create plots with gnuplot. Called by graph()'''
+#        diagram=Gnuplot.Gnuplot(debug=0, persist=1)
+#        diagram('set data style lines')
+#        diagram.title(varNames)
+#        diagram.xlabel('Time')
+#
+#        varList = varNames.replace(',', ' ').split(' ')
+#        for varName1 in varList:
+#            if len(varName1) == 0:
+#                continue
+#            if not (varName1 in self.variableNameMap):
+#                print('Error unknown variable name: %s') % varName1
+#                continue
+#            curve=Gnuplot.Data(self.variable('time'), self.variable(varName1))
+#            diagram.replot(curve)
 
 
     def _graphMatPlotLib(self, varNames):
@@ -284,7 +294,8 @@ class SimulatorBase(object):
         (xmin, msg) = minpack.leastsq(self.dynamic, x0, (t0)) #funcion will also report local minima that are no roots. Caution!
 ##        xmin = optimize.fsolve(self.dynamic, x0, (0)) #function is always stuck in one (the trivial) minimum
         #also compute the algebraic variables
-        currRes = self.outputEquations(xmin)
+        currRes = ones(4) #dummy to make pydev show no error
+        #currRes = self.outputEquations(xmin)
         #expand the storage and save the results
         self.resultArray = resize(self.resultArray,
                                   (lastResult+2,
@@ -294,3 +305,78 @@ class SimulatorBase(object):
         self.time[lastResult+1] = t0 + 1
 
 
+
+def runSimulations(simulationClassList):
+    '''Instantiate simulation objects and run dynamic simulations'''
+    if not isinstance(simulationClassList, list):
+        simulationClassList = [simulationClassList]
+    for simClass in simulationClassList:
+        simObj = simClass()
+        simObj.simulateDynamic()
+        
+
+def parseCommandLineOptions(simulationClassList):
+    '''Parse the command line, and find out what the user wants from us.'''
+    import optparse
+    import sys
+    import ast #for version string
+        
+    #set up parser for the command line aruments
+    optPars = optparse.OptionParser(
+                usage='%prog [<option>]',
+                description='Simulation program. Run the contained simulations.', 
+                version='%prog ' + ast.progVersion)
+    
+    optPars.add_option('-l', '--list', dest='list', 
+                       action="store_true", default=False,
+                       help='list the available simulations', 
+                       )
+    optPars.add_option('-r', '--run', dest='run',
+                       help='run the specified simulation',
+                       metavar='<number>')
+    optPars.add_option('-i', '--interactive', dest='interactive',
+                       action="store_true", default=False,
+                       help='go to interactive mode (defunct)')
+    #do the parsing
+    (options, args) = optPars.parse_args()
+    
+    #test list option
+    if options.list:
+        print 'available simulations:'
+        for i, sim in enumerate(simulationClassList):
+            #get some usefull simulation name
+            simStr = str(sim) #looks like: <class '__main__.Experiment1'>
+            nameStart = simStr.find('.') + 1
+            simName = simStr[nameStart:-2]
+            #print number and simulation name
+            print i, ': ', simName
+        sys.exit(0) #exit successfully
+        
+    #user has said which simulation procedure should be run
+    if options.run:
+        num = int(options.run)
+        if num < 0 or num >= len(simulationClassList):
+            optPars.error('invalid number of simulation object')
+        #print 'Freeode (%s) main function ...' % ast.progVersion
+        runSimulations(simulationClassList[num])
+        show()
+        sys.exit(0)
+        
+    #user wants to go into interactive mode
+    if options.interactive:
+        print 'interactive mode is not implemented yet'
+        sys.exit(0)
+        
+    #default action: run all simulations
+    #print 'Freeode (%s) main function ...' % ast.progVersion
+    runSimulations(simulationClassList)
+    show()
+    sys.exit(0)
+    
+
+def simulatorMainFunc(simulationClassList):
+    '''Main function to run the simulations'''
+    import ast #for version string
+    print 'Freeode (%s) main function ...' % ast.progVersion
+    parseCommandLineOptions(simulationClassList)
+    return
