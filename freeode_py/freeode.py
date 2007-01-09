@@ -25,6 +25,7 @@ import optparse
 import sys
 import os
 import stat
+from subprocess import Popen, PIPE, STDOUT
 import pyparsing
 import simlparser
 import pygenerator
@@ -32,117 +33,141 @@ import ast #for ast.progVersion
 from ast import UserException
 
 
-
-def parseCmdLine():
-    '''Parse the command line, and find out what the user wants from us.'''
-    #set up parser for the command line aruments
-    optPars = optparse.OptionParser(
-                usage='%prog <input_file> [-o <output_file>]',
-                description='Compiler for the Siml simulation language.', 
-                version='%prog ' + ast.progVersion)
-    
-    optPars.add_option('-o', '--outfile', dest='outfile', 
-                       help='explicitly specify name of output file', 
-                       metavar='<output_file>')
-#    optPars.add_option('-m', '--genmain', dest='genmain',
-#                       action="store_true", default=False,
-#                       help='generate main routine, that starts the ' + \
-#                            'simulation (currently non functional)')
-#    optPars.add_option('-n', '--nomain', dest='genmain',
-#                       action="store_false", 
-#                       help='do not generate a main routine [default]')
-    #do the parsing
-    (options, args) = optPars.parse_args()
-    
-    #get name of input file
-    inputFileName = None
-    if len(args) > 0:
-        inputFileName = args[0]
-    if inputFileName == None:
-        optPars.error('no input file given')
+class SimlCompiler(object):
+    def __init__(self):
+        super(SimlCompiler, self).__init__()
+        self.inputFileName = ''
+        self.outputFileName = ''
+        #which process should be run after compiling
+        self.runSimulation = None #can be: None, 'all', '0', '1', ...
         
-    #test extension
-    inputFileExtension = inputFileName.rsplit('.',1)[1]
-    if inputFileExtension.lower() != 'siml':
-        print 'warning: programs in the Siml language ' + \
-              'should have the extension ".siml"'
-    
-    #get name of output file
-    if options.outfile != None:
-        #output file name is explicitly given
-        outputFileName = options.outfile
-    else:
-        #take away extension from inputFileName and replace with '.py'
-        baseName = inputFileName.rsplit('.',1)[0]
-        outputFileName = baseName + '.py'
-    
-#    #care for main routine flag
-#    if options.genmain:
-#        optPars.error('main routine generation does currently not work')
-#    genMainRoutine = options.genmain
-    
-#    print 'inputFileName: ', inputFileName, \
-#          ', outputFileName: ', outputFileName, \
-#          ', genMainRoutine: ', genMainRoutine
-          
-    return (inputFileName, outputFileName)
-          
-
-def doCompile(inputFileName, outputFileName):
-    '''Do the work'''
-    #create the top level objects that do the compilation
-    parser = simlparser.ParseStage()
-    iltGen = simlparser.ILTGenerator()
-    progGen = pygenerator.ProgramGenerator()
-    
-    #the compilation proper
-    try:
-        astTree = parser.parseProgramFile(inputFileName)
-        #print astTree
-        iltTree = iltGen.createIntermediateTree(astTree)
-        #print iltTree
-        progGen.createProgram(iltTree)
-        progStr = progGen.buffer()
-    #errors from freeode
-    except UserException, theError:
-        print theError
-        sys.exit(1)
-    #errors from pyparsing. Don't remove: parser may re-raise pyparsing errors.
-    except pyparsing.ParseException, theError:
-        print 'syntax error: ', theError
-        sys.exit(1)
         
-    #write generated program to file
-    try:    
-        outputFile = open(outputFileName,'w')
-        outputFile.write(progStr)
-        outputFile.close()
-        #make genrated program executable
-        modeBits = os.stat(outputFileName).st_mode
-        os.chmod(outputFileName, modeBits | stat.S_IEXEC)
-    except IOError, theError:
-        print 'error: could nor write output file\n', theError 
-        return
+    def parseCmdLine(self):
+        '''Parse the command line, and find out what the user wants from us.'''
+        #set up parser for the command line aruments
+        optPars = optparse.OptionParser(
+                    usage='%prog <input_file> [-o <output_file>] [<options>]',
+                    description='Compiler for the Siml simulation language.', 
+                    version='%prog ' + ast.progVersion)
+        
+        optPars.add_option('-o', '--outfile', dest='outfile', 
+                           help='explicitly specify name of output file', 
+                           metavar='<output_file>')
+        optPars.add_option('-r', '--run', dest='runone',
+                           help='run the given simulation process after ' 
+                              + 'compiling (number counts fron top; ' 
+                              + 'or special value "all")',
+                           metavar='<number>')
+        optPars.add_option('-a', '--runall', dest='runall',
+                           action="store_true", default=False,
+                           help='run all simulation processes after compiling')
+    #    optPars.add_option('-n', '--nomain', dest='genmain',
+    #                       action="store_false", default=True,
+    #                       help='do not generate a main routine [default]')
+        #do the parsing
+        (options, args) = optPars.parse_args()
+        
+        #get name of input file
+        #self.inputFileName = None
+        if len(args) > 0:
+            self.inputFileName = args[0]
+        if not self.inputFileName:
+            optPars.error('no input file given')
+        #test extension
+        inputFileExtension = self.inputFileName.rsplit('.',1)[1]
+        if inputFileExtension.lower() != 'siml':
+            print 'warning: programs in the Siml language ' + \
+                  'should have the extension ".siml"'
+        
+        #get name of output file
+        if options.outfile:
+            #output file name is explicitly given
+            self.outputFileName = options.outfile
+        else:
+            #take away extension from inputFileName and replace with '.py'
+            baseName = self.inputFileName.rsplit('.',1)[0]
+            self.outputFileName = baseName + '.py'
+        
+        #see if user whishes to run the simulation after compiling
+        if options.runone == 'all':
+            self.runSimulation = 'all'
+        elif options.runone: #anythin else is considered a number
+            #convert into string containing a number
+            self.runSimulation = str(int(options.runone)) 
+        #special option runall
+        if options.runall:
+            self.runSimulation = 'all'
+              
     
-    print 'Compilation finished successfully.\n',\
-          'input file: %s, output file: %s' % (inputFileName, outputFileName)
- 
-   
-def mainFunc():
-    '''the main function'''
-    try:
-        inputFileName, outputFileName = parseCmdLine()
-        doCompile(inputFileName, outputFileName)
-    except SystemExit:
-        raise #for sys.exit() - the error message was already printed
-    except Exception:
-        print 'Compiler internal error! Please file a bug report at:\n',\
-              'https://developer.berlios.de/projects/freeode/\n'
-        raise 
+    def doCompile(self):
+        '''Do the work'''
+        #create the top level objects that do the compilation
+        parser = simlparser.ParseStage()
+        iltGen = simlparser.ILTGenerator()
+        progGen = pygenerator.ProgramGenerator()
+        
+        #the compilation proper
+        try:
+            astTree = parser.parseProgramFile(self.inputFileName)
+            #print astTree
+            iltTree = iltGen.createIntermediateTree(astTree)
+            #print iltTree
+            progGen.createProgram(iltTree)
+            progStr = progGen.buffer()
+        #errors from freeode
+        except UserException, theError:
+            print theError
+            sys.exit(1)
+        #errors from pyparsing. Don't remove: parser may re-raise pyparsing errors.
+        except pyparsing.ParseException, theError:
+            print 'syntax error: ', theError
+            sys.exit(1)
+            
+        #write generated program to file
+        try:    
+            outputFile = open(self.outputFileName,'w')
+            outputFile.write(progStr)
+            outputFile.close()
+            #make genrated program executable
+            modeBits = os.stat(self.outputFileName).st_mode
+            os.chmod(self.outputFileName, modeBits | stat.S_IEXEC)
+        except IOError, theError:
+            print 'error: could nor write output file\n', theError 
+            sys.exit(1)
+        
+        print 'Compilation finished successfully.\n',\
+              'input file: %s, output file: %s' % (self.inputFileName, self.outputFileName)
+     
     
-    # 'return with success'
-    sys.exit(0)
+    def runProgram(self):   
+        '''Run the generated program if the user wants it.'''
+        if self.runSimulation == None:
+            return
+        print 'running generated program ...'
+        #optStr = ' -r %s' % self.runSimulation
+        cmdStr = 'python %s -r %s' % (self.outputFileName, self.runSimulation)
+        proc = Popen([cmdStr], shell=True, #bufsize=1000,
+                     stdin=None, stdout=None, stderr=None, close_fds=True)
+
+    
+    def mainFunc(self):
+        '''the main function'''
+        try:
+            self.parseCmdLine()
+            self.doCompile()
+            self.runProgram()
+        except SystemExit:
+            raise #for sys.exit() - the error message was already printed
+        except Exception:
+            print 'Compiler internal error! Please file a bug report at:\n',\
+                  'https://developer.berlios.de/projects/freeode/\n'
+            raise 
+        
+        # 'return with success'
+        sys.exit(0)
 
 
-#run the compiler
-mainFunc()
+if __name__ == '__main__':
+    #run the compiler
+    m = SimlCompiler()
+    m.mainFunc()
