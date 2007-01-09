@@ -97,7 +97,8 @@ class ParseStage(object):
         '''The parser object for the whole program (from pyParsing).'''
         self._expressionParser = None
         '''The parser for expressions'''
-        self._lastStmtLocator = StoreLoc(self)
+        #TODO: replace StoreLoc class by parse action
+        self._lastStmtLocator = StoreLoc(self) 
         '''Object to remember location of last parsed statement; for 
            error message creation.'''
         self.progFileName = None
@@ -735,6 +736,8 @@ class ParseStage(object):
         singleLineCommentPy = '#' + restOfLine
         startSymbol.ignore(singleLineCommentCpp)
         startSymbol.ignore(singleLineCommentPy)
+        #no tab expansion
+        startSymbol.parseWithTabs()
         #store parsers
         self._parser = startSymbol
         self._expressionParser = boolExpression
@@ -790,6 +793,7 @@ class StoreLoc(object):
     every time the parser succeeds the __call__ method is executed, and 
     the location of the parser's match is stored.
     '''
+    #TODO: replace by parse action
     def __init__(self, parser):
         super(StoreLoc, self).__init__()
         self.loc = None
