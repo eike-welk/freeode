@@ -360,9 +360,17 @@ def parseCommandLineOptions(simulationClassList):
         show()
         sys.exit(0)
     elif options.run: #argument is int number: -r 2
+        #test if argument is a number
+        try: int(options.run)
+        except: 
+            optPars.error('option "-r": invalid number of simulation object: %s'
+                          % options.run)
+        #see if we have this object 
         num = int(options.run)
         if num < 0 or num >= len(simulationClassList):
-            optPars.error('invalid number of simulation object')
+            optPars.error('option "-r": invalid number of simulation object: %d' 
+                          % num)
+        #run simulation
         runSimulations(simulationClassList[num])
         show()
         sys.exit(0)

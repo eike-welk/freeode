@@ -721,11 +721,22 @@ class TextLocation(object):
     Object is intended to be stored in a Node's self.loc 
     data member.
     '''
+    
     def __init__(self, atChar=None, textString=None, fileName=None):
         super(TextLocation, self).__init__()
         self.atChar = atChar
         self.str = textString
         self.name = fileName
+        
+    def isValid(self):
+        '''
+        Return True if a meaningful line number and collumn can be computed.
+        Return False otherwise.
+        '''
+        if self.atChar and self.str:
+            return True
+        else:
+            return False
         
     def lineNo(self):
         '''Compute the line number of the stored location.'''

@@ -97,8 +97,8 @@ class ParseStage(object):
         '''The parser object for the whole program (from pyParsing).'''
         self._expressionParser = None
         '''The parser for expressions'''
-        #TODO: replace StoreLoc class by parse action
-        self._lastStmtLocator = StoreLoc(self) 
+        #self._lastStmtLocator = StoreLoc(self) 
+        self._locLastStmt = TextLocation()
         '''Object to remember location of last parsed statement; for 
            error message creation.'''
         self.progFileName = None
@@ -149,6 +149,15 @@ class ParseStage(object):
                 str, loc, 'Identifier same as keyword: %s' % toks[0] )
 
 
+    def _actionStoreStmtLoc(self, str, loc, toks):
+        '''
+        Remember location of last parsed statement. Useful for error
+        error message creation, since the locations of pyparsing's 
+        syntax errors are frequenly quit off.
+        '''
+        self._locLastStmt = self.createTextLocation(loc)
+        
+        
     def _actionBuiltInValue(self, str, loc, toks):
         '''
         Create AST node for a built in value: pi, time
@@ -686,7 +695,7 @@ class ParseStage(object):
                                                                      .setName('storeStmt')#.setDebug(True)
 
         statement = (storeStmt | graphStmt | printStmt | 
-                     funcExecute | ifStatement | assignment)         .setParseAction(self._lastStmtLocator)\
+                     funcExecute | ifStatement | assignment)         .setParseAction(self._actionStoreStmtLoc)\
                                                                      .setName('statement')#.setDebug(True)
         statementList << Group(OneOrMore(statement))                 .setParseAction(self._actionStatementList)\
                                                                      .setName('statementList')#.setDebug(True)
@@ -772,39 +781,38 @@ class ParseStage(object):
             astTree = self.parseProgramStr(inputFileContents)
         except pyparsing.ParseException, theError:
             #see if there is the loc of a successfully parsed statement
-            if not self._lastStmtLocator.loc:
+            if not self._locLastStmt.isValid():
                 raise theError # no: raise old error
             #make new error with loc of a successfully parsed statement
-            loc = self._lastStmtLocator.loc
             msg = 'syntax error: last parsed statement was:'
             msgPyParsing = str(theError) + '\n'
-            raise UserException(msgPyParsing + msg, loc)
+            raise UserException(msgPyParsing + msg, self._locLastStmt)
         return astTree
 
 
 
-class StoreLoc(object):
-    '''
-    Functor class to store the location of a parsed pattern.
-    The location is stored in the data member:
-        self.loc
-        
-    An instance of this class is given to a parser as a parse action.
-    every time the parser succeeds the __call__ method is executed, and 
-    the location of the parser's match is stored.
-    '''
-    #TODO: replace by parse action
-    def __init__(self, parser):
-        super(StoreLoc, self).__init__()
-        self.loc = None
-        '''The stored location or None, if parse action is never executed.'''
-        self.parser = parser
-        '''Parser for which this class works'''
-        
-    def __call__(self, str, loc, toks):
-        '''The parse action that stores the location.'''
-        self.loc = TextLocation(loc, self.parser.inputString, 
-                                self.parser.progFileName)
+#class StoreLoc(object):
+#    '''
+#    Functor class to store the location of a parsed pattern.
+#    The location is stored in the data member:
+#        self.loc
+#        
+#    An instance of this class is given to a parser as a parse action.
+#    every time the parser succeeds the __call__ method is executed, and 
+#    the location of the parser's match is stored.
+#    '''
+#    #TODO: replace by parse action
+#    def __init__(self, parser):
+#        super(StoreLoc, self).__init__()
+#        self.loc = None
+#        '''The stored location or None, if parse action is never executed.'''
+#        self.parser = parser
+#        '''Parser for which this class works'''
+#        
+#    def __call__(self, str, loc, toks):
+#        '''The parse action that stores the location.'''
+#        self.loc = TextLocation(loc, self.parser.inputString, 
+#                                self.parser.progFileName)
         
 
 

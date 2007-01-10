@@ -58,12 +58,9 @@ class SimlCompiler(object):
                               + 'compiling (number counts fron top; ' 
                               + 'or special value "all")',
                            metavar='<number>')
-        optPars.add_option('-a', '--runall', dest='runall',
+        optPars.add_option('--runall', dest='runall',
                            action="store_true", default=False,
                            help='run all simulation processes after compiling')
-    #    optPars.add_option('-n', '--nomain', dest='genmain',
-    #                       action="store_false", default=True,
-    #                       help='do not generate a main routine [default]')
         #do the parsing
         (options, args) = optPars.parse_args()
         
@@ -73,8 +70,15 @@ class SimlCompiler(object):
             self.inputFileName = args[0]
         if not self.inputFileName:
             optPars.error('no input file given')
-        #test extension
-        inputFileExtension = self.inputFileName.rsplit('.',1)[1]
+        #split input file name into basename and extension
+        nameParts = self.inputFileName.rsplit('.',1)
+        if len(nameParts)  > 1:
+            inputFileExtension = nameParts[1]
+        else:
+            inputFileExtension = '' #filename contained no '.' char
+        inputFileBaseName = nameParts[0]
+            
+        #see if file extension is good
         if inputFileExtension.lower() != 'siml':
             print 'warning: programs in the Siml language ' + \
                   'should have the extension ".siml"'
@@ -84,14 +88,19 @@ class SimlCompiler(object):
             #output file name is explicitly given
             self.outputFileName = options.outfile
         else:
-            #take away extension from inputFileName and replace with '.py'
-            baseName = self.inputFileName.rsplit('.',1)[0]
-            self.outputFileName = baseName + '.py'
+            #use inputFileName but replace extension with '.py'
+            self.outputFileName = inputFileBaseName + '.py'
         
         #see if user whishes to run the simulation after compiling
         if options.runone == 'all':
             self.runSimulation = 'all'
         elif options.runone: #anythin else is considered a number
+            #test if argument is a number
+            try: 
+                int(options.runone)
+            except: 
+                optPars.error('option "-r": argument must be number or "all". I got: %s'
+                              % options.runone)
             #convert into string containing a number
             self.runSimulation = str(int(options.runone)) 
         #special option runall
