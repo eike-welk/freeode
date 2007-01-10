@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 ############################################################################
 #    Copyright (C) 2006 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
@@ -33,9 +32,9 @@ import ast #for ast.progVersion
 from ast import UserException
 
 
-class SimlCompiler(object):
+class SimlCompilerMain(object):
     def __init__(self):
-        super(SimlCompiler, self).__init__()
+        super(SimlCompilerMain, self).__init__()
         self.inputFileName = ''
         self.outputFileName = ''
         #which process should be run after compiling
@@ -177,6 +176,5 @@ class SimlCompiler(object):
 
 
 if __name__ == '__main__':
-    #run the compiler
-    m = SimlCompiler()
-    m.mainFunc()
+    #do self tests
+    pass
