@@ -25,7 +25,7 @@ import optparse
 import sys
 import os
 import stat
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen #, PIPE, STDOUT
 import pyparsing
 import simlparser
 import pygenerator

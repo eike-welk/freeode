@@ -306,6 +306,9 @@ class SimulatorBase(object):
 
 
 
+#---- simulator main function -------------------------------------------------
+#The followin functions are for running the simulator as a standalone program
+
 def runSimulations(simulationClassList):
     '''Instantiate simulation objects and run dynamic simulations'''
     if not isinstance(simulationClassList, list):
@@ -316,7 +319,11 @@ def runSimulations(simulationClassList):
         
 
 def parseCommandLineOptions(simulationClassList):
-    '''Parse the command line, and find out what the user wants from us.'''
+    '''
+    Parse the command line, and find out what the user wants from us.
+    Argument:
+        simulationClassList: list of (generated) simulation classes    
+    '''
     import optparse
     import sys
     import ast #for version string
@@ -329,7 +336,7 @@ def parseCommandLineOptions(simulationClassList):
     
     optPars.add_option('-l', '--list', dest='list', 
                        action="store_true", default=False,
-                       help='list the available simulations', 
+                       help='list the available simulations and exit', 
                        )
     optPars.add_option('-r', '--run', dest='run',
                        help='run the specified simulation. (number counts ' 
@@ -388,8 +395,19 @@ def parseCommandLineOptions(simulationClassList):
     
 
 def simulatorMainFunc(simulationClassList):
-    '''Main function to run the simulations'''
-    import ast #for version string
-    print 'Freeode (%s) main function ...' % ast.progVersion
+    '''
+    Main function to run the simulation(s) as a stanalone program
+    This function is called from the generated file's main routine
+    Argument:
+        simulationClassList: list of (generated) simulation classes
+    '''
+    #import ast #for version string
+    print 'Freeode simulator, main function ...' 
     parseCommandLineOptions(simulationClassList)
     return
+
+
+
+if __name__ == '__main__':
+    # Self-testing code goes here.
+    pass
