@@ -151,12 +151,13 @@ class SimlCompilerMain(object):
         '''Run the generated program if the user wants it.'''
         if self.runSimulation == None:
             return
-        print 'running generated program ...'
+        
         #optStr = ' -r %s' % self.runSimulation
         cmdStr = 'python %s -r %s' % (self.outputFileName, self.runSimulation)
         proc = Popen([cmdStr], shell=True, #bufsize=1000,
                      stdin=None, stdout=None, stderr=None, close_fds=True)
-
+        print 'running generated program. PID: %d' % proc.pid
+        
     
     def mainFunc(self):
         '''the main function'''

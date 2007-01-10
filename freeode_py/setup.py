@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 ############################################################################
 #    Copyright (C) 2006 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
@@ -20,7 +19,4 @@
 ############################################################################
 
 
-import simlcompiler
-
-mainObj = simlcompiler.SimlCompilerMain()
-mainObj.mainFunc()
+#TODO: write setup script
