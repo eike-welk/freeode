@@ -1,9 +1,69 @@
-It is probably more efficient to implement the compiler in Python.
-Python is know to make people much more productive compared to C++.
+-------------------------------------------------------------------------------
+                                   Freeode
+                            SIML Simulation Language
+-------------------------------------------------------------------------------
 
-Python is not strictly typed which makes programming more easy.
-In fact all Python functions can be seen
-as analogous to C++ templates but easier to use. And Python is also
-efficient for string processing.
+This packge contains a compiler for a specialized language (SIML) for the 
+simulation of differential equations (ODE). The generated simulation program 
+is in the Python programing language, using the Numpy ans Scipy libraries.
 
-A powerful parsing library for python is PyParsing.
+
+
+Prerequisites:
+- The compiler depends on the "pyparsing" library. Download it from:
+	https://sourceforge.net/projects/pyparsing/
+	
+- The generated simulation programs depend on three libraries for numerical 
+  computations and plotting: "numpy", "scipy", "matplotlib". Homepages:
+  http://numpy.scipy.org/
+  http://www.scipy.org/
+  http://matplotlib.sourceforge.net/
+  
+  These libraries should exist for most Linux distributions. 
+  Suse users go to:
+  http://repos.opensuse.org/science/
+  Widows users go to:
+  http://code.enthought.com/enthon/
+  
+
+
+Installation:
+Issue the following commands in a terminal window (command line):
+    python setup.py install
+
+The file "hl_siml.xml" is a syntax highlighting definition for the linux text
+editor "kate" (more exactly for all editors using the katepart). It will
+enable these editiors to show SIML programs nicely colored for better 
+readability.
+Copy it to:
+~/.kde/share/apps/katepart/syntax
+
+
+
+Usage:
+Compile SIML programs with "simlc" script. The following command will read
+the file "tank.siml" and generate a simulation program "tank.py".
+	simlc tank.siml
+	
+Run the simulation program with:
+	./tank.py
+
+The compiler can also run the simulation program afer compiling it
+	simlc tank.siml -r all
+	
+The compiler understands the --help option.
+
+
+
+Syntax:
+The syntax of the SIML language is fairly simple. However there exists 
+currently no description of the syntax, or even a tutorial. To learn
+the syntax you must look at the *.siml example files.
+
+
+
+For more questions E-mail the author:
+Eike.Welk@gmx.net
+
+
+	

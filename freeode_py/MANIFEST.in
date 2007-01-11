@@ -1,0 +1,11 @@
+include COPYING
+include README
+
+#highlighting for kate
+include hl_siml.xml
+
+#examples
+include tank.siml
+include tuned_abs_damper.siml
+
+include MANIFEST.in
