@@ -39,7 +39,7 @@ from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optiona
     ParseFatalException, StringEnd, sglQuotedString, ParserElement
     # ParseException, ParseResults, QuotedString
 #import our own syntax tree classes
-from ast import *
+from freeode.ast import *
 
 
 

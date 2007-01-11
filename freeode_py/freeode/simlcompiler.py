@@ -26,10 +26,10 @@ import os
 import stat
 from subprocess import Popen #, PIPE, STDOUT
 import pyparsing
-import simlparser
-import pygenerator
-import ast #for ast.progVersion
-from ast import UserException
+import freeode.simlparser as simlparser
+import freeode.pygenerator as pygenerator
+import freeode.ast as ast  #for ast.progVersion
+from freeode.ast import UserException
 
 
 class SimlCompilerMain(object):

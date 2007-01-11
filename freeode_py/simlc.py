@@ -20,7 +20,7 @@
 ############################################################################
 
 
-import simlcompiler
+import freeode.simlcompiler
 
-mainObj = simlcompiler.SimlCompilerMain()
+mainObj = freeode.simlcompiler.SimlCompilerMain()
 mainObj.mainFunc()
