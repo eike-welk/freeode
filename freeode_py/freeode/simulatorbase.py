@@ -1,19 +1,21 @@
 ############################################################################
-#    Copyright (C) 2006 by Eike Welk                                       #
+#    Copyright (C) 2007 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
+#    License: LGPL                                                         #
+#                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
-#    it under the terms of the GNU General Public License as published by  #
-#    the Free Software Foundation; either version 2 of the License, or     #
-#    (at your option) any later version.                                   #
+#    it under the terms of the GNU Library General Public License as       #
+#    published by the Free Software Foundation; either version 2 of the    #
+#    License, or (at your option) any later version.                       #
 #                                                                          #
 #    This program is distributed in the hope that it will be useful,       #
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of        #
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         #
 #    GNU General Public License for more details.                          #
 #                                                                          #
-#    You should have received a copy of the GNU General Public License     #
-#    along with this program; if not, write to the                         #
+#    You should have received a copy of the GNU Library General Public     #
+#    License along with this program; if not, write to the                 #
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
@@ -31,7 +33,7 @@ and not by the Siml compiler.
 from numpy import array, linspace, zeros, shape, ones, resize
 
 #from pylab import *
-from pylab import figure, xlabel, plot, legend, show
+from pylab import figure, xlabel, plot, legend, title, show
 
 import scipy.integrate.ode as odeInt
 import scipy.optimize.minpack as minpack
@@ -52,7 +54,7 @@ class SimulatorBase(object):
     def __init__(self):
         self.variableNameMap = {}
         '''Maping between variable (siml) name and index in the result array'''
-        self.parameterNameMap = {}
+        self.parameterNameMap = {} #TODO: attribute is currently unused
         '''Maping between parameter (siml) name and (data member, python name)???'''
         self.p_solutionParameters_simulationTime = 100.0
         '''Duration of the simulation. Built in parameter.'''
@@ -117,7 +119,7 @@ class SimulatorBase(object):
         return self.resultArray[:,index]
 
 
-    def graph(self, varNames):
+    def graph(self, varNames, titleStr=None):
         """
         Show one or several variables in a graph.
 
@@ -128,7 +130,7 @@ class SimulatorBase(object):
                         (Space or comma separated.) e.g.: 'r.X r.mu'
         """
         #self._graphGnuplot(varNames)
-        self._graphMatPlotLib(varNames)
+        self._graphMatPlotLib(varNames, titleStr)
 
 
 #    def _graphGnuplot(self, varNames):
@@ -149,7 +151,7 @@ class SimulatorBase(object):
 #            diagram.replot(curve)
 
 
-    def _graphMatPlotLib(self, varNames):
+    def _graphMatPlotLib(self, varNames, titleStr=None):
         '''Create plots with matplotlib. Called by graph()'''
         figure() #create new figure window
 
@@ -166,15 +168,72 @@ class SimulatorBase(object):
 
         xlabel('time')
         #ylabel(varNames)
+        if titleStr != None:
+            title(titleStr)
         legend()
 
 
-    def initialize(self):
+    def _createParamOverrideDict(self, argList, kwArgDict):
+        '''
+        Create a dict of parameter-name, value pairs; that are used by init
+        to override the values from the SIML program.
+        The method is called by self.initialize(...)
+        arguments:
+            argList   : list from *args of initialize() function
+            kwArgDict : dict from **args of initialize() function
+        returns:
+            dict looking like this: {'g':10.81, 'm1.p1':23.23}
+        '''
+        #kwArgDict: every parameter name without dot is permissible        
+        ovrDict = kwArgDict
+        #care for argList
+        i = 0
+        while i < len(argList):
+            arg = argList[i]
+            #argument is a dict. Put values into override dict
+            if isinstance(arg, dict):
+                ovrDict.update(arg)
+            #suppose that argument is a string and next argument a float number
+            else:
+                num = float(argList[i+1])
+                ovrDict[str(arg)] = num
+                i += 1
+            i += 1
+        return ovrDict
+    
+    
+    def _overrideParam(self, paramName, overrideDict, originalValue):
+        '''
+        Replace the original parameter value from the SIML program
+        with an other value; that is given when the program runs.
+        arguments:
+            paramName     : string, SIML name of parameter
+            overrideDict  : dict of parameter name: value pairs
+            originalValue : float number, original value from SIML program
+        returns:
+            float number, either original value or value from overrideDict
+        '''
+        if paramName in overrideDict:
+            return overrideDict[paramName]
+        else:
+            return originalValue
+    
+   
+    def initialize(self, *args, **kwArgs):
         '''
         Compute the initial values.
         Dummy function; must be reimplemented in derived classes!
+        arguments:
+            *args    : two ways to specify parameter values are possible:
+                       dict: initialize({'g':10.81})
+                       parameter name followed by value: 
+                       initialize('g', 10.81)
+            **kwargs : parameter names without dot can be specified as 
+                       keyword arguments: initialize(g=10.81)
         '''
         pass
+        #ovd = self._createParamOverrideDict(args, kwArgs)
+        #p_fnord = self._overrideParam('fnord', ovd, 23)
 
 
     def dynamic(self, t, y, returnAlgVars=False):
@@ -309,6 +368,14 @@ class SimulatorBase(object):
 #---- simulator main function -------------------------------------------------
 #The followin functions are for running the simulator as a standalone program
 
+def secureShow():
+    '''Show the graphs; but don't crash if no graphs exist.'''
+    from matplotlib._pylab_helpers import Gcf
+    if len(Gcf.get_all_fig_managers()) == 0:
+        return
+    show()
+    
+    
 def runSimulations(simulationClassList):
     '''Instantiate simulation objects and run dynamic simulations'''
     if not isinstance(simulationClassList, list):
@@ -372,14 +439,14 @@ def parseCommandLineOptions(simulationClassList):
         except: 
             optPars.error('option "-r": invalid number of simulation object: %s'
                           % options.run)
-        #see if we have this object 
+        #test if object with this number exists
         num = int(options.run)
         if num < 0 or num >= len(simulationClassList):
             optPars.error('option "-r": invalid number of simulation object: %d' 
                           % num)
         #run simulation
         runSimulations(simulationClassList[num])
-        show()
+        secureShow()
         sys.exit(0)
         
     #user wants to go into interactive mode
@@ -390,7 +457,7 @@ def parseCommandLineOptions(simulationClassList):
     #default action: run all simulations
     #print 'Freeode (%s) main function ...' % ast.progVersion
     runSimulations(simulationClassList)
-    show()
+    secureShow()
     sys.exit(0)
     
 
