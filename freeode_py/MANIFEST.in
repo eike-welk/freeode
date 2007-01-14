@@ -1,4 +1,18 @@
+# Copyright: 2007 Eike Welk
+# License: GPL
+#
+# File list for source distribution
+#
+# This file is read by the setup script "setup.py" to determine which
+# files will be included in a source distribution, additional to those
+# mentioned in the script.
+# The files mentioned here, will however not be installed.
+
+#legal
 include COPYING
+include COPYING.LIB
+
+#user info
 include README
 
 #highlighting for kate
@@ -8,4 +22,5 @@ include hl_siml.xml
 include tank.siml
 include tuned_abs_damper.siml
 
+#this file
 include MANIFEST.in

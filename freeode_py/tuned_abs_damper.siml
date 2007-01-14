@@ -226,6 +226,6 @@ class StepExperiment(Process):
     end
 
     func final():
-        graph r.x, r.x2;
+        #graph r.x, r.x2;
     end
 end
