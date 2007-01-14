@@ -499,7 +499,9 @@ class ParseStage(object):
         #store name of block 
         nCurr.name = (toks.funcName,)
         #create children - each child is a statement
-        statements = toks.funcBody.asList()[0]
+        statements = []
+        if len(toks.funcBody) > 0:
+            statements = toks.funcBody.asList()[0]
         for stmt1 in statements:
             nCurr.appendChild(stmt1)
         return nCurr
@@ -639,7 +641,7 @@ class ParseStage(object):
         expression << (expression2 | expression1)       .setName('expression')#.setDebug(True)
 
         #Relational operators : <, >, ==, ...
-        relop = L('<') | L('>') | L('<=') | L('>=') | L('==')
+        relop = L('<') | L('>') | L('<=') | L('>=') | L('==') | L('!=')
         boolExpr1 = expression
         boolExpr2 = Group(expression + relop + boolExpression)  .setParseAction(self._actionInfixOp) \
                                                                 .setName('boolExpr2')#.setDebug(True)
