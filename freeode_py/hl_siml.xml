@@ -134,7 +134,7 @@ can be redefined. Consequently, only the reserved keywords are highlighted.
 
             <!-- Single-character operators -->
     <!--         <AnyChar context="#stay" attribute="Operator" String="*+-/\&amp;|&lt;&gt;~^=,;:@"/> -->
-            <AnyChar context="#stay" attribute="Operator" String="*+-/^$&lt;&gt;;:"/>
+            <AnyChar context="#stay" attribute="Operator" String="*+-/^$&lt;&gt;:="/>
         </context>
 
     <!-- Context entered after encountering an ' adjoint operator -->
@@ -171,7 +171,7 @@ can be redefined. Consequently, only the reserved keywords are highlighted.
 <general>
     <comments>
         <comment name="singleLine" start="# " />
-        <comment name="singleLine" start="// " />
+        <comment name="singleLine" start="//" />
     </comments>
     <keywords casesensitive="1" weakDeliminator=""/>
 </general>
