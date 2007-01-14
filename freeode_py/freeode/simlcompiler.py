@@ -143,8 +143,8 @@ class SimlCompilerMain(object):
             print 'error: could nor write output file\n', theError 
             sys.exit(1)
         
-        print 'Compilation finished successfully.\n',\
-              'input file: %s, output file: %s' % (self.inputFileName, self.outputFileName)
+        print 'Compilation finished successfully.'
+        #print 'input file: %s, output file: %s' % (self.inputFileName, self.outputFileName)
      
     
     def runProgram(self):   

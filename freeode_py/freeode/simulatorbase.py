@@ -286,7 +286,7 @@ class SimulatorBase(object):
                                  'float64')
         self.resultArray[0,0:self.stateVectorLen] = self.initialValues
         #create integrator object and care for intitial values
-        solver = odeInt(self.dynamic).set_integrator('vode') \
+        solver = odeInt(self.dynamic).set_integrator('vode', nsteps = 5000) \
                                      .set_initial_value(self.initialValues,
                                                         self.time[0])
         #compute the numerical solution

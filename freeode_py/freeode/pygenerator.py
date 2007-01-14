@@ -384,7 +384,7 @@ class ProcessGenerator(object):
         #write method definition
         outPy = self.outPy
         ind8 = ' '*8
-        outPy.write('    def initialize(self): \n')
+        outPy.write('    def initialize(self,  *args, **kwArgs): \n')
         outPy.write(ind8 + '\'\'\' \n')
         outPy.write(ind8 + 'Compute parameter values and \n')
         outPy.write(ind8 + 'compute initial values of state variables \n')
@@ -395,7 +395,11 @@ class ProcessGenerator(object):
         for varDef in (self.algebraicVariables.values() +
                        self.stateVariables.values()):
             outPy.write(ind8 + '%s = 0.0 \n' % varDef.targetName[tuple()])
-            
+        
+        #create dict for parameter override
+        outPy.write(ind8 + '#create dict for parameter override \n')
+        outPy.write(ind8 + 'ovd = self._createParamOverrideDict(args, kwArgs) \n')
+        
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
