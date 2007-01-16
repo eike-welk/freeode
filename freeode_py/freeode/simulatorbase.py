@@ -208,7 +208,7 @@ class SimulatorBase(object):
         with an other value; that is given when the program runs.
         arguments:
             paramName     : string, SIML name of parameter
-            overrideDict  : dict of parameter name: value pairs
+            overrideDict  : dict with the new values: <name>: <value> pairs
             originalValue : float number, original value from SIML program
         returns:
             float number, either original value or value from overrideDict
