@@ -141,7 +141,7 @@ class DataStore(object):
         if fext == 'csv':
             self.load_csv(fname)
         else: #fext == 'dstore':
-            self.load_pickle(fname)
+            self._load_pickle(fname)
 #        elif fext == 'she':
 #            self.load_shelve(fname,var)
 #        else:
@@ -223,32 +223,13 @@ class DataStore(object):
         f.close()
 
 
-    def load_pickle(self,fname):
-        """
-        Loading data from a created earlier using the the DataStore class.
-        """
+    def _load_pickle(self,fname):
+        """Load data from a file in pickle format."""
         f = open(fname,'rb')
         newStore = cPickle.load(f) #this should also work for derived classes
-        self.__dict__ = newStore.__dict__ #copy the data attributes
+        self.__dict__ = newStore.__dict__ #copy the (all) data attributes
         f.close()
 
-
-#    def load_shelve(self,fname,var):
-#        """
-#        Loading data from a created earlier using the the DataStore class.
-#        """
-#        data = shelve.open(fname)                # loading the data dictionary
-#
-#        # find out if a variable list is provided
-#        if var == ():
-#            var = data.keys()
-#
-#        # making sure the date variable is fetched from shelve
-#        if self.date_key != '':
-#            if not self.date_key in var: var = var + list(self.date_key)
-#
-#        self.data = dict([(i,data[i]) for i in var])
-#        data.close()
 
 
     def save(self,fname):
@@ -270,52 +251,37 @@ class DataStore(object):
         """
         fext = self._getExtension(fname)
         if fext == 'csv':
-            self.save_csv(fname)
+            self._save_csv(fname)
         else: #elif fext == 'pickle':
-            self.save_pickle(fname)
+            self._save_pickle(fname)
 #        elif fext == 'she':
 #            self.save_shelve(fname)
 #        else:
 #            raise 'This class only works on csv, pickle, and shelve files'
 
 
-    def save_csv(self,fname):
-        """
-        Dumping the class data dictionary into a csv file
-        """
-        f = open(fname,'w')
-
-        writer = csv.writer(f)
-        writer.writerow(self.data.keys())
-
-        data = self.data                        # a reference to the data dict
-        if self.date_key != []:
-            data = dict(data)                # making a copy so the dates can be changed to strings
-            dates = pylab.num2date(data[self.date_key])
-            dates = array([i.strftime('%d %b %y') for i in dates])
-            data[self.date_key] = dates
-
-        writer.writerows(array(data.values()).T)
+    def _save_csv(self,fname):
+        """Dump the data into a csv file"""
         
+        #sort variable names according to their indices
+        nameIndexTuples = self.varNames.items() #create list of tuple(<name>, <index>) 
+        sortFunc = lambda a, b: cmp(a[1], b[1]) #function to compare the indices
+        nameIndexTuples.sort(sortFunc)
+        nameList = [tup[0] for tup in nameIndexTuples] #remove the index numbers
+        #write data
+        f = open(fname,'w')
+        writer = csv.writer(f)
+        writer.writerow(nameList)   #write the variable names
+        writer.writerows(self.data) #write the numeric data
         f.close()
 
 
-    def save_pickle(self,fname):
-        """
-        Dumping the class data dictionary and date_key into a binary pickle file
-        """
+    def _save_pickle(self,fname):
+        """Dump the data into a binary pickle file"""
         f = open(fname,'wb')
         cPickle.dump(self, f, 2)
         f.close()
 
-
-#    def save_shelve(self,fname):
-#        """
-#        Dumping the class data dictionary into a shelve file
-#        """
-#        f = shelve.open('data.she','c')
-#        f = self.data
-#        f.close()
 
 #    def add_trend(self,tname = 'trend'):
 #        # making a trend based on nobs in arbitrary series in dictionary
@@ -675,8 +641,18 @@ class TestDataStore(unittest.TestCase):
         newStore.load(fileName)
         self.assertTrue(all(self.store50.data == newStore.data))
         self.assertTrue(self.store50.varNames == newStore.varNames)
+    
+    
+    def test_save_load_csv(self):
+        '''Test saving and loading CSV files.'''
+        fileName = 'pickle_test.csv'
+        self.store50.save(fileName)
+        newStore = DataStore()
+        newStore.load(fileName)
+        self.assertTrue(all(self.store50.data == newStore.data))
+        self.assertTrue(self.store50.varNames == newStore.varNames)
         
-        
+    
 if __name__ == '__main__':
 #    #perform the doctests
 #    def doDoctest():
