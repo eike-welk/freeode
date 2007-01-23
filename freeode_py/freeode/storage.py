@@ -35,6 +35,7 @@ import shelve
 import csv
 #import copy
 import os
+import datetime
 
 
 class DataStore(object):
@@ -44,8 +45,11 @@ class DataStore(object):
     variable names.
     Data is stored in an array, variable names are stored in an dictionary.
     """
-
-    def __init__(self, dataArray=None, nameList=None):
+    
+    csv_commentStart = '#'
+    '''Indicates comment lines in CSV files.'''
+    
+    def __init__(self, dataArray=None, nameList=None, fileName=None):
         """
         Initialize the DataStore class.
         
@@ -55,15 +59,20 @@ class DataStore(object):
                     Also accepted is a dict with names:indices, which is 
                     accepted untested.
         """
-        self.data = array([[]], 'float64')
+        self.dataArray = array([[]], 'float64')
         '''The numeric data; each collumn is a variable.''' #IGNORE:W0105
-        self.varNames = {}
+        self.varNameDict = {}
         '''The variable names, and associated collumn indices: {'foo':0, 'bar':1}''' #IGNORE:W0105
-        if dataArray is not None or nameList is not None:
-            self._createArrayFromData(dataArray, nameList)
+        #initialize from data
+        if dataArray != None or nameList != None:
+            self.createFromData(dataArray, nameList)
+        #initialize from from file 
+        elif fileName != None:
+            self.load(fileName)
+            
 	
 
-    def _createArrayFromData(self, dataArray=None, nameList=None):
+    def createFromData(self, dataArray=None, nameList=None):
         '''
         Create object from array and list of names.
         TODO: maybe integrate into __init__?
@@ -74,35 +83,48 @@ class DataStore(object):
         if not isinstance(nameList, (list, tuple, dict)):
             raise TypeError('Argument "nameList" must be of type "list" or "dict"') #IGNORE:E1010
         if not (len(dataArray.shape) == 2):
-            raise ValueError('Argument "dataArray" must be a 2D array.') #IGNORE:E1010
+            raise ValueError('Argument "dataArray" must be a 2D array.') 
         if not (dataArray.shape[1] == len(nameList)):
             raise ValueError('"nameList" must have an entry for each collumn of "dataArray"') #IGNORE:E1010
         #create index dictionary 
         if isinstance(nameList, dict):
-            self.varNames = nameList #a dict is accepted untested
+            self.varNameDict = nameList #a dict is accepted untested
         else:
             #create index dictionary from list
             for i, name in enumerate(nameList):
                 if not isinstance(name, str):
                     raise TypeError('Variable names must be strings.') #IGNORE:E1010
-                if name in self.varNames:
+                if name in self.varNameDict:
                     raise ValueError('Variable names must be unique.') #IGNORE:E1010
-                self.varNames[name] = i
+                self.varNameDict[name] = i
         #store the numbers
         #TODO: should the array be copied
-        self.data = dataArray
+        self.dataArray = dataArray
 
     
     def numVars(self):
         '''Return the number of variables'''
         #assert self.data.shape[1] == len(self.varNames)
-        return self.data.shape[1]
+        return self.dataArray.shape[1]
         
         
     def numObs(self):
         '''Return the number of obervations (same for each variable).'''
-        return self.data.shape[0]
-        
+        return self.dataArray.shape[0]
+    
+    
+    def variableNames(self):
+        '''
+        Return all variable names in a list. The variables are sorted 
+        according to the index of the variable in the internal array. 
+        Small index numbers come first.
+        '''
+        nameIndexTuples = self.varNameDict.items() #create list of tuple(<name>, <index>) 
+        sortFunc = lambda a, b: cmp(a[1], b[1]) #function to compare the indices
+        nameIndexTuples.sort(sortFunc) #sort variable names according to their indices
+        nameList = [tup[0] for tup in nameIndexTuples] #remove the index numbers
+        return nameList
+
         
     def _getExtension(self,fname):
         """
@@ -128,9 +150,6 @@ class DataStore(object):
         Returns:
         None
         """
-        #If this is csv file use pylab's load function. Seems much faster
-        #than scipy.io.read_array.
-        
         # setting the ascii/csv file name used for input
         #self.DBname = os.getcwd() + '/' + fname
 
@@ -139,7 +158,7 @@ class DataStore(object):
 
         # opening the file for reading
         if fext == 'csv':
-            self.load_csv(fname)
+            self._load_csv(fname)
         else: #fext == 'dstore':
             self._load_pickle(fname)
 #        elif fext == 'she':
@@ -148,79 +167,62 @@ class DataStore(object):
 #            raise 'This class only works on csv, pickle, and shelve files'
 
 
-    def csvconvert(self,col):
-        """
-        Converting data in a string array to the appropriate type
-        """
-        # convert missing values to nan
-        col[col == ''] = 'nan'; col[col == '.'] = 'nan'
-        try:
-            # if a missing value is present int variables will be up-cast to float
-            return col.astype('i')
-        except ValueError:
-            try:
-                return col.astype('f')
-            except ValueError:
-                # if the data is a string, put back the empty string
-                col[col == 'nan'] = ''
-                return col
+#    def csvconvert(self,col):
+#        """
+#        Converting data in a string array to the appropriate type
+#        """
+#        # convert missing values to nan
+#        col[col == ''] = 'nan'; col[col == '.'] = 'nan'
+#        try:
+#            # if a missing value is present int variables will be up-cast to float
+#            return col.astype('i')
+#        except ValueError:
+#            try:
+#                return col.astype('f')
+#            except ValueError:
+#                # if the data is a string, put back the empty string
+#                col[col == 'nan'] = ''
+#                return col
 
-    def load_csv_nf(self,f):
-        """
-        Loading data from a csv file using the csv module. Return a list of arrays.
-        Possibly with different types and/or missing values.
-        """
-        # resetting to the beginning of the file since pylab.load was already tried
-        f.seek(0)
 
-        reader = csv.reader(f)
-
-        # putting the data in an array of strings
-        datalist = array([i for i in reader])
-
-        # converting the data to an appropriate type
-        datalist = [self.csvconvert(datalist[1:,i]) for i in range(datalist.shape[1])]
-
-        return datalist
-
-    def load_csv(self,fname):
-        """
-        Loading data from a csv file. Uses pylab's load function. Seems much faster
-        than scipy.io.read_array.
-        """
-        f = open(fname,'r')
-
-        varnm = f.readline().split(',')
-
-        # what is the date variable's key if any, based on index passed as argument
-        if self.date_key != '':
-            try:
-                rawdata = pylab.load(f, delimiter=',',converters={self.date_key:pylab.datestr2num})            # don't need to 'skiprow' here
-            except ValueError:                                                                                # if loading via pylab doesn't work use csv
-                rawdata = self.load_csv_nf(f)
-
-                # converting the dates column to a date-number
-                rawdata[self.date_key] = pylab.datestr2num(rawdata[self.date_key])
-
-            self.date_key = varnm[self.date_key]
-        else:
-            try:
-                rawdata = pylab.load(f, delimiter=',')                                                        # don't need to 'skiprow' here
-            except ValueError:                                                                                # if loading via pylab doesn't work use csv
-                rawdata = self.load_csv_nf(f)
-
-        # making sure that the variable names contain no leading or trailing spaces
-        varnm = [i.strip() for i in varnm]
-
-        # transforming the data into a dictionary
-        if type(rawdata) == list:
-            # if the csv module was used
-            self.data = dict(zip(varnm,rawdata))
-        else:
-            # if the pylab.load module was used
-            self.data = dict(zip(varnm,rawdata.T))
+    def _load_csv(self,fname):
+        """Load data from a csv file."""
+        #Uses the CSV reader and an entirey hommade algorithm.
+        #however there are library functions for doing this, that are  
+        #probably faster:
+        #    scipy.io.read_array
+        #    pylab's load function (seems to be fastest)
+        #TODO: more robustness
         
+        #read whole file at once
+        f = open(fname,'r')
+        lines = f.readlines() 
         f.close()
+        
+        #delete lines that the csv reader can not understand
+        for i in range(len(lines)-1,-1,-1):
+            #delete comment lines
+            if lines[i].startswith(DataStore.csv_commentStart):
+                del lines[i]
+            #delete blank lines (conaining only whitespace)
+            if len(lines[i].strip()) == 0:
+                del lines[i]
+                
+        #interpret remaining lines as  CSV
+        reader = csv.reader(lines)
+        varNameList = reader.next() #first line: variable names
+        #put numbers into nested list
+        dataList = []
+        for line in reader:
+            #TODO: convert strings to nan
+            lineFloat = map(float, line) #convert strings to floating point
+            dataList.append(lineFloat)   #append to nested list
+        
+        #convert nested list to array
+        dataArray = array(dataList)
+        #put data into internal structures
+        self.createFromData(dataArray, varNameList)
+        return
 
 
     def _load_pickle(self,fname):
@@ -229,7 +231,6 @@ class DataStore(object):
         newStore = cPickle.load(f) #this should also work for derived classes
         self.__dict__ = newStore.__dict__ #copy the (all) data attributes
         f.close()
-
 
 
     def save(self,fname):
@@ -262,17 +263,18 @@ class DataStore(object):
 
     def _save_csv(self,fname):
         """Dump the data into a csv file"""
-        
-        #sort variable names according to their indices
-        nameIndexTuples = self.varNames.items() #create list of tuple(<name>, <index>) 
-        sortFunc = lambda a, b: cmp(a[1], b[1]) #function to compare the indices
-        nameIndexTuples.sort(sortFunc)
-        nameList = [tup[0] for tup in nameIndexTuples] #remove the index numbers
-        #write data
         f = open(fname,'w')
+        #write header - time and date
+        today = datetime.datetime.today()
+        date = today.date().isoformat()
+        time = today.time().strftime('%H:%M:%S')
+        f.write('#Generated on %s - %s\n' % (date, time))
+        #f.write('\n')
+        #write data
         writer = csv.writer(f)
+        nameList = self.variableNames() #get sorted list of variable names
         writer.writerow(nameList)   #write the variable names
-        writer.writerows(self.data) #write the numeric data
+        writer.writerows(self.dataArray) #write the numeric data
         f.close()
 
 
@@ -283,95 +285,31 @@ class DataStore(object):
         f.close()
 
 
-#    def add_trend(self,tname = 'trend'):
-#        # making a trend based on nobs in arbitrary series in dictionary
-#        self.data[tname] = arange(self.nobs)
-
-#    def add_dummy(self,dum, dname = 'dummy'):
-#        if self.data.has_key(dname):
-#            print "The variable name '" + str(dname) + "' already exists. Please select another name."
-#        else:
-#            self.data[dname] = dum
-#
-#    def add_seasonal_dummies(self,freq=52,ndum=13):
-#        """
-#        This function will only work if the freq and ndum 'fit. That is,
-#        weeks and 4-weekly periods will work. Weeks and months/quarters
-#        will not.
-#        """
-#        if self.date_key == []:
-#            print "Cannot create seasonal dummies since no date array is known"
-#        else:
-#            # list of years
-#            years = array([pylab.num2date(i).year for i in self.data[self.date_key]])
-#
-#            # how many periods in does the data start
-#            start = freq - sum(years ==    min(years))
-#
-#            # how many unique years
-#            nyear = unique(years).shape[0]
-#
-#            # using kronecker products to make a big dummy matrix
-#            sd = kron(ones(nyear),kron(eye(ndum),ones(freq/ndum))).T;
-#            sd = sd[start:start+self.nobs]        # slicing the dummies to fit the data
-#            sd = dict([(("sd"+str(i+1)),sd[:,i]) for i in range(1,ndum)])
-#            self.data.update(sd)                # adding the dummies to the main dict
-
     def delvar(self,*var):
         """
-        Deleting specified variables in the data dictionary, changing dictionary in place
+        Delete specified variables from the DataStore, changing the object in place
         """
-        [self.data.pop(i) for i in var]
+        raise Exception('Method "delvar" is not yet implemented.') #IGNORE:E1010
 
-#    def keepvar(self,*var):
-#        """
-#        Keeping specified variables in the data dictionary, changing dictionary in place
-#        """
-#        [self.data.pop(i) for i in self.data.keys() if i not in var]
 
-    def delvar_copy(self,*var):
-        """
-        Deleting specified variables in the data dictionary, making a copy
-        """
-        return dict([(i,self.data[i]) for i in self.data.keys() if i not in var])
-
-#    def keepvar_copy(self,*var):
-#        """
-#        Keeping specified variables in the data dictionary, making a copy
-#        """
-#        return dict([(i,self.data[i]) for i in var])
+    def extract(self, *varNames):
+        '''
+        Crate a new DataStore object with only the specified variables.
+        
+        Arguments:
+            *varNames : Variable names of the time series that should be in 
+                        the new object; string
+        Returns:
+            New DataStore object.
+        '''
+        raise Exception('Method "extract" is not yet implemented.') #IGNORE:E1010
+        
 
     def delobs(self,sel):
         """
         Deleting specified observations, changing dictionary in place
         """
-        for i in self.data.keys(): self.data[i] = self.data[i][sel]
-
-        # updating the value of self.nobs
-        self.nobs -= sum(sel)
-
-#    def keepobs(self,sel):
-#        """
-#        Keeping specified observations, changing dictionary in place
-#        """
-#        # updating the value of self.nobs
-#        self.nobs -= sum(sel)
-#
-#        sel -= 1                # making true, false and vice-versa
-#        self.delobs(sel)
-
-    def delobs_copy(self,sel):
-        """
-        Deleting specified observations, making a copy
-        """
-        return dict([(i,self.data[i][sel]) for i in self.data.keys()])
-
-#    def keepobs_copy(self,sel):
-#        """
-#        Keeping specified observations, making a copy
-#        """
-#        sel -= 1                # making true, false and vice-versa
-#        self.delobs_copy(sel)
+        raise Exception('Method "extract" is not yet implemented.') #IGNORE:E1010
 
 
     def get(self, varName):
@@ -385,8 +323,8 @@ class DataStore(object):
         Returns:
         One variable; ndarray. 
         '''
-        i = self.varNames[varName]
-        return self.data[:,i]
+        i = self.varNameDict[varName]
+        return self.dataArray[:,i]
     
 
     def set(self, varName, newVals):
@@ -407,17 +345,17 @@ class DataStore(object):
         if not (self.numObs() == newVals.shape[0]):
             raise ValueError('Argument "newVals" must have same number of rows as the existing variables.') #IGNORE:E1010
         #change existing data
-        if varName in self.varNames:
-            i = self.varNames[varName]
-            self.data[:,i] = newVals
+        if varName in self.varNameDict:
+            i = self.varNameDict[varName]
+            self.dataArray[:,i] = newVals
             return self
         #add new variable 
         else:
             #add new variable name to index dict
-            self.varNames[varName] = self.numVars()
+            self.varNameDict[varName] = self.numVars()
             #add new data to the array
             newVals = newVals.reshape((self.numObs(),1))
-            self.data = hstack((self.data, newVals))
+            self.dataArray = hstack((self.dataArray, newVals))
             return self
             
         
@@ -452,7 +390,7 @@ class DataStore(object):
 
         sets = {}
         for i in var:
-            col = self.data[i][sel];
+            col = self.dataArray[i][sel];
             if type(col[0]) == string_:
                 _miss = sum(col == '')
                 col_set = set(col)
@@ -468,69 +406,27 @@ class DataStore(object):
                 print '=============================================================================='
                 print '''% -5s    % -5s''' % tuple([i,sets[i]])
 
-    def dataplot(self,*var, **adict):
+
+    def plot(self, *varNames):
         """
-        Plotting the data with variable names
+        Plot the specified time series into the current graph.
         """
-        # calling convenience functions to clean-up input parameters
-        var, sel = self.__var_and_sel_clean(var, adict)
-        dates, nobs = self.__dates_and_nobs_clean(var, sel)
-
-        # don't try to plot non-numerical variables
-        nvar = []
-        for i in var:
-            col = self.data[i][sel]
-            if type(col[0]) != string_:
-                pylab.plot_date(dates,self.data[i][sel],'o-')
-                nvar = nvar + [i]
-
-        pylab.xlabel("Time (n = " + str(nobs) + ")")
-        pylab.title("Data plot of " + self.DBname)
-        pylab.legend(nvar)
-        if adict.has_key('file'):
-            pylab.savefig(adict['file'],dpi=600)
-        pylab.show()
-
-#    def __var_and_sel_clean(self, var, sel, dates_needed = True):
-#        """
-#        Convenience function to avoid code duplication
-#        """
-#        # find out if a variable list is provided
-#        if var == ():
-#            var = self.data.keys()
-#
-#        # removing the date variable if it is present
-#        var = [x for x in var if x != self.date_key]
-#
-#        # report variable label in alphabetical order
-#        var.sort()
-#
-#        # find out if a selection rule is being used
-#        # if not, set to empty tuple
-#        if not sel.has_key('sel'):
-#            sel = ()
-#        else:
-#            sel = sel['sel']
-#
-#        return var, sel
-
-#    def __dates_and_nobs_clean(self, var, sel):
-#        """
-#        Convenience function to avoid code duplication
-#        """
-#        nobs = self.nobs
-#        if len(sel):
-#            nobs = nobs - (nobs - sum(sel))
-#
-#        if self.date_key != None and self.data.has_key(self.date_key):
-#            # selecting dates from data base
-#            dates = self.data[self.date_key][sel]
-#        else:
-#            # setting date series to start on 1/1/1950
-#            dates = range(711858,nobs+711858)
-#
-#        return dates, nobs
-
+        #get the time. If a time vector is present, 
+        #it will then be used as X-coordinate
+        timeVect = None
+        if self.varNameDict.has_key('time'):
+            timeVect = self.get('time')
+            pylab.xlabel("time")
+        #plot variables in variable list
+        for name1 in varNames:
+            varVect = self.get(name1)
+            if timeVect:
+                pylab.plot(timeVect, varVect, label=name1)
+            else:
+                pylab.plot(varVect, label=name1)
+        
+        #pylab.legend()        
+        return 
 
     #TODO: __repr__
     #TODO: __str__
@@ -551,8 +447,8 @@ class TestDataStore(unittest.TestCase):
         #print self.store50.varNames
 
         
-    def test__init__(self):
-        '''test __init__ and _createArrayFromData'''
+    def test__init__1(self):
+        '''test __init__ and createFromData'''
         #init empty object
         store = DataStore
         #init with array and list
@@ -566,9 +462,18 @@ class TestDataStore(unittest.TestCase):
         #init with array and dict
         #use the internal dict as argument for init
         data = self.numData50
-        nameDict = store.varNames
+        nameDict = store.varNameDict
         store = DataStore(data, nameDict)
-        #test error handling
+        
+    def test__init__2(self):
+        '''test __init__ and createFromData - init from file'''
+        self.store50.save('test_datastore.dstore')
+        newStore = DataStore(fileName='test_datastore.dstore')
+        self.assertTrue(all(newStore.dataArray == self.store50.dataArray))
+        self.assertTrue(all(newStore.varNameDict == self.store50.varNameDict))
+        
+    def test__init__3(self):
+        '''test __init__ and createFromData - error handling'''
         self.assertRaises(TypeError, self.raise__init__1)
         self.assertRaises(TypeError, self.raise__init__2)
         self.assertRaises(ValueError, self.raise__init__3)
@@ -597,12 +502,12 @@ class TestDataStore(unittest.TestCase):
         '''raise: variable names must be strings'''
         data = self.numData50
         names = ['a',1,'c','d','e']
-        store = DataStore(data, names)
+        DataStore(data, names)
     def raise__init__6(self):
         '''raise: variable names must be unique.'''
         data = self.numData50
         names = ['a','a','c','d','e']
-        store = DataStore(data, names)
+        DataStore(data, names)
         
     
     def test_get(self):
@@ -635,22 +540,29 @@ class TestDataStore(unittest.TestCase):
         
     def test_save_load_pickle(self):
         '''Test saving and loading pickle files.'''
-        fileName = 'pickle_test.dstore'
+        fileName = 'test_datastore.dstore'
         self.store50.save(fileName)
         newStore = DataStore()
         newStore.load(fileName)
-        self.assertTrue(all(self.store50.data == newStore.data))
-        self.assertTrue(self.store50.varNames == newStore.varNames)
+        self.assertTrue(all(self.store50.dataArray == newStore.dataArray))
+        self.assertTrue(self.store50.varNameDict == newStore.varNameDict)
     
     
     def test_save_load_csv(self):
         '''Test saving and loading CSV files.'''
-        fileName = 'pickle_test.csv'
+        fileName = 'test_datastore.csv'
         self.store50.save(fileName)
         newStore = DataStore()
         newStore.load(fileName)
-        self.assertTrue(all(self.store50.data == newStore.data))
-        self.assertTrue(self.store50.varNames == newStore.varNames)
+        self.assertTrue(all(self.store50.dataArray == newStore.dataArray))
+        self.assertTrue(self.store50.varNameDict == newStore.varNameDict)
+        
+        
+    def test_plot(self):
+        '''Test the plot function.'''
+        pylab.figure()
+        self.store50.plot('b','c','d')
+        #pylab.show()
         
     
 if __name__ == '__main__':
@@ -665,4 +577,13 @@ if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestDataStore)
     unittest.TextTestRunner(verbosity=3).run(suite)
 
+
+#    numData50 = linspace(0, 29, 30).reshape(6, 5)
+#    varNamesAF = ['a','b','c','d','e']
+#    store50 = DataStore(numData50, varNamesAF)
+#    #print store50.data
+#    #print store50.varNames
+#    pylab.figure()
+#    store50.plot('b','c','d')
+#    pylab.show()
 
