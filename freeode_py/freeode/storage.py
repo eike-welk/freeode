@@ -61,7 +61,7 @@ class DataStore(object):
         '''The variable names, and associated collumn indices: {'foo':0, 'bar':1}''' #IGNORE:W0105
         if dataArray is not None or nameList is not None:
             self._createArrayFromData(dataArray, nameList)
-
+	
 
     def _createArrayFromData(self, dataArray=None, nameList=None):
         '''
