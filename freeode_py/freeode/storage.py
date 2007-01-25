@@ -27,30 +27,30 @@
 
 from __future__ import division
 #from scipy import c_, arange, array, unique, kron, ones, eye, nan, isnan, string_
-from numpy import ndarray, array, hstack
+from numpy import ndarray, array, hstack, zeros, isnan
 #from numpy.random import randn
 import pylab
 import cPickle
-import shelve
+#import shelve
 import csv
-#import copy
-import os
+import copy
+#import os
 import datetime
 
 
 class DataStore(object):
-    """
+    '''
     Doc:
     A simple data-frame, that reads and writes csv/pickle/shelve files with 
     variable names.
     Data is stored in an array, variable names are stored in an dictionary.
-    """
+    '''
     
     csv_commentStart = '#'
     '''Indicates comment lines in CSV files.'''
     
     def __init__(self, dataArray=None, nameList=None, fileName=None):
-        """
+        '''
         Initialize the DataStore class.
         
         Arguments:
@@ -58,7 +58,7 @@ class DataStore(object):
         nameList  : the variable names; list or tuple of strings. 
                     Also accepted is a dict with names:indices, which is 
                     accepted untested.
-        """
+        '''
         self.dataArray = array([[]], 'float64')
         '''The numeric data; each collumn is a variable.''' #IGNORE:W0105
         self.varNameDict = {}
@@ -83,7 +83,7 @@ class DataStore(object):
         if not isinstance(nameList, (list, tuple, dict)):
             raise TypeError('Argument "nameList" must be of type "list" or "dict"') #IGNORE:E1010
         if not (len(dataArray.shape) == 2):
-            raise ValueError('Argument "dataArray" must be a 2D array.') 
+            raise ValueError('Argument "dataArray" must be a 2D array.') #IGNORE:E1010
         if not (dataArray.shape[1] == len(nameList)):
             raise ValueError('"nameList" must have an entry for each collumn of "dataArray"') #IGNORE:E1010
         #create index dictionary 
@@ -102,6 +102,11 @@ class DataStore(object):
         self.dataArray = dataArray
 
     
+    def copy(self):
+        '''Create a deep copy of the object'''
+        return copy.deepcopy(self)
+        
+        
     def numVars(self):
         '''Return the number of variables'''
         #assert self.data.shape[1] == len(self.varNames)
@@ -127,14 +132,12 @@ class DataStore(object):
 
         
     def _getExtension(self,fname):
-        """
-        Finding the file extension of a filename.
-        """
+        '''Find the file extension of a filename.'''
         return fname.split('.')[-1].strip()
 
 
     def load(self, fname):
-        """
+        '''
         Load data from a csv or a pickle file of the DataStore class.
         
         The encoding is determined by the filename's extension:
@@ -149,7 +152,7 @@ class DataStore(object):
         
         Returns:
         None
-        """
+        '''
         # setting the ascii/csv file name used for input
         #self.DBname = os.getcwd() + '/' + fname
 
@@ -158,9 +161,9 @@ class DataStore(object):
 
         # opening the file for reading
         if fext == 'csv':
-            self._load_csv(fname)
+            self._loadCSV(fname)
         else: #fext == 'dstore':
-            self._load_pickle(fname)
+            self._loadPickle(fname)
 #        elif fext == 'she':
 #            self.load_shelve(fname,var)
 #        else:
@@ -168,9 +171,9 @@ class DataStore(object):
 
 
 #    def csvconvert(self,col):
-#        """
+#        '''
 #        Converting data in a string array to the appropriate type
-#        """
+#        '''
 #        # convert missing values to nan
 #        col[col == ''] = 'nan'; col[col == '.'] = 'nan'
 #        try:
@@ -185,8 +188,8 @@ class DataStore(object):
 #                return col
 
 
-    def _load_csv(self,fname):
-        """Load data from a csv file."""
+    def _loadCSV(self,fname):
+        '''Load data from a csv file.'''
         #Uses the CSV reader and an entirey hommade algorithm.
         #however there are library functions for doing this, that are  
         #probably faster:
@@ -214,7 +217,8 @@ class DataStore(object):
         #put numbers into nested list
         dataList = []
         for line in reader:
-            #TODO: convert strings to nan
+            #TODO: convert strings that might be found between the numbers to nan.
+            #see commented out csvconvert(...) method
             lineFloat = map(float, line) #convert strings to floating point
             dataList.append(lineFloat)   #append to nested list
         
@@ -225,8 +229,8 @@ class DataStore(object):
         return
 
 
-    def _load_pickle(self,fname):
-        """Load data from a file in pickle format."""
+    def _loadPickle(self,fname):
+        '''Load data from a file in pickle format.'''
         f = open(fname,'rb')
         newStore = cPickle.load(f) #this should also work for derived classes
         self.__dict__ = newStore.__dict__ #copy the (all) data attributes
@@ -234,7 +238,7 @@ class DataStore(object):
 
 
     def save(self,fname):
-        """
+        '''
         Dump the class data into a csv or pickle file
         
         The encoding is determined by the filename's extension:
@@ -249,20 +253,20 @@ class DataStore(object):
         
         Returns:
         None
-        """
+        '''
         fext = self._getExtension(fname)
         if fext == 'csv':
-            self._save_csv(fname)
+            self._saveCSV(fname)
         else: #elif fext == 'pickle':
-            self._save_pickle(fname)
+            self._savePickle(fname)
 #        elif fext == 'she':
 #            self.save_shelve(fname)
 #        else:
 #            raise 'This class only works on csv, pickle, and shelve files'
 
 
-    def _save_csv(self,fname):
-        """Dump the data into a csv file"""
+    def _saveCSV(self,fname):
+        '''Dump the data into a csv file'''
         f = open(fname,'w')
         #write header - time and date
         today = datetime.datetime.today()
@@ -278,18 +282,34 @@ class DataStore(object):
         f.close()
 
 
-    def _save_pickle(self,fname):
-        """Dump the data into a binary pickle file"""
+    def _savePickle(self,fname):
+        '''Dump the data into a binary pickle file'''
         f = open(fname,'wb')
         cPickle.dump(self, f, 2)
         f.close()
 
 
-    def delvar(self,*var):
-        """
-        Delete specified variables from the DataStore, changing the object in place
-        """
-        raise Exception('Method "delvar" is not yet implemented.') #IGNORE:E1010
+    def delvar(self, *varNames):
+        '''
+        Delete specified variables from the DataStore.
+        
+        This is a potentially slow operation, because it is implemented
+        with the extract() method. It internally creates a copy of the 
+        store object.
+        
+        Arguments:
+            *varNames : Variable names of the time series that should be in 
+                        the new object; string
+        Returns:
+        '''
+        #create list of variables we want to keep in the store
+        keepVars = self.variableNames()
+        for name1 in varNames:
+            keepVars.remove(name1)
+        #create new DataStore without the deleted variables
+        newStore = self.extract(*keepVars)
+        #get the data attributes of the new store - become the new store
+        self.__dict__ = newStore.__dict__
 
 
     def extract(self, *varNames):
@@ -302,14 +322,31 @@ class DataStore(object):
         Returns:
             New DataStore object.
         '''
-        raise Exception('Method "extract" is not yet implemented.') #IGNORE:E1010
-        
+        #test if all requested variables are in the store
+        myVars = set(self.variableNames())
+        reqVars = set(varNames)
+        unknownVars = reqVars - myVars
+        if unknownVars:
+            raise KeyError('Unknown variable(s): %s' % str(list(unknownVars))) #IGNORE:E1010
+        #compute size of new array and create it
+        newNumCols = len(varNames)
+        newNumRows = self.numObs()
+        newArray = zeros((newNumRows, newNumCols))
+        #create new DataStore object
+        #TODO: create object of derived class
+        newStore = DataStore(newArray, varNames)
+        #copy the variables into the new array
+        for name1 in varNames:
+            newStore.set(name1, self.get(name1))
+            
+        return newStore
+            
 
-    def delobs(self,sel):
-        """
-        Deleting specified observations, changing dictionary in place
-        """
-        raise Exception('Method "extract" is not yet implemented.') #IGNORE:E1010
+#    def delobs(self,sel):
+#        '''
+#        Deleting specified observations, changing dictionary in place
+#        '''
+#        raise Exception('Method "delobs" is not yet implemented.') #IGNORE:E1010
 
 
     def get(self, varName):
@@ -359,58 +396,39 @@ class DataStore(object):
             return self
             
         
-    def info(self,*var, **adict):
-        """
-        Printing descriptive statistics on selected variables
-        """
+    def info(self, *varNames):
+        ''' Printing descriptive statistics on selected variables'''
+        #no arguments means all variables
+        if len(varNames) == 0:
+            varNames = self.variableNames()
 
-        # calling convenience functions to clean-up input parameters
-        var, sel = self.__var_and_sel_clean(var, adict)
-        dates, nobs = self.__dates_and_nobs_clean(var, sel)
-
-        # setting the minimum and maximum dates to be used
-        mindate = pylab.num2date(min(dates)).strftime('%d %b %Y')
-        maxdate = pylab.num2date(max(dates)).strftime('%d %b %Y')
-
-        # number of variables (excluding date if present)
-        nvar = len(var)
-
-        print '\n=============================================================================='
-        print '============================ Database information ============================'
+        print
+        #print '\n=============================================================================='
+        #print '============================ Database information ============================'
         print '==============================================================================\n'
-
-        print 'file:                %s' % self.DBname
-        print '# obs:                %s' % nobs
-        print '# variables:        %s' % nvar
-        print 'Start date:            %s' % mindate
-        print 'End date:            %s' % maxdate
-
-        print '\nvar                min            max            mean        std.dev        miss    levels'
+        #print 'file:                %s' % self.DBname
+        print '# observations : %s' % self.numObs()
+        print '# variables    : %s' % self.numVars()
+        print
+        print 'var                  min          max          mean         std.dev      nan'
         print '=============================================================================='
 
-        sets = {}
-        for i in var:
-            col = self.dataArray[i][sel];
-            if type(col[0]) == string_:
-                _miss = sum(col == '')
-                col_set = set(col)
-                sets[i] = col_set
-                print '''%-5s            %-5s        %-5s        %-5s        %-5s        % -5.0f    %-5i''' % tuple([i,'-','-','-','-',_miss,len(col_set)])
-            else:
-                _miss = isnan(col); col = col[_miss == False]; _min = col.min(); _max = col.max(); _mean = col.mean(); _std = col.std()
-                print '''% -5s            % -5.2f        % -5.2f        % -5.2f        % -5.2f        % -5.0f''' % tuple([i,_min,_max,_mean,_std,sum(_miss)])
-
-        if sets:
-            print '\n\nLevels for non-numeric data:'
-            for i in sets.keys():
-                print '=============================================================================='
-                print '''% -5s    % -5s''' % tuple([i,sets[i]])
+        for name1 in varNames:
+            col = self.get(name1)
+            whereNan = isnan(col)
+            col = col[whereNan == False]
+            min = col.min()
+            max = col.max()
+            mean = col.mean()
+            std = col.std()
+            print '''%-20s %-12g %-12g %-12g %-12g %-12.0g''' \
+               % (name1, min, max, mean, std, sum(whereNan))
 
 
     def plot(self, *varNames):
-        """
+        '''
         Plot the specified time series into the current graph.
-        """
+        '''
         #get the time. If a time vector is present, 
         #it will then be used as X-coordinate
         timeVect = None
@@ -440,7 +458,7 @@ class TestDataStore(unittest.TestCase):
     
     def setUp(self):
         '''perform common setup tasks for each test'''
-        self.numData50 = linspace(0, 29, 30).reshape(6, 5)
+        self.numData50 = linspace(0, 29, 30).reshape(6, 5) #IGNORE:E1101
         self.varNamesAF = ['a','b','c','d','e']
         self.store50 = DataStore(self.numData50, self.varNamesAF)
         #print self.store50.data
@@ -466,7 +484,7 @@ class TestDataStore(unittest.TestCase):
         store = DataStore(data, nameDict)
         
     def test__init__2(self):
-        '''test __init__ and createFromData - init from file'''
+        '''test __init__ from file'''
         self.store50.save('test_datastore.dstore')
         newStore = DataStore(fileName='test_datastore.dstore')
         self.assertTrue(all(newStore.dataArray == self.store50.dataArray))
@@ -510,6 +528,32 @@ class TestDataStore(unittest.TestCase):
         DataStore(data, names)
         
     
+    def test_copy(self):
+        '''Test copying the DataStore object'''
+        newStore = self.store50.copy()
+        self.assertTrue(all(newStore.dataArray == self.store50.dataArray))
+        self.assertTrue(all(newStore.varNameDict == self.store50.varNameDict))
+
+        
+    def test_delvar(self):
+        '''Test deleting variables'''
+        self.store50.delvar('d','b','e')
+        self.assertTrue(self.store50.numVars() == 2)
+        
+        
+    def test_extract(self):
+        '''Test the extract function'''
+        newStore = self.store50.extract('d','b','e')
+        self.assertTrue(newStore.numVars() == 3)
+        self.assertTrue(all(newStore.get('d') == self.store50.get('d')))
+        self.assertTrue(all(newStore.get('b') == self.store50.get('b')))
+        self.assertTrue(all(newStore.get('e') == self.store50.get('e')))
+        self.assertRaises(KeyError, self.raise_extract)
+    def raise_extract(self):
+        '''Test errors of the extract function'''
+        self.store50.extract('d','f','g')
+        
+        
     def test_get(self):
         '''Test the get function'''
         varA = self.store50.get('a')
@@ -518,8 +562,8 @@ class TestDataStore(unittest.TestCase):
         #print repr(varC)
         self.assertTrue(all(varA == array([0., 5., 10., 15., 20., 25.])))
         self.assertTrue(all(varC == array([2., 7., 12., 17., 22., 27.])))
-        self.assertRaises(KeyError, self.raise__get_1)
-    def raise__get_1(self):
+        self.assertRaises(KeyError, self.raise_get_1)
+    def raise_get_1(self):
         self.store50.get('z')
     
     
@@ -557,6 +601,11 @@ class TestDataStore(unittest.TestCase):
         self.assertTrue(all(self.store50.dataArray == newStore.dataArray))
         self.assertTrue(self.store50.varNameDict == newStore.varNameDict)
         
+     
+    def test_info(self):
+        '''Try if the info function.'''   
+        self.store50.info()
+        
         
     def test_plot(self):
         '''Test the plot function.'''
@@ -579,8 +628,10 @@ if __name__ == '__main__':
 
 
 #    numData50 = linspace(0, 29, 30).reshape(6, 5)
+#    numData50 /= 3
 #    varNamesAF = ['a','b','c','d','e']
 #    store50 = DataStore(numData50, varNamesAF)
+#    store50.info()
 #    #print store50.data
 #    #print store50.varNames
 #    pylab.figure()
