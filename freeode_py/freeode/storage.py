@@ -27,7 +27,7 @@
 
 from __future__ import division
 #from scipy import c_, arange, array, unique, kron, ones, eye, nan, isnan, string_
-from numpy import ndarray, array, hstack, zeros, isnan
+from numpy import ndarray, array, hstack, zeros, isnan, all
 #from numpy.random import randn
 import pylab
 import cPickle
@@ -49,9 +49,9 @@ class ArrayStore(object):
     csv_commentStart = '#'
     '''Indicates comment lines in CSV files.'''
     
-    def __init__(self, dataArray=None, nameList=None, fileName=None):
+    def __init__(self, varArray=None, nameList=None, fileName=None):
         '''
-        Initialize the DataStore class.
+        Initialize the object.
         
         Arguments:
         dataArray : the data; 2D numpy.ndarray, each variable is a collumn
@@ -59,32 +59,33 @@ class ArrayStore(object):
                     Also accepted is a dict with names:indices, which is 
                     accepted untested.
         '''
-        self.dataArray = array([[]], 'float64')
+        #create empty object first - mainly for documenting data members
+        self.varArray = array([[]], 'float64')
         '''The numeric data; each collumn is a variable.''' #IGNORE:W0105
         self.varNameDict = {}
         '''The variable names, and associated collumn indices: {'foo':0, 'bar':1}''' #IGNORE:W0105
         #initialize from data
-        if dataArray != None or nameList != None:
-            self.createFromData(dataArray, nameList)
+        if varArray != None or nameList != None:
+            self.createFromData(varArray, nameList)
         #initialize from from file 
         elif fileName != None:
             self.load(fileName)
             
 	
 
-    def createFromData(self, dataArray=None, nameList=None):
+    def createFromData(self, varArray=None, nameList=None):
         '''
         Create object from array and list of names.
         TODO: maybe integrate into __init__?
         '''
         #test prerequisites
-        if not isinstance(dataArray, ndarray):
+        if not isinstance(varArray, ndarray):
             raise TypeError('Argument "dataArray" must be of type "numpy.array"') #IGNORE:E1010
         if not isinstance(nameList, (list, tuple, dict)):
             raise TypeError('Argument "nameList" must be of type "list" or "dict"') #IGNORE:E1010
-        if not (len(dataArray.shape) == 2):
+        if not (len(varArray.shape) == 2):
             raise ValueError('Argument "dataArray" must be a 2D array.') #IGNORE:E1010
-        if not (dataArray.shape[1] == len(nameList)):
+        if not (varArray.shape[1] == len(nameList)):
             raise ValueError('"nameList" must have an entry for each collumn of "dataArray"') #IGNORE:E1010
         #create index dictionary 
         if isinstance(nameList, dict):
@@ -99,7 +100,7 @@ class ArrayStore(object):
                 self.varNameDict[name] = i
         #store the numbers
         #TODO: should the array be copied
-        self.dataArray = dataArray
+        self.varArray = varArray
 
     
     def copy(self):
@@ -110,12 +111,12 @@ class ArrayStore(object):
     def numVars(self):
         '''Return the number of variables'''
         #assert self.data.shape[1] == len(self.varNames)
-        return self.dataArray.shape[1]
+        return self.varArray.shape[1]
         
         
     def numObs(self):
         '''Return the number of obervations (same for each variable).'''
-        return self.dataArray.shape[0]
+        return self.varArray.shape[0]
     
     
     def variableNames(self):
@@ -278,7 +279,7 @@ class ArrayStore(object):
         writer = csv.writer(f)
         nameList = self.variableNames() #get sorted list of variable names
         writer.writerow(nameList)   #write the variable names
-        writer.writerows(self.dataArray) #write the numeric data
+        writer.writerows(self.varArray) #write the numeric data
         f.close()
 
 
@@ -288,7 +289,7 @@ class ArrayStore(object):
         cPickle.dump(self, f, 2)
         f.close()
 
-
+    #def __delitem__(self, key):
     def delete(self, *varNames):
         '''
         Delete specified variables from the DataStore.
@@ -337,7 +338,7 @@ class ArrayStore(object):
         newStore = ArrayStore(newArray, varNames)
         #copy the variables into the new array
         for name1 in varNames:
-            newStore.set(name1, self.get(name1))
+            newStore[name1] = self[name1]
             
         return newStore
             
@@ -349,9 +350,10 @@ class ArrayStore(object):
 #        raise Exception('Method "delobs" is not yet implemented.') #IGNORE:E1010
 
 
-    def get(self, varName):
+    #def get(self, varName):
+    def __getitem__(self, varName):
         '''
-        Return the contents of one time series. 
+        Return the contents of one time series (through []). 
         Does not copy the data, but returns a slice of the original array.
         
         Arguments:
@@ -361,12 +363,13 @@ class ArrayStore(object):
         One variable; ndarray. 
         '''
         i = self.varNameDict[varName]
-        return self.dataArray[:,i]
+        return self.varArray[:,i]
     
 
-    def set(self, varName, newVals):
+    #def set(self, varName, newVals):
+    def __setitem__(self, varName, newVals):
         '''
-        Change the values of one time series.
+        Change the values of one time series (through []).
         If the variable name is unknown to the object, the variable is added.
         
         Arguments:
@@ -384,7 +387,7 @@ class ArrayStore(object):
         #change existing data
         if varName in self.varNameDict:
             i = self.varNameDict[varName]
-            self.dataArray[:,i] = newVals
+            self.varArray[:,i] = newVals
             return self
         #add new variable 
         else:
@@ -392,11 +395,11 @@ class ArrayStore(object):
             self.varNameDict[varName] = self.numVars()
             #add new data to the array
             newVals = newVals.reshape((self.numObs(),1))
-            self.dataArray = hstack((self.dataArray, newVals))
+            self.varArray = hstack((self.varArray, newVals))
             return self
             
         
-    def printStats(self, *varNames):
+    def stats(self, *varNames):
         ''' Printing descriptive statistics on selected variables'''
         #no arguments means all variables
         if len(varNames) == 0:
@@ -414,7 +417,7 @@ class ArrayStore(object):
         print '=============================================================================='
 
         for name1 in varNames:
-            variable1 = self.get(name1)
+            variable1 = self.__getitem__(name1)
             whereNan = isnan(variable1)
             variable1 = variable1[whereNan == False] #remove nan values from vector
             minVal = variable1.min()
@@ -429,20 +432,21 @@ class ArrayStore(object):
         '''
         Plot the specified time series into the current graph.
         '''
-        #get the time. If a time vector is present, 
-        #it will then be used as X-coordinate
-        timeVect = None
         if self.varNameDict.has_key('time'):
-            timeVect = self.get('time')
+            #If a time vector is present, get the time. 
+            #It will then be used as X-coordinate
+            timeVect = self.__getitem__('time')
             pylab.xlabel("time")
-        #plot variables in variable list
-        for name1 in varNames:
-            varVect = self.get(name1)
-            if timeVect:
-                pylab.plot(timeVect, varVect, label=name1)
-            else:
-                pylab.plot(varVect, label=name1)
-        
+            #plot variables in variable list
+            for name1 in varNames:
+                pylab.plot(timeVect, self[name1], label=name1)
+        else:
+            #No time vector present
+            pylab.xlabel("sequential number")
+            #plot variables in variable list
+            for name1 in varNames:
+                pylab.plot(self[name1], label=name1)
+                
         #pylab.legend()        
         return 
 
@@ -451,43 +455,86 @@ class ArrayStore(object):
         '''Create a string representation that is valid python code.'''
         #TODO: make output more beautifull
         return 'ArrayStore(' \
-                + repr(self.dataArray) +', ' \
+                + repr(self.varArray) +', ' \
                 + repr(self.variableNames()) + ')'
     
     
+#    #Rich comparison operators (unimplemented)
+#    def __lt__(self, other):
+#        return NotImplemented
+#    def __le__(self, other):
+#        return NotImplemented
+#    def __gt__(self, other):
+#        return NotImplemented
+#    def __ge__(self, other):
+#        return NotImplemented
+    
+    
+    def __eq__(self, other):
+        '''Test for equality. Called by: a==b'''
+        return all(self.varArray == other.varArray) and \
+               self.varNameDict == other.varNameDict
+
+
+    def __ne__(self, other):
+        '''Test for inequality. Called by: a!=b; a<>b'''
+        return not self.__eq__(other)
+
+
 #    TODO: def __iter__(self):
 #        '''let for loop iterate over children'''
 #
 #    TODO: def __len__(self):
 #        '''return number of children'''
-#
-#    TODO: def __getitem__(self, i):
-#        '''Read variable through []'''
-#        
-#    TODO: def __setitem__(self, i, val):
-#        '''Change variable through []'''
+
+
+
+class SimulationResults(ArrayStore):
+    '''Store variables and parameters'''
+    def __init__(self, varArray=None, nameList=None, fileName=None):
+        '''
+        Initialize the object.
+        
+        Arguments:
+        dataArray : the data; 2D numpy.ndarray, each variable is a collumn
+        nameList  : the variable names; list or tuple of strings. 
+                    Also accepted is a dict with names:indices, which is 
+                    accepted untested.
+        '''
+        #Create empty object object
+        ArrayStore.__init__(self)
+        #initialize from data
+        if varArray != None or nameList != None:
+            self.createFromData(varArray, nameList)
+        #initialize from from file 
+        elif fileName != None:
+            self.load(fileName)
+
 
 
 #------------ testcode --------------------------------------------------
 import unittest
-from scipy import ones, linspace, all
+from scipy import ones, linspace
 
-class TestDataStore(unittest.TestCase):
-    '''Unit tests for the DataStore class'''
+class TestArrayStore(unittest.TestCase):
+    '''Unit tests for the ArrayStore class'''
     
     def setUp(self):
         '''perform common setup tasks for each test'''
+        #create some data and a sorage object
         self.numData50 = linspace(0, 29, 30).reshape(6, 5) #IGNORE:E1101
         self.varNamesAF = ['a','b','c','d','e']
         self.store50 = ArrayStore(self.numData50, self.varNamesAF)
         #print self.store50.data
         #print self.store50.varNames
+        #Create storage object with special variable 'time' 
+        self.storeWithTime = ArrayStore(self.numData50, ['a','b','c','d','time'])
 
         
     def test__init__1(self):
-        '''test __init__ and createFromData'''
+        '''ArrayStore: Test __init__ and createFromData'''
         #init empty object
-        store = ArrayStore
+        store = ArrayStore()
         #init with array and list
         data = self.numData50
         names = ['a','b','c','d','e']
@@ -503,14 +550,13 @@ class TestDataStore(unittest.TestCase):
         store = ArrayStore(data, nameDict)
         
     def test__init__2(self):
-        '''test __init__ from file'''
+        '''ArrayStore: test __init__ from file'''
         self.store50.save('test_datastore.dstore')
         newStore = ArrayStore(fileName='test_datastore.dstore')
-        self.assertTrue(all(newStore.dataArray == self.store50.dataArray))
-        self.assertTrue(all(newStore.varNameDict == self.store50.varNameDict))
+        self.assertTrue(newStore == self.store50)
         
     def test__init__3(self):
-        '''test __init__ and createFromData - error handling'''
+        '''ArrayStore: test __init__ and createFromData - error handling'''
         self.assertRaises(TypeError, self.raise__init__1)
         self.assertRaises(TypeError, self.raise__init__2)
         self.assertRaises(ValueError, self.raise__init__3)
@@ -548,99 +594,138 @@ class TestDataStore(unittest.TestCase):
         
     
     def test_copy(self):
-        '''Test copying the DataStore object'''
+        '''ArrayStore: Test copying the DataStore object'''
         newStore = self.store50.copy()
-        self.assertTrue(all(newStore.dataArray == self.store50.dataArray))
+        self.assertTrue(all(newStore.varArray == self.store50.varArray))
         self.assertTrue(all(newStore.varNameDict == self.store50.varNameDict))
 
         
     def test_delvar(self):
-        '''Test deleting variables'''
+        '''ArrayStore: Test deleting variables'''
         self.store50.delete('d','b','e')
         self.assertTrue(self.store50.numVars() == 2)
         
         
     def test_extract(self):
-        '''Test the extract function'''
+        '''ArrayStore: Test the extract function'''
         newStore = self.store50.extract('d','b','e')
         self.assertTrue(newStore.numVars() == 3)
-        self.assertTrue(all(newStore.get('d') == self.store50.get('d')))
-        self.assertTrue(all(newStore.get('b') == self.store50.get('b')))
-        self.assertTrue(all(newStore.get('e') == self.store50.get('e')))
+        self.assertTrue(all(newStore['d'] == self.store50['d']))
+        self.assertTrue(all(newStore['b'] == self.store50['b']))
+        self.assertTrue(all(newStore['e'] == self.store50['e']))
         self.assertRaises(KeyError, self.raise_extract)
     def raise_extract(self):
-        '''Test errors of the extract function'''
+        '''ArrayStore: Test errors of the extract function'''
         self.store50.extract('d','f','g')
         
         
-    def test_get(self):
-        '''Test the get function'''
-        varA = self.store50.get('a')
-        varC = self.store50.get('c')
+    def test__getitem__(self):
+        '''ArrayStore: Test retrieving information from the object.'''
+        varA = self.store50['a']
+        varC = self.store50['c']
         #print repr(varA)
         #print repr(varC)
         self.assertTrue(all(varA == array([0., 5., 10., 15., 20., 25.])))
         self.assertTrue(all(varC == array([2., 7., 12., 17., 22., 27.])))
-        self.assertRaises(KeyError, self.raise_get_1)
-    def raise_get_1(self):
-        self.store50.get('z')
+        self.assertRaises(KeyError, self.raise__getitem__1)
+    def raise__getitem__1(self):
+        dummy = self.store50['z']
     
     
-    def test_set(self):
-        '''Test the set funtion.'''
+    def test__setitem__(self):
+        '''ArrayStore: Test changing object contents.'''
         newData = array([1., 2., 3., 4., 5., 6.])
         #change existing data
-        self.store50.set('a', newData)
-        self.store50.set('c', newData)
-        #self.store50.set('c', newData.reshape((6,1))) #does not work
-        #print repr(self.store50.get('a'))
-        self.assertTrue(all(self.store50.get('a') == newData))
-        self.assertTrue(all(self.store50.get('c') == newData))
+        self.store50['a'] = newData
+        self.store50['c'] = newData
+        #self.store50['c', newData.reshape((6,1))) #does not work
+        #print repr(self.store50['a'])
+        self.assertTrue(all(self.store50['a'] == newData))
+        self.assertTrue(all(self.store50['c'] == newData))
         #add variable
-        self.store50.set('z', newData)
-        self.assertTrue(all(self.store50.get('z') == newData))
+        self.store50['z'] = newData
+        self.assertTrue(all(self.store50['z'] == newData))
         
         
     def test_save_load_pickle(self):
-        '''Test saving and loading pickle files.'''
+        '''ArrayStore: Test saving and loading pickle files.'''
         fileName = 'test_datastore.dstore'
         self.store50.save(fileName)
         newStore = ArrayStore()
         newStore.load(fileName)
-        self.assertTrue(all(self.store50.dataArray == newStore.dataArray))
+        self.assertTrue(all(self.store50.varArray == newStore.varArray))
         self.assertTrue(self.store50.varNameDict == newStore.varNameDict)
     
     
     def test_save_load_csv(self):
-        '''Test saving and loading CSV files.'''
+        '''ArrayStore: Test saving and loading CSV files.'''
         fileName = 'test_datastore.csv'
         self.store50.save(fileName)
         newStore = ArrayStore()
         newStore.load(fileName)
-        self.assertTrue(all(self.store50.dataArray == newStore.dataArray))
+        self.assertTrue(all(self.store50.varArray == newStore.varArray))
         self.assertTrue(self.store50.varNameDict == newStore.varNameDict)
         
      
     def test_info(self):
-        '''Try if the info function.'''   
-        self.store50.printStats()
+        '''ArrayStore: Try if the info function.'''   
+        self.store50.stats()
         
         
     def test_plot(self):
         '''Test the plot function.'''
+        #simple plot 
         pylab.figure()
         self.store50.plot('b','c','d')
+        #plot with time variable as X axis
+        pylab.figure()
+        self.storeWithTime.plot('b','c','d')
+        
         #pylab.show()
         
         
     def test__repr__(self):
-        '''Test __repr__ function.'''
+        '''ArrayStore: Test __repr__ function.'''
         repStr = repr(self.store50)
         exec 'newStore = ' + repStr
-        self.assertTrue(all(self.store50.dataArray == newStore.dataArray)) #IGNORE:E0602
+        self.assertTrue(all(self.store50.varArray == newStore.varArray)) #IGNORE:E0602
         self.assertTrue(self.store50.varNameDict == newStore.varNameDict)  #IGNORE:E0602
 
+
+    def test__eq____ne__(self):
+        '''ArrayStore: Test comparison operators "=="; "!=".'''
+        self.assertTrue(self.store50 == self.store50)
+        self.assertFalse(self.store50 != self.store50)
         
+
+
+class TestSimulationResults(unittest.TestCase):
+    '''Test the SimulationResults class'''
+    
+    def setUp(self):
+        '''perform common setup tasks for each test'''
+        #create some data and a sorage object
+        self.numData50 = linspace(0, 29, 30).reshape(6, 5) #IGNORE:E1101
+        self.varNamesAF = ['a','b','c','d','e']
+        self.result = SimulationResults(self.numData50, self.varNamesAF)
+        #print self.store50.data
+        #print self.store50.varNames
+        #Create storage object with special variable 'time' 
+        #self.storeWithTime = ArrayStore(self.numData50, ['a','b','c','d','time'])
+
+
+    def test__init__1(self):
+        '''SimulationResults: Test __init__ and createFromData'''
+        #init empty object
+        result = SimulationResults()
+        #init with array and list
+        data = self.numData50
+        names = ['a','b','c','d','e']
+        result = SimulationResults(data, names)
+
+
+
+    
 if __name__ == '__main__':
 #    #perform the doctests
 #    def doDoctest():
@@ -650,8 +735,10 @@ if __name__ == '__main__':
     
     #perform the unit tests
     #unittest.main() #exits interpreter
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestDataStore)
-    unittest.TextTestRunner(verbosity=3).run(suite)
+    suite = unittest.TestSuite()
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestArrayStore))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSimulationResults))
+    unittest.TextTestRunner(verbosity=2).run(suite)
 
 
 #    numData50 = linspace(0, 29, 30).reshape(6, 5)
