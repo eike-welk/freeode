@@ -155,13 +155,14 @@ class Node(object):
         if(not isinstance(inNode, Node)):
             raise TypeError('Children must inherit from Node!')
         self.kids.insert(index, inNode)
-        
+    
+    #TODO: def __delitem__(self, key):
     def delChild(self, index):
         '''Delete child at specified index'''
         del self.kids[index]
         
     def __getitem__(self, i):
-        '''Acces to childern through []'''
+        '''Access to childern through []'''
         return self.kids[i]
     #def __getslice__(self, low, high):
         #return self.kids[low:high]
