@@ -168,7 +168,8 @@ class SimlCompilerMain(object):
         except SystemExit:
             raise #for sys.exit() - the error message was already printed
         except Exception:
-            print 'Compiler internal error! Please file a bug report at:\n',\
+            print 'Oh my golly! Compiler internal error!' 
+            print 'Please file a bug report at:\n',\
                   'https://developer.berlios.de/projects/freeode/\n'
             raise 
         
