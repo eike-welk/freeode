@@ -27,7 +27,7 @@
 
 from __future__ import division
 #from scipy import c_, arange, array, unique, kron, ones, eye, nan, isnan, string_
-from numpy import ndarray, array, hstack, zeros, isnan, all, dtype
+from numpy import ndarray, array, hstack, zeros, isnan, all, dtype, empty, float
 #from numpy.random import randn
 import pylab
 import cPickle
@@ -99,6 +99,7 @@ class ArrayStore(object):
             self.varNameDict = nameList #a dict is accepted untested
         else:
             #create index dictionary from list
+            self.varNameDict = {}
             for i, name in enumerate(nameList):
                 if not isinstance(name, str):
                     raise TypeError('Variable names must be strings.') #IGNORE:E1010
@@ -113,6 +114,11 @@ class ArrayStore(object):
     def copy(self):
         '''Create a deep copy of the object'''
         return copy.deepcopy(self)
+    
+    def clear(self):
+        '''Remove all data from the object.'''
+        empty = ArrayStore()
+        self.__dict__ = empty.__dict__
         
     def numAttr(self):
         '''Return the number of variables'''
@@ -183,6 +189,7 @@ class ArrayStore(object):
         lines = f.readlines() 
         f.close()
         
+        #self.clear()
         #delete lines that the csv reader can not understand
         for i in range(len(lines)-1,-1,-1):
             #delete comment lines
@@ -195,6 +202,7 @@ class ArrayStore(object):
         #interpret remaining lines as  CSV
         reader = csv.reader(lines)
         varNameList = reader.next() #first line: variable names
+        #TODO: map strip() function to remove leading trailing spaces from file names
         #put numbers into nested list
         dataList = []
         for line in reader:
@@ -207,7 +215,6 @@ class ArrayStore(object):
         dataArray = array(dataList)
         #put data into internal structures
         self.createFromData(dataArray, varNameList)
-        return
 
 
     def _loadPickle(self,fname):
@@ -250,7 +257,7 @@ class ArrayStore(object):
         date = today.date().isoformat()
         time = today.time().strftime('%H:%M:%S')
         f.write('#Generated on %s - %s\n' % (date, time))
-        #f.write('\n')
+        f.write('\n')
         #write data
         writer = csv.writer(f)
         nameList = self.attributeNames() #get sorted list of variable names
@@ -265,28 +272,28 @@ class ArrayStore(object):
         cPickle.dump(self, f, 2)
         f.close()
 
-    #def __delitem__(self, key):
-    def delete(self, *varNames):
-        '''
-        Delete specified variables from the DataStore.
-        
-        This is a potentially slow operation, because it is implemented
-        with the extract() method. It internally creates a copy of the 
-        store object.
-        
-        Arguments:
-            *varNames : Variable names of the time series that should be in 
-                        the new object; string
-        Returns:
-        '''
-        #create list of variables we want to keep in the store
-        keepVars = self.attributeNames()
-        for name1 in varNames:
-            keepVars.remove(name1)
-        #create new DataStore without the deleted variables
-        newStore = self.extract(*keepVars)
-        #get the data attributes of the new store - become the new store
-        self.__dict__ = newStore.__dict__
+#    #def __delitem__(self, key):
+#    def delete(self, *varNames):
+#        '''
+#        Delete specified variables from the DataStore.
+#        
+#        This is a potentially slow operation, because it is implemented
+#        with the extract() method. It internally creates a copy of the 
+#        store object.
+#        
+#        Arguments:
+#            *varNames : Variable names of the time series that should be in 
+#                        the new object; string
+#        Returns:
+#        '''
+#        #create list of variables we want to keep in the store
+#        keepVars = self.attributeNames()
+#        for name1 in varNames:
+#            keepVars.remove(name1)
+#        #create new DataStore without the deleted variables
+#        newStore = self.extract(*keepVars)
+#        #get the data attributes of the new store - become the new store
+#        self.__dict__ = newStore.__dict__
 
 
     def extract(self, *varNames):
@@ -499,6 +506,7 @@ class DictStore(object):
         Create object from other storage. 
         Accepts array and list of names; and also a dict of arrays or floats.
         '''
+        self.dataDict = {}
         #use data from array and name list
         if varArray != None or nameList != None:
             #Construct an Array Store object (to do all the type checking)
@@ -527,6 +535,11 @@ class DictStore(object):
     def copy(self):
         '''Create a deep copy of the object'''
         return copy.deepcopy(self)
+    
+    def clear(self):
+        '''Remove all data from the object.'''
+        empty = DictStore()
+        self.__dict__ = empty.__dict__
         
     def numAttr(self):
         '''Return the number of variables'''
@@ -538,8 +551,40 @@ class DictStore(object):
         return self._numObs
     
     def attributeNames(self):
-        '''Return all attribute names in a list.'''
+        '''
+        Return all attribute names in a list.
+        Returns:
+            List of strings
+        '''
         return self.dataDict.keys()
+
+    def parameterNames(self):
+        '''
+        Return names of attributes, that are *no* time series. 
+        Those are currently scalars (float, int)
+        The function is not cheap as it searches throug the dict of variables
+        Returns:
+            List of strings
+        '''
+        nameList = []
+        for name, val in self.dataDict.iteritems():
+            if isinstance(val, (float, int)):
+                nameList.append(name)
+        return nameList
+
+    def variableNames(self):
+        '''
+        Return names of attributes, that *are* time series. 
+        Those are arrays
+        The function is not cheap as it searches throug the dict of variables
+        Returns:
+            List of strings
+        '''
+        nameList = []
+        for name, val in self.dataDict.iteritems():
+            if isinstance(val, ndarray):
+                nameList.append(name)
+        return nameList
 
     def _getExtension(self,fname):
         '''Find the file extension of a filename.'''
@@ -589,6 +634,7 @@ class DictStore(object):
         lines = f.readlines() 
         f.close()
         
+        #self.clear()
         #delete lines that the csv reader can not understand
         for i in range(len(lines)-1,-1,-1):
             #delete comment lines
@@ -600,20 +646,23 @@ class DictStore(object):
                 
         #interpret remaining lines as  CSV
         reader = csv.reader(lines)
-        varNameList = reader.next() #first line: variable names
+        #First two lines: scalar values (parameters)
+        nameList = reader.next() #read parameter names
+        #TODO: map strip() function to remove leading trailing spaces from file names
+        dataList = reader.next() #read parameter values
+        dataList = map(float, dataList) #convert strings to floating point
+        #TODO: convert strings that might be found between the numbers to nan.
+        self.dataDict = dict(zip(nameList, dataList)) #put data into internal dict
+        #Following lines until end: array values (variables)
+        nameList = reader.next() #read parameter names
         #put numbers into nested list
         dataList = []
         for line in reader:
             #TODO: convert strings that might be found between the numbers to nan.
-            #see commented out csvconvert(...) method
             lineFloat = map(float, line) #convert strings to floating point
             dataList.append(lineFloat)   #append to nested list
-        
-        #convert nested list to array
-        dataArray = array(dataList)
-        #put data into internal structures
-        self.createFromData(dataArray, varNameList)
-        return
+        dataArray = array(dataList).T #convert nested list to array
+        self.dataDict.update(dict(zip(nameList, dataArray))) #add data to internal dict
 
 
     def _loadPickle(self,fname):
@@ -656,12 +705,22 @@ class DictStore(object):
         date = today.date().isoformat()
         time = today.time().strftime('%H:%M:%S')
         f.write('#Generated on %s - %s\n' % (date, time))
-        #f.write('\n')
+        f.write('\n')
         #write data
         writer = csv.writer(f)
-        nameList = self.variableNames() #get sorted list of variable names
-        writer.writerow(nameList)   #write the variable names
-        writer.writerows(self.varArray) #write the numeric data
+        #Get scalar values and write them first
+        f.write('#Parameters:\n')
+        paramNames = self.parameterNames()
+        tempStore = self.extract(*paramNames)
+        writer.writerow(tempStore.dataDict.keys())   #write the names
+        writer.writerow(tempStore.dataDict.values()) #write the values
+        #Get arrays, assemble them in a big array, and write them
+        f.write('#Variables:\n')
+        varNames = self.variableNames()
+        tempStore = self.extract(*varNames)
+        writer.writerow(tempStore.dataDict.keys())   #write the names
+        tempArray = array(tempStore.dataDict.values()).T #convert dict values to big array
+        writer.writerows(tempArray) #write the values 
         f.close()
 
 
@@ -671,7 +730,7 @@ class DictStore(object):
         cPickle.dump(self, f, 2)
         f.close()
 
-    #def __delitem__(self, key):
+    #TODO: def __delitem__(self, key):
     def delete(self, *varNames):
         '''
         Delete specified variables from the DataStore.
@@ -697,6 +756,8 @@ class DictStore(object):
         Returns:
             New DataStore object.
         '''
+        #TODO: no * magic use variable list
+        #TODO: convert single string to list of strings
         #test if all requested variables are in the store
         myVars = set(self.attributeNames())
         reqVars = set(varNames)
@@ -707,7 +768,7 @@ class DictStore(object):
         #TODO: create object of derived class
         newStore = DictStore()
         for name1 in varNames:
-            #copy the variables without the special cases in __getitem__
+            #copy the variables without expanding floats to arrays in __getitem__
             newStore.dataDict[name1] = self.dataDict[name1]
             
         return newStore
@@ -732,9 +793,15 @@ class DictStore(object):
         Returns:
         One variable; ndarray. 
         '''
-        #Special case for floats they should be converted to 1D arrays of _numObs length
-        return self.dataDict[varName]
-    
+        rawVal = self.dataDict[varName]
+        if isinstance(rawVal, ndarray):
+            return rawVal
+        #convert scalars (floats) to 1D arrays of length _numObs 
+        else:
+            arrVal = empty(self.numObs(), float)
+            arrVal.fill(rawVal)
+            return arrVal
+        
 
     #def set(self, varName, newVals):
     def __setitem__(self, varName, newVal):
@@ -853,7 +920,7 @@ class DictStore(object):
             return False
         #all variables must be the same
         for n in self.dataDict.keys():
-            if not all(self[n] == other[n]):
+            if not all(self.dataDict[n] == other.dataDict[n]):
                 return False
         #we got till here: the objects must be the same
         return True
@@ -919,8 +986,9 @@ class TestArrayStore(unittest.TestCase):
         
     def test__init__2(self):
         '''ArrayStore: test __init__ from file'''
-        self.store.save('test_datastore.dstore')
-        newStore = ArrayStore(fileName='test_datastore.dstore')
+        filename = 'test_arraystore.dstore'
+        self.store.save(filename)
+        newStore = ArrayStore(fileName=filename)
         self.assertTrue(newStore == self.store)
         
     def test__init__3(self):
@@ -968,10 +1036,10 @@ class TestArrayStore(unittest.TestCase):
         self.assertTrue(all(newStore.varNameDict == self.store.varNameDict))
 
         
-    def test_delvar(self):
-        '''ArrayStore: Test deleting variables'''
-        self.store.delete('d','b','e')
-        self.assertTrue(self.store.numAttr() == 2)
+#    def test_delete(self):
+#        '''ArrayStore: Test deleting variables'''
+#        self.store.delete('d','b','e')
+#        self.assertTrue(self.store.numAttr() == 2)
         
         
     def test_extract(self):
@@ -1017,7 +1085,7 @@ class TestArrayStore(unittest.TestCase):
         
     def test_save_load_pickle(self):
         '''ArrayStore: Test saving and loading pickle files.'''
-        fileName = 'test_datastore.dstore'
+        fileName = 'test_arraystore.dstore'
         self.store.save(fileName)
         newStore = ArrayStore()
         newStore.load(fileName)
@@ -1027,7 +1095,7 @@ class TestArrayStore(unittest.TestCase):
     
     def test_save_load_csv(self):
         '''ArrayStore: Test saving and loading CSV files.'''
-        fileName = 'test_datastore.csv'
+        fileName = 'test_arraystore.csv'
         self.store.save(fileName)
         newStore = ArrayStore()
         newStore.load(fileName)
@@ -1074,7 +1142,7 @@ class TestDictStore(unittest.TestCase):
         '''perform common setup tasks for each test'''
         self.numData = linspace(0, 29, 30).reshape(6, 5) #IGNORE:E1101
         self.varNames = ['a','b','c','d','time']
-        self.valDict = {'p':1.0, 'q':2}
+        self.valDict = {'p':1.0, 'q':2.0}
         #create store with only vectors
         self.storeV = DictStore(self.numData, self.varNames)
         #create store with vectors and floats
@@ -1097,8 +1165,9 @@ class TestDictStore(unittest.TestCase):
         
     def test__init__2(self):
         '''DictStore: test __init__ from file'''
-        self.store.save('test_datastore.dstore')
-        newStore = DictStore(fileName='test_datastore.dstore')
+        fileName = 'test_dictstore.dstore'
+        self.store.save(fileName)
+        newStore = DictStore(fileName=fileName)
         self.assertTrue(newStore == self.store)
         
     def test__init__3(self):
@@ -1174,7 +1243,7 @@ class TestDictStore(unittest.TestCase):
         #print repr(varC)
         self.assertTrue(all(varA == array([0., 5., 10., 15., 20., 25.])))
         self.assertTrue(all(varC == array([2., 7., 12., 17., 22., 27.])))
-        self.assertTrue(parP == 1.0)
+        self.assertTrue(all(parP == array([1., 1., 1., 1., 1., 1.])))
         self.assertRaises(KeyError, self.raise__getitem__1)
     def raise__getitem__1(self):
         dummy = self.store['z']
@@ -1197,7 +1266,7 @@ class TestDictStore(unittest.TestCase):
         
     def test_save_load_pickle(self):
         '''DictStore: Test saving and loading pickle files.'''
-        fileName = 'test_datastore.dstore'
+        fileName = 'test_dictstore.dstore'
         self.store.save(fileName)
         newStore = DictStore()
         newStore.load(fileName)
@@ -1206,15 +1275,16 @@ class TestDictStore(unittest.TestCase):
     
     def test_save_load_csv(self):
         '''DictStore: Test saving and loading CSV files.'''
-        fileName = 'test_datastore.csv'
+        fileName = 'test_dictstore.csv'
         self.store.save(fileName)
         newStore = DictStore()
         newStore.load(fileName)
+        #newStore.save('test_dictstore1.csv')
         self.assertTrue(self.store == newStore)
         
      
     def test_info(self):
-        '''DictStore: Try if the info function.'''   
+        '''DictStore: Try the info function.'''   
         self.store.stats()
         
         
