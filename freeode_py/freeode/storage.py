@@ -24,10 +24,13 @@
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
 
+#TODO: better docstrings
+#TODO: some examples
+'''Two dict like objects to keep simulation results.'''
 
 from __future__ import division
 #from scipy import c_, arange, array, unique, kron, ones, eye, nan, isnan, string_
-from numpy import ndarray, array, hstack, zeros, isnan, all, dtype, empty, float
+from numpy import ndarray, array, hstack, zeros, isnan, all, empty, float #IGNORE:W0622
 #from numpy.random import randn
 import pylab
 import cPickle
@@ -38,36 +41,147 @@ import copy
 import datetime
 
 
-class ArrayStore(object):
+
+class BaseStore(object):
+    '''
+    Base class for the numeric containers. 
+    Defines some common methods
+    '''
+    
+#    csv_commentStart = '#'
+#    '''Indicates comment lines in CSV files.'''
+    
+    #Derived classes must implement the following methods:
+    #Is this a C++ habit? :-)
+    def attributeNames(self):
+        '''Return all attribute (variable, parameter) names in a list.'''
+        raise Exception('Function must be implemented in derived classes!')
+    def __getitem__(self, varName):
+        '''Return the contents of one time series (through []).'''
+        raise Exception('Function must be implemented in derived classes!')
+    def numObs(self):
+        '''Return number of obervations - length of array(s).'''
+        raise Exception('Function must be implemented in derived classes!')
+    def numAttr(self):
+        '''Return the number of attributes (variables, parameters).'''
+        raise Exception('Function must be implemented in derived classes!')
+
+    @staticmethod 
+    def _getExtension(fileName):
+        '''Find the file extension of a filename.'''
+        return fileName.split('.')[-1].strip()
+
+    @staticmethod 
+    def str2float(inStr):
+        '''
+        Convert a string to a float. 
+        If the string does not encode a number, return a nan.
+        '''
+        try:
+            return float(inStr)
+        except ValueError:
+            return float('nan')
+    
+    @staticmethod
+    def stripStr(inStr):
+        '''Remove leading or trailing whitespace from a string'''
+        return inStr.strip()
+
+    def plot(self, *attrNames):
+        '''
+        Plot the specified time series into the current graph.
+        Argument:
+            *attrNames : any numbeattribute names; list
+        '''
+#        #convert string to list containing one attribute name
+#        if isinstance(attrNames, str):
+#            attrNames = [attrNames]
+        #If a time vector is present, use it as X-coordinate
+        if 'time' in self.attributeNames():
+            timeVect = self['time']
+            pylab.xlabel("time")
+            #plot attributes in attribute list
+            for name1 in attrNames:
+                pylab.plot(timeVect, self[name1], label=name1)
+        #No time vector present
+        else:
+            pylab.xlabel("sequential number")
+            #plot attributes in attribute list
+            for name1 in attrNames:
+                pylab.plot(self[name1], label=name1) 
+        pylab.legend()        
+        return
+
+
+    def computeStats(self, attrNames):
+        ''' 
+        Print descriptive statistics on selected attributes
+        Argument:
+            attrNames : list of attribute names; list of strings
+        '''
+        #empty list means all attributes
+        if len(attrNames) == 0:
+            attrNames = self.attributeNames() #IGNORE:E1111
+            attrNames.sort()
+        
+        stats = ''
+        #stats += '\n============================================================================== \n'
+        #stats += '============================ Statistical Information ============================ \n'
+        stats += '============================================================================== \n'
+        #stats += 'file:                %s' % self.DBname
+        stats += '# observations : %s \n' % self.numObs()
+        stats += '# attributes    : %s \n' % self.numAttr()
+        stats += '\n'
+        stats += 'attribute            min          max          mean         std.dev      nan \n'
+        stats += '============================================================================== \n'
+
+        for name1 in attrNames:
+            var1 = self[name1]
+            #compute some statistics
+            whereNan = isnan(var1)
+            varNoNan = var1[whereNan == False] #remove nan values from vector
+            minValStr =  '%g' % varNoNan.min()
+            maxValStr =  '%g' % varNoNan.max()
+            meanValStr = '%g' % varNoNan.mean()
+            stdDevStr =  '%g' % varNoNan.std()
+            sumNanStr =  '%g' % sum(whereNan)
+            stats += '%-20s %-12s %-12s %-12s %-12s %-12s \n' \
+               % (name1, minValStr, maxValStr, meanValStr, stdDevStr, sumNanStr)    
+        return stats
+    
+    
+    #TODO: robust functions for checking and converting input arguments
+    #TODO: robust functions for CSV reading
+
+
+
+class ArrayStore(BaseStore):
     '''
     Doc:
     A simple data-frame, that reads and writes csv/pickle files with 
-    variable names.
-    Data is stored in an array, variable names are stored in an dictionary.
+    attribute names.
+    Data is stored in an array, attribute names are stored in an dictionary.
     '''
-    
-    csv_commentStart = '#'
-    '''Indicates comment lines in CSV files.'''
     
     def __init__(self, varArray=None, nameList=None, fileName=None):
         '''
         Initialize the object.
         
         Arguments:
-        dataArray : the data; 2D numpy.ndarray, each variable is a collumn
-        nameList  : the variable names; list or tuple of strings. 
+        dataArray : the data; 2D numpy.ndarray, each attribute is a collumn
+        nameList  : the attribute names; list or tuple of strings. 
                     Also accepted is a dict with names:indices, which is 
                     accepted untested.
         fileName  : name of a file from which the object's contents is loaded.
                     The file name is ignored if any of the other arguments are
                     specified. (Specify fileName as: fileName='foo.csv')
         '''
-        #TODO: name
+        BaseStore.__init__(self)
         #create empty object first - mainly for documenting data members
-        self.varArray = array([[]], 'float64')
-        '''The numeric data; each collumn is a variable.''' 
-        self.varNameDict = {}
-        '''The variable names, and associated collumn indices: {'foo':0, 'bar':1}''' 
+        self.dataArray = array([[]], 'float64')
+        '''The numeric data; each collumn is a attribute.''' 
+        self.attrNameDict = {}
+        '''The attribute names, and associated collumn indices: {'foo':0, 'bar':1}''' 
         #initialize from data
         if varArray != None or nameList != None:
             self.createFromData(varArray, nameList)
@@ -87,29 +201,32 @@ class ArrayStore(object):
             raise TypeError('Argument "varArray" must be of type "numpy.array"') #IGNORE:E1010
         if not isinstance(nameList, (list, tuple, dict)):
             raise TypeError('Argument "nameList" must be of type "list" or "dict"') #IGNORE:E1010
-        #see if shapes are compatible
-        #TODO: reshape 1D Array to 2D array with one collumn
+        #Special case: reshape 1D Array to 2D array with one collumn
+        if len(varArray.shape) == 1:
+            varArray = varArray.reshape(len(varArray),1)
+        #see if shapes are compatible            
         if not (len(varArray.shape) == 2):
             raise ValueError('Argument "dataArray" must be a 2D array.') #IGNORE:E1010
         if not (varArray.shape[1] == len(nameList)):
             raise ValueError('"nameList" must have an entry for each collumn of "dataArray"') #IGNORE:E1010
         #create index dictionary 
-        #TODO: remove possibility to use dict
-        if isinstance(nameList, dict):
-            self.varNameDict = nameList #a dict is accepted untested
-        else:
-            #create index dictionary from list
-            self.varNameDict = {}
-            for i, name in enumerate(nameList):
-                if not isinstance(name, str):
-                    raise TypeError('Variable names must be strings.') #IGNORE:E1010
-                if name in self.varNameDict:
-                    raise ValueError('Variable names must be unique.') #IGNORE:E1010
-                self.varNameDict[name] = i
+        self.attrNameDict = {}
+        for i, name in enumerate(nameList):
+            if not isinstance(name, str):
+                raise TypeError('attribute names must be strings.') #IGNORE:E1010
+            if name in self.attrNameDict:
+                raise ValueError('attribute names must be unique.') #IGNORE:E1010
+            self.attrNameDict[name] = i
         #store the numbers
-        #TODO: should the array always be copied?
-        self.varArray = varArray
+        self.dataArray = varArray
 
+    
+    def __repr__(self):
+        '''Create a string representation that is valid python code.'''
+        #TODO: make output more beautifull
+        return 'ArrayStore(' \
+                + repr(self.dataArray) +', ' \
+                + repr(self.attributeNames()) + ')'
     
     def copy(self):
         '''Create a deep copy of the object'''
@@ -117,65 +234,61 @@ class ArrayStore(object):
     
     def clear(self):
         '''Remove all data from the object.'''
-        empty = ArrayStore()
-        self.__dict__ = empty.__dict__
+        emptyStore = ArrayStore()
+        self.__dict__ = emptyStore.__dict__
         
     def numAttr(self):
-        '''Return the number of variables'''
-        #assert self.data.shape[1] == len(self.varNames)
-        return self.varArray.shape[1]
+        '''Return the number of attributes'''
+        #assert self.data.shape[1] == len(self.attrNameDict)
+        return self.dataArray.shape[1]
         
     def numObs(self):
-        '''Return the number of obervations (same for each variable).'''
-        return self.varArray.shape[0]
+        '''Return the number of obervations (same for each attribute).'''
+        return self.dataArray.shape[0]
     
     def attributeNames(self):
         '''
-        Return all variable names in a list. The variables are sorted 
-        according to the index of the variable in the internal array. 
+        Return all attribute names in a list. The attributes are sorted 
+        according to the index of the attribute in the internal array. 
         Small index numbers come first.
         '''
-        nameIndexTuples = self.varNameDict.items() #create list of tuple(<name>, <index>) 
+        nameIndexTuples = self.attrNameDict.items() #create list of tuple(<name>, <index>) 
         sortFunc = lambda a, b: cmp(a[1], b[1]) #function to compare the indices
-        nameIndexTuples.sort(sortFunc) #sort variable names according to their indices
+        nameIndexTuples.sort(sortFunc) #sort attribute names according to their indices
         nameList = [tup[0] for tup in nameIndexTuples] #remove the index numbers
         return nameList
 
-    def _getExtension(self,fname):
-        '''Find the file extension of a filename.'''
-        return fname.split('.')[-1].strip()
-
-    def load(self, fname):
+    def load(self, fileName):
         '''
         Load data from a csv or a pickle file of the DataStore class.
         
         The encoding is determined by the filename's extension:
         'csv' : When the filename ends in '.csv' the routine tries to 
-                interpret the file as comma seperated values. The variable 
+                interpret the file as comma seperated values. The attribute 
                 names must be in the first row
         Any other extension is considered to mean a file in Python's pickle
         format.
         
         Arguments:
-        fname    : filename; string
+        fileName    : filename; string
         
         Returns:
         None
         '''
         # setting the ascii/csv file name used for input
-        #self.DBname = os.getcwd() + '/' + fname
+        #self.DBname = os.getcwd() + '/' + fileName
 
         # getting the file extension
-        fext = self._getExtension(fname)
+        fext = self._getExtension(fileName)
 
         # opening the file for reading
         if fext == 'csv':
-            self._loadCSV(fname)
+            self._loadCSV(fileName)
         else: #fext == 'dstore':
-            self._loadPickle(fname)
+            self._loadPickle(fileName)
 
 
-    def _loadCSV(self,fname):
+    def _loadCSV(self, fileName):
         '''Load data from a csv file.'''
         #Uses the CSV reader and an entirey hommade algorithm.
         #however there are library functions for doing this, that are  
@@ -185,7 +298,7 @@ class ArrayStore(object):
         #TODO: more robustness
         
         #read whole file at once
-        f = open(fname,'r')
+        f = open(fileName, 'r')
         lines = f.readlines() 
         f.close()
         
@@ -193,65 +306,62 @@ class ArrayStore(object):
         #delete lines that the csv reader can not understand
         for i in range(len(lines)-1,-1,-1):
             #delete comment lines
-            if lines[i].startswith(ArrayStore.csv_commentStart):
+            if lines[i].startswith('#'):
                 del lines[i]
             #delete blank lines (conaining only whitespace)
             if len(lines[i].strip()) == 0:
                 del lines[i]
                 
-        #interpret remaining lines as  CSV
+        #interpret remaining lines as CSV
         reader = csv.reader(lines)
-        varNameList = reader.next() #first line: variable names
-        #TODO: map strip() function to remove leading trailing spaces from file names
+        varNameList = reader.next() #first line: attribute names
+        varNameList = map(self.stripStr, varNameList) #remove leading trailing spaces
         #put numbers into nested list
         dataList = []
         for line in reader:
-            #TODO: convert strings that might be found between the numbers to nan.
-            #see commented out csvconvert(...) method
-            lineFloat = map(float, line) #convert strings to floating point
-            dataList.append(lineFloat)   #append to nested list
-        
+            lineFloat = map(self.str2float, line) #convert strings to floating point
+            dataList.append(lineFloat)       #append to nested list
         #convert nested list to array
         dataArray = array(dataList)
         #put data into internal structures
         self.createFromData(dataArray, varNameList)
 
 
-    def _loadPickle(self,fname):
+    def _loadPickle(self, fileName):
         '''Load data from a file in pickle format.'''
-        f = open(fname,'rb')
+        f = open(fileName, 'rb')
         newStore = cPickle.load(f) #this should also work for derived classes
         self.__dict__ = newStore.__dict__ #copy the (all) data attributes
         f.close()
 
 
-    def save(self,fname):
+    def save(self, fileName):
         '''
         Dump the class data into a csv or pickle file
         
         The encoding is determined by the filename's extension:
         'csv' : When the filename ends in '.csv' the routine tries to 
-                interpret the file as comma seperated values. The variable 
+                interpret the file as comma seperated values. The attribute 
                 names must be in the first row
         Any other extension is considered to mean a file in Python's pickle
         format.
         
         Arguments:
-        fname    : filename; string
+        fileName    : filename; string
         
         Returns:
         None
         '''
-        fext = self._getExtension(fname)
+        fext = self._getExtension(fileName)
         if fext == 'csv':
-            self._saveCSV(fname)
+            self._saveCSV(fileName)
         else: #elif fext == 'pickle':
-            self._savePickle(fname)
+            self._savePickle(fileName)
 
 
-    def _saveCSV(self,fname):
+    def _saveCSV(self, fileName):
         '''Dump the data into a csv file'''
-        f = open(fname,'w')
+        f = open(fileName, 'w')
         #write header - time and date
         today = datetime.datetime.today()
         date = today.date().isoformat()
@@ -260,67 +370,66 @@ class ArrayStore(object):
         f.write('\n')
         #write data
         writer = csv.writer(f)
-        nameList = self.attributeNames() #get sorted list of variable names
-        writer.writerow(nameList)   #write the variable names
-        writer.writerows(self.varArray) #write the numeric data
+        nameList = self.attributeNames() #get sorted list of attribute names
+        writer.writerow(nameList)   #write the attribute names
+        writer.writerows(self.dataArray) #write the numeric data
         f.close()
 
 
-    def _savePickle(self,fname):
+    def _savePickle(self, fileName):
         '''Dump the data into a binary pickle file'''
-        f = open(fname,'wb')
+        f = open(fileName, 'wb')
         cPickle.dump(self, f, 2)
         f.close()
 
 #    #def __delitem__(self, key):
-#    def delete(self, *varNames):
+#    def delete(self, *attrNames):
 #        '''
-#        Delete specified variables from the DataStore.
+#        Delete specified attributes from the DataStore.
 #        
 #        This is a potentially slow operation, because it is implemented
 #        with the extract() method. It internally creates a copy of the 
 #        store object.
 #        
 #        Arguments:
-#            *varNames : Variable names of the time series that should be in 
+#            *attrNames : attribute names of the time series that should be in 
 #                        the new object; string
 #        Returns:
 #        '''
-#        #create list of variables we want to keep in the store
+#        #create list of attributes we want to keep in the store
 #        keepVars = self.attributeNames()
-#        for name1 in varNames:
+#        for name1 in attrNames:
 #            keepVars.remove(name1)
-#        #create new DataStore without the deleted variables
+#        #create new DataStore without the deleted attributes
 #        newStore = self.extract(*keepVars)
 #        #get the data attributes of the new store - become the new store
 #        self.__dict__ = newStore.__dict__
 
 
-    def extract(self, *varNames):
+    def extract(self, attrNames):
         '''
-        Crate a new DataStore object with only the specified variables.
+        Crate a new DataStore object with only the specified attributes.
         
         Arguments:
-            *varNames : Variable names of the time series that should be in 
+            attrNames : attribute names of the time series that should be in 
                         the new object; string
         Returns:
             New DataStore object.
         '''
-        #test if all requested variables are in the store
+        #test if all requested attributes are in the store
         myVars = set(self.attributeNames())
-        reqVars = set(varNames)
+        reqVars = set(attrNames)
         unknownVars = reqVars - myVars
         if unknownVars:
-            raise KeyError('Unknown variable(s): %s' % str(list(unknownVars))) #IGNORE:E1010
+            raise KeyError('Unknown attribute(s): %s' % str(list(unknownVars))) #IGNORE:E1010
         #compute size of new array and create it
-        newNumCols = len(varNames)
+        newNumCols = len(attrNames)
         newNumRows = self.numObs()
         newArray = zeros((newNumRows, newNumCols))
         #create new DataStore object
-        #TODO: create object of derived class
-        newStore = ArrayStore(newArray, varNames)
-        #copy the variables into the new array
-        for name1 in varNames:
+        newStore = ArrayStore(newArray, attrNames)
+        #copy the attributes into the new array
+        for name1 in attrNames:
             newStore[name1] = self[name1]
             
         return newStore
@@ -340,23 +449,23 @@ class ArrayStore(object):
         Does not copy the data, but returns a slice of the original array.
         
         Arguments:
-        varName : variable name; string.
+        varName : attribute name; string.
         
         Returns:
-        One variable; ndarray. 
+        One attribute; ndarray. 
         '''
-        i = self.varNameDict[varName]
-        return self.varArray[:,i]
+        i = self.attrNameDict[varName]
+        return self.dataArray[:,i]
     
 
     #def set(self, varName, newVals):
     def __setitem__(self, varName, newVals):
         '''
         Change the values of one time series (through []).
-        If the variable name is unknown to the object, the variable is added.
+        If the attribute name is unknown to the object, the attribute is added.
         
         Arguments:
-        varName : variable name; string.
+        varName : attribute name; string.
         values  : an array of compatible size
         
         Retuns:
@@ -364,82 +473,35 @@ class ArrayStore(object):
         '''
         #test compatibility of input array
         if not isinstance(newVals, ndarray):
-            raise TypeError('Argument "newVals" must be of type "numpy.ndarray"') #IGNORE:E1010
+            raise TypeError('Argument "newVals" must be of type ' +
+                            '"numpy.ndarray"') 
         if not (self.numObs() == newVals.shape[0]):
-            raise ValueError('Argument "newVals" must have same number of rows as the existing variables.') #IGNORE:E1010
+            raise ValueError('Argument "newVals" must have same number ' +
+                             'of rows as the existing attributes.') 
         #change existing data
-        if varName in self.varNameDict:
-            i = self.varNameDict[varName]
-            self.varArray[:,i] = newVals
+        if varName in self.attrNameDict:
+            i = self.attrNameDict[varName]
+            self.dataArray[:,i] = newVals
             return self
-        #add new variable 
+        #add new attribute 
         else:
-            #add new variable name to index dict
-            self.varNameDict[varName] = self.numAttr()
+            #add new attribute name to index dict
+            self.attrNameDict[varName] = self.numAttr()
             #add new data to the array
             newVals = newVals.reshape((self.numObs(),1))
-            self.varArray = hstack((self.varArray, newVals))
+            self.dataArray = hstack((self.dataArray, newVals))
             return self
             
         
-    def stats(self, *varNames):
-        ''' Printing descriptive statistics on selected variables'''
-        #no arguments means all variables
-        if len(varNames) == 0:
-            varNames = self.attributeNames()
-
-        print
-        #print '\n=============================================================================='
-        #print '============================ Database information ============================'
-        print '==============================================================================\n'
-        #print 'file:                %s' % self.DBname
-        print '# observations : %s' % self.numObs()
-        print '# variables    : %s' % self.numAttr()
-        print
-        print 'var                  min          max          mean         std.dev      nan'
-        print '=============================================================================='
-
-        for name1 in varNames:
-            variable1 = self.__getitem__(name1)
-            whereNan = isnan(variable1)
-            variable1 = variable1[whereNan == False] #remove nan values from vector
-            minVal = variable1.min()
-            maxVal = variable1.max()
-            meanVal = variable1.mean()
-            stdDev = variable1.std()
-            print '''%-20s %-12g %-12g %-12g %-12g %-12.0g''' \
-               % (name1, minVal, maxVal, meanVal, stdDev, sum(whereNan))
-
-
-    def plot(self, *varNames):
+    def info(self, *attrNames):
         '''
-        Plot the specified time series into the current graph.
+        Print some information about the object's contens.
+        Argguments:
+            attrNames : varaible names; string(s)
         '''
-        if self.varNameDict.has_key('time'):
-            #If a time vector is present, get the time. 
-            #It will then be used as X-coordinate
-            timeVect = self.__getitem__('time')
-            pylab.xlabel("time")
-            #plot variables in variable list
-            for name1 in varNames:
-                pylab.plot(timeVect, self[name1], label=name1)
-        else:
-            #No time vector present
-            pylab.xlabel("sequential number")
-            #plot variables in variable list
-            for name1 in varNames:
-                pylab.plot(self[name1], label=name1)
-                
-        #pylab.legend()        
-        return 
+        print 
+        print self.computeStats(attrNames)
 
-    def __repr__(self):
-        '''Create a string representation that is valid python code.'''
-        #TODO: make output more beautifull
-        return 'ArrayStore(' \
-                + repr(self.varArray) +', ' \
-                + repr(self.attributeNames()) + ')'
-    
 #    #Rich comparison operators (unimplemented)
 #    def __lt__(self, other):
 #        return NotImplemented
@@ -452,34 +514,35 @@ class ArrayStore(object):
     
     def __eq__(self, other):
         '''Test for equality. Called by: a==b'''
-        return all(self.varArray == other.varArray) and \
-               self.varNameDict == other.varNameDict
+        return all(self.dataArray == other.dataArray) and \
+               self.attrNameDict == other.attrNameDict
 
     def __ne__(self, other):
         '''Test for inequality. Called by: a!=b; a<>b'''
         return not self.__eq__(other)
 
 #    TODO: def __iter__(self):
-#        '''let for loop iterate over children'''
-#
-#    TODO: def __len__(self):
-#        '''return number of children'''
+#        '''let for loop iterate over attributes'''
+
+    def __len__(self):
+        '''Return number of attributes. Same as self.numAttr()'''
+        return self.numAttr()
 
 
 
-class DictStore(object):
+class DictStore(BaseStore):
     '''
-    Store variables and parameters
+    Store attributes and parameters
     
-    All time series (variables) must have the same length.
+    All time series (attributes) must have the same length.
     '''
     def __init__(self, varArray=None, nameList=None, valDict=None, fileName=None):
         '''
         Initialize the object.
         
         Arguments:
-        dataArray : the data; 2D numpy.ndarray, each variable is a collumn
-        nameList  : the variable names; list or tuple of strings. 
+        dataArray : the data; 2D numpy.ndarray, each attribute is a collumn
+        nameList  : the attribute names; list or tuple of strings. 
                     Also accepted is a dict with names:indices, which is 
                     accepted untested.
         paramDict : Dictionary of parameter value pairs
@@ -487,8 +550,8 @@ class DictStore(object):
                     The file name is ignored if any of the other arguments are
                     specified. (Specify fileName as: fileName='foo.csv')
         '''
-        #TODO: name
-        #Create empty object 
+        BaseStore.__init__(self)
+        #Create empty object - mainly for documenting data members
         self.dataDict = {}
         '''Storage for the time series and the parameters'''
         self._numObs = None
@@ -522,32 +585,40 @@ class DictStore(object):
                 raise TypeError('Argument "valDict" must be of type "dict"') 
             #get data from dict and put it into object
             for name, val in valDict.iteritems():
-                if name in self:
-                    raise ValueError('Variable names must be unique.') 
-                #the first vector determines the number of observations
-                #all other vectors must have the same length
-                if self._numObs == None and isinstance(val, ndarray):
-                    self._numObs = val.shape[0]
-                #put data into object - type checking is done in __setitem__
+#                #the first vector determines the number of observations
+#                #all other vectors must have the same length
+#                if self._numObs == None and isinstance(val, ndarray):
+#                    self._numObs = val.shape[0]
+                #put data into object - 
+                #type checking and handling of self._numObs is done in __setitem__
                 self[name] = val
 
 
+    def __repr__(self):
+        '''Create a string representation that is valid python code.'''
+        repStr = 'DictStore(valDict={' 
+        for name, attr in self.dataDict.iteritems():
+            repStr += '\n'
+            repStr += '    ' + repr(name) + ' : ' + repr(attr) + ','
+        repStr += '})'
+        return repStr
+    
     def copy(self):
         '''Create a deep copy of the object'''
         return copy.deepcopy(self)
     
     def clear(self):
         '''Remove all data from the object.'''
-        empty = DictStore()
-        self.__dict__ = empty.__dict__
+        emptyStore = DictStore()
+        self.__dict__ = emptyStore.__dict__
         
     def numAttr(self):
-        '''Return the number of variables'''
-        #assert self.data.shape[1] == len(self.varNames)
+        '''Return the number of attributes'''
+        #assert self.data.shape[1] == len(self.attrNames)
         return len(self.dataDict)
         
     def numObs(self):
-        '''Return the number of obervations (same for each variable).'''
+        '''Return the number of obervations (same for each attribute).'''
         if self._numObs == None:
             return 1
         else:
@@ -565,7 +636,7 @@ class DictStore(object):
         '''
         Return names of attributes, that are *no* time series. 
         Those are currently scalars (float, int)
-        The function is not cheap as it searches throug the dict of variables
+        The function is not cheap as it searches throug the dict of attributes
         Returns:
             List of strings
         '''
@@ -578,8 +649,8 @@ class DictStore(object):
     def variableNames(self):
         '''
         Return names of attributes, that *are* time series. 
-        Those are arrays
-        The function is not cheap as it searches throug the dict of variables
+        Those are called variables and are of type ndarray
+        The function is not cheap as it searches throug the dict of attributes
         Returns:
             List of strings
         '''
@@ -589,41 +660,38 @@ class DictStore(object):
                 nameList.append(name)
         return nameList
 
-    def _getExtension(self,fname):
-        '''Find the file extension of a filename.'''
-        return fname.split('.')[-1].strip()
 
-    def load(self, fname):
+    def load(self, fileName):
         '''
         Load data from a csv or a pickle file of the DataStore class.
         
         The encoding is determined by the filename's extension:
         'csv' : When the filename ends in '.csv' the routine tries to 
-                interpret the file as comma seperated values. The variable 
+                interpret the file as comma seperated values. The attribute 
                 names must be in the first row
         Any other extension is considered to mean a file in Python's pickle
         format.
         
         Arguments:
-        fname    : filename; string
+        fileName    : filename; string
         
         Returns:
         None
         '''
         # setting the ascii/csv file name used for input
-        #self.DBname = os.getcwd() + '/' + fname
+        #self.DBname = os.getcwd() + '/' + fileName
 
         # getting the file extension
-        fext = self._getExtension(fname)
+        fext = self._getExtension(fileName)
 
         # opening the file for reading
         if fext == 'csv':
-            self._loadCSV(fname)
+            self._loadCSV(fileName)
         else: #fext == 'dstore':
-            self._loadPickle(fname)
+            self._loadPickle(fileName)
 
 
-    def _loadCSV(self,fname):
+    def _loadCSV(self, fileName):
         '''Load data from a csv file.'''
         #Uses the CSV reader and an entirey hommade algorithm.
         #however there are library functions for doing this, that are  
@@ -633,7 +701,7 @@ class DictStore(object):
         #TODO: more robustness
         
         #read whole file at once
-        f = open(fname,'r')
+        f = open(fileName, 'r')
         lines = f.readlines() 
         f.close()
         
@@ -641,7 +709,7 @@ class DictStore(object):
         #delete lines that the csv reader can not understand
         for i in range(len(lines)-1,-1,-1):
             #delete comment lines
-            if lines[i].startswith(ArrayStore.csv_commentStart):
+            if lines[i].startswith('#'):
                 del lines[i]
             #delete blank lines (conaining only whitespace)
             if len(lines[i].strip()) == 0:
@@ -651,58 +719,57 @@ class DictStore(object):
         reader = csv.reader(lines)
         #First two lines: scalar values (parameters)
         nameList = reader.next() #read parameter names
-        #TODO: map strip() function to remove leading trailing spaces from file names
+        nameList = map(self.stripStr, nameList) #remove leading or trailing spaces
         dataList = reader.next() #read parameter values
-        dataList = map(float, dataList) #convert strings to floating point
-        #TODO: convert strings that might be found between the numbers to nan.
+        dataList = map(self.str2float, dataList) #convert strings to floating point
         self.dataDict = dict(zip(nameList, dataList)) #put data into internal dict
-        #Following lines until end: array values (variables)
+        #Following lines until end: array values (attributes)
         nameList = reader.next() #read parameter names
+        nameList = map(self.stripStr, nameList) #remove leading or trailing spaces
         #put numbers into nested list
         dataList = []
         for line in reader:
-            #TODO: convert strings that might be found between the numbers to nan.
-            lineFloat = map(float, line) #convert strings to floating point
+            lineFloat = map(self.str2float, line) #convert strings to floating point
             dataList.append(lineFloat)   #append to nested list
-        dataArray = array(dataList).T #convert nested list to array
+        dataArray = array(dataList).T    #convert nested list to array
         self.dataDict.update(dict(zip(nameList, dataArray))) #add data to internal dict
 
 
-    def _loadPickle(self,fname):
+    def _loadPickle(self, fileName):
         '''Load data from a file in pickle format.'''
-        f = open(fname,'rb')
+        f = open(fileName, 'rb')
         newStore = cPickle.load(f) #this should also work for derived classes
         self.__dict__ = newStore.__dict__ #copy the (all) data attributes
         f.close()
 
 
-    def save(self,fname):
+    def save(self, fileName):
         '''
         Dump the class data into a csv or pickle file
         
         The encoding is determined by the filename's extension:
         'csv' : When the filename ends in '.csv' the routine tries to 
-                interpret the file as comma seperated values. The variable 
+                interpret the file as comma seperated values. The attribute 
                 names must be in the first row
         Any other extension is considered to mean a file in Python's pickle
         format.
         
         Arguments:
-        fname    : filename; string
+        fileName    : filename; string
         
         Returns:
         None
         '''
-        fext = self._getExtension(fname)
+        fext = self._getExtension(fileName)
         if fext == 'csv':
-            self._saveCSV(fname)
+            self._saveCSV(fileName)
         else: #elif fext == 'pickle':
-            self._savePickle(fname)
+            self._savePickle(fileName)
 
 
-    def _saveCSV(self,fname):
+    def _saveCSV(self, fileName):
         '''Dump the data into a csv file'''
-        f = open(fname,'w')
+        f = open(fileName, 'w')
         #write header - time and date
         today = datetime.datetime.today()
         date = today.date().isoformat()
@@ -714,65 +781,59 @@ class DictStore(object):
         #Get scalar values and write them first
         f.write('#Parameters:\n')
         paramNames = self.parameterNames()
-        tempStore = self.extract(*paramNames)
+        tempStore = self.extract(paramNames)
         writer.writerow(tempStore.dataDict.keys())   #write the names
         writer.writerow(tempStore.dataDict.values()) #write the values
         #Get arrays, assemble them in a big array, and write them
         f.write('#Variables:\n')
         varNames = self.variableNames()
-        tempStore = self.extract(*varNames)
+        tempStore = self.extract(varNames)
         writer.writerow(tempStore.dataDict.keys())   #write the names
         tempArray = array(tempStore.dataDict.values()).T #convert dict values to big array
         writer.writerows(tempArray) #write the values 
         f.close()
 
 
-    def _savePickle(self,fname):
+    def _savePickle(self, fileName):
         '''Dump the data into a binary pickle file'''
-        f = open(fname,'wb')
+        f = open(fileName, 'wb')
         cPickle.dump(self, f, 2)
         f.close()
 
-    #TODO: def __delitem__(self, key):
-    def delete(self, *varNames):
+    def __delitem__(self, attrName):
         '''
-        Delete specified variables from the DataStore.
-        
+        Delete specified attribute from the DataStore.
         Arguments:
-            *varNames : Variable names of the time series that should be in 
-                        the new object; string
-        Returns:
+            attrName : Name of the time series that should be deleted; string
         '''
-        for name1 in varNames:
-            del self.dataDict[name1]
+        if not self.dataDict.has_key(attrName):
+            raise KeyError('Unknown attribute name: %s' % str(attrName))
+        del self.dataDict[attrName]
 
 
-    def extract(self, *varNames):
+    def extract(self, attrNames):
         '''
-        Crate a new DataStore object with only the specified variables.
+        Crate a new DataStore object with only the specified attributes.
         
         The function does *not* copy the array objects.
         
         Arguments:
-            *varNames : Variable names of the time series that should be in 
+            attrNames : attribute names of the time series that should be in 
                         the new object; string
         Returns:
             New DataStore object.
         '''
-        #TODO: no * magic use variable list
-        #TODO: convert single string to list of strings
-        #test if all requested variables are in the store
+        #test if all requested attributes are in the store
         myVars = set(self.attributeNames())
-        reqVars = set(varNames)
+        reqVars = set(attrNames)
         unknownVars = reqVars - myVars
         if unknownVars:
             raise KeyError('Unknown attribute(s): %s' % str(list(unknownVars))) #IGNORE:E1010
         #create new ArrayStore object and put data into it
-        #TODO: create object of derived class
         newStore = DictStore()
         newStore._numObs = self._numObs
-        for name1 in varNames:
-            #copy the variables without expanding floats to arrays in __getitem__
+        for name1 in attrNames:
+            #copy the attributes without expanding floats to arrays in __getitem__
             newStore.dataDict[name1] = self.dataDict[name1]
             
         return newStore
@@ -792,10 +853,10 @@ class DictStore(object):
         Does *not* copy the data.
         
         Arguments:
-        varName : variable name; string.
+        varName : attribute name; string.
         
         Returns:
-        One variable; ndarray. 
+        One attribute; ndarray. 
         '''
         rawVal = self.dataDict[varName]
         if isinstance(rawVal, ndarray):
@@ -811,10 +872,10 @@ class DictStore(object):
     def __setitem__(self, varName, newVal):
         '''
         Change the values of one time series (through []).
-        If the variable name is unknown to the object, the variable is added.
+        If the attribute name is unknown to the object, the attribute is added.
         
         Arguments:
-        varName : variable name; string.
+        varName : attribute name; string.
         values  : an array of compatible size
         
         Retuns:
@@ -834,78 +895,20 @@ class DictStore(object):
         if isinstance(newVal, ndarray) and \
            not (self.numObs() == newVal.shape[0]):
             raise ValueError('Argument "newVals" must have same number ' +
-                             'of rows as the existing variables.') 
+                             'of rows as the existing attributes.') 
         #put data into dict
         self.dataDict[varName] = newVal
             
         
-    def stats(self, *varNames):
-        ''' Printing descriptive statistics on selected variables'''
-        #no arguments means all variables
-        if len(varNames) == 0:
-            varNames = self.attributeNames()
-
-        print
-        #print '\n=============================================================================='
-        #print '============================ Database information ============================'
-        print '==============================================================================\n'
-        #print 'file:                %s' % self.DBname
-        print '# observations : %s' % self.numObs()
-        print '# variables    : %s' % self.numAttr()
-        print
-        print 'attribute            min          max          mean         std.dev      nan'
-        print '=============================================================================='
-
-        for name1 in varNames:
-            var1 = self.dataDict[name1]
-            if isinstance(var1, ndarray):
-                #compute some statistics if var is a vector
-                whereNan = isnan(var1)
-                sunNanStr = '%-12g' % sum(whereNan)
-                varNoNan = var1[whereNan == False] #remove nan values from vector
-                minValStr = '%-12g' % varNoNan.min()
-                maxValStr = '%-12g' % varNoNan.max()
-                meanValStr = '%-12g' % varNoNan.mean()
-                stdDevStr = '%-12g' % varNoNan.std()
-            else:
-                #print value if var is a float
-                meanValStr = '%-12g' % var1
-                minValStr, maxValStr, stdDevStr, sunNanStr = '', '', '', ''
-            print '''%-20s %-12s %-12s %-12s %-12s %-12s''' \
-               % (name1, minValStr, maxValStr, meanValStr, stdDevStr, sunNanStr)
-
-
-    def plot(self, *varNames):
+    def info(self, *attrNames):
         '''
-        Plot the specified time series into the current graph.
+        Print some information about the object's contens.
+        Argguments:
+            attrNames : varaible names; string(s)
         '''
-        if self.dataDict.has_key('time'):
-            #If a time vector is present, get the time. 
-            #It will then be used as X-coordinate
-            timeVect = self.__getitem__('time')
-            pylab.xlabel("time")
-            #plot variables in variable list
-            for name1 in varNames:
-                pylab.plot(timeVect, self[name1], label=name1)
-        else:
-            #No time vector present
-            pylab.xlabel("sequential number")
-            #plot variables in variable list
-            for name1 in varNames:
-                pylab.plot(self[name1], label=name1) 
-        #pylab.legend()        
-        return 
+        print
+        print self.computeStats(attrNames)
 
-
-    def __repr__(self):
-        '''Create a string representation that is valid python code.'''
-        repStr = 'DictStore(valDict={' 
-        for name, attr in self.dataDict.iteritems():
-            repStr += '\n'
-            repStr += '    ' + repr(name) + ' : ' + repr(attr) + ','
-        repStr += '})'
-        return repStr
-    
 #    #Rich comparison operators (unimplemented)
 #    def __lt__(self, other):
 #        return NotImplemented
@@ -925,7 +928,7 @@ class DictStore(object):
         n2set = set(other.dataDict.keys())
         if n1set != n2set:
             return False
-        #all variables must be the same
+        #all attributes must be the same
         for n in self.dataDict.keys():
             if not all(self.dataDict[n] == other.dataDict[n]):
                 return False
@@ -941,8 +944,8 @@ class DictStore(object):
         return self.dataDict.__iter__()
 
     def __len__(self):
-        '''return number of attributes'''
-        return len(self.dataDict)
+        '''Return number of attributes. Same as self.numAttr()'''
+        return self.numAttr()
 
     def __contains__(self, name):
         '''
@@ -951,9 +954,9 @@ class DictStore(object):
         Called by the "in" operator.
         '''
         return name in self.dataDict
-        
-        
-
+    
+    
+    
 #------------ testcode --------------------------------------------------
 import unittest
 from scipy import ones, linspace
@@ -965,16 +968,17 @@ class TestArrayStore(unittest.TestCase):
         '''perform common setup tasks for each test'''
         #create some data and a sorage object
         self.numData = linspace(0, 29, 30).reshape(6, 5) #IGNORE:E1101
-        self.varNames = ['a','b','c','d','e']
-        self.store = ArrayStore(self.numData, self.varNames)
+        self.attrNames = ['a','b','c','d','e']
+        self.store = ArrayStore(self.numData, self.attrNames)
         #print self.store50.data
-        #print self.store50.varNames
-        #Create storage object with special variable 'time' 
+        #print self.store50.attrNames
+        #Create storage object with special attribute 'time' 
         self.storeWithTime = ArrayStore(self.numData, ['a','b','c','d','time'])
 
         
     def test__init__1(self):
         '''ArrayStore: Test __init__ and createFromData'''
+        #TODO: TEST results of init
         #init empty object
         store = ArrayStore()
         #init with array and list
@@ -985,11 +989,10 @@ class TestArrayStore(unittest.TestCase):
         data = self.numData
         names = ('a','b','c','d','e')
         store = ArrayStore(data, names)
-        #init with array and dict
-        #use the internal dict as argument for init
-        data = self.numData
-        nameDict = store.varNameDict
-        store = ArrayStore(data, nameDict)
+        #init with 1D array
+        data = array([1.0, 2, 3])
+        names = ['a']
+        store = ArrayStore(data, names)
         
     def test__init__2(self):
         '''ArrayStore: test __init__ from file'''
@@ -1020,17 +1023,17 @@ class TestArrayStore(unittest.TestCase):
         names = ['a','b','c','d','e']
         ArrayStore(data, names)
     def raise__init__4(self):
-        '''raise: data and variable name must have compatible sizes'''
+        '''raise: data and attribute name must have compatible sizes'''
         data = self.numData
         names = ['a','b','c','d']
         ArrayStore(data, names)
     def raise__init__5(self):
-        '''raise: variable names must be strings'''
+        '''raise: attribute names must be strings'''
         data = self.numData
         names = ['a',1,'c','d','e']
         ArrayStore(data, names)
     def raise__init__6(self):
-        '''raise: variable names must be unique.'''
+        '''raise: attribute names must be unique.'''
         data = self.numData
         names = ['a','a','c','d','e']
         ArrayStore(data, names)
@@ -1039,19 +1042,25 @@ class TestArrayStore(unittest.TestCase):
     def test_copy(self):
         '''ArrayStore: Test copying the DataStore object'''
         newStore = self.store.copy()
-        self.assertTrue(all(newStore.varArray == self.store.varArray))
-        self.assertTrue(all(newStore.varNameDict == self.store.varNameDict))
+        self.assertTrue(newStore == self.store)
+
+        
+    def test_clear(self):
+        '''ArrayStore: Test copying the DataStore object'''
+        newStore = ArrayStore()
+        self.store.clear()
+        self.assertTrue(newStore == self.store)
 
         
 #    def test_delete(self):
-#        '''ArrayStore: Test deleting variables'''
+#        '''ArrayStore: Test deleting attributes'''
 #        self.store.delete('d','b','e')
 #        self.assertTrue(self.store.numAttr() == 2)
         
-        
+
     def test_extract(self):
         '''ArrayStore: Test the extract function'''
-        newStore = self.store.extract('d','b','e')
+        newStore = self.store.extract(['d','b','e'])
         self.assertTrue(newStore.numAttr() == 3)
         self.assertTrue(all(newStore['d'] == self.store['d']))
         self.assertTrue(all(newStore['b'] == self.store['b']))
@@ -1059,7 +1068,7 @@ class TestArrayStore(unittest.TestCase):
         self.assertRaises(KeyError, self.raise_extract)
     def raise_extract(self):
         '''ArrayStore: Test errors of the extract function'''
-        self.store.extract('d','f','g')
+        self.store.extract(['d','f','g'])
         
         
     def test__getitem__(self):
@@ -1085,7 +1094,7 @@ class TestArrayStore(unittest.TestCase):
         #print repr(self.store50['a'])
         self.assertTrue(all(self.store['a'] == newData))
         self.assertTrue(all(self.store['c'] == newData))
-        #add variable
+        #add attribute
         self.store['z'] = newData
         self.assertTrue(all(self.store['z'] == newData))
         
@@ -1096,8 +1105,8 @@ class TestArrayStore(unittest.TestCase):
         self.store.save(fileName)
         newStore = ArrayStore()
         newStore.load(fileName)
-        self.assertTrue(all(self.store.varArray == newStore.varArray))
-        self.assertTrue(self.store.varNameDict == newStore.varNameDict)
+        self.assertTrue(all(self.store.dataArray == newStore.dataArray))
+        self.assertTrue(self.store.attrNameDict == newStore.attrNameDict)
     
     
     def test_save_load_csv(self):
@@ -1106,13 +1115,14 @@ class TestArrayStore(unittest.TestCase):
         self.store.save(fileName)
         newStore = ArrayStore()
         newStore.load(fileName)
-        self.assertTrue(all(self.store.varArray == newStore.varArray))
-        self.assertTrue(self.store.varNameDict == newStore.varNameDict)
+        self.assertTrue(all(self.store.dataArray == newStore.dataArray))
+        self.assertTrue(self.store.attrNameDict == newStore.attrNameDict)
         
      
     def test_info(self):
         '''ArrayStore: Try if the info function.'''   
-        self.store.stats()
+        self.store.info()
+        self.store.info('a', 'b')
         
         
     def test_plot(self):
@@ -1120,7 +1130,7 @@ class TestArrayStore(unittest.TestCase):
         #simple plot 
         pylab.figure()
         self.store.plot('b','c','d')
-        #plot with time variable as X axis
+        #plot with time attribute as X axis
         pylab.figure()
         self.storeWithTime.plot('b','c','d')
         
@@ -1130,9 +1140,8 @@ class TestArrayStore(unittest.TestCase):
     def test__repr__(self):
         '''ArrayStore: Test __repr__ function.'''
         repStr = repr(self.store)
-        exec 'newStore = ' + repStr
-        self.assertTrue(all(self.store.varArray == newStore.varArray)) #IGNORE:E0602
-        self.assertTrue(self.store.varNameDict == newStore.varNameDict)  #IGNORE:E0602
+        exec 'newStore = ' + repStr #IGNORE:W0122
+        self.assertTrue(self.store == newStore) #IGNORE:E0602
 
 
     def test__eq____ne__(self):
@@ -1148,12 +1157,12 @@ class TestDictStore(unittest.TestCase):
     def setUp(self):
         '''perform common setup tasks for each test'''
         self.numData = linspace(0, 29, 30).reshape(6, 5) #IGNORE:E1101
-        self.varNames = ['a','b','c','d','time']
+        self.attrNames = ['a','b','c','d','time']
         self.valDict = {'p':1.0, 'q':2.0}
         #create store with only vectors
-        self.storeV = DictStore(self.numData, self.varNames)
+        self.storeV = DictStore(self.numData, self.attrNames)
         #create store with vectors and floats
-        self.store = DictStore(self.numData, self.varNames, self.valDict)
+        self.store = DictStore(self.numData, self.attrNames, self.valDict)
 
       
     def test__init__1(self):
@@ -1179,41 +1188,37 @@ class TestDictStore(unittest.TestCase):
         
     def test__init__3(self):
         '''DictStore: test __init__ and createFromData - error handling'''
-        #TODO: meaningfull errors - current tests all fail in ArrayStore
-        self.assertRaises(TypeError, self.raise__init__1)
-        self.assertRaises(TypeError, self.raise__init__2)
-        self.assertRaises(ValueError, self.raise__init__3)
+#        self.assertRaises(TypeError, self.raise__init__1)
+#        self.assertRaises(TypeError, self.raise__init__2)
+#        self.assertRaises(ValueError, self.raise__init__3)
         self.assertRaises(ValueError, self.raise__init__4)
         self.assertRaises(TypeError, self.raise__init__5)
-        self.assertRaises(ValueError, self.raise__init__6)
-    def raise__init__1(self):
-        '''raise: both arguments of init must be given'''
-        data = self.numData
-        DictStore(data)
-    def raise__init__2(self):
-        '''raise: both arguments of init must be given'''
-        names = ['a','b','c','d','e']
-        DictStore(names)
-    def raise__init__3(self):
-        '''raise: data must be 2D array'''
-        data = ones(50) #create 1D array
-        names = ['a','b','c','d','e']
-        DictStore(data, names)
+        self.assertRaises(TypeError, self.raise__init__6)
+#    def raise__init__1(self):
+#        '''raise: both arguments of init must be given'''
+#        data = self.numData
+#        DictStore(data)
+#    def raise__init__2(self):
+#        '''raise: both arguments of init must be given'''
+#        names = ['a','b','c','d','e']
+#        DictStore(names)
+#    def raise__init__3(self):
+#        '''raise: data must be 2D array'''
+#        data = ones(50) #create 1D array
+#        names = ['a','b','c','d','e']
+#        DictStore(data, names)
     def raise__init__4(self):
-        '''raise: data and variable name must have compatible sizes'''
-        data = self.numData
-        names = ['a','b','c','d']
-        DictStore(data, names)
+        '''raise: data arrays must have compatible sizes'''
+        vals = {'a':array([1.0,2,3]), 'b':array([4.0,5,6,7])}
+        DictStore(valDict = vals)
     def raise__init__5(self):
-        '''raise: variable names must be strings'''
-        data = self.numData
-        names = ['a',1,'c','d','e']
-        DictStore(data, names)
+        '''raise: attribute names must be strings'''
+        vals = {1:array([1.0,2,3]), 'b':array([4.0,5,6])}
+        DictStore(valDict = vals)
     def raise__init__6(self):
-        '''raise: variable names must be unique.'''
-        data = self.numData
-        names = ['a','a','c','d','e']
-        DictStore(data, names)
+        '''raise: valDict must be a dict.'''
+        vals = [array([1.0,2,3]), array([4.0,5,6])]
+        DictStore(valDict = vals)
         
     
     def test_copy(self):
@@ -1222,15 +1227,24 @@ class TestDictStore(unittest.TestCase):
         self.assertTrue(newStore == self.store)
 
         
+    def test_clear(self):
+        '''ArrayStore: Test copying the DataStore object'''
+        newStore = DictStore()
+        self.store.clear()
+        self.assertTrue(newStore == self.store)
+
+        
     def test_delvar(self):
-        '''DictStore: Test deleting variables'''
-        self.store.delete('d','b','p')
+        '''DictStore: Test deleting attributes'''
+        del self.store['d']
+        del self.store['b']
+        del self.store['p']
         self.assertTrue(self.store.numAttr() == 4)
         
         
     def test_extract(self):
         '''DictStore: Test the extract function'''
-        newStore = self.store.extract('d','b','p')
+        newStore = self.store.extract(['d','b','p'])
         #newStore.save('test_dictstore1.csv')
 #        print self.store['p']
 #        print newStore['p']
@@ -1241,7 +1255,7 @@ class TestDictStore(unittest.TestCase):
         self.assertRaises(KeyError, self.raise_extract)
     def raise_extract(self):
         '''DictStore: extract: fail because unknown attribute name.'''
-        self.store.extract('d','f','g')
+        self.store.extract(['d','f','g'])
         
         
     def test__getitem__(self):
@@ -1269,7 +1283,7 @@ class TestDictStore(unittest.TestCase):
         #print repr(self.store['a'])
         self.assertTrue(all(self.store['a'] == newData))
         self.assertTrue(all(self.store['c'] == newData))
-        #add variable
+        #add attribute
         self.store['z'] = newData
         self.assertTrue(all(self.store['z'] == newData))
         
@@ -1295,15 +1309,14 @@ class TestDictStore(unittest.TestCase):
      
     def test_info(self):
         '''DictStore: Try the info function.'''   
-        self.store.stats()
+        self.store.info()
         
         
     def test_plot(self):
         '''DictStore: Test the plot function.'''
-        #simple plot time variable as X axis
+        #simple plot time attribute as X axis
         pylab.figure()
         self.store.plot('b','c','d','p')
-                
         #pylab.show()
         
         
@@ -1353,15 +1366,16 @@ if __name__ == '__main__':
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDictStore))
     unittest.TextTestRunner(verbosity=2).run(suite)
 
-
+    #pylab.show()
+    
 #    numData50 = linspace(0, 29, 30).reshape(6, 5)
 #    numData50 /= 3
-#    varNamesAF = ['a','b','c','d','e']
-#    store = ArrayStore(numData50, varNamesAF)
+#    attrNamesAF = ['a','b','c','d','e']
+#    store = ArrayStore(numData50, attrNamesAF)
 #    print repr(store)
 #    store.info()
 #    #print store.data
-#    #print store.varNames
+#    #print store.attrNames
 #    pylab.figure()
 #    store.plot('b','c','d')
 #    pylab.show()
