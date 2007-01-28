@@ -892,19 +892,19 @@ class DictStore(object):
             pylab.xlabel("sequential number")
             #plot variables in variable list
             for name1 in varNames:
-                pylab.plot(self[name1], label=name1)
-                
+                pylab.plot(self[name1], label=name1) 
         #pylab.legend()        
         return 
 
-# TODO: __repr__
-#    def __repr__(self):
-#        '''Create a string representation that is valid python code.'''
-#        #TODO: make output more beautifull
-#        return 'ArrayStore(' \
-#                + repr(self.varArray) +', ' \
-#                + repr(self.variableNames()) + ')'
-    
+
+    def __repr__(self):
+        '''Create a string representation that is valid python code.'''
+        repStr = 'DictStore(valDict={' 
+        for name, attr in self.dataDict.iteritems():
+            repStr += '\n'
+            repStr += '    ' + repr(name) + ' : ' + repr(attr) + ','
+        repStr += '})'
+        return repStr
     
 #    #Rich comparison operators (unimplemented)
 #    def __lt__(self, other):
@@ -1232,8 +1232,8 @@ class TestDictStore(unittest.TestCase):
         '''DictStore: Test the extract function'''
         newStore = self.store.extract('d','b','p')
         #newStore.save('test_dictstore1.csv')
-        print self.store['p']
-        print newStore['p']
+#        print self.store['p']
+#        print newStore['p']
         self.assertTrue(newStore.numAttr() == 3)
         self.assertTrue(all(newStore['d'] == self.store['d']))
         self.assertTrue(all(newStore['b'] == self.store['b']))
@@ -1310,6 +1310,7 @@ class TestDictStore(unittest.TestCase):
     def test__repr__(self):
         '''DictStore: Test __repr__ function.'''
         repStr = repr(self.store)
+        #print repStr
         exec 'newStore = ' + repStr #IGNORE:W0122
         self.assertTrue(self.store == newStore) #IGNORE:E0602
 
