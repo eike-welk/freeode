@@ -491,8 +491,8 @@ class DictStore(object):
         #Create empty object 
         self.dataDict = {}
         '''Storage for the time series and the parameters'''
-        self._numObs = 0
-        '''Number of observations (items) in time series'''
+        self._numObs = None
+        '''Number of observations (items) in time series (number of array elements)'''
         #initialize from data
         if varArray != None or nameList != None or valDict != None:
             self.createFromData(varArray, nameList, valDict)
@@ -526,7 +526,7 @@ class DictStore(object):
                     raise ValueError('Variable names must be unique.') 
                 #the first vector determines the number of observations
                 #all other vectors must have the same length
-                if self._numObs == 0 and isinstance(val, ndarray):
+                if self._numObs == None and isinstance(val, ndarray):
                     self._numObs = val.shape[0]
                 #put data into object - type checking is done in __setitem__
                 self[name] = val
@@ -548,7 +548,10 @@ class DictStore(object):
         
     def numObs(self):
         '''Return the number of obervations (same for each variable).'''
-        return self._numObs
+        if self._numObs == None:
+            return 1
+        else:
+            return self._numObs
     
     def attributeNames(self):
         '''
@@ -767,6 +770,7 @@ class DictStore(object):
         #create new ArrayStore object and put data into it
         #TODO: create object of derived class
         newStore = DictStore()
+        newStore._numObs = self._numObs
         for name1 in varNames:
             #copy the variables without expanding floats to arrays in __getitem__
             newStore.dataDict[name1] = self.dataDict[name1]
@@ -796,7 +800,7 @@ class DictStore(object):
         rawVal = self.dataDict[varName]
         if isinstance(rawVal, ndarray):
             return rawVal
-        #convert scalars (floats) to 1D arrays of length _numObs 
+        #convert scalars (floats) to 1D arrays of length numObs()
         else:
             arrVal = empty(self.numObs(), float)
             arrVal.fill(rawVal)
@@ -823,6 +827,9 @@ class DictStore(object):
         if not isinstance(newVal, (ndarray, float, int)):
             raise TypeError('Argument "newVals" must be of either type ' + 
                             'numpy.ndarray", "float" or "int".') 
+        #if self._numObs is undetermined; this array sets the number of array elements
+        if self._numObs == None and isinstance(newVal, ndarray):
+            self._numObs = newVal.shape[0]
         #arrays must all have the same number of rows
         if isinstance(newVal, ndarray) and \
            not (self.numObs() == newVal.shape[0]):
@@ -846,12 +853,12 @@ class DictStore(object):
         print '# observations : %s' % self.numObs()
         print '# variables    : %s' % self.numAttr()
         print
-        print 'var                  min          max          mean         std.dev      nan'
+        print 'attribute            min          max          mean         std.dev      nan'
         print '=============================================================================='
 
         for name1 in varNames:
-            var1 = self.__getitem__(name1)
-            if isinstance(object, ndarray):
+            var1 = self.dataDict[name1]
+            if isinstance(var1, ndarray):
                 #compute some statistics if var is a vector
                 whereNan = isnan(var1)
                 sunNanStr = '%-12g' % sum(whereNan)
@@ -864,7 +871,7 @@ class DictStore(object):
                 #print value if var is a float
                 meanValStr = '%-12g' % var1
                 minValStr, maxValStr, stdDevStr, sunNanStr = '', '', '', ''
-            print '''%-20s %-12s %-12g %-12s %-12s %-12s''' \
+            print '''%-20s %-12s %-12s %-12s %-12s %-12s''' \
                % (name1, minValStr, maxValStr, meanValStr, stdDevStr, sunNanStr)
 
 
@@ -1224,6 +1231,9 @@ class TestDictStore(unittest.TestCase):
     def test_extract(self):
         '''DictStore: Test the extract function'''
         newStore = self.store.extract('d','b','p')
+        #newStore.save('test_dictstore1.csv')
+        print self.store['p']
+        print newStore['p']
         self.assertTrue(newStore.numAttr() == 3)
         self.assertTrue(all(newStore['d'] == self.store['d']))
         self.assertTrue(all(newStore['b'] == self.store['b']))
