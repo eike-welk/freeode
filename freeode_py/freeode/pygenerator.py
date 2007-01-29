@@ -194,11 +194,11 @@ class StatementGenerator(object):
         '''
         outPy = self.outPy
         ind4 = ' '*4
-        #Assignment 
+        #Assignment  ---------------------------------------------------------
         if isinstance(iltStmt, NodeAssignment):
             outPy.write(indent + iltStmt.lhs().targetName + ' = ' +
                                  self.createFormula(iltStmt.rhs()) + '\n')
-        #if statement
+        #if statement --------------------------------------------------------
         elif isinstance(iltStmt, NodeIfStmt):
             outPy.write(indent + 'if ' 
                                + self.createFormula(iltStmt.condition()) 
@@ -206,7 +206,7 @@ class StatementGenerator(object):
             self.createStatements(iltStmt.ifTruePart(), indent + ind4)
             outPy.write(indent + 'else: \n')
             self.createStatements(iltStmt.elsePart(), indent + ind4)
-        #print statement
+        #print statement -----------------------------------------------------
         elif isinstance(iltStmt, NodePrintStmt):
             line = indent + 'print '
             for expr in iltStmt:
@@ -221,7 +221,7 @@ class StatementGenerator(object):
             if len(iltStmt) > 1:
                 raise UserException('The store statement can have 1 or no arguments.', 
                                     iltStmt.loc)
-            outPy.write(indent + 'self.save(')
+            outPy.write(indent + 'self.save(') #write start of statement
             for expr in iltStmt:
                 #child is a string
                 if isinstance(expr, NodeString):
@@ -232,6 +232,8 @@ class StatementGenerator(object):
                                         iltStmt.loc)
             outPy.write(') \n')
         #graph statement -----------------------------------------------------
+        #TODO: Graph title
+        #TODO: create list of strings for variable names
         elif isinstance(iltStmt, NodeGraphStmt):
             outPy.write(indent + 'self.graph(\'')
             for expr in iltStmt:
