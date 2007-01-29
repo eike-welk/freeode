@@ -1,0 +1,35 @@
+
+#Biological reactor with no inflow or outfow
+class Batch(Process): #Define a concrete simulation expriment
+    #Define the constant values again.
+    data mu_max, Ks, Yxs, Sf: Real parameter;
+    #Define values that change during the simulation.
+    data mu, X, S: Real;
+
+    #Initialize the simulation.
+    func init():
+        #Specify options for the simulation algorithm.
+        solutionParameters.simulationTime = 20;     #[h] total simulation time
+        solutionParameters.reportingInterval = 0.01; #[h] time between data points
+        #Give values to the parameters
+        mu_max = 0.32; #max growth speed
+        Ks     = 0.01; #at this sugar concentration growth speed is 0.5 * mu_max
+        Yxs    = 0.5;  #one g sugar gives this much biomass
+        Sf     = 20;   #sugar concentration in feed liquid (inflow)
+        #Give initial values to the state variables.
+        X = 0.1; #initial biomass concentration
+        S = 20;  #initial sugar concentration
+    end
+
+    #compute dynamic behaviour - the system's 'equations'
+    func dynamic():
+        mu = mu_max * S/(S+Ks); #growth speed (of biomass)
+        $X = mu*X;              #change of biomass concentration
+        $S = -1/Yxs*mu*X;       #change of sugar concentration
+    end
+
+    #show results
+    func final():
+        graph mu, X, S;
+    end
+end
