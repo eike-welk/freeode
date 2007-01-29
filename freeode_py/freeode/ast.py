@@ -2,7 +2,7 @@
 #    Copyright (C) 2006 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
-#    License: GPL                                                         #
+#    License: GPL                                                          #
 #                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
 #    it under the terms of the GNU General Public License as published by  #
@@ -19,7 +19,7 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-__doc__ = \
+
 '''
 Implementation of an abstact syntax tree.
 Module contains specialized nodes and tools for tree handling.
