@@ -44,16 +44,13 @@ Diferences:
 '''
 
 from __future__ import division
-#from scipy import c_, arange, array, unique, kron, ones, eye, nan, isnan, string_
+
 from numpy import ndarray, array, hstack, zeros, isnan, all, empty, float #IGNORE:W0622
-#from numpy.random import randn
-import pylab
-import cPickle
-#import shelve
-import csv
 import copy
-#import os
+import cPickle
+import csv
 import datetime
+import pylab
 
 
 

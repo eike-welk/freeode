@@ -19,7 +19,7 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-__doc__ = \
+
 '''
 Basic infrastructure for the generated simulator classes.
 
@@ -29,14 +29,12 @@ and not by the Siml compiler.
 
 
 
-#from numpy import *
 from numpy import array, linspace, zeros, shape, ones, resize
-
-#from pylab import *
 from pylab import figure, xlabel, plot, legend, title, show
-
 import scipy.integrate.ode as odeInt
 import scipy.optimize.minpack as minpack
+
+from freeode.storage import DictStore
 
 ##try to import the gnuplot lib 
 #try:
@@ -61,6 +59,9 @@ class SimulatorBase(object):
         self.p_solutionParameters_reportingInterval = 1.0
         '''Interval at which the simulation results are recorded.
            Built in parameter.'''
+        self.defaultFileName = 'error-no-file-name-given.csv'
+        '''Default file name for storing simulation results. 
+           Set by generated simulator class'''
         self.time = None
         '''Array with times at which the solution was computed.'''
         self.resultArray = None
@@ -77,13 +78,12 @@ class SimulatorBase(object):
         """Show the simulation object's documentation."""
         help(self.__class__)
 
-    #TODO: change to: helpAttributes(self), also help about parameter names
-    def helpVariables(self):
+    def info(self):
         """Show list of all variables."""
+        print 'Variables:'
         for i in self.variableNameMap:
             print "'%s', " % i,
         print
-
 
     def clear(self):
         """
@@ -94,45 +94,63 @@ class SimulatorBase(object):
         if hasattr(self, 'resultArray'):
             del self.resultArray
 
-    #TODO: change to: attribute(self, attrName), also return parameters
-    def variable(self, varName):
+    def getAttribute(self, attrName):
         """
-        Get a variable by name.
+        Get an attribute by name.
 
-        The funcion returns a vector with the variable's values at all
+        The funcion returns a vector with the attribute's values at all
         simulated points in time. Parameter values can not be accessed by
         this function.
-        Parameter:
-        varName:    Text string with the variable name as it would appear in
+        Arguments:
+        varName:    Text string with the attribute name as it would appear in
                     the Siml language.
-                    There are special variable names:
+                    There are special attribute names:
                         'time': vector of simulated points in time
-                        'all': array of all variables
+                        'all': array of all attributes
         Example:
-            >>> mySimulationObject.variable('r.X')
+            >>> mySimulationObject.getAttribute('r.X')
         """
-        if varName == 'time':
+        #TODO: also return parameters
+        if attrName == 'time':
             return self.time
-        elif varName == 'all':
-            return self.resultArray
-        index = self.variableNameMap[varName]
+#        elif attrName == 'all':
+#            return self.resultArray
+        index = self.variableNameMap[attrName]
         return self.resultArray[:,index]
-
 
     def graph(self, varNames, titleStr=None):
         """
-        Show one or several variables in a graph.
+        Show one or several attributes in a graph.
 
-        The X-axis is always the time, the specified variables appear on the
+        The X-axis is always the time, the specified attributes appear on the
         Y-Axis.
         Arguments:
-            varNames :  Text string with a list of variables to be plotted.
+            varNames :  Text string with a list of attributes to be plotted.
                         (Space or comma separated.) e.g.: 'r.X r.mu'
         """
+        #TODO: change to list of strings (from one long string)
         #self._graphGnuplot(varNames)
         self._graphMatPlotLib(varNames, titleStr)
 
-
+    def save(self, fileName=None):
+        '''
+        Save the simulation results to disk.
+        If no filename is given, self.defaultFileName is used
+        '''
+        if fileName == None:
+            fileName = self.defaultFileName
+        result = self.getResults()
+        result.save(fileName)
+        
+    def getResults(self):
+        '''Return the simulation results in a DictStore object'''
+        result = DictStore()
+        #put Variables into DictStore
+        for name in self.variableNameMap.keys():
+            result[name] = self.getAttribute(name)
+        #TODO: also include parameters
+        return result
+            
 #    def _graphGnuplot(self, varNames):
 #        '''Create plots with gnuplot. Called by graph()'''
 #        diagram=Gnuplot.Gnuplot(debug=0, persist=1)
@@ -155,15 +173,15 @@ class SimulatorBase(object):
         '''Create plots with matplotlib. Called by graph()'''
         figure() #create new figure window
 
-        timeVect = self.variable('time')
+        timeVect = self.getAttribute('time')
         varList = varNames.replace(',', ' ').split(' ')
         for varName1 in varList:
             if len(varName1) == 0:
                 continue
             if not (varName1 in self.variableNameMap):
-                print('Error unknown variable name: %s') % varName1
+                print('Error unknown attribute name: %s') % varName1
                 continue
-            varVect = self.variable(varName1)
+            varVect = self.getAttribute(varName1)
             plot(timeVect, varVect, label=varName1)
 
         xlabel('time')
@@ -238,7 +256,7 @@ class SimulatorBase(object):
 
     def dynamic(self, t, y, returnAlgVars=False):
         '''
-        Compute time derivative of state variables.
+        Compute time derivative of state attributes.
         This function will be called by the solver repeatedly.
         Dummy function; must be reimplemented in derived classes!
         '''
@@ -267,9 +285,9 @@ class SimulatorBase(object):
         """
         Perform a dynamic simulation.
 
-        The results can be displayed with the graph(...) function.
-        The funcion variable(...) returns the simulation result of a speciffic
-        variable as a vector.
+        The results can be displayed with the graph(...) function and stored 
+        with the store function. The funcion getAttributes(...) returns the 
+        simulation result of a speciffic attribute.
         """
         #Compute the initial values if necessary.
         if not self.initialValues:
@@ -286,9 +304,9 @@ class SimulatorBase(object):
                                  'float64')
         self.resultArray[0,0:self.stateVectorLen] = self.initialValues
         #create integrator object and care for intitial values
-        solver = odeInt(self.dynamic).set_integrator('vode', nsteps = 5000) \
-                                     .set_initial_value(self.initialValues,
-                                                        self.time[0])
+        solver = (odeInt(self.dynamic).set_integrator('vode', nsteps = 5000) #IGNORE:E1102
+                                     .set_initial_value(self.initialValues,  
+                                                        self.time[0]))
         #compute the numerical solution
         i=1
         while solver.successful() and i < len(self.time):
@@ -298,8 +316,8 @@ class SimulatorBase(object):
             self.time[i] = solver.t #in case solver does not hit end time
             self.resultArray[i,0:self.stateVectorLen] = solver.y
             #compute algebraic variables (again)
-            self.resultArray[i,self.stateVectorLen:] = \
-                    self.dynamic(solver.t, solver.y, returnAlgVars=True)
+            self.resultArray[i,self.stateVectorLen:] = (                   #IGNORE:E1111
+                    self.dynamic(solver.t, solver.y, returnAlgVars=True))
             i += 1
         #generate run time error
         if not solver.successful():
@@ -328,9 +346,9 @@ class SimulatorBase(object):
         In the time array the count of current simulation is stored. This way the
         graph function still produces useful graphs with steady state simulations.
 
-        The final results can be displayed with the graph(...) function.
-        The funcion variable(...) returns the simulation result of a speciffic
-        variable as a vector.
+        The results can be displayed with the graph(...) function and stored 
+        with the store function. The funcion getAttributes(...) returns the 
+        simulation result of a speciffic attribute.
         """
 
         raise Exception('This method is currently broken!')

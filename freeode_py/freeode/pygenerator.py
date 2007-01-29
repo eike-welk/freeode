@@ -2,6 +2,8 @@
 #    Copyright (C) 2006 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
+#    License: GPL                                                          #
+#                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
 #    it under the terms of the GNU General Public License as published by  #
 #    the Free Software Foundation; either version 2 of the License, or     #
@@ -17,7 +19,7 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-__doc__ = \
+
 '''
 Generator for python code.
 
@@ -130,6 +132,7 @@ class StatementGenerator(object):
         Take ILT sub-tree that describes a formula and
         convert it into a formula in the Python programming language.
         (recursive)
+        This is the dispatcher for expression nodes.
 
         Arguments:
             iltFormula : tree of Node objects
@@ -181,6 +184,7 @@ class StatementGenerator(object):
         '''
         Take ILT sub-tree and convert it into one 
         Python statement.
+        This is the dispatcher function for the statements.
 
         arguments:
             iltStmt : tree of Node objects
@@ -211,13 +215,23 @@ class StatementGenerator(object):
             if iltStmt.newline:
                 line = line[:-2]
             outPy.write(line + '\n')
-        #store statement
+        #store statement -----------------------------------------------------
+        #One optional argument: the file name: string
         elif isinstance(iltStmt, NodeStoreStmt):
-            #TODO: implement store statement
-            print 'warning: store statement is not implemented yet'
-            outPy.write(indent + 
-                        "print 'warning: store statement is not implemented yet' \n")
-        #graph statement
+            if len(iltStmt) > 1:
+                raise UserException('The store statement can have 1 or no arguments.', 
+                                    iltStmt.loc)
+            outPy.write(indent + 'self.save(')
+            for expr in iltStmt:
+                #child is a string
+                if isinstance(expr, NodeString):
+                    self.createFormula(expr) #write filename
+                #anything else is illegal
+                else:
+                    raise UserException('Argument of store statement must be a file name.', 
+                                        iltStmt.loc)
+            outPy.write(') \n')
+        #graph statement -----------------------------------------------------
         elif isinstance(iltStmt, NodeGraphStmt):
             outPy.write(indent + 'self.graph(\'')
             for expr in iltStmt:
@@ -366,6 +380,8 @@ class ProcessGenerator(object):
         outPy.write('    def __init__(self): \n')
         outPy.write('        super(%s, self).__init__() \n' % self.processPyName)
         #outPy.write(ind8 + 'self.variableNameMap = {} \n')
+        #create default file name
+        outPy.write(ind8 + 'self.defaultFileName = \'%s.simres\' \n' % self.processPyName)
         #create the parameters
         outPy.write(ind8 + '#create all parameters with value 0; ' +
                            'to prevent runtime errors. \n')
@@ -374,7 +390,7 @@ class ProcessGenerator(object):
         outPy.write('\n\n')
 
 
-    def writeInitMethod(self):
+    def writeInitializeMethod(self):
         '''Generate method that initializes variables and parameters'''
         #search the process' init method
         for initMethod in self.iltProcess:
@@ -533,7 +549,7 @@ class ProcessGenerator(object):
         #print self.iltProcess
         self.writeClassDefStart()
         self.writeConstructor()
-        self.writeInitMethod()
+        self.writeInitializeMethod()
         self.writeDynamicMethod()
         self.writeFinalMethod()
         #self.writeOutputEquations()
@@ -598,7 +614,7 @@ class ProgramGenerator(object):
 ################################################################################
 
 
-from numpy import *
+from numpy import array, sqrt
 #from scipy import *
 from freeode.simulatorbase import SimulatorBase
 from freeode.simulatorbase import simulatorMainFunc
@@ -613,7 +629,7 @@ from freeode.simulatorbase import simulatorMainFunc
 '''
 
 #Main function - executed when file (module) runs as an independent program.
-#When file is imported into other programs, test will fail.
+#When file is imported into other programs, if-condition is false.
 if __name__ == '__main__':
     simulatorClasses = ['''     )
         #create list with generated classes
@@ -622,7 +638,7 @@ if __name__ == '__main__':
         self.outPy.write(']')
         self.outPy.write(
 ''' 
-    simulatorMainFunc(simulatorClasses)
+    simulatorMainFunc(simulatorClasses) #in module simulatorbase
 
 '''     )
         return
