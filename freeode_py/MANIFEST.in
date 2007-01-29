@@ -21,6 +21,8 @@ include hl_siml.xml
 #examples
 include tank.siml
 include tuned_abs_damper.siml
+bioreactor.siml
+bioreactor_simple.siml
 
 #this file
 include MANIFEST.in
