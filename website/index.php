@@ -1,10 +1,9 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <!--The berlios server does support PHP. A PHP file could be placed here.-->
-<!--<script language="php"> require ('header.inc'); </script>-->
 
 <head>
-  <title>Free ODE</title>
+  <title>SIML simulation language</title>
   <meta name="GENERATOR" content="Quanta Plus">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="KEYWORDS" content="freeode, simulation, numerical math, python, ODE, differential equations">
@@ -15,7 +14,7 @@
 
 <body>
 <!--Title-->
-<script language="php"> require ('header.inc'); </script>-->
+<?php if( file_exists("header.html") ){ include("header.html"); } ?>
 
 <!--Navigation-->
 <div id="navigation">
@@ -109,7 +108,7 @@
         <td>dX/dt = &#181;*X</td>
         <td>
           &nbsp;&nbsp;
-          <span style="font-style: italic;color: #808080;">Change of biomass concentration<span/>
+          <span style="font-style: italic;color: #808080;">Change of biomass concentration</span>
         </td>
       </tr>
       <tr>
@@ -229,18 +228,8 @@ Python 2.4  <span style="font-style: italic;color: #808080;">(Most of Python's s
 </div>
 
 
-
 <!--footer with the required berlios image-->
-<div id="footer">
-  Hosted by:
-  <br>
-  <a href="http://developer.berlios.de" title="BerliOS Developer"> <img src="http://developer.berlios.de/bslogo.php?group_id=5610" width="124px" height="32px" border="0" alt="BerliOS Developer Logo"></a>
-  <br>
-  Copyright (C) 2006 Eike Welk.
-  Copying and distribution of this website, whole or in parts, is
-  permitted as long as this notice is preserved.
-</div>
-
+<?php if( file_exists("footer.html") ){ include("footer.html"); } ?>
 
 </body>
 </html>
