@@ -557,7 +557,7 @@ class ParseStage(object):
         return nCurr
 
 
-#------------------- BNF --------------------------------------------------------*
+#------------------- BNF --------------------------------------------------------
     def _defineLanguageSyntax(self):
         '''
         Here is Siml's BNF
@@ -660,7 +660,7 @@ class ParseStage(object):
                             ZeroOrMore(dotSup + identifier) )   .setParseAction(self._actionAttributeAccess) \
                                                                 .setName('valAccess')#.setDebug(True)
 
-        #..................... Statements ..............................................................
+#------------------- Statements ---------------------------------------------------------------
         statementList = Forward()
         #Flow control - if then else
         ifStatement = Group(kw('if') + boolExpression + ':' 

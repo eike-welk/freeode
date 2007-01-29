@@ -216,32 +216,50 @@ class StatementGenerator(object):
                 line = line[:-2]
             outPy.write(line + '\n')
         #store statement -----------------------------------------------------
-        #One optional argument: the file name: string
+        #One optional argument: 
+        #    -the file name: string
+        #generated code is a function call:
+        #    self.save('file_name') 
         elif isinstance(iltStmt, NodeStoreStmt):
-            if len(iltStmt) > 1:
+            if len(iltStmt) > 1:               #Number of arguments: 0,1
                 raise UserException('The store statement can have 1 or no arguments.', 
                                     iltStmt.loc)
             outPy.write(indent + 'self.save(') #write start of statement
-            for expr in iltStmt:
+            for expr in iltStmt:               #iterate over arguments (max 1)
                 #child is a string
                 if isinstance(expr, NodeString):
-                    self.createFormula(expr) #write filename
+                    self.createFormula(expr)   #write filename
                 #anything else is illegal
                 else:
                     raise UserException('Argument of store statement must be a file name.', 
                                         iltStmt.loc)
-            outPy.write(') \n')
+            outPy.write(') \n')                #write end of statement
         #graph statement -----------------------------------------------------
-        #TODO: Graph title
-        #TODO: create list of strings for variable names
+        #Any number of arguments. Legal types are:
+        #    -Variable for inclusion in graph: attribute access
+        #    -Graph title: string
+        #generated code is a function call:
+        #    self.graph(['t.V', 't.h', 't.qOut0', 't.qOut1', ], 'graph title') 
         elif isinstance(iltStmt, NodeGraphStmt):
-            outPy.write(indent + 'self.graph(\'')
-            for expr in iltStmt:
-                if not isinstance(expr, NodeAttrAccess):
-                    raise UserException('Arguments of graph statement must be variable names.', 
+            graphTitle = ''
+            outPy.write(indent + 'self.graph([') #write start of statement
+            for expr in iltStmt:                 #iterate over arguments
+                #Argument is variable name
+                if   isinstance(expr, NodeAttrAccess):
+                    outPy.write("'%s', " % makeDotName(expr.attrName)) #write variable name
+                #Argument is graph title
+                elif isinstance(expr, NodeString):
+                    graphTitle = expr.dat        #store graph title
+                #anything else is illegal
+                else:
+                    raise UserException('Illegal argument in graph statement.', 
                                         iltStmt.loc)
-                outPy.write(makeDotName(expr.attrName) + ' ')
-            outPy.write('\') \n')
+            outPy.write('], ')                   #end list of var names
+            #A graph title was found
+            if graphTitle:
+                outPy.write("'%s'" % graphTitle) #write write grapt title as 2nd argument
+            outPy.write(') \n')                  #write end of statement
+        #Internal error: unknown statement -----------------------------------
         else:
             raise PyGenException('Unknown node in StatementGenerator:\n' 
                                  + str(iltStmt))
@@ -532,6 +550,7 @@ class ProcessGenerator(object):
         outPy.write(ind8 + '#the final method\'s statements \n')
         stmtGen = StatementGenerator(outPy)
         stmtGen.createStatements(finMethod, ind8)
+        outPy.write(ind8 + "print 'simulation %s finished.'\n" % self.processPyName)
         outPy.write(ind8 + '\n')
         
         

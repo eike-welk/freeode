@@ -118,20 +118,6 @@ class SimulatorBase(object):
         index = self.variableNameMap[attrName]
         return self.resultArray[:,index]
 
-    def graph(self, varNames, titleStr=None):
-        """
-        Show one or several attributes in a graph.
-
-        The X-axis is always the time, the specified attributes appear on the
-        Y-Axis.
-        Arguments:
-            varNames :  Text string with a list of attributes to be plotted.
-                        (Space or comma separated.) e.g.: 'r.X r.mu'
-        """
-        #TODO: change to list of strings (from one long string)
-        #self._graphGnuplot(varNames)
-        self._graphMatPlotLib(varNames, titleStr)
-
     def save(self, fileName=None):
         '''
         Save the simulation results to disk.
@@ -151,6 +137,19 @@ class SimulatorBase(object):
         #TODO: also include parameters
         return result
             
+    def graph(self, varNames, titleStr=None):
+        """
+        Show one or several attributes in a graph.
+
+        The X-axis is always the time, the specified attributes appear on the
+        Y-Axis.
+        Arguments:
+            varNames :  list of strings of the attributes to be plotted.
+                        example: ['r.X', 'r.mu']
+        """
+        #self._graphGnuplot(varNames)
+        self._graphMatPlotLib(varNames, titleStr)
+
 #    def _graphGnuplot(self, varNames):
 #        '''Create plots with gnuplot. Called by graph()'''
 #        diagram=Gnuplot.Gnuplot(debug=0, persist=1)
@@ -158,7 +157,7 @@ class SimulatorBase(object):
 #        diagram.title(varNames)
 #        diagram.xlabel('Time')
 #
-#        varList = varNames.replace(',', ' ').split(' ')
+#        #varList = varNames.replace(',', ' ').split(' ')
 #        for varName1 in varList:
 #            if len(varName1) == 0:
 #                continue
@@ -169,12 +168,12 @@ class SimulatorBase(object):
 #            diagram.replot(curve)
 
 
-    def _graphMatPlotLib(self, varNames, titleStr=None):
+    def _graphMatPlotLib(self, varList, titleStr=None):
         '''Create plots with matplotlib. Called by graph()'''
         figure() #create new figure window
 
         timeVect = self.getAttribute('time')
-        varList = varNames.replace(',', ' ').split(' ')
+        #varList = varNames.replace(',', ' ').split(' ')
         for varName1 in varList:
             if len(varName1) == 0:
                 continue
@@ -431,9 +430,18 @@ def parseCommandLineOptions(simulationClassList):
     optPars.add_option('-i', '--interactive', dest='interactive',
                        action="store_true", default=False,
                        help='go to interactive mode (defunct)')
+    optPars.add_option('--prepend-newline', dest='prepend_newline',
+                       action="store_true", default=False,
+                       help='prepend output with one newline ' 
+                          + '(usefull when started from the compiler)')
     #do the parsing
     (options, args) = optPars.parse_args()
     
+    #print start message
+    if options.prepend_newline:
+        print
+    print 'Freeode simulator, main function ...' 
+
     #test list option
     if options.list:
         print 'available simulations:'
@@ -486,7 +494,7 @@ def simulatorMainFunc(simulationClassList):
     Argument:
         simulationClassList: list of (generated) simulation classes
     '''
-    print 'Freeode simulator, main function ...' 
+    #print 'Hello world; main function ...' 
     parseCommandLineOptions(simulationClassList)
     return
 

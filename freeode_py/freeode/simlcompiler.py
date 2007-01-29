@@ -57,9 +57,9 @@ class SimlCompilerMain(object):
                               + 'compiling (number counts fron top; ' 
                               + 'or special value "all")',
                            metavar='<number>')
-        optPars.add_option('--runall', dest='runall',
-                           action="store_true", default=False,
-                           help='run all simulation processes after compiling')
+#        optPars.add_option('--runall', dest='runall',
+#                           action="store_true", default=False,
+#                           help='run all simulation processes after compiling')
         #do the parsing
         (options, args) = optPars.parse_args()
         
@@ -102,9 +102,9 @@ class SimlCompilerMain(object):
                               % options.runone)
             #convert into string containing a number
             self.runSimulation = str(int(options.runone)) 
-        #special option runall
-        if options.runall:
-            self.runSimulation = 'all'
+#        #special option runall
+#        if options.runall:
+#            self.runSimulation = 'all'
               
     
     def doCompile(self):
@@ -153,7 +153,8 @@ class SimlCompilerMain(object):
             return
         
         #optStr = ' -r %s' % self.runSimulation
-        cmdStr = 'python %s -r %s' % (self.outputFileName, self.runSimulation)
+        cmdStr = 'python %s -r %s --prepend-newline' % (self.outputFileName, 
+                                                        self.runSimulation)
         proc = Popen([cmdStr], shell=True, #bufsize=1000,
                      stdin=None, stdout=None, stderr=None, close_fds=True)
         print 'running generated program. PID: %d' % proc.pid
