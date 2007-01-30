@@ -1,7 +1,7 @@
 
 #Biological reactor with no inflow or outfow
-class Batch(Process): #Define a concrete simulation expriment
-    #Define the constant values again.
+class Batch(Process): 
+    #Define values that stay constant during the simulation.
     data mu_max, Ks, Yxs, Sf: Real parameter;
     #Define values that change during the simulation.
     data mu, X, S: Real;
