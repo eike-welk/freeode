@@ -18,6 +18,12 @@
 #    along with this program; if not, write to the                         #
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
+#                                                                          #
+#                                                                          #
+#    This Python module is the code generator of a compiler. The           #
+#    generated computer program shall be licensed under any license that   #
+#    the user of the compiler whishes. Even though the generated program   #
+#    is assembled from pieces of software of contained in this file.       #
 ############################################################################
 
 '''
@@ -54,7 +60,7 @@ class LongLineWriter(object):
                        completed lines are put (most possibly a file).
                        If file=None a buffer string is used instead, that
                        can be retrieved with the buffer() method
-            maxLen   : Maximum lenght of a line.
+            maxLen   : Maximum length of a line.
             startStr : Lines start with this string (usually the indent)
                        unless startLine(...)
             endStr   : Lines end with this string unless endLine(...) is called.
@@ -161,7 +167,7 @@ class StatementGenerator(object):
         #Infix operator: + - * / ^ and or
         elif isinstance(iltFormula, NodeOpInfix2):
             opDict = {'+':' + ', '-':' - ', '*':'*', '/':'/', '**':'**',
-                      '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ', 
+                      '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ',
                       '==':' == ', '!=':' != ',
                       'and':' and ', 'or':' or '}
             opStr = opDict[iltFormula.dat]
@@ -182,7 +188,7 @@ class StatementGenerator(object):
 
     def create1Statement(self, iltStmt, indent):
         '''
-        Take ILT sub-tree and convert it into one 
+        Take ILT sub-tree and convert it into one
         Python statement.
         This is the dispatcher function for the statements.
 
@@ -200,8 +206,8 @@ class StatementGenerator(object):
                                  self.createFormula(iltStmt.rhs()) + '\n')
         #if statement --------------------------------------------------------
         elif isinstance(iltStmt, NodeIfStmt):
-            outPy.write(indent + 'if ' 
-                               + self.createFormula(iltStmt.condition()) 
+            outPy.write(indent + 'if '
+                               + self.createFormula(iltStmt.condition())
                                + ':\n')
             self.createStatements(iltStmt.ifTruePart(), indent + ind4)
             outPy.write(indent + 'else: \n')
@@ -216,13 +222,13 @@ class StatementGenerator(object):
                 line = line[:-2]
             outPy.write(line + '\n')
         #store statement -----------------------------------------------------
-        #One optional argument: 
+        #One optional argument:
         #    -the file name: string
         #generated code is a function call:
-        #    self.save('file_name') 
+        #    self.save('file_name')
         elif isinstance(iltStmt, NodeStoreStmt):
             if len(iltStmt) > 1:               #Number of arguments: 0,1
-                raise UserException('The store statement can have 1 or no arguments.', 
+                raise UserException('The store statement can have 1 or no arguments.',
                                     iltStmt.loc)
             outPy.write(indent + 'self.save(') #write start of statement
             for expr in iltStmt:               #iterate over arguments (max 1)
@@ -231,7 +237,7 @@ class StatementGenerator(object):
                     self.createFormula(expr)   #write filename
                 #anything else is illegal
                 else:
-                    raise UserException('Argument of store statement must be a file name.', 
+                    raise UserException('Argument of store statement must be a file name.',
                                         iltStmt.loc)
             outPy.write(') \n')                #write end of statement
         #graph statement -----------------------------------------------------
@@ -239,7 +245,7 @@ class StatementGenerator(object):
         #    -Variable for inclusion in graph: attribute access
         #    -Graph title: string
         #generated code is a function call:
-        #    self.graph(['t.V', 't.h', 't.qOut0', 't.qOut1', ], 'graph title') 
+        #    self.graph(['t.V', 't.h', 't.qOut0', 't.qOut1', ], 'graph title')
         elif isinstance(iltStmt, NodeGraphStmt):
             graphTitle = ''
             outPy.write(indent + 'self.graph([') #write start of statement
@@ -252,7 +258,7 @@ class StatementGenerator(object):
                     graphTitle = expr.dat        #store graph title
                 #anything else is illegal
                 else:
-                    raise UserException('Illegal argument in graph statement.', 
+                    raise UserException('Illegal argument in graph statement.',
                                         iltStmt.loc)
             outPy.write('], ')                   #end list of var names
             #A graph title was found
@@ -261,7 +267,7 @@ class StatementGenerator(object):
             outPy.write(') \n')                  #write end of statement
         #Internal error: unknown statement -----------------------------------
         else:
-            raise PyGenException('Unknown node in StatementGenerator:\n' 
+            raise PyGenException('Unknown node in StatementGenerator:\n'
                                  + str(iltStmt))
 
 
@@ -269,7 +275,7 @@ class StatementGenerator(object):
         '''
         Take NodeStmtList or NodeFuncDef and convert
         into multiple Python statements.
-        
+
         arguments:
             stmtList : Node object that contains statements as children
             indent   : string of whitespace, put in front of each line
@@ -321,7 +327,7 @@ class ProcessGenerator(object):
                 continue
             if attrDef.role == RoleParameter:
                 self.parameters[attrDef.attrName] = attrDef
-            elif attrDef.role == RoleAlgebraicVariable: 
+            elif attrDef.role == RoleAlgebraicVariable:
                 self.algebraicVariables[attrDef.attrName] = attrDef
             elif attrDef.role == RoleStateVariable:
                 self.stateVariables[attrDef.attrName] = attrDef
@@ -384,10 +390,10 @@ class ProcessGenerator(object):
         '''Write first few lines of class definition.'''
         self.outPy.write('class %s(SimulatorBase): \n' % self.processPyName)
         self.outPy.write('    \'\'\' \n')
-        self.outPy.write('    Object to simulate process %s \n' 
+        self.outPy.write('    Object to simulate process %s \n'
                          % self.iltProcess.className)
-        self.outPy.write('    Definition in\n    file: \'%s\'\n    line: %s \n' 
-                         % (self.iltProcess.loc.fileName(), 
+        self.outPy.write('    Definition in\n    file: \'%s\'\n    line: %s \n'
+                         % (self.iltProcess.loc.fileName(),
                             self.iltProcess.loc.lineNo()))
         self.outPy.write('    \'\'\' \n')
         self.outPy.write('    \n')
@@ -431,11 +437,11 @@ class ProcessGenerator(object):
         for varDef in (self.algebraicVariables.values() +
                        self.stateVariables.values()):
             outPy.write(ind8 + '%s = 0.0 \n' % varDef.targetName[tuple()])
-        
+
         #create dict for parameter override
         outPy.write(ind8 + '#create dict for parameter override \n')
         outPy.write(ind8 + 'ovd = self._createParamOverrideDict(args, kwArgs) \n')
-        
+
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
@@ -497,7 +503,7 @@ class ProcessGenerator(object):
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
             outPy.write(ind8 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
         #outPy.write(ind8 + '#TODO: Create all algebraic variables? \n')
-        
+
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
@@ -514,7 +520,7 @@ class ProcessGenerator(object):
             lineW.write('%s, ' % varDef.targetName[tuple()])
         lineW.endLine('], \'float64\')')
         outPy.write(ind12 + 'return algVars \n')
-        
+
         outPy.write(ind8 + 'else: \n')
         #assemble the time derivatives into the return vector
         outPy.write(ind12 + '#assemble the time derivatives into the return vector \n')
@@ -552,9 +558,9 @@ class ProcessGenerator(object):
         stmtGen.createStatements(finMethod, ind8)
         outPy.write(ind8 + "print 'simulation %s finished.'\n" % self.processPyName)
         outPy.write(ind8 + '\n')
-        
-        
-        
+
+
+
     def createProcess(self, iltProcess):
         '''
         Take part of ILT tree that defines one procedure and ouput definition
@@ -574,7 +580,7 @@ class ProcessGenerator(object):
         self.writeDynamicMethod()
         self.writeFinalMethod()
         #self.writeOutputEquations()
-        
+
         self.outPy.write('\n\n')
 
 
@@ -627,7 +633,7 @@ class ProgramGenerator(object):
         date = dt.date().isoformat()
         time = dt.time().strftime('%H:%M:%S')
 
-        self.outPy.write('# Generated by SIML compiler version %s on %s %s. \n' 
+        self.outPy.write('# Generated by SIML compiler version %s on %s %s. \n'
                          % (progVersion, date, time))
         self.outPy.write('# Source file(s): %s' % self.iltRoot.loc.fileName())
         self.outPy.write(
@@ -658,23 +664,23 @@ if __name__ == '__main__':
             self.outPy.write(makeDotName(name) + ', ')
         self.outPy.write(']')
         self.outPy.write(
-''' 
+'''
     simulatorMainFunc(simulatorClasses) #in module simulatorbase
 
 '''     )
         return
-        
-        
+
+
     def createProgram(self, iltRoot):
         '''
         Take an ILT and create as python program from it.
         Write the python program into the file self.outPy
         '''
         self.iltRoot = iltRoot
-        
+
         self.writeProgramStart()
 
-        #every class definition in the ILT is a process (currently) 
+        #every class definition in the ILT is a process (currently)
         #create code for it
         for process in iltRoot:
             if not isinstance(process, NodeClassDef):
@@ -683,7 +689,7 @@ if __name__ == '__main__':
             #create process
             procGen = ProcessGenerator(self.outPy)
             procGen.createProcess(process)
-        
+
         self.writeProgramEnd()
 
 
@@ -701,12 +707,12 @@ if __name__ == '__main__':
 class Test(Model):
     data V, h: Real;
     data A_bott, A_o, mu, q, g: Real parameter;
-    
+
     func dynamic():
         h = V/A_bott;
         $V = q - mu*A_o*sqrt(2*g*h);
     end
-    
+
     func init():
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
@@ -717,11 +723,11 @@ end
 class RunTest(process):
     data g: Real parameter;
     data test: Test;
-    
+
     func dynamic():
         call test.dynamic();
     end
-    
+
     func init():
         g = 9.81;
         call test.init();
