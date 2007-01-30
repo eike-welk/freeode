@@ -53,9 +53,10 @@ class SimlCompilerMain(object):
                            help='explicitly specify name of output file', 
                            metavar='<output_file>')
         optPars.add_option('-r', '--run', dest='runone',
-                           help='run the given simulation process after ' 
-                              + 'compiling (number counts fron top; ' 
-                              + 'or special value "all")',
+                           help='run generated simulation program after ' 
+                              + 'compiling. Specify which process to simulate '
+                              + 'with number or use special value "all" '
+                              + '(number counts from top).',
                            metavar='<number>')
 #        optPars.add_option('--runall', dest='runall',
 #                           action="store_true", default=False,
@@ -170,7 +171,7 @@ class SimlCompilerMain(object):
             raise #for sys.exit() - the error message was already printed
         except Exception:
             print 'Oh my golly! Compiler internal error!' 
-            print 'Please file a bug report at:\n',\
+            print 'Please file a bug report, that includes the traceback, at:\n',\
                   'https://developer.berlios.de/projects/freeode/\n'
             raise 
         

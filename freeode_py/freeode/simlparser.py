@@ -692,7 +692,7 @@ class ParseStage(object):
                           + ';')                                     .setParseAction(self._actionGraphStmt)\
                                                                      .setName('graphStmt')#.setDebug(True)
         #store to disk
-        storeStmt = Group(kw('store') + Group(Optional(stringConst)) .setResultsName('argList') 
+        storeStmt = Group(kw('save') + Group(Optional(stringConst)) .setResultsName('argList') 
                           + ';')                                     .setParseAction(self._actionStoreStmt)\
                                                                      .setName('storeStmt')#.setDebug(True)
 

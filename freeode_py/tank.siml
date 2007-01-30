@@ -62,7 +62,7 @@ class FillTank(Process):
         solutionParameters.reportingInterval = 1;
     end
     func final():
-        store 'fill-tank';
+        save 'fill-tank';
         graph t.V, t.h, t.qOut0, t.qOut1;
     end
 end

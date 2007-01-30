@@ -34,7 +34,7 @@ then be retrieved under this name. Both classes behave much like dict;
 but can only store numeric data.
 
 The classes have several convenience functions :
-    -Store/Load the data on/from disk. 
+    -Save/Load the data on/from disk. 
     -Plot attributes 
     -Print some statistics
 
@@ -103,8 +103,9 @@ class BaseStore(object):
         '''
         Plot the specified time series into the current graph.
         Argument:
-            *attrNames : any numbeattribute names; list
+            *attrNames : any number of attribute names; string
         '''
+        #TODO: remove *attrNames magic: use list of string, or long string 't.V t.h'
 #        #convert string to list containing one attribute name
 #        if isinstance(attrNames, str):
 #            attrNames = [attrNames]

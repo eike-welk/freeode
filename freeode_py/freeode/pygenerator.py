@@ -221,14 +221,14 @@ class StatementGenerator(object):
             if iltStmt.newline:
                 line = line[:-2]
             outPy.write(line + '\n')
-        #store statement -----------------------------------------------------
+        #save statement -----------------------------------------------------
         #One optional argument:
         #    -the file name: string
         #generated code is a function call:
         #    self.save('file_name')
         elif isinstance(iltStmt, NodeStoreStmt):
             if len(iltStmt) > 1:               #Number of arguments: 0,1
-                raise UserException('The store statement can have 1 or no arguments.',
+                raise UserException('The save statement can have 1 or no arguments.',
                                     iltStmt.loc)
             outPy.write(indent + 'self.save(') #write start of statement
             for expr in iltStmt:               #iterate over arguments (max 1)
@@ -237,7 +237,7 @@ class StatementGenerator(object):
                     self.createFormula(expr)   #write filename
                 #anything else is illegal
                 else:
-                    raise UserException('Argument of store statement must be a file name.',
+                    raise UserException('Argument of save statement must be a file name.',
                                         iltStmt.loc)
             outPy.write(') \n')                #write end of statement
         #graph statement -----------------------------------------------------
