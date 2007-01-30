@@ -1,6 +1,5 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
-<!--The berlios server does support PHP. A PHP file could be placed here.-->
 
 <head>
   <title>SIML simulation language</title>
@@ -17,27 +16,7 @@
 <?php if( file_exists("header.html") ){ include("header.html"); } ?>
 
 <!--Navigation-->
-<div id="navigation">
-  <ul>
-    <li><A href="index.html">Home</A> </li>
-    <li><A href="examples.html">Examples</A> </li>
-    <li><A href="language.html">Language</A> </li>
-    <li><A href="installation.html">Installation</A> </li>
-    <li><A href="development.html">Development</A> </li>
-    <li><A href="https://developer.berlios.de/screenshots/?group_id=5610">Screenshots</A> </li>
-    <!--<strong>External at BerliOS</strong>-->
-    <li><A href="https://developer.berlios.de/projects/freeode/">BerliOS Summary</A> </li>
-    <li><A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">Download</A> </li>
-    <li>Python</li>
-    <li><A href="http://www.python.org/">Python project page</A></li>
-    <li><A href="http://www.scipy.org/">SciPy project page</A></li>
-    <li><A href="http://docs.python.org/tut/tut.html">Official Python Tutorial</A></li>
-    <li><A href="http://diveintopython.org/">Alternative Python tutorial</A></li>
-    <li><A href="http://www.amazon.com/gp/product/3540294155/">Python Scripting for Computational Science (Book)</A></li>
-    <li>IDE</li>
-    <li><A href="http://www.die-offenbachs.de/detlev/eric3.html">Eric</A></li>
-  </ul>
-</div>
+<?php if( file_exists("menu-left.html") ){ include("menu-left.html"); } ?>
 
 <!--<div id="info">
   <h2>info-Box</h2>
