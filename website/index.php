@@ -36,8 +36,10 @@
     Both dynamic and steady state simulations can be done.
     The
     <A href="http://www.scipy.org/">SciPy</A>
+    and
+    <A href="http://numpy.scipy.org/">NumP</A>
     libraries are used for the numerical computations. Currently only
-    <abbr TITLE="ordinary differential equations">ODE</abbr>
+   <abbr TITLE="ordinary differential equations">ODE</abbr>
     can be solved.
   </p>
   <p>
@@ -64,6 +66,14 @@
     <abbr title="integrated development environment">IDE</abbr>
     (which is for the commercial language Matlab).-->
 
+  <h2>License</h2>
+  <p>
+    The compiler is licensed under the
+    <abbr title="GNU General Public License">GPL</abbr>.
+    The runtime libraries are licensed under the
+    <abbr title="GNU Library General Public License">LGPL</abbr> so they can be linked to commercial
+    applications. The generated program can offcourse be licensed under any license you whish.
+  </p>
 
 
   <h2>Incomplete example session</h2>
