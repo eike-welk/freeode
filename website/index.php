@@ -28,9 +28,9 @@
 
   <h2>Intro</h2>
   <p>
-    The Freeode project provides a simple programming language, and a
-    matching compiler, to numerically solve differential equations. The compiler
-    produces source code in the interpreted language
+    The Freeode project provides a simple programming language,
+    to numerically solve differential equations.
+    The compiler produces source code in the interpreted language
     <A href="http://www.python.org/">Python</A>,
     that performs the numerical computations.
     Both dynamic and steady state simulations can be done.
@@ -39,11 +39,11 @@
     and
     <A href="http://numpy.scipy.org/">NumP</A>
     libraries are used for the numerical computations. Currently only
-   <abbr TITLE="ordinary differential equations">ODE</abbr>
+    <abbr TITLE="ordinary differential equations">ODE</abbr>
     can be solved.
   </p>
   <p>
-    The generated Python code can be used with a minimal main program, or in an
+    The generated Python code can be used as a stan-dalone program, or in an
     interactive Python session. Especially can the generated Python objects be used
     as building blocks of more complex programs. The programmer is freed
     from the relatively mechanical task of implementing the simulation function, and
