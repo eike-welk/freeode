@@ -37,7 +37,7 @@ import pyparsing
 #version of the Siml compiler.
 #global variable defined here is valid for all parts of the program.
 global progVersion
-progVersion = '0.3.0'
+progVersion = '0.3.1'
 
 
 
@@ -45,12 +45,12 @@ class Node(object):
     '''
     Building block of a n-ary tree structure.
     The abstract syntax tree (AST), and the intermediate language tree (ILT),
-    are made of nodes that have this class as their base class. 
-    
+    are made of nodes that have this class as their base class.
+
     Usage:
-    >>> t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'), 
+    >>> t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'),
     ...            Node([],5,'leaf')], 1, 'root')
-    
+
     print tree (loc attribute is abused here)(<BLANKLINE> does not work):
     > print t1
     Node:: dat: root loc: 1
@@ -58,22 +58,22 @@ class Node(object):
     |   |   Node:: dat: leaf loc: 3
     |   |   Node:: dat: leaf loc: 4
     |   Node:: dat: leaf loc: 5
-    
+
     access to children with  [] operator:
     >>> t1[0][1]
     Node(,[], 4, 'leaf')
-    
+
     iterating over only the children of a node:
     >>> for n in t1:
     ...     print n.loc
-    ... 
+    ...
     2
     5
-    
+
     iterating over the whole tree:
     >>> for n,d in t1.iterDepthFirst(returnDepth=True):
     ...     print n.dat, ' depth: ', d
-    ... 
+    ...
     root  depth:  0
     branch  depth:  1
     leaf  depth:  2
@@ -97,7 +97,7 @@ class Node(object):
         #the node's location in the parsed text
         self.loc  = loc
         '''the location in the program'''
-        self.dat = dat      
+        self.dat = dat
         '''any data; whatever is appropriate.'''
 
 
@@ -130,7 +130,7 @@ class Node(object):
     def __str__(self):
         '''Create pretty printed string represntation.'''
         return TreePrinter(self).toStringTree()
-        
+
     def __iter__(self):
         '''let for loop iterate over children'''
         return self.kids.__iter__()
@@ -138,29 +138,29 @@ class Node(object):
     def __len__(self):
         '''return number of children'''
         return len(self.kids)
-    
+
     def appendChild(self, inNode):
         '''Append node to list of children'''
         #test if child is a node
         if(not isinstance(inNode, Node)):
             raise TypeError('Children must inherit from Node!')
         self.kids.append(inNode)
-        
+
     def insertChild(self, index, inNode):
         '''
-        Insert node into list of children. 
+        Insert node into list of children.
         New child is inserted before the child at position self[index].
         '''
         #test if child is a node
         if(not isinstance(inNode, Node)):
             raise TypeError('Children must inherit from Node!')
         self.kids.insert(index, inNode)
-    
+
     #TODO: def __delitem__(self, key):
     def delChild(self, index):
         '''Delete child at specified index'''
         del self.kids[index]
-        
+
     def __getitem__(self, i):
         '''Access to childern through []'''
         return self.kids[i]
@@ -168,14 +168,14 @@ class Node(object):
         #return self.kids[low:high]
     #def __setslice__(self, low, high, childList):
         #self.kids[low:high] = seq
-        
+
 ##    def __cmp__(self, o):
 ##        return cmp(self.type, o)
 
     def iterDepthFirst(self, returnDepth=False):
         '''
         Iterate over whole (sub) tree in a depth first manner.
-        returnDepth :   if True the iterator returns a tuple (node, depth) otherwise it 
+        returnDepth :   if True the iterator returns a tuple (node, depth) otherwise it
                         returns only the current node.
         returns: a DepthFirstIterator instance
         '''
@@ -190,77 +190,77 @@ class Node(object):
 
 class NodeBuiltInVal(Node):
     '''
-    Represent a built in value in the AST. 
+    Represent a built in value in the AST.
     Example: pi
-    
+
     self.dat : string representing the value
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeBuiltInVal, self).__init__(kids, loc, dat)
-    
-    
+
+
 class NodeBuiltInFuncCall(Node):
     '''
-    Represent a built in function in the AST. 
+    Represent a built in function in the AST.
     Example: sin( ... )
-    
+
     self.dat  : the function's name
-    self.kids : the function's arguments 
-    '''    
+    self.kids : the function's arguments
+    '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeBuiltInFuncCall, self).__init__(kids, loc, dat)
-        
-        
+
+
 class NodeNum(Node):
     '''
-    Represent a real number in the AST. 
+    Represent a real number in the AST.
     Example: 123.5
-    Data attributes:    
+    Data attributes:
         kids    : []
         loc     : location in input string
         dat     : the number as a string
-    '''    
+    '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeNum, self).__init__(kids, loc, dat)
 
 
 class NodeString(Node):
     '''
-    Represent a string in the AST. 
+    Represent a string in the AST.
     Example: 'hello world'
-    Data attributes:    
+    Data attributes:
         kids    : []
         loc     : location in input string
         dat     : the string
-    '''    
+    '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeString, self).__init__(kids, loc, dat)
 
 
 class NodeParentheses(Node):
     '''
-    Represent a pair of parentheses that enclose an expression, in the AST. 
+    Represent a pair of parentheses that enclose an expression, in the AST.
     Example: ( ... )
-    Data attributes:    
+    Data attributes:
         kids[0] : the mathematical expression between the parentheses
         loc     : location in input string
         dat     : None
-    '''    
+    '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeParentheses, self).__init__(kids, loc, dat)
 
 
-class NodeOpInfix2(Node):     
+class NodeOpInfix2(Node):
     '''
     AST node for a (binary) infix operator: + - * / ^ and or
-    Data attributes:    
+    Data attributes:
         kids    : [LHS, RHS] both sides of the operator
         loc     : location in input string
         dat     : operator symbol e.g.: '+'
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeOpInfix2, self).__init__(kids, loc, dat)
-        
+
     def lhs(self):
         '''Return the left hand side'''
         return self.kids[0]
@@ -281,15 +281,15 @@ class NodeOpPrefix1(Node):
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeOpPrefix1, self).__init__(kids, loc, dat)
-        
+
     def rhs(self):
         '''Return the right hand side'''
         return self.kids[0]
     def operator(self):
         '''Return the operator (string)'''
         return self.dat
-    
-        
+
+
 class NodeIfStmt(Node):
     '''
     AST Node for an if ... the ... else statement
@@ -309,8 +309,8 @@ class NodeIfStmt(Node):
             return self.kids[2]
         else:
             return NodeStmtList()
-        
-        
+
+
 class NodeAssignment(Node):
     '''
     AST node for an assignment: '='
@@ -320,15 +320,15 @@ class NodeAssignment(Node):
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeAssignment, self).__init__(kids, loc, dat)
-        
+
     def lhs(self):
         '''Return the assignment's left hand side'''
         return self.kids[0]
     def rhs(self):
         '''Return the assignment's right hand side'''
         return self.kids[1]
-        
-        
+
+
 class NodeFuncExecute(Node):
     '''
     AST Node for inserting the code of a sub-model's member function.
@@ -336,56 +336,56 @@ class NodeFuncExecute(Node):
     Data attributes:
         kids        : []
         loc         : location in input string
-        dat         : None     
-        
+        dat         : None
+
         funcName   : Dotted name of the block. Tuple of strings:
                       ('model1','init')
     '''
     def __init__(self, kids=[], loc=None, dat=None, funcName=None):
         super(NodeFuncExecute, self).__init__(kids, loc, dat)
         self.funcName = funcName
-        
-        
+
+
 class NodePrintStmt(Node):
     '''
     AST Node for printing something to stdout.
     Data attributes:
         kids        : the expressions of the argument list
         loc         : location in input string
-        dat         : None     
-        
+        dat         : None
+
         newline     : if True: add newline to end of output;
                       if False: don't add newline.
     '''
     def __init__(self, kids=[], loc=None, dat=None, newline=True):
         super(NodePrintStmt, self).__init__(kids, loc, dat)
         self.newline = newline
-        
-        
+
+
 class NodeGraphStmt(Node):
     '''
     AST Node for creating a graph.
     Data attributes:
         kids        : the expressions of the argument list
         loc         : location in input string
-        dat         : None     
+        dat         : None
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeGraphStmt, self).__init__(kids, loc, dat)
-        
-        
+
+
 class NodeStoreStmt(Node):
     '''
     AST Node for storing variables
     Data attributes:
         kids        : the expressions of the argument list
         loc         : location in input string
-        dat         : None     
+        dat         : None
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeStoreStmt, self).__init__(kids, loc, dat)
-        
-        
+
+
 class NodeStmtList(Node):
     '''
     AST Node for list of statements
@@ -398,9 +398,9 @@ class NodeStmtList(Node):
 class AttributeRole(object):
     '''
     Constants to denote the role of an attribute.
-    
-    Intention to create someting like 
-    enums. Classes are objects in python; not only 
+
+    Intention to create someting like
+    enums. Classes are objects in python; not only
     class instances.
     '''
     pass
@@ -427,28 +427,28 @@ class NodeAttrDef(Node):
     Data attributes:
         kids        : []
         loc         : location in input string
-        dat         : None     
-        
-        attrName        : name of the attribute. can be dotted name which is stored 
+        dat         : None
+
+        attrName        : name of the attribute. can be dotted name which is stored
                           as a tuple of strings: ('aa', 'bb')
         className       : type of the attribute; possibly dotted name: ('aa', 'bb')
-        role            : Is this attribute a state or algebraic variable, 
+        role            : Is this attribute a state or algebraic variable,
                           or a parameter? must be AttributeRole subclass.
-        targetName      : Name in the target language (dict). 
+        targetName      : Name in the target language (dict).
                           Variables with derivatives have multiple target names.
                           Example:
                           {():'v_foo', ('time',):'v_foo_dt'}
    '''
-    def __init__(self, kids=[], loc=None, dat=None, 
+    def __init__(self, kids=[], loc=None, dat=None,
                         attrName=None, className=None, role=RoleAny, targetName=None):
         super(NodeAttrDef, self).__init__(kids, loc, dat)
-        self.attrName = attrName 
+        self.attrName = attrName
         self.className = className
         self.role = role
-        #self.isAtomic = isAtomic 
-        self.targetName = targetName 
-    
-    
+        #self.isAtomic = isAtomic
+        self.targetName = targetName
+
+
 class NodeAttrAccess(Node):
     '''
     AST node for access to a variable or parameter.
@@ -456,35 +456,35 @@ class NodeAttrAccess(Node):
         kids    :  ? slice object if attribute is an array?
         loc     : location in input string
         dat     : None
-        
-        deriv      : Denote if a derivation operator acted on the attribute. 
+
+        deriv      : Denote if a derivation operator acted on the attribute.
                      Empty tuple means no derivation took place. can be:
                      (,),('time',) or tuple of distibution domains
         attrName   : ['proc', 'model1', 'a'], list of strings; the dot separated name.
         targetName : name in the target language (string)
     '''
-    def __init__(self, kids=[], loc=None, dat=None, deriv=None, 
+    def __init__(self, kids=[], loc=None, dat=None, deriv=None,
                  attrName=None, targetName=None):
         super(NodeAttrAccess, self).__init__(kids, loc, dat)
         self.deriv = deriv
         self.attrName = attrName
         self.targetName = targetName
-                
+
 
 class NodeFuncDef(Node):
     """
     AST node for block (method, function?) definition.
-    
+
     A block can be seen as a method that only modifies the class' attributes.
-    It has neither arguments nor return values. It is treated as an C++ inline 
+    It has neither arguments nor return values. It is treated as an C++ inline
     function or template.
-    
+
     The block's childern are the statements.
     Data attributes:
         kids : The statements, the block's code.
         loc  : location in input string
         dat  : None
-        
+
         name : name of the block; tuple of strings: ('init',)
     """
     def __init__(self, kids=[], loc=None, dat=None, name=None):
@@ -499,10 +499,10 @@ class NodeClassDef(Node):
         kids      : The statements, the block's code.
         loc       : location in input string
         dat       : None
-        
+
         className : name of the class defined here.
         superName : name of the class, from which this class inherits;
-                    usually"process", "model" 
+                    usually"process", "model"
     """
     def __init__(self, kids=[], loc=None, dat=None, className=None, superName=None):
         super(NodeClassDef, self).__init__(kids, loc, dat)
@@ -520,20 +520,20 @@ class NodeProgram(Node):
 '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeProgram, self).__init__(kids, loc, dat)
-        
-        
+
+
 class DepthFirstIterator(object):
     """
     Iterate over each node of a (AST) tree, in a depth first fashion.
     Designed for Node and its subclasses. It works for other nodes though:
     The nodes must have the functions __getitem__ and __len__.
-    
+
     Usage:
-    >>> t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'), 
+    >>> t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'),
     ...            Node([],5,'leaf')], 1, 'root')
     >>> for n in DepthFirstIterator(t1):
     ...     print n.dat
-    ... 
+    ...
     root
     branch
     leaf
@@ -548,10 +548,10 @@ class DepthFirstIterator(object):
                       (node, depth) otherwise it only returns the current
                       node.
         """
-        self.stack = [(treeRoot, 0)] #tuples (node, childIndex). 
+        self.stack = [(treeRoot, 0)] #tuples (node, childIndex).
         self.depth = 0  #how deep we are in the tree.
         self.returnDepth = returnDepth #flag: shoult we return the current depth
-        self.start = True #remember that we've just been initialized 
+        self.start = True #remember that we've just been initialized
 
 
     def __iter__(self):
@@ -567,13 +567,13 @@ class DepthFirstIterator(object):
         #start: special handling
         if self.start:
             self.start = False
-            currNode, currChild = self.stack[-1] 
+            currNode, currChild = self.stack[-1]
             return self._handleReturnDepth(currNode, currChild)
 
-        #go to next node. 
+        #go to next node.
         #get current state, from top of stack
-        currNode, currChild = self.stack[-1] 
-                
+        currNode, currChild = self.stack[-1]
+
         #if all children visited: go up one or more levels
         while currChild == len(currNode):
             self.stack.pop()
@@ -587,7 +587,7 @@ class DepthFirstIterator(object):
         self.stack[-1] = (currNode, currChild+1)
         #get node that will be visited next
         nextNode = currNode[currChild]
-        #go to one level down, to current child. 
+        #go to one level down, to current child.
         self.stack.append((nextNode, 0))
         self.depth += 1
         #return the next node
@@ -604,7 +604,7 @@ class DepthFirstIterator(object):
 
 class TreePrinter(object):
     '''Print a tree of Node objects in a nice way.'''
-    
+
     indentWidth = 4
     '''Number of chars used for indentation. Must be >= 1'''
     wrapLineAt = 100
@@ -619,8 +619,8 @@ class TreePrinter(object):
         '''
         self.root = root
         '''tree's root node.'''
-            
-            
+
+
     def printTree(self):
         print self.toStringTree()
 
@@ -635,12 +635,12 @@ class TreePrinter(object):
                 wrapLineAt = len(indentStr)+60 #no: extend right margin
             else:
                 wrapLineAt = self.wrapLineAt #yes: normal wrap
-                
-            #First print class name and if desired node's ID 
+
+            #First print class name and if desired node's ID
             line = indentStr + node.__class__.__name__ + ':: ' #buffer one line
             if self.showID:
                 line += ' ID: ' + str(id(node))
-#            #special case for foreign objects 
+#            #special case for foreign objects
 #            if not isinstance(node, Node):
 #                treeStr += line + str(node) + '\n'
 #                continue
@@ -652,13 +652,13 @@ class TreePrinter(object):
                 if name1 == 'kids':
                     continue # the children are printed through the outer loop
                 string1 = name1 + ': ' + str(node.__dict__[name1]) + ' '
-                #Do the line wrapping 
+                #Do the line wrapping
                 if len(line) + len(string1) > wrapLineAt:
                     treeStr += line + '\n'
-                    line = indentStr + ': ' 
+                    line = indentStr + ': '
                 line += string1
             treeStr += line + '\n'
-                
+
         return treeStr
 
 
@@ -685,7 +685,7 @@ class UserException(Exception):
         self.message = message
         '''The error message'''
         self.loc = loc
-        '''Position in the input string, where the error occured. 
+        '''Position in the input string, where the error occured.
         Includes input string and file name'''
 
     def __str__(self):
@@ -701,36 +701,36 @@ class MultiErrorException(UserException):
             errTupList : iterable (list) with tuples (message, loc)
         '''
         #init base class with first error; at least kind of sensible
-        msg1, loc1 = errTupList[0] 
+        msg1, loc1 = errTupList[0]
         UserException.__init__(self, msg1, loc1)
         self.errTupList = errTupList
         '''iterable (list) with tuples (message, loc)'''
-        
+
     def __str__(self):
         errMsg = 'Error!\n'
         for msg1, loc1 in self.errTupList:
             errMsg += '%s \n    %s \n' % (msg1, str(self.loc))
         errMsg += '------------------------\n'
         errMsg += 'Total: %d Error(s).' % len(self.errTupList)
-        return errMsg  
+        return errMsg
 
-        
+
 
 class TextLocation(object):
     '''
     Store the location of parsed pattern, or error.
-    
+
     Includes the file's contents and the file's name.
-    Object is intended to be stored in a Node's self.loc 
+    Object is intended to be stored in a Node's self.loc
     data member.
     '''
-    
+
     def __init__(self, atChar=None, textString=None, fileName=None):
         super(TextLocation, self).__init__()
         self.atChar = atChar
         self.str = textString
         self.name = fileName
-        
+
     def isValid(self):
         '''
         Return True if a meaningful line number and collumn can be computed.
@@ -740,25 +740,25 @@ class TextLocation(object):
             return True
         else:
             return False
-        
+
     def lineNo(self):
         '''Compute the line number of the stored location.'''
         if self.atChar and self.str:
             return pyparsing.lineno(self.atChar, self.str)
         else:
             return 0
-        
+
     def col(self):
         '''Compute the column of the stored location.'''
         if self.atChar and self.str:
             return pyparsing.col(self.atChar, self.str)
         else:
             return 0
-    
+
     def fileName(self):
         '''Return the filename.'''
         return str(self.name)
-    
+
     def __str__(self):
         '''Return meaningfull string'''
         return 'File "' + self.fileName() + '", line ' + str(self.lineNo())
@@ -769,12 +769,12 @@ class TextLocation(object):
 import unittest
 
 class TestAST(unittest.TestCase):
-    
+
     def setUp(self):
         '''perform common setup tasks for each test'''
         #create test data; loc is abused as number for node identification
-        self.tree1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 
-                               2, 'branch'),  
+        self.tree1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')],
+                               2, 'branch'),
                           Node([],5,'leaf')], 1, 'root')
 
     def test__init__(self):
@@ -785,9 +785,9 @@ class TestAST(unittest.TestCase):
         self.assertRaises(TypeError, self.raise__init__1)
     def raise__init__1(self):
         Node('test')
-    
+
     #missing: test__repr__
-    
+
     def test__str__(self):
         #test printing and line wraping (it must not crash)
         #create additional node with many big attributes
@@ -806,18 +806,18 @@ class TestAST(unittest.TestCase):
         #to see it:
         #print
         #print self.tree1
-        
+
     def test__iter__(self):
         #iteration, immediate children
         l = []
         for node1 in self.tree1:
             l.append(node1.loc)
         self.assertEqual(l, [2, 5])
-        
-    def test__len__(self):   
+
+    def test__len__(self):
         self.assertEqual(2, len(self.tree1))
-    
-    def test__appendChild__(self):  
+
+    def test__appendChild__(self):
         self.tree1.appendChild(Node(loc=10))
         self.assertEqual(3, len(self.tree1))    #one child added
         self.assertEqual(10, self.tree1[2].loc) #at the end
@@ -825,7 +825,7 @@ class TestAST(unittest.TestCase):
     def raise__appendChild__(self):
         #append child checks the type
         self.tree1.appendChild('qwert')
-        
+
     def test__insertChild__(self):
         self.tree1.insertChild(0, Node(loc=10))
         self.assertEqual(3, len(self.tree1))    #one child added
@@ -834,19 +834,19 @@ class TestAST(unittest.TestCase):
     def raise__insertChild__(self):
         #append child checks the type
         self.tree1.insertChild(0, 'qwert')
-        
+
     def test__delChild(self):
         self.tree1.delChild(0)
         self.assertEqual(1, len(self.tree1))   #one child removed
         self.assertEqual(5, self.tree1[0].loc) #at the begining
-        
+
     def test__getitem__(self):
 #        print
 #        print self.tree1 #in case you need an overwiew
-        self.assertEqual(1, self.tree1.loc) 
-        self.assertEqual(2, self.tree1[0].loc) 
-        self.assertEqual(3, self.tree1[0][0].loc) 
-        
+        self.assertEqual(1, self.tree1.loc)
+        self.assertEqual(2, self.tree1[0].loc)
+        self.assertEqual(3, self.tree1[0][0].loc)
+
     def testIterDepthFirst(self):
         #iteration, all child nodes recursive
         l = []
@@ -858,46 +858,46 @@ class TestAST(unittest.TestCase):
         for node1, depth in self.tree1.iterDepthFirst(returnDepth=True):
             line = 'dat: %s, depth; %d' % (node1.dat, depth)
             l.append(line)
-        self.assertEqual(l, ['dat: root, depth; 0', 
-                             'dat: branch, depth; 1', 
-                             'dat: leaf, depth; 2', 
-                             'dat: leaf, depth; 2', 
+        self.assertEqual(l, ['dat: root, depth; 0',
+                             'dat: branch, depth; 1',
+                             'dat: leaf, depth; 2',
+                             'dat: leaf, depth; 2',
                              'dat: leaf, depth; 1'])
-    
+
     def testCopy(self):
         tree2 = self.tree1.copy() #create deep copy
         #assert that values are equal
         self.assertEqual(len(tree2), len(self.tree1))
-        self.assertEqual(tree2.loc, self.tree1.loc) 
-        self.assertEqual(tree2[0].loc, self.tree1[0].loc) 
-        self.assertEqual(tree2[0][0].loc, self.tree1[0][0].loc) 
+        self.assertEqual(tree2.loc, self.tree1.loc)
+        self.assertEqual(tree2[0].loc, self.tree1[0].loc)
+        self.assertEqual(tree2[0][0].loc, self.tree1[0][0].loc)
         #assert that copy created new objects
         self.assertNotEqual(id(tree2), id(self.tree1))
-        self.assertNotEqual(id(tree2[0]), id(self.tree1[0])) 
-        self.assertNotEqual(id(tree2[0][0]), id(self.tree1[0][0])) 
+        self.assertNotEqual(id(tree2[0]), id(self.tree1[0]))
+        self.assertNotEqual(id(tree2[0][0]), id(self.tree1[0][0]))
 
-        
-        
+
+
 if __name__ == '__main__':
     # Self-testing code goes here.
 
     #perform the doctests
     def doDoctest():
         import doctest
-        doctest.testmod()   
+        doctest.testmod()
     doDoctest()
-    
+
     #perform the unit tests
     #unittest.main() #exits interpreter
     suite = unittest.TestLoader().loadTestsFromTestCase(TestAST)
     unittest.TextTestRunner(verbosity=2).run(suite)
-    
+
 #    print 'Test the AST:'
-#    t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'), 
+#    t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'),
 #               Node([],5,'leaf')], 1, 'root')
 #    print 'print the tree'
 #    print t1
-#    
+#
 #    print 'test line wrapping'
 #    nBig = Node([])
 #    nBig.test1 = 'qworieoqwiruuqrw'
@@ -919,7 +919,7 @@ if __name__ == '__main__':
 #    print 'iterating over the whole tree:'
 #    for n,d in t1.iterDepthFirst(returnDepth=True):
 #        print n.dat, 'depth: ', d
-        
+
 else:
     # This will be executed in case the
     #    source has been imported as a

@@ -29,7 +29,7 @@ Parser for the SIML simulation language.
 
 
 #import debuger
-#import pdb    
+#import pdb
 #import operation system stuff
 import sys
 import os
@@ -58,16 +58,16 @@ class ParseStage(object):
     '''
     The syntax definition (BNF) resides here.
     Mainly a wrapper for the Pyparsing library. It combines lexer
-    and parser. 
-    The Pyparsing library generates a ParseResult objects. These objects 
+    and parser.
+    The Pyparsing library generates a ParseResult objects. These objects
     are replaced by ast.Node objects (really opjects inheriting from ast.Node)
     in the parse actions of this class.
 
-    Normally a file name is given to the class, and a tree of Node ojects is 
+    Normally a file name is given to the class, and a tree of Node ojects is
     returned. The program can also be entered as a string.
     Additionally the class can parse parts of a program: expressions.
-    
-    The parse* methods return a tree of Node objects; the abstract syntax 
+
+    The parse* methods return a tree of Node objects; the abstract syntax
     tree (AST)
 
     Usage:
@@ -80,7 +80,7 @@ class ParseStage(object):
     Define how much the parse result is modified, for easier debuging.
     0: normal operation. Compilaton does not work otherwise.
     1: Do not modify parse result (from pyParsing library).
-    
+
     ParseResult objects are printed as nested lists: ['1', '+', ['2', '*', '3']]
     '''
 
@@ -97,16 +97,16 @@ class ParseStage(object):
         '''The parser object for the whole program (from pyParsing).'''
         self._expressionParser = None
         '''The parser for expressions'''
-        #self._lastStmtLocator = StoreLoc(self) 
+        #self._lastStmtLocator = StoreLoc(self)
         self._locLastStmt = TextLocation()
-        '''Object to remember location of last parsed statement; for 
+        '''Object to remember location of last parsed statement; for
            error message creation.'''
         self.progFileName = None
         '''Name of SIML program file, that will be parsed'''
         self.inputString = None
         '''String that will be parsed'''
         #Create parser objects
-        self._defineLanguageSyntax() 
+        self._defineLanguageSyntax()
 
 
     def defineKeyword(self, inString):
@@ -122,8 +122,8 @@ class ParseStage(object):
     def createTextLocation(self, atChar):
         '''Create a text location object at the given char'''
         return TextLocation(atChar, self.inputString, self.progFileName)
-    
-    
+
+
 #------------- Parse Actions -------------------------------------------------*
     def _actionDebug(self, str, loc, toks):
         '''Parse action for debuging.'''
@@ -152,12 +152,12 @@ class ParseStage(object):
     def _actionStoreStmtLoc(self, str, loc, toks):
         '''
         Remember location of last parsed statement. Useful for error
-        error message creation, since the locations of pyparsing's 
+        error message creation, since the locations of pyparsing's
         syntax errors are frequenly quit off.
         '''
         self._locLastStmt = self.createTextLocation(loc)
-        
-        
+
+
     def _actionBuiltInValue(self, str, loc, toks):
         '''
         Create AST node for a built in value: pi, time
@@ -169,11 +169,11 @@ class ParseStage(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         #create AST node
         nCurr = NodeBuiltInVal()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.dat = tokList[0] #Store the built in value's name
         return nCurr
-    
-    
+
+
     def _actionNumber(self, str, loc, toks):
         '''
         Create node for a number: 5.23
@@ -184,11 +184,11 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeNum()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.dat = tokList[0] #Store the number
-        return nCurr    
-    
-    
+        return nCurr
+
+
     def _actionString(self, str, loc, toks):
         '''
         Create node for a string: 'qwert'
@@ -199,12 +199,12 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeString()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         #nCurr.dat = tokList #Store the string
-        nCurr.dat = tokList[1:-1] #Store the string; remove quotes 
-        return nCurr    
-    
-    
+        nCurr.dat = tokList[1:-1] #Store the string; remove quotes
+        return nCurr
+
+
     def _actionFunctionCall(self, str, loc, toks):
         '''
         Create node for function call: sin(2.1)
@@ -215,7 +215,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeBuiltInFuncCall()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.dat = tokList[0]  #function dentifier
         nCurr.kids=[tokList[2]] #child expression
         return nCurr
@@ -231,7 +231,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeParentheses()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.kids = [tokList[1]] #store child expression
         return nCurr
 
@@ -246,7 +246,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpPrefix1()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.dat = tokList[0]  #Store operator
         nCurr.kids=[tokList[1]] #Store child tree
         return nCurr
@@ -262,7 +262,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpInfix2()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         #create children and store operator
         lhsTree = tokList[0]   #child lhs
         nCurr.dat = tokList[1] #operator
@@ -281,7 +281,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeAttrAccess()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         #Look if there is a '$' that indicates time derivatives
         if tokList[0] == '$':
             nCurr.deriv = ('time',)
@@ -295,16 +295,16 @@ class ParseStage(object):
         '''
         Create node for if ... : ... else: ... statement.
         BNF:
-        ifStatement = Group(kw('if') + boolExpression + ':' 
-                            + statementList 
+        ifStatement = Group(kw('if') + boolExpression + ':'
+                            + statementList
                             + Optional(kw('else') +':' + statementList)
-                            + kw('end'))                            
+                            + kw('end'))
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeIfStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         #if ... then ... end
         if len(tokList) == 5:
             condition = tokList[1]
@@ -331,7 +331,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeAssignment()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         #create children and store operator
         lhsTree = tokList[0]   #child lhs
         nCurr.dat = tokList[1] #operator
@@ -342,80 +342,80 @@ class ParseStage(object):
 
     def _actionFuncExecute(self, str, loc, toks):
         '''
-        Create node for execution of a function (insertion of the code): 
+        Create node for execution of a function (insertion of the code):
             call foo.init()
         BNF:
-        funcExecute = Group(kw('call') 
+        funcExecute = Group(kw('call')
                              + dotIdentifier    .setResultsName('funcName')
                              + '(' + ')'
                              + ';')             .setParseAction(self._createBlockExecute)\
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be 
+        #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeFuncExecute()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.funcName = tuple(toks.funcName)    #full (dotted) function name
         return nCurr
 
-    
+
     def _actionPrintStmt(self, str, loc, toks):
         '''
-        Create node for print statement: 
+        Create node for print statement:
             print 'hello', foo.x
         BNF:
-        printStmt = Group(kw('print') + exprList  .setResultsName('argList') 
-                          + Optional(',')         .setResultsName('trailComma') 
+        printStmt = Group(kw('print') + exprList  .setResultsName('argList')
+                          + Optional(',')         .setResultsName('trailComma')
                           + ';')                  .setParseAction(self._actionPrintStmt)\
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be 
+        #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodePrintStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.kids = toks.argList.asList()
         if toks.trailComma:
             nCurr.newline = False
         return nCurr
-    
+
 
     def _actionGraphStmt(self, str, loc, toks):
         '''
-        Create node for graph statement: 
+        Create node for graph statement:
             graph foo.x, foo.p
         BNF:
-        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList') 
+        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
                           + ';')                  .setParseAction(self._actionDebug)\
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be 
+        #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeGraphStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.kids = toks.argList.asList()
         return nCurr
-    
+
 
     def _actionStoreStmt(self, str, loc, toks):
         '''
-        Create node for graph statement: 
+        Create node for graph statement:
             graph foo.x, foo.p
         BNF:
-        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList') 
+        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
                           + ';')                  .setParseAction(self._actionDebug)\
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be 
+        #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeStoreStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.kids = toks.argList.asList()
         return nCurr
-    
+
 
     def _actionStatementList(self, str, loc, toks):
         '''
@@ -427,7 +427,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeStmtList()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         #create children - each child is a statement
         for tok in tokList:
             nCurr.kids.append(tok)
@@ -436,67 +436,67 @@ class ParseStage(object):
 
     def _actionAttrDefinition(self, str, loc, toks):
         '''
-        Create node for defining parameter, variable or submodel: 
+        Create node for defining parameter, variable or submodel:
             'data foo, bar: baz.boo parameter;
         One such statement can define multiple parmeters; and an individual
-        NodeAttrDef is created for each. They are returned together inside a 
+        NodeAttrDef is created for each. They are returned together inside a
         list node of type NodeAttrDefMulti.
         BNF:
-        attrNameList = Group( identifier + 
+        attrNameList = Group( identifier +
                                 ZeroOrMore(',' + identifier))
         attrRole = kw('parameter') | kw('variable')
         #parse 'data foo, bar: baz.boo parameter;
-        attributeDef = Group(kw('data') 
-                             + attrNameList                          .setResultsName('attrNameList') 
-                             + ':' + dotIdentifier                   .setResultsName('className') 
-                             + Optional(attrRole)                    .setResultsName('attrRole') 
-                             + ';')                                  
+        attributeDef = Group(kw('data')
+                             + attrNameList                          .setResultsName('attrNameList')
+                             + ':' + dotIdentifier                   .setResultsName('className')
+                             + Optional(attrRole)                    .setResultsName('attrRole')
+                             + ';')
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be 
+        #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         #multiple attributes can be defined in a single statement
         #Create a node for each of them and put them into a statemnt list
-        attrDefList = NodeStmtList(loc=self.createTextLocation(loc)) 
+        attrDefList = NodeStmtList(loc=self.createTextLocation(loc))
         nameList = toks.attrNameList.asList()
         for name in nameList:
             attrDef = NodeAttrDef(loc=self.createTextLocation(loc))
             attrDef.attrName = tuple([name]) #store attribute name
             attrDef.className = tuple(toks.className.asList())  #store class name
-            #store the role 
+            #store the role
             if toks.attrRole == 'parameter':
                 attrDef.role = RoleParameter
             else:
-                #we do not know if variable or parameter; submodels will be 
-                #labled variables even thoug these categories don't apply 
+                #we do not know if variable or parameter; submodels will be
+                #labled variables even thoug these categories don't apply
                 #to them.
-                attrDef.role = RoleVariable 
+                attrDef.role = RoleVariable
             attrDefList.appendChild(attrDef)
-        #Special case: only one attribute defined 
+        #Special case: only one attribute defined
         if len(attrDefList) == 1:
             return attrDefList[0] #take it out of the list and return it
         else:
             return attrDefList #return list with multiple definitions
-        
+
 
     def _actionFuncDefinition(self, str, loc, toks):
         '''
-        Create node for definition of a (member) function: 
+        Create node for definition of a (member) function:
             func init(): a=1; end
         BNF:
-        memberFuncDef = Group(kw('func') 
-                              + identifier                           .setResultsName('funcName') 
+        memberFuncDef = Group(kw('func')
+                              + identifier                           .setResultsName('funcName')
                               + '(' + ')' + ':'
                               + ZeroOrMore(statement)                .setResultsName('funcBody', True)
                               + kw('end'))        '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be 
+        #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeFuncDef()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
-        #store name of block 
+        nCurr.loc = self.createTextLocation(loc) #Store position
+        #store name of block
         nCurr.name = (toks.funcName,)
         #create children - each child is a statement
         statements = []
@@ -509,23 +509,23 @@ class ParseStage(object):
 
     def _actionClassDef(self, str, loc, toks):
         '''
-        Create node for definition of a class: 
+        Create node for definition of a class:
             class foo(Model): ... end
         BNF:
-        classDef = Group(kw('class') 
+        classDef = Group(kw('class')
                          + identifier                 .setResultsName('className')
                          + '(' + dotIdentifier        .setResultsName('superName')
-                         + ')' + ':' 
+                         + ')' + ':'
                          + OneOrMore(attributeDef)    .setResultsName('attributeDef', True)
                          + ZeroOrMore(memberFuncDef)  .setResultsName('memberFuncDef', True)
                          + kw('end'))
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be 
+        #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeClassDef()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         #store class name and name of super class
         nCurr.className = (toks.className,)
         nCurr.superName = tuple(toks.superName)
@@ -550,7 +550,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeProgram()
-        nCurr.loc = self.createTextLocation(loc) #Store position 
+        nCurr.loc = self.createTextLocation(loc) #Store position
         #create children - each child is a class
         for tok in tokList:
             nCurr.kids.append(tok)
@@ -573,6 +573,7 @@ class ParseStage(object):
                                                                     .setName('builtInValue')#.setDebug(True)
 
         #Functions that are built into the language
+        #TODO: min() max()
         builtInFuncName = (  kw('sin') | kw('cos') | kw('tan') |
                              kw('sqrt') | kw('exp') | kw('ln')   )  .setName('builtInFuncName')#.setDebug(True)
 
@@ -608,7 +609,7 @@ class ParseStage(object):
                                                                     .setName('funcCall')#.setDebug(True)
         parentheses = Group('(' + expression + ')')                 .setParseAction(self._actionParenthesesPair) \
                                                                     .setName('parentheses')#.setDebug(True)
-        atom = ( uNumber | stringConst | builtInValue | 
+        atom = ( uNumber | stringConst | builtInValue |
                  funcCall | valAccess | parentheses     )           .setName('atom')#.setDebug(True)
 
         #The basic mathematical operations: -a+b*c^d.
@@ -663,40 +664,40 @@ class ParseStage(object):
 #------------------- Statements ---------------------------------------------------------------
         statementList = Forward()
         #Flow control - if then else
-        ifStatement = Group(kw('if') + boolExpression + ':' 
-                            + statementList 
-                            + Optional(kw('else') +':' + statementList) 
+        ifStatement = Group(kw('if') + boolExpression + ':'
+                            + statementList
+                            + Optional(kw('else') +':' + statementList)
                             + kw('end'))                             .setParseAction(self._actionIfStatement)\
                                                                      .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
         assignment = Group(valAccess + '=' + boolExpression + ';')       .setParseAction(self._actionAssignment)\
                                                                      .setName('assignment')#.setDebug(True)
-        #execute a block - insert code of a child model 
+        #execute a block - insert code of a child model
         #function arguments are currently missing
-        funcExecute = Group(kw('call') 
+        funcExecute = Group(kw('call')
                              + dotIdentifier                         .setResultsName('funcName')
                              + '(' + ')'
                              + ';')                                  .setParseAction(self._actionFuncExecute)\
                                                                      .setName('blockExecute')#.setDebug(True)
         #parse: '2, foo.bar, 3*sin(baz)
         commaSup = Literal(',').suppress()
-        exprList = Group(expression 
+        exprList = Group(expression
                          + ZeroOrMore(commaSup + expression))    .setName('exprList')
-        #print something to stdout 
-        printStmt = Group(kw('print') + exprList                     .setResultsName('argList') 
-                          + Optional(',')                            .setResultsName('trailComma') 
+        #print something to stdout
+        printStmt = Group(kw('print') + exprList                     .setResultsName('argList')
+                          + Optional(',')                            .setResultsName('trailComma')
                           + ';')                                     .setParseAction(self._actionPrintStmt)\
                                                                      .setName('printStmt')#.setDebug(True)
-        #---show graphs 
-        graphStmt = Group(kw('graph') + exprList                     .setResultsName('argList') 
+        #---show graphs
+        graphStmt = Group(kw('graph') + exprList                     .setResultsName('argList')
                           + ';')                                     .setParseAction(self._actionGraphStmt)\
                                                                      .setName('graphStmt')#.setDebug(True)
         #store to disk
-        storeStmt = Group(kw('save') + Group(Optional(stringConst)) .setResultsName('argList') 
+        storeStmt = Group(kw('save') + Group(Optional(stringConst)) .setResultsName('argList')
                           + ';')                                     .setParseAction(self._actionStoreStmt)\
                                                                      .setName('storeStmt')#.setDebug(True)
 
-        statement = (storeStmt | graphStmt | printStmt | 
+        statement = (storeStmt | graphStmt | printStmt |
                      funcExecute | ifStatement | assignment)         .setParseAction(self._actionStoreStmtLoc)\
                                                                      .setName('statement')#.setDebug(True)
         statementList << Group(OneOrMore(statement))                 .setParseAction(self._actionStatementList)\
@@ -706,28 +707,28 @@ class ParseStage(object):
         #define parameters, variables and submodels
         #commaSup = Literal(',').suppress()
         #parse: 'foo, bar, baz
-        attrNameList = Group(identifier 
+        attrNameList = Group(identifier
                              + ZeroOrMore(commaSup + identifier))    .setName('attrNameList')
         attrRole = kw('parameter') | kw('variable')
         #parse 'data foo, bar: baz.boo parameter;
-        attributeDef = Group(kw('data') 
-                             + attrNameList                          .setResultsName('attrNameList') 
-                             + ':' + dotIdentifier                   .setResultsName('className') 
-                             + Optional(attrRole)                    .setResultsName('attrRole') 
+        attributeDef = Group(kw('data')
+                             + attrNameList                          .setResultsName('attrNameList')
+                             + ':' + dotIdentifier                   .setResultsName('className')
+                             + Optional(attrRole)                    .setResultsName('attrRole')
                              + ';')                                  .setParseAction(self._actionAttrDefinition)\
                                                                      .setName('attributeDef')#.setDebug(True)
         #define member function (method) - function arguments are currently missing
-        memberFuncDef = Group(kw('func') 
-                              + identifier                           .setResultsName('funcName') 
+        memberFuncDef = Group(kw('func')
+                              + identifier                           .setResultsName('funcName')
                               + '(' + ')' + ':'
                               + ZeroOrMore(statement)                .setResultsName('funcBody', True)
                               + kw('end'))                           .setParseAction(self._actionFuncDefinition)\
                                                                      .setName('memberFuncDef')#.setDebug(True)
         #definition of a class (process, model, type?)
-        classDef = Group(kw('class') 
+        classDef = Group(kw('class')
                          + identifier                                .setResultsName('className')
                          + '(' + dotIdentifier                       .setResultsName('superName')
-                         + ')' + ':' 
+                         + ')' + ':'
                          + ZeroOrMore(attributeDef)                  .setResultsName('attributeDef', True)
                          + ZeroOrMore(memberFuncDef)                 .setResultsName('memberFuncDef', True)
                          + kw('end'))                                .setParseAction(self._actionClassDef)\
@@ -735,7 +736,7 @@ class ParseStage(object):
 
         program = Group(OneOrMore(classDef))                        .setParseAction(self._actionProgram)\
                                                                     .setName('program')#.setDebug(True)
-        
+
         #special rule against incomplete parsing and faillure without error message
         file = program + StringEnd()
         #................ End of language definition ..................................................
@@ -752,8 +753,8 @@ class ParseStage(object):
         #store parsers
         self._parser = startSymbol
         self._expressionParser = boolExpression
-        
-    
+
+
     def parseExpressionStr(self, inString):
         '''Parse a single expression. Example: 2*a+b'''
         self.inputString = inString
@@ -798,9 +799,9 @@ class ParseStage(object):
 #    Functor class to store the location of a parsed pattern.
 #    The location is stored in the data member:
 #        self.loc
-#        
+#
 #    An instance of this class is given to a parser as a parse action.
-#    every time the parser succeeds the __call__ method is executed, and 
+#    every time the parser succeeds the __call__ method is executed, and
 #    the location of the parser's match is stored.
 #    '''
 #    #TODO: replace by parse action
@@ -810,27 +811,27 @@ class ParseStage(object):
 #        '''The stored location or None, if parse action is never executed.'''
 #        self.parser = parser
 #        '''Parser for which this class works'''
-#        
+#
 #    def __call__(self, str, loc, toks):
 #        '''The parse action that stores the location.'''
-#        self.loc = TextLocation(loc, self.parser.inputString, 
+#        self.loc = TextLocation(loc, self.parser.inputString,
 #                                self.parser.progFileName)
-        
+
 
 
 class ILTGenException(Exception):
     '''Exception thrown by the ILT-Process Generator (Compiler internal error)'''
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args, **kwargs)
-        
-        
-        
+
+
+
 class ILTProcessGenerator(object):
     '''
     Generate process for the intermediate language tree (ILT).
-    
-    Takes a process from the AST and generates a new process. This new process 
-    contains the atributes of all submodels. The code of the submodels' blocks 
+
+    Takes a process from the AST and generates a new process. This new process
+    contains the atributes of all submodels. The code of the submodels' blocks
     is inserted (imlined) into the new process' blocks.
     The new process is a 'flattened' version of the original structured process.
     '''
@@ -851,11 +852,11 @@ class ILTProcessGenerator(object):
         '''State variables of the new process; {('mod1', 'var1'):NodeAttrDef}'''
         self.atomicClasses = set([('Real',),('Distribution',),('DistributionDomain',)])
         '''Classes that have no internal structure'''
-        
-        #populate self.classes and self.processes 
+
+        #populate self.classes and self.processes
         self.findClassesInAst()
 
-    
+
     def findClassesInAst(self):
         '''
         Extract all class definitions from the ast and put them into self.classes.
@@ -864,88 +865,88 @@ class ILTProcessGenerator(object):
         for classDef in self.astRoot:
             #check for duplicate classes
             if classDef.className in self.astClasses:
-                raise UserException('Redefinition of class: %s' 
-                                    % makeDotName(classDef.className), 
+                raise UserException('Redefinition of class: %s'
+                                    % makeDotName(classDef.className),
                                     classDef.loc)
             self.astClasses[classDef.className] = classDef
-                
+
 
     def addBuiltInParameters(self):
         '''
         Some parameters exist without beeing defined; create them here.
-        
+
         -In a later stage they could be inherited from a base class.
-        -This method could be expanded into a more general mechanism for 
+        -This method could be expanded into a more general mechanism for
          built-in values, like pi.
         '''
         #Put solutionparameters as first attribute into the process
-        solParAttr = NodeAttrDef(loc=0, attrName=('solutionParameters',), 
+        solParAttr = NodeAttrDef(loc=0, attrName=('solutionParameters',),
                                  className=('solutionParametersClass',))
         self.astProcess.insertChild(0, solParAttr)
-        
-        
+
+
     def findAttributesRecursive(self, astClass, namePrefix=tuple(), recursionDepth=0):
         '''
         Find all of the process' attributes (recursing into the sub-models)
         and put then into self.astProcessAttributes.
-        
+
         Attributes are: parameters, variables, sub-models, and functions.
         The definition in the AST is searched NOT the new process.
-        
+
         Arguments:
-            astClass   : class definition from the AST (NodeClassDef), 
+            astClass   : class definition from the AST (NodeClassDef),
                          or NodeAttrDefMulti, NodeStmtList
-            namePrefix : tuple of strings. Prefix for the dotted name of the 
+            namePrefix : tuple of strings. Prefix for the dotted name of the
                          class' attributes.
-        Output: 
-            self.astProcessAttributes : dict: {('mod1', 'var1'):NodeAttrDef} 
+        Output:
+            self.astProcessAttributes : dict: {('mod1', 'var1'):NodeAttrDef}
         '''
         #check recursion depth
         maxRecursionDepth = 100
         if recursionDepth > maxRecursionDepth:
-            raise UserException('maximum submodel nesting depth (%d) exeeded' 
-                                % (maxRecursionDepth), 
+            raise UserException('maximum submodel nesting depth (%d) exeeded'
+                                % (maxRecursionDepth),
                                 astClass.loc)
         #each of the class' children is a definition or a list of definitions
         for attrDef in astClass:
-            #inspect Node type 
+            #inspect Node type
             #list of definitions - look into list: recurse
             if isinstance(attrDef, NodeStmtList):
                 self.findAttributesRecursive(attrDef, namePrefix, #note same name prefix
                                              recursionDepth+1)
-                continue #do not create an attribute for the list Node 
+                continue #do not create an attribute for the list Node
             #definition of data attribute or submodel: get name, store attribute
-            elif isinstance(attrDef, NodeAttrDef): 
+            elif isinstance(attrDef, NodeAttrDef):
                 attrName = attrDef.attrName
             #definition of method (function): get name, store attribute
-            elif isinstance(attrDef, NodeFuncDef): 
+            elif isinstance(attrDef, NodeFuncDef):
                 attrName = attrDef.name
             else:
                 raise ILTGenException('Unknown Node.' + repr(attrDef))
-            
+
             #store attribute in dict
-            #prepend prefix to attribute name 
+            #prepend prefix to attribute name
             longAttrName = namePrefix + attrName
             #Check redefinition
             if longAttrName in self.astProcessAttributes:
-                raise UserException('Redefinition of: ' + 
+                raise UserException('Redefinition of: ' +
                                     makeDotName(longAttrName), attrDef.loc)
             #put new attribute into dict.
             self.astProcessAttributes[longAttrName] = attrDef
-            
-            #recurse into submodel, if definition of submodel 
+
+            #recurse into submodel, if definition of submodel
             if isinstance(attrDef, NodeAttrDef) and \
-              (not attrDef.className in self.atomicClasses):                
+              (not attrDef.className in self.atomicClasses):
                 #User visible error if class does not exist
                 if not attrDef.className in self.astClasses:
-                    raise UserException('Undefined class: ' 
-                                        + makeDotName(attrDef.className), 
+                    raise UserException('Undefined class: '
+                                        + makeDotName(attrDef.className),
                                         attrDef.loc)
                 subModel = self.astClasses[attrDef.className]
-                self.findAttributesRecursive(subModel, longAttrName, 
+                self.findAttributesRecursive(subModel, longAttrName,
                                              recursionDepth+1)
-        
-        
+
+
     def copyDataAttributes(self):
         '''
         Copy variables and parameters from all submodels into the procedure
@@ -958,22 +959,22 @@ class ILTProcessGenerator(object):
             if (not isinstance(defStmt, NodeAttrDef)) or \
                (not defStmt.className in self.atomicClasses):
                 continue
-            newAttr = defStmt.copy() #copy definition, 
+            newAttr = defStmt.copy() #copy definition,
             newAttr.attrName = longName #exchange name with long name (a.b.c)
             self.process.appendChild(newAttr) #put new attribute into ILT process
             self.processAttributes[longName] = newAttr #and into quick access dict
         return
-       
-    
+
+
     def copyFuncRecursive(self, block, namePrefix, newBlock, illegalBlocks):
         '''
-        Copy block into newBlock recursively. 
-        Copies all statements of block and all statements of blocks that are 
+        Copy block into newBlock recursively.
+        Copies all statements of block and all statements of blocks that are
         executed in this block, recursively.
-            block          : A block definition 
+            block          : A block definition
             namePrefix     : a tuple of strings. prefix for all variable names.
             newBlock       : the statements are copied here
-            illegalBlocks  : blocks (functions) that can not be called 
+            illegalBlocks  : blocks (functions) that can not be called
                              (included) in this context.
         '''
         for statement in block:
@@ -983,17 +984,17 @@ class ILTProcessGenerator(object):
                 subModelName = subBlockName[:-1] #name of model, where block is defined
                 #Error if submodel or method does not exist
                 if not subModelName in self.astProcessAttributes:
-                    raise UserException('Undefined submodel: ' + 
+                    raise UserException('Undefined submodel: ' +
                                         makeDotName(subModelName), statement.loc)
                 if not subBlockName in self.astProcessAttributes:
-                    raise UserException('Undefined method: ' + 
+                    raise UserException('Undefined method: ' +
                                         makeDotName(subBlockName), statement.loc)
                 #Check if executing (inlining) this block is allowed
                 if statement.funcName in illegalBlocks:
-                    raise UserException('Method can not be executed here: ' + 
+                    raise UserException('Method can not be executed here: ' +
                                         makeDotName(statement.funcName), statement.loc)
                 #find definition of method, and recurse into it.
-                subBlockDef = self.astProcessAttributes[subBlockName] 
+                subBlockDef = self.astProcessAttributes[subBlockName]
                 self.copyFuncRecursive(subBlockDef, subModelName, newBlock, illegalBlocks)
             #Any other statement: copy statement
             else:
@@ -1010,7 +1011,7 @@ class ILTProcessGenerator(object):
 
     def checkUndefindedReferences(self, tree):
         '''
-        Look at all attribute accessors and see if the attributes exist in 
+        Look at all attribute accessors and see if the attributes exist in
         the new process.
         '''
         #iterate over all nodes in the syntax tree
@@ -1018,7 +1019,7 @@ class ILTProcessGenerator(object):
             if not isinstance(node, NodeAttrAccess):
                 continue
             if not (node.attrName) in self.processAttributes:
-                raise UserException('Undefined reference: ' + 
+                raise UserException('Undefined reference: ' +
                                     makeDotName(node.attrName), node.loc)
 
 
@@ -1026,17 +1027,17 @@ class ILTProcessGenerator(object):
     def findStateVariables(self, dynamicMethod):
         '''
         Search for variables with a $ and mark them:
-            1.: in their definition set role = RoleStateVariable; 
+            1.: in their definition set role = RoleStateVariable;
             2.: put them into self.stateVariables.
         All other variables are considered algebraic variables and in their
         definition role = RoleAlgebraicVariable.
         Arguments:
-            dynamicMethod : method definition that is searched (always the 
+            dynamicMethod : method definition that is searched (always the
                             dynamic/run method)
         output:
             self.stateVariables    : dict: {('a','b'):NodeAttrDef(...)}
-            definition of variable : role = RoleStateVariable if variable is 
-                                     state variable; 
+            definition of variable : role = RoleStateVariable if variable is
+                                     state variable;
                                      role = RoleAlgebraicVariable otherwise.
         '''
         #initialization: in all variable definitions set role = RoleAlgebraicVariable
@@ -1052,7 +1053,7 @@ class ILTProcessGenerator(object):
             if node.deriv != ('time',):
                 continue
             #OK, there is a '$' operator; the thing is a state variable
-            #get definition of variable 
+            #get definition of variable
             stateVarDef = self.processAttributes[node.attrName]
             #Check conceptual constraint: no $parameter allowed
             if stateVarDef.role == RoleParameter:
@@ -1061,9 +1062,9 @@ class ILTProcessGenerator(object):
             #remember: this is a state variable; in definition and in dict
             stateVarDef.role = RoleStateVariable
             self.stateVariables[node.attrName] = stateVarDef
-    
-    
-    
+
+
+
     def findParameters(self):
         '''Search for parameters (in the new procress) and return a dict'''
         #attrDef = NodeAttrDef()
@@ -1076,30 +1077,30 @@ class ILTProcessGenerator(object):
             #put parameter definition in dict
             paramDict[name] = attrDef
         return paramDict
-    
-    
-    
+
+
+
     def isPossibleParamPropagation(self, highParam, lowParam):
         '''
         Test for parameter propagation
-        
-        Example: 
-          propagate: mu   --> m1.mu, m2.mu        
-          propagate: m1.l --> m1.sm1.l, m1.sm2.l  
-          no       : m1.l --> m2.l, l             
+
+        Example:
+          propagate: mu   --> m1.mu, m2.mu
+          propagate: m1.l --> m1.sm1.l, m1.sm2.l
+          no       : m1.l --> m2.l, l
 
         Arguments:
             tail   : tuple of strings
             bigSeq : tuple of strings
         Return:
-            True if the last elements of bigSeq are equal to tail. 
+            True if the last elements of bigSeq are equal to tail.
             False otherwise.
         '''
-        #name of high level parameter must be shorter (otherwise it 
+        #name of high level parameter must be shorter (otherwise it
         #is not from higher level)
         if not (len(highParam) < len(lowParam)):
             return False
-        #last parts of names must be same. (Propagate to parameters of same 
+        #last parts of names must be same. (Propagate to parameters of same
         #name, but at lower level in hierarchy)
         if not (highParam[-1] == lowParam[-1]):
             return False
@@ -1109,23 +1110,23 @@ class ILTProcessGenerator(object):
             if not (highParam[i] == lowParam[i]):
                 return False
         return True
-    
-    
-    
+
+
+
     def propagateParameters(self, initMethod):
         '''
-        Propagate parameter values from models high in the hierarchy to their 
-        sub-models. Both conditions must be true, for Parameter propagation to 
+        Propagate parameter values from models high in the hierarchy to their
+        sub-models. Both conditions must be true, for Parameter propagation to
         happen:
-        1.: Both parameters have the same name (in high level model and in 
+        1.: Both parameters have the same name (in high level model and in
             child model)
         2.: Parameter is not initialized in child model
 
         This is currently done by deleting parameters in the child models
         and accessing parameters in the high level models instead.
-        
+
         Arguments:
-            initMethod : Definition of init method in ILT; for identifying 
+            initMethod : Definition of init method in ILT; for identifying
                          those parameters that are initialized
         Output:
             Deletes parameters;
@@ -1145,26 +1146,26 @@ class ILTProcessGenerator(object):
             #OK, this parameter is initialized, remember it
             initedParams.add(accPar.attrName)
         notInitedParams = set(parameters.keys()) - initedParams
-        
-        #for each initialized parametr: search for not initialized Parameter 
-        #to which the value can be propagated. (that has same name but is 
+
+        #for each initialized parametr: search for not initialized Parameter
+        #to which the value can be propagated. (that has same name but is
         #deeper in the model hierarchy.)
-        #Example: 
-        #  propagate: mu   --> m1.mu, m2.mu        
-        #  propagate: m1.l --> m1.sm1.l, m1.sm2.l  
-        #  no       : m1.l --> m2.l, l             
+        #Example:
+        #  propagate: mu   --> m1.mu, m2.mu
+        #  propagate: m1.l --> m1.sm1.l, m1.sm2.l
+        #  no       : m1.l --> m2.l, l
         initedParams = list(initedParams)
         #start with the names with the most dots (defined deep in submodels)
         initedParams.sort(key=len, reverse=True)
         paramReplaceDict = {}
         for iPar in initedParams:
             for nPar in notInitedParams.copy():
-                if self.isPossibleParamPropagation(iPar, nPar): 
-                    #we found parameter to rename 
+                if self.isPossibleParamPropagation(iPar, nPar):
+                    #we found parameter to rename
                     paramReplaceDict[nPar] = iPar #remember rename action
                     notInitedParams.remove(nPar)  #we cared for this parameter
         #print paramReplaceDict
-             
+
         #raise error for all still uninitialized parameters
         if len(notInitedParams) > 0:
             msg = 'In process %s' % self.astProcess.className
@@ -1176,7 +1177,7 @@ class ILTProcessGenerator(object):
                 loc = parameters[nPar].loc
                 errList.append((msg, loc))
             raise MultiErrorException(errList)
-       
+
         #rename all attribute accesses according to paramReplaceDict
         for accPar in self.process.iterDepthFirst():
             if not isinstance(accPar, NodeAttrAccess):
@@ -1185,7 +1186,7 @@ class ILTProcessGenerator(object):
             if not oldParamName in paramReplaceDict:
                 continue
             accPar.attrName = paramReplaceDict[oldParamName]
-            
+
         #delete replaced parameters
         for i in range(len(self.process)-1, -1, -1):
             defPar = self.process[i]
@@ -1195,9 +1196,9 @@ class ILTProcessGenerator(object):
             if not parName in paramReplaceDict:
                 continue
             self.process.delChild(i)
-    
-    
-    
+
+
+
     def checkDynamicMethodConstraints(self, block):
         '''See if the method is a valid dynamic method.'''
         #iterate over all nodes in the syntax tree and search for assignments
@@ -1206,18 +1207,18 @@ class ILTProcessGenerator(object):
                 continue
             lVal = node.lhs() #must be NodeValAccess
             lValDef = self.processAttributes[lVal.attrName]
-            #No assignment to parameters 
+            #No assignment to parameters
             if lValDef.role == RoleParameter:
-                raise UserException('Illegal assignment to parameter: ' + 
+                raise UserException('Illegal assignment to parameter: ' +
                                     makeDotName(lVal.attrName), lVal.loc)
             #No assignment to state variables - only to their time derivatives
             if lValDef.role == RoleStateVariable and (lVal.deriv != ('time',)):
-                raise UserException('Illegal assignment to state variable: ' + 
-                                    makeDotName(lVal.attrName) + 
-                                    '. You must however assign to its time derivative. ($' + 
+                raise UserException('Illegal assignment to state variable: ' +
+                                    makeDotName(lVal.attrName) +
+                                    '. You must however assign to its time derivative. ($' +
                                     makeDotName(lVal.attrName) +')', lVal.loc)
 
-    
+
     def checkInitMethodConstraints(self, block):
         '''See if the method is a valid init method.'''
         #iterate over all nodes in the syntax tree and search for variable accesses
@@ -1227,9 +1228,9 @@ class ILTProcessGenerator(object):
             #$ operators are illegal in init method
             if node.deriv == ('time',):
                 raise UserException('Time derivation illegal in init: ' +
-                                    str(node.attrName), node.loc) 
-            
-    
+                                    str(node.attrName), node.loc)
+
+
     def createProcess(self, inAstProc):
         '''generate ILT subtree for one process'''
         #store original process
@@ -1243,15 +1244,15 @@ class ILTProcessGenerator(object):
         self.processAttributes = {}
         self.astProcessAttributes = {}
         self.stateVariables = {}
-        
+
         #add some built in attributes to the AST process
         #this will be gone once inheritance is implemented
         self.addBuiltInParameters()
-        #discover all attributes 
+        #discover all attributes
         self.findAttributesRecursive(self.astProcess, tuple())
         #create the new process' data attributes
         self.copyDataAttributes()
-        
+
         #these are the prosess' main functions.
         #if they are not defined an empty function is created
         principalFuncs = set([('dynamic',),('init',),('final',)])
@@ -1264,64 +1265,64 @@ class ILTProcessGenerator(object):
             illegalFuncs = principalFuncs - set([('dynamic',)]) \
                            | set([('load',), ('store',), ('graph',)])
             #copy the function's statements from AST to ILT; recursive
-            self.copyFuncRecursive(self.astProcessAttributes[('dynamic',)], 
+            self.copyFuncRecursive(self.astProcessAttributes[('dynamic',)],
                                     tuple(), dynamicFunc, illegalFuncs)
         #create init function
-        initFunc = NodeFuncDef(name=('init',)) 
+        initFunc = NodeFuncDef(name=('init',))
         self.process.appendChild(initFunc) #put new block into process
         if ('init',) in self.astProcessAttributes:
             illegalFuncs = principalFuncs - set([('init',)])
-            self.copyFuncRecursive(self.astProcessAttributes[('init',)], 
-                                    tuple(), initFunc, illegalFuncs) 
+            self.copyFuncRecursive(self.astProcessAttributes[('init',)],
+                                    tuple(), initFunc, illegalFuncs)
         #create final function
         finalFunc = NodeFuncDef(name=('final',))
         self.process.appendChild(finalFunc) #put new block into process
         if ('final',) in self.astProcessAttributes:
             illegalFuncs = principalFuncs - set([('final',)])
-            self.copyFuncRecursive(self.astProcessAttributes[('final',)], 
-                                    tuple(), finalFunc, illegalFuncs) 
+            self.copyFuncRecursive(self.astProcessAttributes[('final',)],
+                                    tuple(), finalFunc, illegalFuncs)
 
         self.checkUndefindedReferences(self.process) #Check undefined refference
         self.findStateVariables(dynamicFunc) #Mark state variables
         self.propagateParameters(initFunc) #rename some parameters
         self.checkDynamicMethodConstraints(dynamicFunc)
         self.checkInitMethodConstraints(initFunc)
-        
+
         #TODO: Check correct order of assignments (or initialization).
         #TODO: Check if all parameters and state vars have been initialized.
-        
+
         return self.process
 
-        
-    
+
+
 class ILTGenerator(object):
     '''
     Generate a tree that represents the intermediate language.
     intermediate language tree (ILT)
     '''
-   
+
     def __init__(self):
         super(ILTGenerator, self).__init__()
-   
-   
+
+
     def addBuiltInClasses(self, astRoot):
         '''
         Some classes exist without beeing defined; create them here.
-        
-        -This method could be expanded into a more general mechanism for 
+
+        -This method could be expanded into a more general mechanism for
          built-in values and functions, like pi, sin(x).
         '''
         #Create the solution parameters' definition
-        solPars = NodeClassDef(loc=0, className=('solutionParametersClass',), 
+        solPars = NodeClassDef(loc=0, className=('solutionParametersClass',),
                                superName=('Model',))
-        solPars.appendChild(NodeAttrDef(loc=0, attrName=('simulationTime',), 
+        solPars.appendChild(NodeAttrDef(loc=0, attrName=('simulationTime',),
                                         className=('Real',), role=RoleParameter))
-        solPars.appendChild(NodeAttrDef(loc=0, attrName=('reportingInterval',), 
+        solPars.appendChild(NodeAttrDef(loc=0, attrName=('reportingInterval',),
                                         className=('Real',), role=RoleParameter))
         #add solutionparameTers to AST, and update class dict
-        astRoot.insertChild(0, solPars) 
-    
-    
+        astRoot.insertChild(0, solPars)
+
+
     def createIntermediateTree(self, astRoot):
         '''generate ILT tree from AST tree'''
         #add built ins to AST
@@ -1332,19 +1333,19 @@ class ILTGenerator(object):
         #create ILT root node
         iltRoot = NodeProgram()
         iltRoot.loc = astRoot.loc
-        
+
         procGen = ILTProcessGenerator(astRoot)
         #search for processes in the AST and instantiate them in the ILT
         for processDef in astRoot:
-            if ((not isinstance(processDef, NodeClassDef)) or 
+            if ((not isinstance(processDef, NodeClassDef)) or
                 (not processDef.superName == ('Process',))):
                 continue
             newProc = procGen.createProcess(processDef)
             iltRoot.appendChild(newProc)
         return iltRoot
-    
-    
-    
+
+
+
 def doTests():
     '''Perform various tests.'''
 
@@ -1357,13 +1358,13 @@ def doTests():
 class Test(m.model):
     data V, h: Real;
     data A_bott, A_o, mu, q, g: Real parameter;
-    
+
     func dynamic():
         h = V/A_bott;
         $V = q - mu*A_o*sqrt(2*g*h);
         print 'h: ', h,;
     end
-    
+
     func init():
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
@@ -1374,11 +1375,11 @@ end
 class RunTest(process):
     data g: Real parameter;
     data test: Test;
-    
+
     func dynamic():
         call test.dynamic();
     end
-    
+
     func init():
         g = 9.81;
         call test.init();
@@ -1400,16 +1401,16 @@ end
     if flagTestILTGenerator:
         parser = ParseStage()
         iltGen = ILTGenerator()
-        
+
         astTree = parser.parseProgramStr(testProg1)
         print 'AST tree:'
         print astTree
- 
+
         iltTree = iltGen.createIntermediateTree(astTree)
         print 'ILT tree:'
         print iltTree
-        
-        
+
+
     #test the parser ----------------------------------------------------------------------
     #flagTestParser = True
     flagTestParser = False
