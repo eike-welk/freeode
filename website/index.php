@@ -43,7 +43,7 @@
     can be solved.
   </p>
   <p>
-    The generated Python code can be used as a stan-dalone program, or in an
+    The generated Python code can be used as a stand-dalone program, or in an
     interactive Python session. Especially can the generated Python objects be used
     as building blocks of more complex programs. The programmer is freed
     from the relatively mechanical task of implementing the simulation function, and
