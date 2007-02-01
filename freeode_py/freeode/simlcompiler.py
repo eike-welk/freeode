@@ -18,6 +18,11 @@
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
 
+'''
+Compiler main loop with hight level functions for parsing command line
+options, compiling and running the compiled program.
+'''
+
 
 #import pdb
 import optparse
@@ -39,21 +44,21 @@ class SimlCompilerMain(object):
         self.outputFileName = ''
         #which process should be run after compiling
         self.runSimulation = None #can be: None, 'all', '0', '1', ...
-        
-        
+
+
     def parseCmdLine(self):
         '''Parse the command line, and find out what the user wants from us.'''
         #set up parser for the command line aruments
         optPars = optparse.OptionParser(
                     usage='%prog <input_file> [-o <output_file>] [<options>]',
-                    description='Compiler for the Siml simulation language.', 
+                    description='Compiler for the Siml simulation language.',
                     version='%prog ' + ast.progVersion)
-        
-        optPars.add_option('-o', '--outfile', dest='outfile', 
-                           help='explicitly specify name of output file', 
+
+        optPars.add_option('-o', '--outfile', dest='outfile',
+                           help='explicitly specify name of output file',
                            metavar='<output_file>')
         optPars.add_option('-r', '--run', dest='runone',
-                           help='run generated simulation program after ' 
+                           help='run generated simulation program after '
                               + 'compiling. Specify which process to simulate '
                               + 'with number or use special value "all" '
                               + '(number counts from top).',
@@ -63,7 +68,7 @@ class SimlCompilerMain(object):
 #                           help='run all simulation processes after compiling')
         #do the parsing
         (options, args) = optPars.parse_args()
-        
+
         #get name of input file
         #self.inputFileName = None
         if len(args) > 0:
@@ -77,12 +82,12 @@ class SimlCompilerMain(object):
         else:
             inputFileExtension = '' #filename contained no '.' char
         inputFileBaseName = nameParts[0]
-            
+
         #see if file extension is good
         if inputFileExtension.lower() != 'siml':
             print 'warning: programs in the Siml language ' + \
                   'should have the extension ".siml"'
-        
+
         #get name of output file
         if options.outfile:
             #output file name is explicitly given
@@ -90,31 +95,31 @@ class SimlCompilerMain(object):
         else:
             #use inputFileName but replace extension with '.py'
             self.outputFileName = inputFileBaseName + '.py'
-        
+
         #see if user whishes to run the simulation after compiling
         if options.runone == 'all':
             self.runSimulation = 'all'
         elif options.runone: #anythin else is considered a number
             #test if argument is a number
-            try: 
+            try:
                 int(options.runone)
-            except: 
+            except:
                 optPars.error('option "-r": argument must be number or "all". I got: %s'
                               % options.runone)
             #convert into string containing a number
-            self.runSimulation = str(int(options.runone)) 
+            self.runSimulation = str(int(options.runone))
 #        #special option runall
 #        if options.runall:
 #            self.runSimulation = 'all'
-              
-    
+
+
     def doCompile(self):
         '''Do the work'''
         #create the top level objects that do the compilation
         parser = simlparser.ParseStage()
         iltGen = simlparser.ILTGenerator()
         progGen = pygenerator.ProgramGenerator()
-        
+
         #the compilation proper
         try:
             astTree = parser.parseProgramFile(self.inputFileName)
@@ -131,9 +136,9 @@ class SimlCompilerMain(object):
         except pyparsing.ParseException, theError:
             print 'syntax error: ', theError
             sys.exit(1)
-            
+
         #write generated program to file
-        try:    
+        try:
             outputFile = open(self.outputFileName,'w')
             outputFile.write(progStr)
             outputFile.close()
@@ -141,26 +146,26 @@ class SimlCompilerMain(object):
             modeBits = os.stat(self.outputFileName).st_mode
             os.chmod(self.outputFileName, modeBits | stat.S_IEXEC)
         except IOError, theError:
-            print 'error: could nor write output file\n', theError 
+            print 'error: could nor write output file\n', theError
             sys.exit(1)
-        
+
         print 'Compilation finished successfully.'
         #print 'input file: %s, output file: %s' % (self.inputFileName, self.outputFileName)
-     
-    
-    def runProgram(self):   
+
+
+    def runProgram(self):
         '''Run the generated program if the user wants it.'''
         if self.runSimulation == None:
             return
-        
+
         #optStr = ' -r %s' % self.runSimulation
-        cmdStr = 'python %s -r %s --prepend-newline' % (self.outputFileName, 
+        cmdStr = 'python %s -r %s --prepend-newline' % (self.outputFileName,
                                                         self.runSimulation)
         proc = Popen([cmdStr], shell=True, #bufsize=1000,
                      stdin=None, stdout=None, stderr=None, close_fds=True)
         print 'running generated program. PID: %d' % proc.pid
-        
-    
+
+
     def mainFunc(self):
         '''the main function'''
         try:
@@ -170,11 +175,11 @@ class SimlCompilerMain(object):
         except SystemExit:
             raise #for sys.exit() - the error message was already printed
         except Exception:
-            print 'Oh my golly! Compiler internal error!' 
+            print 'Oh my golly! Compiler internal error!'
             print 'Please file a bug report, that includes the traceback, at:\n',\
                   'https://developer.berlios.de/projects/freeode/\n'
-            raise 
-        
+            raise
+
         # 'return with success'
         sys.exit(0)
 
