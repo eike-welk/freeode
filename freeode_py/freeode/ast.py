@@ -321,9 +321,11 @@ class NodeAssignment(Node):
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeAssignment, self).__init__(kids, loc, dat)
 
+    #TODO: change to propperty; so value can be read and written through lhs, rhs
     def lhs(self):
         '''Return the assignment's left hand side'''
         return self.kids[0]
+    #TODO: change to propperty; so value can be read and written through lhs, rhs
     def rhs(self):
         '''Return the assignment's right hand side'''
         return self.kids[1]

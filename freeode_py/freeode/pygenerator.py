@@ -154,7 +154,7 @@ class StatementGenerator(object):
         elif isinstance(iltFormula, NodeBuiltInFuncCall):
             nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
                         'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
-                        'overrideParam':'_overrideParam' }
+                        'overrideParam':'self._overrideParam' }
             funcName = nameDict[iltFormula.dat] #get name of the corresponding Python function
             retStr = funcName + '('
             for funcArgument in iltFormula:
@@ -446,7 +446,7 @@ class ProcessGenerator(object):
 
         #create dict for parameter override
         outPy.write(ind8 + '#create dict for parameter override \n')
-        outPy.write(ind8 + 'ovd = self._createParamOverrideDict(args, kwArgs) \n')
+        outPy.write(ind8 + 'self._createParamOverrideDict(args, kwArgs) \n')
 
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')

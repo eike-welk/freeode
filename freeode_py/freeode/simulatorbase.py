@@ -72,6 +72,9 @@ class SimulatorBase(object):
         '''Length of the state vector'''
         self.algVectorLen = None
         '''Length of vector that contains the algebraic variables'''
+        self.paramOverrideDict = {}
+        '''Store alternative values for parameters. 
+           Written and read in initialize.'''
 
 
     def help(self):
@@ -202,24 +205,24 @@ class SimulatorBase(object):
             dict looking like this: {'g':10.81, 'm1.p1':23.23}
         '''
         #kwArgDict: every parameter name without dot is permissible        
-        ovrDict = kwArgDict
+        self.paramOverrideDict = kwArgDict
         #care for argList
         i = 0
         while i < len(argList):
             arg = argList[i]
             #argument is a dict. Put values into override dict
             if isinstance(arg, dict):
-                ovrDict.update(arg)
+                self.paramOverrideDict.update(arg)
             #suppose that argument is a string and next argument a float number
             else:
                 num = float(argList[i+1])
-                ovrDict[str(arg)] = num
+                self.paramOverrideDict[str(arg)] = num
                 i += 1
             i += 1
-        return ovrDict
+        return
     
     
-    def _overrideParam(self, paramName, overrideDict, originalValue):
+    def _overrideParam(self, paramName, originalValue):
         '''
         Replace the original parameter value from the SIML program
         with an other value; that is given when the program runs.
@@ -230,8 +233,8 @@ class SimulatorBase(object):
         returns:
             float number, either original value or value from overrideDict
         '''
-        if paramName in overrideDict:
-            return overrideDict[paramName]
+        if paramName in self.paramOverrideDict:
+            return self.paramOverrideDict[paramName]
         else:
             return originalValue
     
@@ -250,7 +253,7 @@ class SimulatorBase(object):
         '''
         pass
         #ovd = self._createParamOverrideDict(args, kwArgs)
-        #p_fnord = self._overrideParam('fnord', ovd, 23)
+        #p_fnord = self._overrideParam('fnord', 23)
 
 
     def dynamic(self, t, y, returnAlgVars=False):

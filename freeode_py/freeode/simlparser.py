@@ -1092,10 +1092,10 @@ class ILTProcessGenerator(object):
           no       : m1.l --> m2.l, l
 
         Arguments:
-            tail   : tuple of strings
-            bigSeq : tuple of strings
+            highParam : tuple of strings
+            lowParam  : tuple of strings
         Return:
-            True if the last elements of bigSeq are equal to tail.
+            True if propagation is possible.
             False otherwise.
         '''
         #name of high level parameter must be shorter (otherwise it
@@ -1138,7 +1138,7 @@ class ILTProcessGenerator(object):
         #classify parameters in: 1. explicitly initialized, 2. not initialized
         initedParams = set()
         for assignStmt in initMethod.iterDepthFirst():
-            #we want to look at assignments
+            #we only want to look at assignments
             if not isinstance(assignStmt, NodeAssignment):
                 continue
             #those assignments must assign values to parameters
@@ -1198,7 +1198,7 @@ class ILTProcessGenerator(object):
             if not parName in paramReplaceDict:
                 continue
             self.process.delChild(i)
-
+            self.processAttributes.pop(parName)
 
 
     def checkDynamicMethodConstraints(self, block):
@@ -1233,6 +1233,31 @@ class ILTProcessGenerator(object):
                                     str(node.attrName), node.loc)
 
 
+    def modifyInitMethod(self, method):
+        '''Modify init function for parameter value overriding'''
+        #TODO: Modify init function for parameter value overriding
+        parameters = self.findParameters() 
+        for assign in method.iterDepthFirst():
+            #we only want to see assignments
+            if not isinstance(assign, NodeAssignment):
+                continue
+            #the assignment must be to a parameter
+            paramName = assign.lhs().attrName
+            if not paramName in parameters:
+                continue
+            #OK: this is an assignment to a parameter
+            loc = assign.loc
+            #create the helper function for parameter overriding
+            funcNode = NodeBuiltInFuncCall([], loc, 'overrideParam')
+            paramNameNode = NodeString([], loc, makeDotName(paramName))
+            origExprNode = assign.rhs()
+            funcNode.appendChild(paramNameNode)
+            funcNode.appendChild(origExprNode)
+            #use helper function as new rhs
+            #TODO:use rhs propperty
+            assign.kids[1] = funcNode
+            
+            
     def createProcess(self, inAstProc):
         '''generate ILT subtree for one process'''
         #store original process
@@ -1293,7 +1318,9 @@ class ILTProcessGenerator(object):
         #TODO: Check correct order of assignments (or initialization).
         #TODO: Check if all parameters and state vars have been initialized.
 
-        #TODO: Modify init function for parameter value overriding
+        #Modify init function for parameter value overriding
+        self.modifyInitMethod(initFunc)
+        
         return self.process
 
 
