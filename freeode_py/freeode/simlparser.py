@@ -573,9 +573,9 @@ class ParseStage(object):
                                                                     .setName('builtInValue')#.setDebug(True)
 
         #Functions that are built into the language
-        #TODO: min() max()
         builtInFuncName = (  kw('sin') | kw('cos') | kw('tan') |
-                             kw('sqrt') | kw('exp') | kw('ln')   )  .setName('builtInFuncName')#.setDebug(True)
+                             kw('sqrt') | kw('exp') | kw('log') |
+                             kw('min') | kw('max')   )              .setName('builtInFuncName')#.setDebug(True)
 
         #Integer (unsigned).
         uInteger = Word(nums)                                       .setName('uInteger')#.setDebug(True)
@@ -605,6 +605,8 @@ class ParseStage(object):
         #sin(2*a), (a+2), a.b.c(2.5:3.5))
         #Function call, parenthesis and memory access can however contain
         #expressions.
+        #TODO:function call with multiple arguments
+        #TODO: check if number of function arguments is correct
         funcCall = Group( builtInFuncName + '(' + expression + ')') .setParseAction(self._actionFunctionCall) \
                                                                     .setName('funcCall')#.setDebug(True)
         parentheses = Group('(' + expression + ')')                 .setParseAction(self._actionParenthesesPair) \
@@ -1291,6 +1293,7 @@ class ILTProcessGenerator(object):
         #TODO: Check correct order of assignments (or initialization).
         #TODO: Check if all parameters and state vars have been initialized.
 
+        #TODO: Modify init function for parameter value overriding
         return self.process
 
 

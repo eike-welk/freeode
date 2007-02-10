@@ -150,11 +150,17 @@ class StatementGenerator(object):
             nameDict = {'pi':'pi', 'time':'time'}
             return nameDict[iltFormula.dat]
         #Built in function: sin(...)
+        #TODO: check if number of function arguments is correct. Where?
         elif isinstance(iltFormula, NodeBuiltInFuncCall):
             nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
-                        'exp':'exp', 'ln':'ln' }
-            funcName = nameDict[iltFormula.dat]
-            return funcName + '(' + self.createFormula(iltFormula[0]) + ')'
+                        'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
+                        'overrideParam':'_overrideParam' }
+            funcName = nameDict[iltFormula.dat] #get name of the corresponding Python function
+            retStr = funcName + '('
+            for funcArgument in iltFormula:
+                retStr += self.createFormula(funcArgument) + ','
+            retStr += ')'
+            return retStr
         #Number: 123.5
         elif isinstance(iltFormula, NodeNum):
             return str(float(iltFormula.dat))
@@ -641,7 +647,7 @@ class ProgramGenerator(object):
 ################################################################################
 
 
-from numpy import array, sqrt
+from numpy import array, pi, sin, cos, tan, sqrt, exp, log, min, max
 #from scipy import *
 from freeode.simulatorbase import SimulatorBase
 from freeode.simulatorbase import simulatorMainFunc
