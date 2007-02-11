@@ -28,8 +28,7 @@
     There is however an
     <A href="models/">examples directory</A>
     on the webserver.
-    Always download a complete subdirectory; the files in a subdirectory
-    belong together.
+    There are some SIML files and the generated Python files.
   </p>
 
   <p><A href="models/">Browse examples</A></p>
