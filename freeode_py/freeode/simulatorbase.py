@@ -36,9 +36,9 @@ import scipy.optimize.minpack as minpack
 
 from freeode.storage import DictStore
 
-##try to import the gnuplot lib 
+##try to import the gnuplot lib
 #try:
-#    import Gnuplot, Gnuplot.funcutils 
+#    import Gnuplot, Gnuplot.funcutils
 #    exist_gnuplot_lib = True
 #except:
 #    exist_gnuplot_lib = False
@@ -60,7 +60,7 @@ class SimulatorBase(object):
         '''Interval at which the simulation results are recorded.
            Built in parameter.'''
         self.defaultFileName = 'error-no-file-name-given.csv'
-        '''Default file name for storing simulation results. 
+        '''Default file name for storing simulation results.
            Set by generated simulator class'''
         self.time = None
         '''Array with times at which the solution was computed.'''
@@ -73,7 +73,7 @@ class SimulatorBase(object):
         self.algVectorLen = None
         '''Length of vector that contains the algebraic variables'''
         self.paramOverrideDict = {}
-        '''Store alternative values for parameters. 
+        '''Store alternative values for parameters.
            Written and read in initialize.'''
 
 
@@ -130,7 +130,7 @@ class SimulatorBase(object):
             fileName = self.defaultFileName
         result = self.getResults()
         result.save(fileName)
-        
+
     def getResults(self):
         '''Return the simulation results in a DictStore object'''
         result = DictStore()
@@ -139,7 +139,7 @@ class SimulatorBase(object):
             result[name] = self.getAttribute(name)
         #TODO: also include parameters
         return result
-            
+
     def graph(self, varNames, titleStr=None):
         """
         Show one or several attributes in a graph.
@@ -204,7 +204,7 @@ class SimulatorBase(object):
         returns:
             dict looking like this: {'g':10.81, 'm1.p1':23.23}
         '''
-        #kwArgDict: every parameter name without dot is permissible        
+        #kwArgDict: every parameter name without dot is permissible
         self.paramOverrideDict = kwArgDict
         #care for argList
         i = 0
@@ -220,8 +220,8 @@ class SimulatorBase(object):
                 i += 1
             i += 1
         return
-    
-    
+
+
     def _overrideParam(self, paramName, originalValue):
         '''
         Replace the original parameter value from the SIML program
@@ -237,8 +237,8 @@ class SimulatorBase(object):
             return self.paramOverrideDict[paramName]
         else:
             return originalValue
-    
-   
+
+
     def initialize(self, *args, **kwArgs):
         '''
         Compute the initial values.
@@ -246,9 +246,9 @@ class SimulatorBase(object):
         arguments:
             *args    : two ways to specify parameter values are possible:
                        dict: initialize({'g':10.81})
-                       parameter name followed by value: 
+                       parameter name followed by value:
                        initialize('g', 10.81)
-            **kwargs : parameter names without dot can be specified as 
+            **kwargs : parameter names without dot can be specified as
                        keyword arguments: initialize(g=10.81)
         '''
         pass
@@ -265,16 +265,16 @@ class SimulatorBase(object):
         pass
 
 
-    def final(self): 
-        ''' 
-        Display and save simulation results. 
-        This function will be called once; after the simulation results 
-        have been computed. 
+    def final(self):
+        '''
+        Display and save simulation results.
+        This function will be called once; after the simulation results
+        have been computed.
         Dummy function; must be reimplemented in derived classes!
-        ''' 
+        '''
         pass
-    
-    
+
+
 #    def outputEquations(self, y):
 #        '''
 #        Compute the algebraic variable from the state variables.
@@ -287,8 +287,8 @@ class SimulatorBase(object):
         """
         Perform a dynamic simulation.
 
-        The results can be displayed with the graph(...) function and stored 
-        with the store function. The funcion getAttributes(...) returns the 
+        The results can be displayed with the graph(...) function and stored
+        with the store function. The funcion getAttributes(...) returns the
         simulation result of a speciffic attribute.
         """
         #Compute the initial values if necessary.
@@ -307,7 +307,7 @@ class SimulatorBase(object):
         self.resultArray[0,0:self.stateVectorLen] = self.initialValues
         #create integrator object and care for intitial values
         solver = (odeInt(self.dynamic).set_integrator('vode', nsteps = 5000) #IGNORE:E1102
-                                     .set_initial_value(self.initialValues,  
+                                     .set_initial_value(self.initialValues,
                                                         self.time[0]))
         #compute the numerical solution
         i=1
@@ -348,8 +348,8 @@ class SimulatorBase(object):
         In the time array the count of current simulation is stored. This way the
         graph function still produces useful graphs with steady state simulations.
 
-        The results can be displayed with the graph(...) function and stored 
-        with the store function. The funcion getAttributes(...) returns the 
+        The results can be displayed with the graph(...) function and stored
+        with the store function. The funcion getAttributes(...) returns the
         simulation result of a speciffic attribute.
         """
 
@@ -394,8 +394,8 @@ def secureShow():
     if len(Gcf.get_all_fig_managers()) == 0:
         return
     show()
-    
-    
+
+
 def runSimulations(simulationClassList):
     '''Instantiate simulation objects and run dynamic simulations'''
     if not isinstance(simulationClassList, list):
@@ -403,31 +403,31 @@ def runSimulations(simulationClassList):
     for simClass in simulationClassList:
         simObj = simClass()
         simObj.simulateDynamic()
-        
+
 
 def parseCommandLineOptions(simulationClassList):
     '''
     Parse the command line, and find out what the user wants from us.
     Argument:
-        simulationClassList: list of (generated) simulation classes    
+        simulationClassList: list of (generated) simulation classes
     '''
     import optparse
     import sys
-    import freeode.ast as ast #for version string
-        
+    #import freeode.ast as ast #for version string
+
     #set up parser for the command line aruments
     optPars = optparse.OptionParser(
                 usage='%prog [<option>]',
-                description='Simulation program. Run the contained simulations.', 
-                version='%prog ' + ast.progVersion)
-    
-    optPars.add_option('-l', '--list', dest='list', 
+                description='Simulation program. Run the contained simulations.')
+                #version='%prog ' + ast.progVersion) #the compiler version is not usefull here
+
+    optPars.add_option('-l', '--list', dest='list',
                        action="store_true", default=False,
-                       help='list the available simulations and exit', 
+                       help='list the available simulations and exit',
                        )
     optPars.add_option('-r', '--run', dest='run',
-                       help='run the specified simulation. (number counts ' 
-                          + 'from top of file; or special value "all" which ' 
+                       help='run the specified simulation. (number counts '
+                          + 'from top of file; or special value "all" which '
                           + 'is equivalent to giving no options)',
                        metavar='<number>')
     optPars.add_option('-i', '--interactive', dest='interactive',
@@ -435,15 +435,15 @@ def parseCommandLineOptions(simulationClassList):
                        help='go to interactive mode (defunct)')
     optPars.add_option('--prepend-newline', dest='prepend_newline',
                        action="store_true", default=False,
-                       help='prepend output with one newline ' 
+                       help='prepend output with one newline '
                           + '(usefull when started from the compiler)')
     #do the parsing
     (options, args) = optPars.parse_args()
-    
+
     #print start message
     if options.prepend_newline:
         print
-    print 'Freeode simulator, main function ...' 
+    print 'Freeode simulator, main function ...'
 
     #test list option
     if options.list:
@@ -456,7 +456,7 @@ def parseCommandLineOptions(simulationClassList):
             #print number and simulation name
             print i, ': ', simName
         sys.exit(0) #exit successfully
-        
+
     #user has said which simulation procedure should be run
     if options.run == 'all': #special argument 'all': -r all
         runSimulations(simulationClassList)
@@ -465,30 +465,30 @@ def parseCommandLineOptions(simulationClassList):
     elif options.run: #argument is int number: -r 2
         #test if argument is a number
         try: int(options.run)
-        except: 
+        except:
             optPars.error('option "-r": invalid number of simulation object: %s'
                           % options.run)
         #test if object with this number exists
         num = int(options.run)
         if num < 0 or num >= len(simulationClassList):
-            optPars.error('option "-r": invalid number of simulation object: %d' 
+            optPars.error('option "-r": invalid number of simulation object: %d'
                           % num)
         #run simulation
         runSimulations(simulationClassList[num])
         secureShow()
         sys.exit(0)
-        
+
     #user wants to go into interactive mode
     if options.interactive:
         print 'interactive mode is not implemented yet'
         sys.exit(0)
-        
+
     #default action: run all simulations
     #print 'Freeode (%s) main function ...' % ast.progVersion
     runSimulations(simulationClassList)
     secureShow()
     sys.exit(0)
-    
+
 
 def simulatorMainFunc(simulationClassList):
     '''
@@ -497,7 +497,7 @@ def simulatorMainFunc(simulationClassList):
     Argument:
         simulationClassList: list of (generated) simulation classes
     '''
-    #print 'Hello world; main function ...' 
+    #print 'Hello world; main function ...'
     parseCommandLineOptions(simulationClassList)
     return
 
