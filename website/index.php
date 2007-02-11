@@ -28,7 +28,7 @@
     <li><a href="index.php#license">License</a></li>
     <li><a href="index.php#example_session">Example Session</a></li>
     <li><a href="index.php#differential_equations">Differential Equations</a></li>
-    <li><a href="index.php#siml_program">Siml Program</a></li>
+    <li><a href="index.php#siml_program">SIML Program</a></li>
     <li><a href="index.php#generated_python_code">Generated Python Code</a></li>
     <li><a href="index.php#shell_commands">Shell Commands</a></li>
   </ul>
@@ -44,10 +44,6 @@
     <li><A href="http://docs.python.org/tut/tut.html">Official Python Tutorial</A></li>
     <li><A href="http://diveintopython.org/">Alternative Python tutorial</A></li>
     <li><A href="http://www.amazon.com/gp/product/3540294155/">Python Scripting for Computational Science (Book)</A></li>
-    <li>IDE</li>
-    <li><A href="http://www.die-offenbachs.de/detlev/eric3.html">Eric</A></li>
-    <li><A href="http://kate-editor.org/">Kate</A></li>
-    <li><A href="http://pydev.sourceforge.net/">PyDev</A></li>
   </ul>
 </div>
 
@@ -86,7 +82,7 @@
   </p>
   <p>
     Python promises to be highly platform independent.
-    Therfore everything should work on Windows exacly as it works on Linux.
+    Therfore everything should work on Windows exactly as it works on Linux.
   </p>
 
 
@@ -181,7 +177,7 @@
 
   <!-- ================ Siml code =======================================-->
   <A name="siml_program"></A>
-  <h3>Siml Program</h3>
+  <h3>SIML Program</h3>
   <div id="code">
     <pre>
 <span style="font-style: italic;color: #808080;">#Biological reactor with no inflow or outfow</span>
@@ -223,7 +219,7 @@
   <p>
     This is a complete SIML program to to solve the system of differential equations.
     The differential equations are in the <strong>dynamic</strong> function.
-    The <strong>init</strong> function is invoked once at the begining of the simulation,
+    The <strong>init</strong> function is invoked once at the beginning of the simulation,
     the <strong>final</strong> function is invoked at the end.
   </p>
   <p>
@@ -275,7 +271,7 @@
     <em>do computations</em>).
     The rest of the code takes numbers out of arrays, or puts them into arrays.
     When the length of the state vector changes, a human programmer would
-    have to updeate the array indices in the whole program.
+    have to update the array indices in the whole program.
     A tedious and error prone work.
   </p>
   <p>

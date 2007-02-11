@@ -19,14 +19,28 @@
 <?php if( file_exists("menu-left.html") ){ include("menu-left.html"); } ?>
 
 
+<div id="navigation_page">
+  <ul>
+    <li>The SIML Language</li>
+    <li><A href="language.php#top">Top</A></li>
+    <li><A href="language.php#tutorial">Tutorial</A></li>
+    <li><A href="language.php#syntax">Syntax</A></li>
+  </ul>
+</div>
+
+
 <div id="contents">
+  <a name="top"></a>
   <h1>The SIML Language</h1>
 
-  <h2>Running the Compiler</h2>
+  <a name="tutorial"></a>
+  <h2>Tutorial</h2>
   <p>To be done</p>
 
+  <a name="syntax"></a>
   <h2>The Syntax</h2>
-<p>To be done</p>
+  <p>To be done</p>
+
 </div>
 
 
