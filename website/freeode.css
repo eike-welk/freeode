@@ -6,19 +6,23 @@
     /*min-width: 41em; *//* Mindestbreite verhindert Umbruch und Anzeigefehler in modernen Browsern */
   }
 
+
+  /*Header ----------------------------------------------------------*/
   div#header {
     font-size: 1.5em;
     font-weight: bold;
     margin: 0 0 0.7em; padding: 0.3em;
     text-align: center;
     background-color: #FFCE31;
-    border: 2px ridge silver;
+    border: 2px ridge gray;
   }
   /*html>body h1 {
     border-color: gray;*/  /* Farbangleichung an den Internet Explorer  */
 /*   } */
 
-  div#navigation {
+
+  /*Navigation Whole Web-Site----------------------------------------------------------*/
+  div#navigation_site {
     font-size: 0.83em;
     font-weight: bold;
     float: left; width: 15em;
@@ -27,31 +31,71 @@
 /*     border: 1px dashed silver; */
     text-align: center;
   }
-  div#navigation li {
+  div#navigation_site li {
     list-style: none;
     margin: 0em 0em 0em -3em;
     padding: 0.5em;
 
   }
-  div#navigation a {
+  div#navigation_site a {
     display: block;
     padding: 0.2em;
     font-weight: bold;
     text-align: left;
   }
-  div#navigation a:link {
+  div#navigation_site a:link {
     color: black; background-color: #EAECEF;
   }
-  div#navigation a:visited {
+  div#navigation_site a:visited {
     color: #666; background-color: #EAECEF;
   }
-  div#navigation a:hover {
+  div#navigation_site a:hover {
     color: black; background-color: white;
   }
-  div#navigation a:active {
+  div#navigation_site a:active {
     color: white; background-color: gray;
   }
 
+
+  /*Navigation Inside Page----------------------------------------------------------*/
+  div#navigation_page {
+    font-size: 0.83em;
+    font-weight: bold;
+    clear:left;
+    float: left;
+    width: 15em;
+    margin: 0 0 0em 0em;
+/*     padding: 0; */
+/*     border: 1px dashed silver; */
+    text-align: center;
+  }
+  div#navigation_page li {
+    list-style: none;
+    margin: 0em 0em 0em -3em;
+    padding: 0.5em;
+
+  }
+  div#navigation_page a {
+    display: block;
+    padding: 0.2em;
+    font-weight: bold;
+    text-align: left;
+  }
+  div#navigation_page a:link {
+    color: black; background-color: #EAECEF;
+  }
+  div#navigation_page a:visited {
+    color: #666; background-color: #EAECEF;
+  }
+  div#navigation_page a:hover {
+    color: black; background-color: white;
+  }
+  div#navigation_page a:active {
+    color: white; background-color: gray;
+  }
+
+
+  /*Info ----------------------------------------------------------*/
   div#info {
     font-size: 0.9em;
     float: right; width: 12em;
@@ -67,14 +111,16 @@
     margin: 0.5em;
   }
 
+
+  /*Contents ----------------------------------------------------------*/
   div#contents {
     margin: 0em 0em 0em 12em;
     padding: 1em 1em 1em 1em;
 /*     border: 1px dashed silver; */
   }
-  * html div#contents {
-    height: 1em;  /* Workaround gegen den 3-Pixel-Bug des Internet Explorers */
-  }
+/*  * html div#contents {
+    height: 1em;*/  /* Workaround gegen den 3-Pixel-Bug des Internet Explorers */
+/*  } */
 /*  div#contents h2 {
     font-size: 1.2em;
     margin: 0.2em 0;
@@ -84,6 +130,16 @@
     margin: 0 0 0.5em 0;
   }
 
+
+  /*Code ----------------------------------------------------------*/
+  div#code {
+    /*margin: 0em 0em 0em 12em;*/
+    /*padding: 1em 1em 1em 1em;*/
+    border: 1px ridge gray;
+    background-color: #FFF8ED;
+  }
+
+  /*Footer ----------------------------------------------------------*/
   div#footer {
     clear: both;
     font-size: 0.7em;

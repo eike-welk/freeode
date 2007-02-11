@@ -18,10 +18,28 @@
 <!--Navigation-->
 <?php if( file_exists("menu-left.html") ){ include("menu-left.html"); } ?>
 
+
+<div id="navigation_page">
+  <ul>
+    <li>Python</li>
+    <li><A href="http://www.python.org/">Python project page</A></li>
+    <li><A href="http://www.scipy.org/">SciPy project page</A></li>
+    <li><A href="http://docs.python.org/tut/tut.html">Official Python Tutorial</A></li>
+    <li><A href="http://diveintopython.org/">Alternative Python tutorial</A></li>
+    <li><A href="http://www.amazon.com/gp/product/3540294155/">Python Scripting for Computational Science (Book)</A></li>
+    <li>IDE</li>
+    <li><A href="http://www.die-offenbachs.de/detlev/eric3.html">Eric</A></li>
+    <li><A href="http://kate-editor.org/">Kate</A></li>
+    <li><A href="http://pydev.sourceforge.net/">PyDev</A></li>
+  </ul>
+</div>
+
+
 <!--<div id="info">
   <h2>info-Box</h2>
   <p>Some info text</p>
 </div>-->
+
 
 <div id="contents">
   <h1>The Freeode Project</h1>
@@ -37,7 +55,7 @@
     The
     <A href="http://www.scipy.org/">SciPy</A>
     and
-    <A href="http://numpy.scipy.org/">NumP</A>
+    <A href="http://numpy.scipy.org/">NumPy</A>
     libraries are used for the numerical computations. Currently only
     <abbr TITLE="ordinary differential equations">ODE</abbr>
     can be solved.
@@ -49,12 +67,21 @@
     from the relatively mechanical task of implementing the simulation function, and
     can concentrate on the higher level aspects of the problem.
   </p>
+  <p>
+    Python promises to be highly platform independent.
+    Therfore everything should work on Windows exacly as it works on Linux.
+  </p>
+
 
   <h2>Why Python</h2>
   <p>
-    The free SciPy libraries turn the Python language into a prototyping environment
-    for numerical algorithms, quite similar to the commercial language Matlab.
-    There are several other free numerical prototyping languages; examples are Octave and Scilab.
+    The free SciPy and NumPy libraries turn the Python language into
+    a prototyping environment for numerical algorithms,
+    quite similar to the commercial language
+    <A href="http://www.mathworks.com/">Matlab</A>.
+    There are several other free numerical prototyping languages; examples are
+    <A href="http://www.gnu.org/software/octave/">Octave</A> and
+    <A href="http://www.scilab.org/">Scilab</A>.
     Python however is a general-purpose programming language with a rich standard library.
     Most notably here, is Python's powerfull string processing and file I/O.
   </p>

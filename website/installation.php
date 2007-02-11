@@ -19,7 +19,21 @@
 <?php if( file_exists("menu-left.html") ){ include("menu-left.html"); } ?>
 
 
+<div id="navigation_page">
+  <ul>
+    <li>Installation</li>
+    <li><A href="installation.php#top">Top</A></li>
+    <li><A href="installation.php#install-python">Python</A></li>
+    <li><A href="installation.php#install-pyparsing">Pyparsing</A></li>
+    <li><A href="installation.php#install-numpy-scipy">NumPy SciPy</A></li>
+    <li><A href="installation.php#install-matplotlib">Matplotlib</A></li>
+    <li><A href="installation.php#install-freeode">Freeode</A></li>
+  </ul>
+</div>
+
+
 <div id="contents">
+  <A name="top"></A>
   <h1>Installation</h1>
   <h2>Dependencies</h2>
   <p>
@@ -55,7 +69,7 @@
           <td><A href="http://www.python.org">Python</A></td>
           <td>programming language</td>
           <td>usually already installed</td>
-          <td>special binary distribution for scientist availlable</td>
+          <td>special binary distribution for scientist available</td>
         </tr>
 
         <tr>
@@ -92,7 +106,8 @@
   <!--============================== Installing Dependencies ========================================-->
   <h2>Installing Dependencies</h2>
   <!--========================== Python ==========================-->
-  <h3>Python<A name="install-python"></A></h3>
+  <A name="install-python"></A>
+  <h3>Python</h3>
   <h4>Linux</h4>
   <p>
     <A href="http://www.python.org/">Python</A>
@@ -121,7 +136,8 @@
 
 
   <!--========================== Pyparsing ==========================-->
- <h3>Pyparsing<A name="install-pyparsing"></A></h3>
+  <A name="install-pyparsing"></A>
+  <h3>Pyparsing</h3>
   <p>
     Get the latest source <strong>tar.gz</strong> package
     (for example <strong>pyparsing-1.4.5.tar.gz</strong>) from the
@@ -142,15 +158,17 @@
       the latest source package (<strong>*.tar.gz</strong>).
     </li>
     <li>Open a shell window. Type:</li>
- </ul>
-  <pre>
+  </ul>
+  <div id="code">
+    <pre>
 > cd **where you put the downloaded *.tar.gz file**
 > su                                #become root
 Password:
 > tar xvf pyparsing-1.4.5.tar.gz    #extract package contents
 > cd pyparsing-1.4.5/               #enter extracted directory
 > python setup.py install           #run installation script
-  </pre>
+    </pre>
+  </div>
   <h4>Windows</h4>
   <ul>
     <li>
@@ -161,7 +179,8 @@ Password:
   </ul>
 
   <!--========================== Numpy, SciPy ==========================-->
-  <h3>NumPy, SciPy<A name="install-numpy-scipy"></A></h3>
+  <A name="install-numpy-scipy"></A>
+  <h3>NumPy, SciPy</h3>
   <p>
     The
     <A href="http://www.scipy.org/">SciPy</A>
@@ -190,7 +209,7 @@ Password:
     It is relatively easy to build both packages from sources.
     Look at these
     <A href="http://www.scipy.org/Installing_SciPy/BuildingGeneral">instructions</A>
-    that focus on building the underlying linear algebra libs.
+    that focus on building the underlying linear algebra libraries.
     Some problems originate from the current state of free Fortran compilers:
     The <A href="http://gcc.gnu.org/">GCC</A>
     project changed its Fortran compiler from
@@ -209,7 +228,8 @@ Password:
 
 
   <!--========================== Matplotlib ==========================-->
-  <h3>Matplotlib<A name="install-matplotlib"></A></h3>
+  <A name="install-matplotlib"></A>
+  <h3>Matplotlib</h3>
   The Matplotlib
   <A href="http://matplotlib.sourceforge.net/">website</A>
   contains some
@@ -242,8 +262,9 @@ Password:
 
 
 
-  <!--============================== Installing Freeode ========================================-->
-  <h2>Installing Freeode<A name="install-freeode"></A></h2>
+  <!--============================== Installing Freeode ================================-->
+  <A name="install-freeode"></A>
+  <h2>Installing Freeode</h2>
   <p>
     Get the latest source <strong>tar.gz</strong> package
     (for example <strong>freeode-0.3.0.tar.gz</strong>) from the
@@ -269,15 +290,17 @@ Password:
       the latest source package (<strong>*.tar.gz</strong>).
     </li>
     <li>Open a shell window. Type:</li>
- </ul>
-  <pre>
+  </ul>
+  <div id="code">
+    <pre>
 > cd **where you put the downloaded *.tar.gz file**
 > su                               #become root
 Password:
 > tar xvf freeode-0.3.0.tar.gz     #extract package contents
 > cd freeode-0.3.0/                #enter extracted directory
 > python setup.py install          #run installation script
-  </pre>
+    </pre>
+  </div>
   <h4>Windows</h4>
   <ul>
     <li>
@@ -290,7 +313,7 @@ Password:
       <A href="http://www.winzip.com/">Winzip</A>
       program.
     </li>
-    <li>Open a dos box. <em>How is this really called?</em></li>
+    <li>Open a DOS box. <em>How is this really called?</em></li>
     <li>Got to the directory to where you downloaded the package.</li>
     <li>
       Run the installation script: <strong>python setup.py install</strong>

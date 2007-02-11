@@ -25,15 +25,13 @@
 
 
   <p>
-    There is however an examples directory on the webserver.
+    There is however an
+    <A href="models/">examples directory</A>
+    on the webserver.
     Always download a complete subdirectory; the files in a subdirectory
     belong together.
   </p>
-  <p>
-    There are main scripts (with 'main' in their name).
-    Running them with
-    Python (python <em>filename</em>) will produce some graphs.
-  </p>
+
   <p><A href="models/">Browse examples</A></p>
 </div>
 

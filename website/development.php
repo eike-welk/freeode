@@ -19,163 +19,93 @@
 <?php if( file_exists("menu-left.html") ){ include("menu-left.html"); } ?>
 
 
+<div id="navigation_page">
+  <ul>
+    <li>Installation</li>
+    <li><A href="development.php#top">Top</A></li>
+    <li><A href="development.php#get-the-sources">Get the Sources</A></li>
+  </ul>
+</div>
+
+
 <div id="contents">
+
+  <A name="top"></A>
   <h1>Development</h1>
   <p>
     The compiler is a Python program that uses the
     <A href="http://pyparsing.wikispaces.com/">Pyparsing</A>
     library for parsing.
-    Most of the code is in the package 'freeode' except for a
-    small main script: 'simlc'.
-  </p>
-  <p>
-    The generated Python program uses also modules of the freeode package
-    as a runtime library.
-    The
-    <A href="http://numpy.scipy.org/">NumP</A>
-    and
+    The generated Python program uses the
+    <A href="http://numpy.scipy.org/">NumPy</A>
+    ,
     <A href="http://www.scipy.org/">SciPy</A>
-    libraries are used for numerical computations and plotting.
+    and
+    <A href="http://matplotlib.sourceforge.net/">Matplotlib</A>
+    libraries for numerical computations and plotting.
+    For a detailed discussion of the dependencies see the
+    <A href="installation.php">installation</A>
+    instructions.
   </p>
 
-
-  <h2>Dependencies</h2>
   <p>
-  The following dependencies exist for the compiler and the runtime libraries:
+    Python promises to be highly platform independent.
+    Therfore everything should work on Windows exacly as it works on Linux.
+  </p>
+
+  <p>
+    Development currently happens on Linux only.
+    The
+    <A href="http://pydev.sourceforge.net/">Pydev</A>
+    extension for
+    <A href="http://www.eclipse.org/">Eclipse</A>
+    is used as the IDE. Pydev analyzes the program and can complete Python code much
+    better than any other free IDE I know. It uses
+    <A href="www.logilab.org/857">Pylint</A>
+    to flag errors and bad coding practice.
+    Eclipse and Pydev are written in Java,
+    and should therfore work on Windows
+    as well.
   </p>
   <p>
-    <table>
-      <tbody>
-        <tr>
-          <td>Name</td>
-          <td>What</td>
-          <td>Linux</td>
-          <td>Windows</td>
-        </tr>
-
-        <tr>
-          <td><A href="http://www.python.org">Python</A></td>
-          <td>programming language</td>
-          <td>usually already installed</td>
-          <td>available in binary packages especially suited for scientific development</td>
-        </tr>
-
-        <tr>
-          <td><A href="http://pyparsing.wikispaces.com/">pyparsing</A></td>
-          <td>library for parsers</td>
-          <td>only sources, easy install</td>
-          <td>only sources, easy install</td>
-        </tr>
-
-        <tr>
-          <td><A href="http://numpy.scipy.org/">NumPy</A></td>
-          <td>array object, linear algebra</td>
-          <td>binary packages exist for <strong>most</strong> distributions</td>
-          <td>comes with scientific Python distribution</td>
-        </tr>
-
-        <tr>
-          <td><A href="http://www.scipy.org/">SciPy</A></td>
-          <td>scientific algorithms</td>
-          <td>binary packages exist for <strong>some</strong> distributions</td>
-          <td>comes with scientific Python distribution</td>
-        </tr>
-      </tbody>
-    </table>
+    Pydev's code completion is quite slow;
+    it can unfortunately not usefully work when all of NumPy
+    has been imported. It will then always hang for ~30s before it can show a list of
+    possible completions (on Pentium M 1.4 GHz).
+    Pydev's slowness is the reason why the code conains lines like this:
+    <div id="code">
+      <pre>from numpy import array, linspace, zeros, shape, ones, resize</pre>
+    </div>
+    instead of:
+    <div id="code">
+      <pre>from numpy import *</pre>
+    </div>
   </p>
 
 
-
-  <h2>Linux</h2>
-
-  <h3>Getting and Installing the Libraries</h3>
-  <h4>Pyparsing</h4>
-  <A href="http://sourceforge.net/project/showfiles.php?group_id=97203">download</A>
-  <h4>NumPy</h4>
-  <h4>SciPy</h4>
-  <h3>Getting the sources</h3>
+  <A name="get-the-sources">
+  </A><h2>Getting the sources</h2>
   <p>
     The latest version of all of the project's files, is available from the subversion
     repository at BerliOS.
   </p>
   <p>
-    To check out (download) only the compiler, type the following in a shell window:
+    To check out (download) only the Python code, type the following in a shell window:
   </p>
   <div id="code">
-    <pre> svn checkout svn://svn.berlios.de/freeode/trunk/freeode_py </pre>
-  </div>
-
-  <p>To check out everything, including website, examples and more, do:</p>
-  <div id="code">
-    <pre>
-svn checkout svn://svn.berlios.de/freeode/trunk
-    </pre>
-  </div>
-
-  <h3>Compiling the sources</h3>
-  <p>
-    In the directory 'freeode_cpp' you will find a Kdevelop project file.
-    The SIML compiler is currently developed with the IDE Kdevelop.
-  </p>
-  <p>
-    If you just want to compile the latest soures here are the necessary steps:
-    Open a shell window and  change into the directory 'freeode_cpp'
-    (which you just downloaded through subversion).
-    Type the commands given below.
-    Some commands will take quite a while to complete.
-    <br>
-    <strong>Warning!</strong> Currently the installation goes into the KDE
-    directory. This won't harm, but is quite stupid.
-    </p>
-  <div id="code">
-    <pre>
-make -f Makefile.cvs
-./configure
-make
-su
-make install
-    </pre>
+    <pre>svn checkout svn://svn.berlios.de/freeode/trunk/freeode_py </pre>
   </div>
 
   <p>
-    From time to time you'll need to regenerate the file 'simulatorbase.h'
-    from the file 'simulatorbase.py' with the following commands:
-    </p>
+    To check out everything, including website, and some additional documentation, do:
+  </p>
   <div id="code">
-    <pre>
-cd src
-python py2c_string.py
-    </pre>
+    <pre>svn checkout svn://svn.berlios.de/freeode/trunk</pre>
+  </div>
+
   </div>
 
 
-  <h2>Windows</h2>
-  <p>
-    No attempt has been made to port the compiler
-    to Windows, since the development happens on Linux.
-    In principle however, everything should work on Windows. The
-    <A href="http://www.python.org">Python</A>
-    language and the necessary libraries (
-    <A href="http://www.boost.org/">Boost</A>,
-    <A href="http://numeric.scipy.org/">NumPy</A>,
-    <A href="http://www.scipy.org/">SciPy</A>)
-    are all available for Windows. So you're on your own there.
-  </p>
-  <p>
-    There is a free Python package from <A href="http://www.enthought.com/">Enthought</A>.
-    It contains <strong>NumPy</strong> and <strong>SciPy</strong>, (plus much more scientific Python stuff).
-  </p>
-  <p>
-    If you have a C++ compiler for Windows and some time, you could probably port the compiler
-    to Windows with minimum effort. The Python part needs no change, since Python promises to
-    be platform independent.
-    I would be very glad to receive patches and binaries.
-  </p>
-  <p>
-    Graphs (<A href="http://gnuplot-py.sourceforge.net/">Gnuplot.py</A>) are surely an issue.
-    If you port the compiler to Windows I'll change the graph library to whatever is commonly
-    available on Windows.
-  </p>
 </div>
 
 <!--footer with the required berlios image-->
