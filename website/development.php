@@ -72,6 +72,8 @@
     it can unfortunately not usefully work when all of NumPy
     has been imported. It will then always hang for ~30s before it can show a list of
     possible completions (on Pentium M 1.4 GHz).
+<!--After typing: 'from scipy inport *' it will pause for about half a minute-->
+<!--when you type a dot.-->
     Pydev's slowness is the reason why the code conains lines like this:
     <div id="code">
       <pre>from numpy import array, linspace, zeros, shape, ones, resize</pre>
