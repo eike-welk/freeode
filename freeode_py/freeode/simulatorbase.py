@@ -445,7 +445,7 @@ def parseCommandLineOptions(simulationClassList):
         print
     print 'Freeode simulator, main function ...'
 
-    #test list option
+    #list available simulations
     if options.list:
         print 'available simulations:'
         for i, sim in enumerate(simulationClassList):
@@ -457,10 +457,17 @@ def parseCommandLineOptions(simulationClassList):
             print i, ': ', simName
         sys.exit(0) #exit successfully
 
+    #user wants to go into interactive mode
+    if options.interactive:
+        print 'interactive mode is not implemented yet'
+        sys.exit(0)
+
     #user has said which simulation procedure should be run
+    #TODO: code to run the simulationa is a mess. 
+    #There are three different places where simulations are run!
     if options.run == 'all': #special argument 'all': -r all
         runSimulations(simulationClassList)
-        show()
+        secureShow()
         sys.exit(0)
     elif options.run: #argument is int number: -r 2
         #test if argument is a number
@@ -476,11 +483,6 @@ def parseCommandLineOptions(simulationClassList):
         #run simulation
         runSimulations(simulationClassList[num])
         secureShow()
-        sys.exit(0)
-
-    #user wants to go into interactive mode
-    if options.interactive:
-        print 'interactive mode is not implemented yet'
         sys.exit(0)
 
     #default action: run all simulations
