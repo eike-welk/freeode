@@ -76,6 +76,9 @@ can be redefined. Consequently, only the reserved keywords are highlighted.
     <item> else </item>
     <item> end </item>
     <item> parameter </item>
+    <item> call </item>
+    <item> graph </item>
+    <item> save </item>
     </list>
 
     <!--Special names, predefined objects-->
