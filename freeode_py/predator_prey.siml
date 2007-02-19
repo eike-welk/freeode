@@ -1,0 +1,129 @@
+#Predator Prey Model
+#
+# This is a simple model of predator prey relations in a biologial system.
+# The differential equations were propsed by Alfred J. Lotka and Vito Volterra
+# independently in 1925 and 1926.
+# Volterra used the model to explain unexpected results of marine biologial
+# research.
+#
+#see:
+#   http://en.wikipedia.org/wiki/Lotka-Volterra_equation
+#   Leah Edelstein-Keshet; Mathematical Models in Biology; 1988.
+#       (republished by SIAM 2005) pp. 218.
+#
+#Differential Equations:
+#
+# Prey equation:
+#   dx/dt = a*x - b*x*y
+# Predator equation:
+#   dy/dt = -c*y + d*x*y
+#
+#Steady States:
+#
+# (x,y)_1 = (0, 0)
+# (x,y)_2 = (c/d, a/b)
+#
+#
+# b/d : growth of predator biomass per amount of eaten prey
+# sqrt(c*a) : frequency of oscillation
+
+
+#This is the usual predator prey model
+class ClassicModel(Model):
+    data x, y: Real;
+    data a, b, c, d: Real parameter;
+
+    func dynamic():
+        #  | growth | predation
+        $x = a*x    - b*x*y; #prey
+        #  | death  | food intake
+        $y = -c*y   + d*x*y; #predator
+    end
+end
+
+class RunClassic(Process):
+    data m: ClassicModel; #The model
+    data showGraph: Real parameter; #Flag if graphs should be shown
+
+    func init():
+        #parameters
+        m.a = 1;
+        m.b = 1;
+        m.c = 1;
+        m.d = m.b*0.2;
+        #initial values
+        m.x = 0.5;
+        m.y = 0.5;
+
+        #administrative parameters
+        showGraph = 1;
+        solutionParameters.simulationTime = 20;
+        solutionParameters.reportingInterval = 0.1;
+    end
+
+    func dynamic():
+        call m.dynamic();
+    end
+
+    func final():
+        if showGraph == 1:
+            graph 'Classic Predator Prey Model', m.x, m.y;
+        end
+    end
+end
+
+
+
+#TODO: model where prey have logistic growth
+#TODO: where predators have maximum food uptake capacity
+class EnhancedModel(Model):
+    data x, y: Real; #x:prey, y:predators
+    data muX, muY: Real;
+    data muXMax, muYMax, Yxy, Dy, Kx, Ky, Hx, Hy: Real parameter;
+
+    func dynamic():
+        muX = muXMax *(Kx-x)/Kx; #prey's growth rate (logistic growth)
+        muY = muYMax *x/(x+Ky);  #predator's growth rate
+        #  | growth | predation | hunting
+        $x = muX*x  - Yxy*y*muY - Hx*x; #prey
+        #  | growth | death     | hunting
+        $y = muY*y  - Dy*y      - Hy*y; #predator
+    end
+end
+
+class RunEnhanced(Process):
+    data m: EnhancedModel; #The model
+    data showGraph: Real parameter; #Flag if graphs should be shown
+
+    func init():
+        #parameters
+        m.muXMax = 5; #prey's max growth rate
+        m.Yxy = 10; #units prey necessary to produce one unit of predator
+        m.Dy = 0.5; #predator's death rate
+        m.muYMax = 2; #predator's max growth rate
+        m.Kx = 20; #system's carrying capacity for prey
+        m.Ky = 8;  #low prey concentration, hunting speed is 0.5 muYMax
+        m.Hx = 0;  #Hunting rate on prey
+        m.Hy = 0;  #Hunting rate on predator
+        #initial values
+        m.x = 5;
+        m.y = 0.5;
+
+        #administrative parameters
+        showGraph = 1;
+        solutionParameters.simulationTime = 20;
+        solutionParameters.reportingInterval = 0.1;
+    end
+
+    func dynamic():
+        call m.dynamic();
+    end
+
+    func final():
+        if showGraph == 1:
+            graph 'Classic Predator Prey Model', m.x, m.y;
+        end
+    end
+end
+
+
