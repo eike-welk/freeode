@@ -11,6 +11,9 @@
 #   Leah Edelstein-Keshet; Mathematical Models in Biology; 1988.
 #       (republished by SIAM 2005) pp. 218.
 #
+# The whole argumentations and the variable names were taken from
+# [Edelstein-Keshet].
+#
 #Differential Equations:
 #
 # Prey equation:
@@ -29,9 +32,10 @@
 
 
 #This is the usual predator prey model
-class ClassicModel(Model):
-    data x, y: Real;
+class ClassicModel(Process):
+    data x, y: Real; #state variables
     data a, b, c, d: Real parameter;
+    data showGraph: Real parameter; #Flag if graphs should be shown
 
     func dynamic():
         #  | growth | predation
@@ -39,21 +43,14 @@ class ClassicModel(Model):
         #  | death  | food intake
         $y = -c*y   + d*x*y; #predator
     end
-end
-
-class RunClassic(Process):
-    data m: ClassicModel; #The model
-    data showGraph: Real parameter; #Flag if graphs should be shown
 
     func init():
         #parameters
-        m.a = 1;
-        m.b = 1;
-        m.c = 1;
-        m.d = m.b*0.2;
+        a = 1; b = 1; c = 1;
+        d = b*0.2; #for each unit of prey eaten, the predators grow 0.2 units
         #initial values
-        m.x = 0.5;
-        m.y = 0.5;
+        x = 2;
+        y = 2;
 
         #administrative parameters
         showGraph = 1;
@@ -61,21 +58,55 @@ class RunClassic(Process):
         solutionParameters.reportingInterval = 0.1;
     end
 
-    func dynamic():
-        call m.dynamic();
-    end
-
     func final():
         if showGraph == 1:
-            graph 'Classic Predator Prey Model', m.x, m.y;
+            graph 'Classic Predator Prey Model', x, y;
         end
     end
 end
 
 
+#Model where prey have logistic growth
+class LogisticPrey(Process):
+    data x, y: Real; #state variables
+    data a, b, c, d, K: Real parameter;
+    data showGraph: Real parameter; #Flag if graphs should be shown
 
-#TODO: model where prey have logistic growth
-#TODO: where predators have maximum food uptake capacity
+    func dynamic():
+        #  | growth        | predation
+        $x = a*x * (K-x)/K - b*x*y; #prey
+        #  | death         | food intake
+        $y = -c*y          + d*x*y; #predator
+    end
+
+    func init():
+        #parameters
+        a = 1; b = 1; c = 1;
+        d = b*0.2; #for each unit of prey eaten, the predators grow 0.2 units
+        K = 20;
+        #initial values
+        x = 2;
+        y = 2;
+
+        #administrative parameters
+        showGraph = 1;
+        solutionParameters.simulationTime = 30;
+        solutionParameters.reportingInterval = 0.1;
+    end
+
+    func final():
+        if showGraph == 1:
+            graph 'Predator Prey Model; Logistic Growth of Prey', x, y;
+        end
+    end
+end
+
+
+#Relatively complex predator-prey model.
+#Features:
+#   prey     : logistic growth
+#   predators: maximum food uptake capacity
+#   Hunting
 class EnhancedModel(Model):
     data x, y: Real; #x:prey, y:predators
     data muX, muY: Real;
@@ -121,7 +152,7 @@ class RunEnhanced(Process):
 
     func final():
         if showGraph == 1:
-            graph 'Classic Predator Prey Model', m.x, m.y;
+            graph 'Strongly Modified Predator Prey Model', m.x, m.y;
         end
     end
 end
