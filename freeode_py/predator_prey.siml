@@ -35,6 +35,7 @@
 class ClassicModel(Process):
     data x, y: Real; #state variables
     data a, b, c, d: Real parameter;
+    data x0, y0: Real parameter; #parameters for initial values
     data showGraph: Real parameter; #Flag if graphs should be shown
 
     func dynamic():
@@ -49,8 +50,9 @@ class ClassicModel(Process):
         a = 1; b = 1; c = 1;
         d = b*0.2; #for each unit of prey eaten, the predators grow 0.2 units
         #initial values
-        x = 2;
-        y = 2;
+        x0 = 2;
+        y0 = 2;
+        x = x0; y = y0;
 
         #administrative parameters
         showGraph = 1;
@@ -70,6 +72,7 @@ end
 class LogisticPrey(Process):
     data x, y: Real; #state variables
     data a, b, c, d, K: Real parameter;
+    data x0, y0: Real parameter; #parameters for initial values
     data showGraph: Real parameter; #Flag if graphs should be shown
 
     func dynamic():
@@ -85,8 +88,9 @@ class LogisticPrey(Process):
         d = b*0.2; #for each unit of prey eaten, the predators grow 0.2 units
         K = 20;
         #initial values
-        x = 2;
-        y = 2;
+        x0 = 2;
+        y0 = 2;
+        x = x0; y = y0;
 
         #administrative parameters
         showGraph = 1;

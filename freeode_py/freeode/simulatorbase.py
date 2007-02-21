@@ -219,6 +219,8 @@ class SimulatorBase(object):
                 self.paramOverrideDict[str(arg)] = num
                 i += 1
             i += 1
+        #TODO: test if given parameters do really exist
+        #TODO: revive self.parameterNameMap
         return
 
 
@@ -292,7 +294,7 @@ class SimulatorBase(object):
         simulation result of a speciffic attribute.
         """
         #Compute the initial values if necessary.
-        if not self.initialValues:
+        if self.initialValues == None:
             self.initialize()
         #create the array of output time points. Note: no rounding is better
         self.time = linspace(0.0, self.p_solutionParameters_simulationTime,

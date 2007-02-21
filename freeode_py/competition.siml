@@ -62,6 +62,7 @@ end
 
 class Case1(Process):
     data m: CompetitionModel;
+    data N1_init, N2_init: Real parameter; #parameters for initial values
     data showGraph: Real parameter; #Flag if graphs should be shown
 
     func init():
@@ -70,8 +71,9 @@ class Case1(Process):
         m.k1 = 5; m.k2 = 10;  #carrying capacities
         m.b12 = 1; m.b21 = 1; #sensitivity against presence of the other species
         #initial values
-        m.N1 = 0.5;
-        m.N2 = 0.5;
+        N1_init = 0.5;
+        N2_init = 0.5;
+        m.N1 = N1_init; m.N2 = N2_init;
 
         #print which case it is
         call m.init();
@@ -97,6 +99,7 @@ end
 
 class Case2(Process):
     data m: CompetitionModel;
+    data N1_init, N2_init: Real parameter; #parameters for initial values
     data showGraph: Real parameter; #Flag if graphs should be shown
 
     func init():
@@ -105,8 +108,9 @@ class Case2(Process):
         m.k1 = 10; m.k2 = 5;  #carrying capacities
         m.b12 = 1; m.b21 = 1; #sensitivity against presence of the other species
         #initial values
-        m.N1 = 0.5;
-        m.N2 = 0.5;
+        N1_init = 0.5;
+        N2_init = 0.5;
+        m.N1 = N1_init; m.N2 = N2_init;
 
         #print which case it is
         call m.init();
@@ -132,6 +136,7 @@ end
 
 class Case3(Process):
     data m: CompetitionModel;
+    data N1_init, N2_init: Real parameter; #parameters for initial values
     data showGraph: Real parameter; #Flag if graphs should be shown
 
     func init():
@@ -140,8 +145,9 @@ class Case3(Process):
         m.k1 = 10; m.k2 = 10;  #carrying capacities
         m.b12 = 2; m.b21 = 2; #sensitivity against presence of the other species
         #initial values
-        m.N1 = 0.51;
-        m.N2 = 0.5;
+        N1_init = 0.51;
+        N2_init = 0.5;
+        m.N1 = N1_init; m.N2 = N2_init;
 
         #print which case it is
         call m.init();
@@ -167,6 +173,7 @@ end
 
 class Case4(Process):
     data m: CompetitionModel;
+    data N1_init, N2_init: Real parameter; #parameters for initial values
     data showGraph: Real parameter; #Flag if graphs should be shown
 
     func init():
@@ -175,10 +182,11 @@ class Case4(Process):
         m.k1 = 10; m.k2 = 10;  #carrying capacities
         m.b12 = 0.5; m.b21 = 0.5; #sensitivity against presence of the other species
         #initial values
-        m.N1 = 2;
-        m.N2 = 0.5;
-        #m.N1 = 0.5;
-        #m.N2 = 2;
+        N1_init = 2;
+        N2_init = 0.5;
+        #N1_init = 0.5;
+        #N2_init = 2;
+        m.N1 = N1_init; m.N2 = N2_init;
 
         #print which case it is
         call m.init();
