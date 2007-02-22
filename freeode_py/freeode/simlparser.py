@@ -572,6 +572,7 @@ class ParseStage(object):
         builtInValue = Group( kw('pi') | kw('time'))                .setParseAction(self._actionBuiltInValue)\
                                                                     .setName('builtInValue')#.setDebug(True)
 
+        #TODO: method to tell number of function arguments
         #Functions that are built into the language
         builtInFuncName = (  kw('sin') | kw('cos') | kw('tan') |
                              kw('sqrt') | kw('exp') | kw('log') |
@@ -690,7 +691,7 @@ class ParseStage(object):
                           + Optional(',')                            .setResultsName('trailComma')
                           + ';')                                     .setParseAction(self._actionPrintStmt)\
                                                                      .setName('printStmt')#.setDebug(True)
-        #---show graphs
+        #show graphs
         graphStmt = Group(kw('graph') + exprList                     .setResultsName('argList')
                           + ';')                                     .setParseAction(self._actionGraphStmt)\
                                                                      .setName('graphStmt')#.setDebug(True)
@@ -979,6 +980,8 @@ class ILTProcessGenerator(object):
             illegalBlocks  : blocks (functions) that can not be called
                              (included) in this context.
         '''
+        #TODO:Protect against infinite recursion
+        #TODO: check if method is really a function definition
         for statement in block:
             #Block execution statement: include the called blocks variables
             if isinstance(statement, NodeFuncExecute):
@@ -1317,6 +1320,7 @@ class ILTProcessGenerator(object):
 
         #TODO: Check correct order of assignments (or initialization).
         #TODO: Check if all parameters and state vars have been initialized.
+        #TODO: Check if any variable name is equal to a keyword. (in findAttributesRecursive)
         
         #Modify init function for parameter value overriding
         self.modifyInitMethod(initFunc)

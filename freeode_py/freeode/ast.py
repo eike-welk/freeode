@@ -261,9 +261,11 @@ class NodeOpInfix2(Node):
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeOpInfix2, self).__init__(kids, loc, dat)
 
+    #TODO: change to proppery
     def lhs(self):
         '''Return the left hand side'''
         return self.kids[0]
+    #TODO: change to proppery
     def rhs(self):
         '''Return the right hand side'''
         return self.kids[1]
@@ -300,10 +302,13 @@ class NodeIfStmt(Node):
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeIfStmt, self).__init__(kids, loc, dat)
+    #TODO: change to proppery
     def condition(self):
         return self.kids[0]
+    #TODO: change to proppery
     def ifTruePart(self):
         return self.kids[1]
+    #TODO: change to proppery
     def elsePart(self):
         if len(self.kids) == 3:
             return self.kids[2]
@@ -318,6 +323,7 @@ class NodeAssignment(Node):
         loc     : location in input string
         dat     : '='
     '''
+    #TODO: inherit from NodeOpInfix2
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeAssignment, self).__init__(kids, loc, dat)
 
