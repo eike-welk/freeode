@@ -42,9 +42,9 @@ class CompetitionModel(Model):
         $N2 = r2*N2 * (k2-N2 - b21*N1)/k2;
     end
 
-    #Abuse init function to detect the four different cases.
+    #Function to detect the four different cases.
     #The simulation's final outcome is independent of the growth rate.
-    func init():
+    func printCase():
         if k2/b21 > k1  and  k2 > k1/b12:
             print 'Case 1: N2 will outgrow N1.';
         end
@@ -55,11 +55,13 @@ class CompetitionModel(Model):
             print 'Case 3: species with highest inital value will survive.';
         end
         if k2/b12 > k1  and  k1/b12 > k2:
-            print 'Case 4: Stable coexistence.';
+            print 'Case 4: Stable coexistence of both species.';
         end
     end
 end
 
+
+#N2 will always outgrow N1.
 class Case1(Process):
     data m: CompetitionModel;
     data N1_init, N2_init: Real parameter; #parameters for initial values
@@ -76,8 +78,7 @@ class Case1(Process):
         m.N1 = N1_init; m.N2 = N2_init;
 
         #print which case it is
-        call m.init();
-        call m.N1(); #TODO: Compiler error: this compiles, but does no harm.
+        call m.printCase();
 
         #administrative parameters
         showGraph = 1; #yes, show the graph
@@ -98,6 +99,7 @@ class Case1(Process):
 end
 
 
+#N1 will always outgrow N2.
 class Case2(Process):
     data m: CompetitionModel;
     data N1_init, N2_init: Real parameter; #parameters for initial values
@@ -114,7 +116,7 @@ class Case2(Process):
         m.N1 = N1_init; m.N2 = N2_init;
 
         #print which case it is
-        call m.init();
+        call m.printCase();
 
         #administrative parameters
         showGraph = 1; #yes, show the graph
@@ -135,6 +137,9 @@ class Case2(Process):
 end
 
 
+#Which species will survive, depends on inital value and on growth speed.
+#High values in growth speed or inital value are good for surival
+#The steady state node in the midle of the diagram is a saddle.
 class Case3(Process):
     data m: CompetitionModel;
     data N1_init, N2_init: Real parameter; #parameters for initial values
@@ -151,7 +156,7 @@ class Case3(Process):
         m.N1 = N1_init; m.N2 = N2_init;
 
         #print which case it is
-        call m.init();
+        call m.printCase();
 
         #administrative parameters
         showGraph = 1; #yes, show the graph
@@ -172,6 +177,7 @@ class Case3(Process):
 end
 
 
+#Stable coexistence of both species.
 class Case4(Process):
     data m: CompetitionModel;
     data N1_init, N2_init: Real parameter; #parameters for initial values
@@ -190,7 +196,7 @@ class Case4(Process):
         m.N1 = N1_init; m.N2 = N2_init;
 
         #print which case it is
-        call m.init();
+        call m.printCase();
 
         #administrative parameters
         showGraph = 1; #yes, show the graph

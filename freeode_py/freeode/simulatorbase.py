@@ -135,6 +135,7 @@ class SimulatorBase(object):
         '''Return the simulation results in a DictStore object'''
         result = DictStore()
         #put Variables into DictStore
+        result['time'] = self.getAttribute('time')
         for name in self.variableNameMap.keys():
             result[name] = self.getAttribute(name)
         #TODO: also include parameters

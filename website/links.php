@@ -64,6 +64,7 @@
         Python IDEs I know. Fairly slow however.
       </p>
     </li>
+    <!-- <li>http://sourceforge.net/projects/qme-dev/</li> -->
   </ul>
 
 
