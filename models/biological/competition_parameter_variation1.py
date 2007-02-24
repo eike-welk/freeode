@@ -13,7 +13,7 @@ from competition import Case1, Case2, Case3, Case4
 lsp = linspace
 
 #Case 3 ----------------------------------------------
-#
+#vary the growt rate of organism 1
 mo = Case3() #create a simulaton object instance
 figure() #create new figure window
 hot()
@@ -28,7 +28,7 @@ for i in range(len(r1Vals)):
     mo.initialize('m.r1', r1Vals[i],
                   'N1_init', 1,
                   'N2_init', 2,
-                  'solutionParameters.simulationTime', 15,
+                  'solutionParameters.simulationTime', 20,
                   'showGraph', 0)
     mo.simulateDynamic()   #solve ODE
     res = mo.getResults()  #get results as a storage.DictStore object
@@ -40,13 +40,13 @@ for i in range(len(r1Vals)):
 #finishing touches on plot
 xlabel('time')
 ylabel('N1, N2')
-#legend()
+legend()
 title('Competition of two species; case 3.')
 
 
 
 #Case 4 ----------------------------------------------
-#
+#vary the growt rate of organism 1
 mo = Case4() #create a simulaton object instance
 figure() #create new figure window
 hot()
@@ -61,7 +61,7 @@ for i in range(len(r1Vals)):
     mo.initialize('m.r1', r1Vals[i],
                   'N1_init', 1,
                   'N2_init', 2,
-                  'solutionParameters.simulationTime', 15,
+                  'solutionParameters.simulationTime', 20,
                   'showGraph', 0)
     mo.simulateDynamic()   #solve ODE
     res = mo.getResults()  #get results as a storage.DictStore object
@@ -73,7 +73,7 @@ for i in range(len(r1Vals)):
 #finishing touches on plot
 xlabel('time')
 ylabel('N1, N2')
-#legend()
+legend()
 title('Competition of two species; case 4.')
 
 show()
