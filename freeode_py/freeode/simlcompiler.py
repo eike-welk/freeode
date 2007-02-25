@@ -85,7 +85,7 @@ class SimlCompilerMain(object):
 
         #see if file extension is good
         if inputFileExtension.lower() != 'siml':
-            print 'warning: programs in the Siml language ' + \
+            print 'warning: programs in the SIML language ' + \
                   'should have the extension ".siml"'
 
         #get name of output file
@@ -130,11 +130,11 @@ class SimlCompilerMain(object):
             progStr = progGen.buffer()
         #errors from freeode
         except UserException, theError:
-            print theError
+            print >> sys.stderr, theError
             sys.exit(1)
         #errors from pyparsing. Don't remove: parser may re-raise pyparsing errors.
         except pyparsing.ParseException, theError:
-            print 'syntax error: ', theError
+            print >> sys.stderr, 'syntax error: ', theError
             sys.exit(1)
 
         #write generated program to file
@@ -146,7 +146,7 @@ class SimlCompilerMain(object):
             modeBits = os.stat(self.outputFileName).st_mode
             os.chmod(self.outputFileName, modeBits | stat.S_IEXEC)
         except IOError, theError:
-            print 'error: could nor write output file\n', theError
+            print >> sys.stderr, 'error: could nor write output file\n', theError
             sys.exit(1)
 
         print 'Compilation finished successfully.'
@@ -174,13 +174,22 @@ class SimlCompilerMain(object):
             self.runProgram()
         except SystemExit:
             raise #for sys.exit() - the error message was already printed
-        except Exception:
-            print 'Oh my golly! Compiler internal error!'
-            print 'Please file a bug report, that includes the traceback, at:\n',\
-                  'https://developer.berlios.de/projects/freeode/\n'
-            raise
-
-        # 'return with success'
+        except Exception: #Any othe exception must be an internal error
+            print >> sys.stderr, \
+                  '\nOh my golly! Compiler internal error! \n\n', \
+                  'Please file a bug report at the project\'s website,', \
+                  'or send an e-mail \n', \
+                  'with with a bug report to the developer(s).\n', \
+                  'The bug report should include the traceback', \
+                  'at the end of this message. \n', \
+                  'Please include also a short description of the error. \n', \
+                  'Website: \n', \
+                  '  https://developer.berlios.de/projects/freeode/\n', \
+                  'E-mail: \n', \
+                  '  eike@users.berlios.de \n\n', \
+                  'SIML compiler version: %s \n' %  ast.progVersion
+            raise #gets traceback and ends program
+        #return with success
         sys.exit(0)
 
 

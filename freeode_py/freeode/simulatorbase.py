@@ -28,6 +28,7 @@ and not by the Siml compiler.
 '''
 
 
+import sys
 
 from numpy import array, linspace, zeros, shape, ones, resize
 from pylab import figure, xlabel, plot, legend, title, show
@@ -182,7 +183,8 @@ class SimulatorBase(object):
             if len(varName1) == 0:
                 continue
             if not (varName1 in self.variableNameMap):
-                print('Error unknown attribute name: %s') % varName1
+                print >> sys.stderr, \
+                    'Error unknown attribute name: %s' % varName1
                 continue
             varVect = self.getAttribute(varName1)
             plot(timeVect, varVect, label=varName1)
@@ -326,7 +328,7 @@ class SimulatorBase(object):
             i += 1
         #generate run time error
         if not solver.successful():
-            print 'error: simulation was terminated'
+            print >> sys.stderr, 'error: simulation was terminated'
             #return
         #run final function
         self.final()

@@ -812,8 +812,11 @@ class ParseStage(object):
             inputFileContents = inputFile.read()
             inputFile.close()
         except IOError, theError:
-            print 'error: could not read input file\n', theError
-            sys.exit(1)
+            message = 'Could not read input file.\n' + str(theError)
+            raise UserException(message, None)
+#            print >> sys.stderr, 'error: could not read input file\n', theError
+#            sys.exit(1)
+        #TODO: This won't work with absolute file names.
         self.progFileName = os.getcwd() + '/' + fileName
         #parse the program
         try:
