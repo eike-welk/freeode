@@ -26,7 +26,9 @@ Module contains specialized nodes and tools for tree handling.
 Additionaly it contins some common infrastructure used by the other modules
 of freeode.
 '''
-
+#TODO: write class that represents a dotted name (pr1.m1.a).
+#TODO: this class may inherit from tuple, but have a customized
+#TODO: init function and __str__ function.
 
 
 import copy

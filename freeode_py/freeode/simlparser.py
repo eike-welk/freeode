@@ -36,8 +36,8 @@ import os
 #import parser library
 from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
     ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,  \
-    ParseFatalException, StringEnd, sglQuotedString, ParserElement
-    # ParseException, ParseResults, QuotedString
+    StringEnd, sglQuotedString, ParserElement, NoMatch
+    # ParseException, ParseResults, QuotedString, ParseFatalException, 
 #import our own syntax tree classes
 from freeode.ast import *
 
@@ -63,7 +63,7 @@ class ParseStage(object):
     are replaced by ast.Node objects (really opjects inheriting from ast.Node)
     in the parse actions of this class.
 
-    Normally a file name is given to the class, and a tree of Node ojects is
+    Normally a file name is given to the class, and a tree of ast.Node ojects is
     returned. The program can also be entered as a string.
     Additionally the class can parse parts of a program: expressions.
 
@@ -72,7 +72,8 @@ class ParseStage(object):
 
     Usage:
     parser = ParseStage()
-    result = parser.parseExpression('0+1+2+3+4')
+    ast1 = parser.parseExpressionStr('0+1+2+3+4')
+    ast2 = parser.parseProgramFile('foo-bar.siml')
     '''
 
     noTreeModification = 0
@@ -83,7 +84,6 @@ class ParseStage(object):
 
     ParseResult objects are printed as nested lists: ['1', '+', ['2', '*', '3']]
     '''
-
 
     keywords = set([])
     '''
@@ -105,6 +105,10 @@ class ParseStage(object):
         '''Name of SIML program file, that will be parsed'''
         self.inputString = None
         '''String that will be parsed'''
+        self._builtInFunc = {}
+        '''Names of built in functions and some info about them.
+           Format: {'function_name':number_of_function_arguments}
+           Example: {'sin':1, 'max':2}'''
         #Create parser objects
         self._defineLanguageSyntax()
 
@@ -147,7 +151,7 @@ class ParseStage(object):
         #
         tokList = toks.asList() #asList() this time ads *no* extra pair of brackets
         identier = tokList[0]
-        if identier in self.keywords:
+        if identier in ParseStage.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
             #raise ParseException(str, loc, 'Identifier same as keyword: %s' % toks[0])
             #raise ParseFatalException(
@@ -172,7 +176,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<identifier>]
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         #create AST node
@@ -188,7 +192,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<number>]
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeNum()
@@ -203,7 +207,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<string>]
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeString()
@@ -223,15 +227,21 @@ class ParseStage(object):
                          + ')' )                 .setParseAction(self._actionBuiltInFunction) \
                                                  .setName('funcCall')#.setDebug(True)
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeBuiltInFuncCall()
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.dat = toks.funcName #function dentifier
-        #TODO: check if number of function arguments is correct
         nCurr.kids = toks.arguments.asList() #child expression(s)
+        #check if number of function arguments is correct
+        if len(nCurr.kids) != self._builtInFunc[nCurr.dat]:
+            msg = ('Illegal number of function arguments. \n' + 
+                   'Function: %s, required number of arguments: %d, ' + 
+                   'given arguments: %d.') % \
+                  (nCurr.dat, self._builtInFunc[nCurr.dat], len(nCurr.kids))
+            raise UserException(msg, self.createTextLocation(loc))
         return nCurr
 
 
@@ -241,7 +251,7 @@ class ParseStage(object):
         tokList has the following structure:
         ['(', <expression>, ')']
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeParentheses()
@@ -256,7 +266,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<operator>, <expression_l>]
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpPrefix1()
@@ -272,7 +282,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<expression_l>, <operator>, <expression_r>]
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpInfix2()
@@ -291,7 +301,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<part1>, <part2>, <part3>, ...]
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeAttrAccess()
@@ -314,7 +324,7 @@ class ParseStage(object):
                             + Optional(kw('else') +':' + statementList)
                             + kw('end'))
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeIfStmt()
@@ -341,7 +351,7 @@ class ParseStage(object):
         BNF:
         assignment = Group(valAccess + '=' + expression + ';')
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeAssignment()
@@ -364,7 +374,7 @@ class ParseStage(object):
                              + '(' + ')'
                              + ';')             .setParseAction(self._createBlockExecute)\
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -383,7 +393,7 @@ class ParseStage(object):
                           + Optional(',')         .setResultsName('trailComma')
                           + ';')                  .setParseAction(self._actionPrintStmt)\
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -403,7 +413,7 @@ class ParseStage(object):
         graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
                           + ';')                  .setParseAction(self._actionDebug)\
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -421,7 +431,7 @@ class ParseStage(object):
         graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
                           + ';')                  .setParseAction(self._actionDebug)\
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -437,7 +447,7 @@ class ParseStage(object):
         BNF:
         statementList << Group(OneOrMore(statement))
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeStmtList()
@@ -466,7 +476,7 @@ class ParseStage(object):
                              + Optional(attrRole)                    .setResultsName('attrRole')
                              + ';')
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -504,7 +514,7 @@ class ParseStage(object):
                               + '(' + ')' + ':'
                               + ZeroOrMore(statement)                .setResultsName('funcBody', True)
                               + kw('end'))        '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -534,7 +544,7 @@ class ParseStage(object):
                          + ZeroOrMore(memberFuncDef)  .setResultsName('memberFuncDef', True)
                          + kw('end'))
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -560,7 +570,7 @@ class ParseStage(object):
         BNF:
         program = Group(OneOrMore(classDef))
         '''
-        if self.noTreeModification:
+        if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeProgram()
@@ -586,11 +596,15 @@ class ParseStage(object):
         builtInValue = Group( kw('pi') | kw('time'))                .setParseAction(self._actionBuiltInValue)\
                                                                     .setName('builtInValue')#.setDebug(True)
 
-        #TODO: method to tell number of function arguments
         #Functions that are built into the language
-        builtInFuncName = (  kw('sin') | kw('cos') | kw('tan') |
-                             kw('sqrt') | kw('exp') | kw('log') |
-                             kw('min') | kw('max')   )              .setName('builtInFuncName')#.setDebug(True)
+        #Dict: {'function_name':number_of_function_arguments}
+        self._builtInFunc = {'sin':1, 'cos':1, 'tan':1, 
+                             'sqrt':1, 'exp':1, 'log':1,
+                             'min':2, 'max':2}
+        builtInFuncName = NoMatch()
+        for funcName in self._builtInFunc.keys():
+            builtInFuncName = builtInFuncName | kw(funcName)
+        builtInFuncName                                             .setName('builtInFuncName')#.setDebug(True)
 
         #Integer (unsigned).
         uInteger = Word(nums)                                       .setName('uInteger')#.setDebug(True)
@@ -999,16 +1013,15 @@ class ILTProcessGenerator(object):
                              (included) in this context.
         '''
         #TODO:Protect against infinite recursion
-        #TODO: check if method is really a function definition
         for statement in block:
             #Block execution statement: include the called blocks variables
             if isinstance(statement, NodeFuncExecute):
                 subBlockName = namePrefix + statement.funcName #dotted block name
                 subModelName = subBlockName[:-1] #name of model, where block is defined
-                #Error if submodel or method does not exist
-                if not subModelName in self.astProcessAttributes:
-                    raise UserException('Undefined submodel: ' +
-                                        makeDotName(subModelName), statement.loc)
+#                #Error if submodel or method does not exist
+#                if not subModelName in self.astProcessAttributes:
+#                    raise UserException('Undefined submodel: ' +
+#                                        makeDotName(subModelName), statement.loc)
                 if not subBlockName in self.astProcessAttributes:
                     raise UserException('Undefined method: ' +
                                         makeDotName(subBlockName), statement.loc)
@@ -1018,6 +1031,7 @@ class ILTProcessGenerator(object):
                                         makeDotName(statement.funcName), statement.loc)
                 #find definition of method, and recurse into it.
                 subBlockDef = self.astProcessAttributes[subBlockName]
+                #TODO: check if subBlockDef is really a function definition
                 self.copyFuncRecursive(subBlockDef, subModelName, newBlock, illegalBlocks)
             #Any other statement: copy statement
             else:
