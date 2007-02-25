@@ -10,21 +10,18 @@ class BioReactor(Model):
     #Define  values that stay constant during the simulation.
     data mu_max, Ks, Yxs, Sf, ms: Real parameter;
     #Define values that change during the simulation.
-    data mu, X, S, STY, D: Real;
+    data mu, X, S, S_pos, STY, D: Real;
 
     #Specify the differential equations
     func dynamic():
-        #growth speed (of biomass) - only sensibly defined for for S > 0
+        #compute growth speed (of biomass) - only sensibly defined for for S > 0
         #to see why type the following in a shell window:
         # ipython -pylab
         # mu_max = 0.3; Ks = 0.01
         # S = linspace(-0.2, 0.2, 501)
         # plot(S, mu_max * S/(S+Ks))
-        if S > 0:
-            mu = mu_max * S/(S+Ks);
-        else:
-            mu = 0;
-        end
+        S_pos = max(S, 0);
+        mu = mu_max * S_pos/(S_pos+Ks);
 
         $X = mu*X - D*X;                      #change of biomass concentration
         $S = -1/Yxs*mu*X + D*Sf - D*S - ms*X; #change of sugar concentration (with maintainance rate)
@@ -38,6 +35,7 @@ end
 class Batch(Process): #Define a concrete simulation expriment
     #Define the constant values again.
     data mu_max, Ks, Yxs, Sf, D, ms, X_init, S_init: Real parameter;
+    data showGraph: Real parameter;
 
     #Say which model will be used.
     data r: BioReactor;
@@ -57,6 +55,7 @@ class Batch(Process): #Define a concrete simulation expriment
         ms     = 0.02; #sugar consumption when bacteria are not growing
         X_init = 0.1;  #Parameter for initial biomass concentration
         S_init = 20;   #Parameter for initial sugar concentration
+        showGraph = 1; #flag, if 1: show graph; do not show graph otherwise
 
         #Set initial values to the state variables.
         #Note: the full path has to be specified for variables.
@@ -76,7 +75,9 @@ class Batch(Process): #Define a concrete simulation expriment
         # In reality bacteria would die, and become food. More importantly, the
         # model becomes invalid. The formulas only apply when the bacteria
         # grow fairly fast on sugar.
-        graph 'Batch', r.mu, r.X, r.S;
+        if  showGraph != 0:
+            graph 'Batch', r.mu, r.X, r.S;
+        end
     end
 end
 
@@ -84,7 +85,8 @@ end
 #Biological reactor with constant inflow and outfow
 class Conti(Process): #Define a concrete simulation expriment
     #Define the constant values again.
-    data mu_max, Ks, Yxs, Sf, D, ms, X_init, S_init, show_graph: Real parameter;
+    data mu_max, Ks, Yxs, Sf, D, ms, X_init, S_init: Real parameter;
+    data showGraph: Real parameter;
 
     #Say which model will be used.
     data r: BioReactor;
@@ -105,7 +107,7 @@ class Conti(Process): #Define a concrete simulation expriment
         ms     = 0.02; #sugar consumption when bacteria are not growing
         X_init = 0.1;  #Parameter for initial biomass concentration
         S_init = 0;    #Parameter for initial sugar concentration
-        show_graph = 1;#flag, if 1: show graph; do not show graph otherwise
+        showGraph = 1; #flag, if 1: show graph; do not show graph otherwise
 
         #Set initial values to the state variables.
         #Note: the full path has to be specified for variables.
@@ -120,7 +122,7 @@ class Conti(Process): #Define a concrete simulation expriment
 
     #Show results
     func final():
-        if  show_graph != 0:
+        if  showGraph != 0:
             graph 'Conti', r.mu, r.X, r.S;
             graph 'Conti', r.D, r.mu;
         end
@@ -134,7 +136,8 @@ end
 # 2. when biomass concentration above a level switch inflow pump on
 class ContiSmartStart(Process): #Define a concrete simulation expriment
     #Define the constant values again.
-    data mu_max, Ks, Yxs, Sf, D_fin, ms, X_init, S_init, show_graph: Real parameter;
+    data mu_max, Ks, Yxs, Sf, D_fin, ms, X_init, S_init: Real parameter;
+    data showGraph: Real parameter;
 
     #Say which model will be used.
     data r: BioReactor;
@@ -155,7 +158,7 @@ class ContiSmartStart(Process): #Define a concrete simulation expriment
         ms     = 0.02; #sugar consumption when bacteria are not growing
         X_init = 0.1;  #Parameter for initial biomass concentration
         S_init = 20;   #Parameter for initial sugar concentration
-        show_graph = 1;#flag, if 1: show graph; do not show graph otherwise
+        showGraph = 1; #flag, if 1: show graph; do not show graph otherwise
 
         #Set initial values to the state variables.
         #Note: the full path has to be specified for variables.
@@ -176,7 +179,7 @@ class ContiSmartStart(Process): #Define a concrete simulation expriment
 
     #Show results
     func final():
-        if  show_graph != 0:
+        if  showGraph != 0:
             graph 'ContiSmartStart', r.mu, r.X, r.S;
             graph 'ContiSmartStart', r.D, r.mu;
         end

@@ -137,16 +137,24 @@ class ParseStage(object):
 
     def _actionCheckIdentifier(self, str, loc, toks):
         '''
-        Parse action to check an identifier.
-        Tries to see wether it is equal to a keyword.
+        Tests wether an identifier is legal.
+        If the identifier is equal to any keyword the parse action raises
+        an exception.
         Does not change any parse results
+        
+        tokList is structured like this: ['a1']
         '''
-        #toks is structured like this: ['a1']
-        if toks[0] in self.keywords:
+        #
+        tokList = toks.asList() #asList() this time ads *no* extra pair of brackets
+        identier = tokList[0]
+        if identier in self.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
             #raise ParseException(str, loc, 'Identifier same as keyword: %s' % toks[0])
-            raise ParseFatalException(
-                str, loc, 'Identifier same as keyword: %s' % toks[0] )
+            #raise ParseFatalException(
+            #    str, loc, 'Identifier same as keyword: %s' % toks[0] )
+            raise UserException(
+                'keyword can not be used as an identifier: ' + identier,
+                 self.createTextLocation(loc))
 
 
     def _actionStoreStmtLoc(self, str, loc, toks):
@@ -205,19 +213,25 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionFunctionCall(self, str, loc, toks):
+    def _actionBuiltInFunction(self, str, loc, toks):
         '''
         Create node for function call: sin(2.1)
-        tokList has the following structure:
-        [<function dentifier>, '(', <expression>, ')']
+        
+        Definition:
+        funcCall = Group(builtInFuncName         .setResultsName('funcName')
+                         + '(' + expressionList  .setResultsName('arguments')
+                         + ')' )                 .setParseAction(self._actionBuiltInFunction) \
+                                                 .setName('funcCall')#.setDebug(True)
         '''
         if self.noTreeModification:
             return None #No parse result modifications for debuging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        #tokList = toks.asList()[0] #there always seems to be
+        toks = toks[0]             #an extra pair of brackets
         nCurr = NodeBuiltInFuncCall()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.dat = tokList[0]  #function dentifier
-        nCurr.kids=[tokList[2]] #child expression
+        nCurr.dat = toks.funcName #function dentifier
+        #TODO: check if number of function arguments is correct
+        nCurr.kids = toks.arguments.asList() #child expression(s)
         return nCurr
 
 
@@ -595,6 +609,7 @@ class ParseStage(object):
 
         # .............. Mathematical expression .............................................................
         #'Forward declarations' for recursive rules
+        expressionList = Forward() #For built in functions
         boolExpression = Forward()
         expression = Forward()
         term =  Forward()
@@ -606,9 +621,9 @@ class ParseStage(object):
         #sin(2*a), (a+2), a.b.c(2.5:3.5))
         #Function call, parenthesis and memory access can however contain
         #expressions.
-        #TODO:function call with multiple arguments
-        #TODO: check if number of function arguments is correct
-        funcCall = Group( builtInFuncName + '(' + expression + ')') .setParseAction(self._actionFunctionCall) \
+        funcCall = Group(builtInFuncName                            .setResultsName('funcName')
+                         + '(' + expressionList                     .setResultsName('arguments')
+                         + ')' )                                    .setParseAction(self._actionBuiltInFunction) \
                                                                     .setName('funcCall')#.setDebug(True)
         parentheses = Group('(' + expression + ')')                 .setParseAction(self._actionParenthesesPair) \
                                                                     .setName('parentheses')#.setDebug(True)
@@ -650,9 +665,17 @@ class ParseStage(object):
         boolExpr2 = Group(expression + relop + boolExpression)  .setParseAction(self._actionInfixOp) \
                                                                 .setName('boolExpr2')#.setDebug(True)
         boolExpression << (boolExpr2 | boolExpr1)               .setName('boolExpression')#.setDebug(True)
+        
+        #expression list - sparse: 2, foo.bar, 3*sin(baz)
+        commaSup = Literal(',').suppress()
+        expressionList << Group(boolExpression
+                                + ZeroOrMore(commaSup + boolExpression)).setName('exprList')
         #................ End mathematical expression ................................................---
 
         #................ Identifiers ...................................................................
+        #TODO: Check if identifier is equal to a keyword. It must not! - .setParseAction(self._actionCheckIdentifier) \
+        #TODO: Statement parsing must become more robust, with forward looking parsers.
+        #TODO: 'end' is currently parsed first as an identifier and then as keyword.
         identifier = Word(alphas, alphas+nums+'_')              .setName('identifier')#.setDebug(True)
 
         #Compound identifiers for variables or parameters 'aaa.bbb'.
@@ -673,7 +696,7 @@ class ParseStage(object):
                             + kw('end'))                             .setParseAction(self._actionIfStatement)\
                                                                      .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
-        assignment = Group(valAccess + '=' + boolExpression + ';')       .setParseAction(self._actionAssignment)\
+        assignment = Group(valAccess + '=' + boolExpression + ';')   .setParseAction(self._actionAssignment)\
                                                                      .setName('assignment')#.setDebug(True)
         #execute a block - insert code of a child model
         #function arguments are currently missing
@@ -682,21 +705,17 @@ class ParseStage(object):
                              + '(' + ')'
                              + ';')                                  .setParseAction(self._actionFuncExecute)\
                                                                      .setName('blockExecute')#.setDebug(True)
-        #parse: '2, foo.bar, 3*sin(baz)
-        commaSup = Literal(',').suppress()
-        exprList = Group(expression
-                         + ZeroOrMore(commaSup + expression))    .setName('exprList')
         #print something to stdout
-        printStmt = Group(kw('print') + exprList                     .setResultsName('argList')
+        printStmt = Group(kw('print') + expressionList               .setResultsName('argList')
                           + Optional(',')                            .setResultsName('trailComma')
                           + ';')                                     .setParseAction(self._actionPrintStmt)\
                                                                      .setName('printStmt')#.setDebug(True)
         #show graphs
-        graphStmt = Group(kw('graph') + exprList                     .setResultsName('argList')
+        graphStmt = Group(kw('graph') + expressionList               .setResultsName('argList')
                           + ';')                                     .setParseAction(self._actionGraphStmt)\
                                                                      .setName('graphStmt')#.setDebug(True)
         #store to disk
-        storeStmt = Group(kw('save') + Group(Optional(stringConst)) .setResultsName('argList')
+        storeStmt = Group(kw('save') + Group(Optional(stringConst))  .setResultsName('argList')
                           + ';')                                     .setParseAction(self._actionStoreStmt)\
                                                                      .setName('storeStmt')#.setDebug(True)
 
@@ -807,7 +826,6 @@ class ParseStage(object):
 #    every time the parser succeeds the __call__ method is executed, and
 #    the location of the parser's match is stored.
 #    '''
-#    #TODO: replace by parse action
 #    def __init__(self, parser):
 #        super(StoreLoc, self).__init__()
 #        self.loc = None
@@ -1376,6 +1394,11 @@ class ILTGenerator(object):
                 continue
             newProc = procGen.createProcess(processDef)
             iltRoot.appendChild(newProc)
+        #warnig if no code was generated
+        if len(iltRoot) == 0:
+            print 'Warnig: program contains no "Process" objects. ' + \
+                  'No simulation code is generated.'    
+        
         return iltRoot
 
 

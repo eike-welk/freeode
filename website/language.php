@@ -61,16 +61,21 @@ end
   <p>
     There are two base classes:
     <ul>
-      <li><strong>process</strong>:
+      <li><strong>Process</strong>:
           A numerical experiment.
           Should contain models, initial values and parameters.
           Classes inheriting from process are compiled into simulation objects.
       </li>
-      <li><strong>model</strong>:
+      <li><strong>Model</strong>:
           Building blocks of the processes. The equations should go here.
           Models can only exist as data attributes of processes.
       </li>
     </ul>
+  </p>
+  <p>
+    There is however no real inheritance; user defined classes can (currenltly)
+    not be base classes. Only the two predefined classes <strong>Process</strong>
+    and <strong>Model</strong> are possible base classes.
   </p>
 </div>
 
