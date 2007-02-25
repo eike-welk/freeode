@@ -939,9 +939,8 @@ class ILTProcessGenerator(object):
         #check recursion depth
         maxRecursionDepth = 100
         if recursionDepth > maxRecursionDepth:
-            raise UserException('maximum submodel nesting depth (%d) exeeded'
-                                % (maxRecursionDepth),
-                                astClass.loc)
+            raise UserException('Maximum submodel nesting depth (%d) exeeded'
+                                % maxRecursionDepth, astClass.loc)
         #each of the class' children is a definition or a list of definitions
         for attrDef in astClass:
             #inspect Node type
@@ -1001,7 +1000,7 @@ class ILTProcessGenerator(object):
         return
 
 
-    def copyFuncRecursive(self, block, namePrefix, newBlock, illegalBlocks):
+    def copyFuncRecursive(self, block, namePrefix, newBlock, illegalBlocks, recursionDepth=0):
         '''
         Copy block into newBlock recursively.
         Copies all statements of block and all statements of blocks that are
@@ -1012,9 +1011,13 @@ class ILTProcessGenerator(object):
             illegalBlocks  : blocks (functions) that can not be called
                              (included) in this context.
         '''
-        #TODO:Protect against infinite recursion
+        #Protect against infinite recursion
+        maxRecursionDepth = 100
+        if recursionDepth > maxRecursionDepth:
+            raise UserException('Maximum function recursion depth (%d) exeeded'
+                                % maxRecursionDepth, block.loc)
         for statement in block:
-            #Block execution statement: include the called blocks variables
+            #Block execution statement: insert the block's code
             if isinstance(statement, NodeFuncExecute):
                 subBlockName = namePrefix + statement.funcName #dotted block name
                 subModelName = subBlockName[:-1] #name of model, where block is defined
@@ -1027,12 +1030,18 @@ class ILTProcessGenerator(object):
                                         makeDotName(subBlockName), statement.loc)
                 #Check if executing (inlining) this block is allowed
                 if statement.funcName in illegalBlocks:
-                    raise UserException('Method can not be executed here: ' +
+                    raise UserException('Function can not be called here: ' +
                                         makeDotName(statement.funcName), statement.loc)
-                #find definition of method, and recurse into it.
+                #Find definition of function
                 subBlockDef = self.astProcessAttributes[subBlockName]
-                #TODO: check if subBlockDef is really a function definition
-                self.copyFuncRecursive(subBlockDef, subModelName, newBlock, illegalBlocks)
+                #Check if subBlockDef is really a function definition
+                if not isinstance(subBlockDef, NodeFuncDef):
+                    raise UserException('Only functions can be called', 
+                                        statement.loc)
+                #Recurse into the function definition. 
+                #Insert its text in place of the call statement
+                self.copyFuncRecursive(subBlockDef, subModelName, newBlock, 
+                                       illegalBlocks, recursionDepth+1)
             #Any other statement: copy statement
             else:
                 newStmt = statement.copy()
@@ -1269,8 +1278,17 @@ class ILTProcessGenerator(object):
 
 
     def modifyInitMethod(self, method):
-        '''Modify init function for parameter value overriding'''
-        #TODO: Modify init function for parameter value overriding
+        '''
+        Modify init function for parameter value overriding
+        
+        Assignments to parameters are changed. The built in 
+        function 'overrideParam' is inserted:
+        par1 = 5; ---> par1 = overrideParam('par1', 5);
+        
+        Override param looks into an overide dict and may return
+        a new value for the parameter if it finds one in the 
+        override dict. Otherwise it returns the original value.
+        '''
         parameters = self.findParameters() 
         for assign in method.iterDepthFirst():
             #we only want to see assignments
