@@ -25,7 +25,7 @@
 #    python setup.py install
 #
 # Commandline for creating distributions:
-#    python setup.py sdist bdist_rpm bdist_wininst
+#    python setup.py sdist --formats=gztar,zip bdist_rpm bdist_wininst
 #
 # Small overview of frequently used commands. The command line
 # generally is:
@@ -43,7 +43,7 @@
 #    python setup.py --help-commands
 
 
-# IMPORTANT: 
+# IMPORTANT:
 # Files for the source distribution are also specified in the file:
 #    MANIFEST.in
 
@@ -58,11 +58,11 @@ setup(name = 'freeode',
       url = 'http://freeode.berlios.de/',
       description = 'Simulation Language for Differential Equations',
       long_description = \
-'''This packge contains a compiler for a specialized language (SIML) for the 
-simulation of differential equations (ODE). The generated simulation program 
+'''This packge contains a compiler for a specialized language (SIML) for the
+simulation of differential equations (ODE). The generated simulation program
 is in the Python programing language, using the Numpy and Scipy libraries.''',
       license = 'GPL',
-      packages = ['freeode'], 
+      packages = ['freeode'],
       scripts = ['simlc'],
       #data_files = [('freeode', ['hl_siml.xml'])], # (<folder>, [<file>])
       )
