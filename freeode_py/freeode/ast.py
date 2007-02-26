@@ -158,8 +158,7 @@ class Node(object):
             raise TypeError('Children must inherit from Node!')
         self.kids.insert(index, inNode)
 
-    #TODO: def __delitem__(self, key):
-    def delChild(self, index):
+    def __delitem__(self, index):
         '''Delete child at specified index'''
         del self.kids[index]
 
@@ -258,40 +257,43 @@ class NodeOpInfix2(Node):
     Data attributes:
         kids    : [LHS, RHS] both sides of the operator
         loc     : location in input string
-        dat     : operator symbol e.g.: '+'
+        dat     : None
+        operator: operator symbol e.g.: '+'
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=[], loc=None, dat=None, operator=None):
         super(NodeOpInfix2, self).__init__(kids, loc, dat)
+        self.operator = operator
 
-    #TODO: change to proppery
-    def lhs(self):
-        '''Return the left hand side'''
-        return self.kids[0]
-    #TODO: change to proppery
-    def rhs(self):
-        '''Return the right hand side'''
-        return self.kids[1]
-    def operator(self):
-        '''Return the operator (string)'''
-        return self.dat
+    #Get and set the left hand side
+    def getLhs(self): return self.kids[0]
+    def setLhs(self, inLhs): self.kids[0] = inLhs
+    lhs = property(getLhs, setLhs, None, 
+                   'Left hand side of operator (proppery).')
+    
+    #Get and set the right hand side
+    def getRhs(self): return self.kids[1]
+    def setRhs(self, inRhs): self.kids[1] = inRhs
+    rhs = property(getRhs, setRhs, None, 
+                   'Right hand side of operator (proppery).')
 
 
 class NodeOpPrefix1(Node):
     '''
     AST node for a (unary) prefix operator: - not
-       kids    : [RHS] the term on which the operator acts
+        kids    : [RHS] the term on which the operator acts
         loc     : location in input string
-        dat     : operator symbol e.g.: '-'
+        dat     : None
+        operator: operator symbol e.g.: '+'
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=[], loc=None, dat=None, operator=None):
         super(NodeOpPrefix1, self).__init__(kids, loc, dat)
-
-    def rhs(self):
-        '''Return the right hand side'''
-        return self.kids[0]
-    def operator(self):
-        '''Return the operator (string)'''
-        return self.dat
+        self.operator = operator
+        
+    #Get and set the right hand side
+    def getRhs(self): return self.kids[0]
+    def setRhs(self, inRhs): self.kids[0] = inRhs
+    rhs = property(getRhs, setRhs, None, 
+                   'Right hand side of operator (proppery).')
 
 
 class NodeIfStmt(Node):
@@ -304,39 +306,44 @@ class NodeIfStmt(Node):
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeIfStmt, self).__init__(kids, loc, dat)
-    #TODO: change to proppery
-    def condition(self):
-        return self.kids[0]
-    #TODO: change to proppery
-    def ifTruePart(self):
-        return self.kids[1]
-    #TODO: change to proppery
-    def elsePart(self):
+        
+    #Condition proppery
+    def getCondition(self): return self.kids[0]
+    def setCondition(self, inCondtion): self.kids[0] = inCondtion
+    condition = property(getCondition, None, None, 
+        'Condition of if:...else:...end statement.')
+    
+    #ifTruePart proppery
+    def getIfTruePart(self): return self.kids[1]
+    def setIfTruePart(self, inStatements): self.kids[1] = inStatements
+    ifTruePart = property(getIfTruePart, None, None, 
+        'Statements executed when condition is true.')
+    
+    #ifFalsePart proppery
+    def getElsePart(self):
         if len(self.kids) == 3:
             return self.kids[2]
         else:
             return NodeStmtList()
+    def setElsePart(self, inStatements):
+        if len(self.kids) == 3:
+            self.kids[2] = inStatements
+        else:
+            raise KeyError('NodeIfStmt has no "else" clause.')
+    elsePart = property(getElsePart, None, None, 
+        'Statements executed when condition is false.')
 
 
-class NodeAssignment(Node):
+class NodeAssignment(NodeOpInfix2):
     '''
     AST node for an assignment: '='
         kids    : [LHS, RHS] both sides of the assignment operator
         loc     : location in input string
-        dat     : '='
+        dat     : None
+        operator: operator symbol e.g.: '+'
     '''
-    #TODO: inherit from NodeOpInfix2
-    def __init__(self, kids=[], loc=None, dat=None):
-        super(NodeAssignment, self).__init__(kids, loc, dat)
-
-    #TODO: change to propperty; so value can be read and written through lhs, rhs
-    def lhs(self):
-        '''Return the assignment's left hand side'''
-        return self.kids[0]
-    #TODO: change to propperty; so value can be read and written through lhs, rhs
-    def rhs(self):
-        '''Return the assignment's right hand side'''
-        return self.kids[1]
+    def __init__(self, kids=[], loc=None, dat=None, operator=None):
+        super(NodeAssignment, self).__init__(kids, loc, dat, operator)
 
 
 class NodeFuncExecute(Node):
@@ -550,6 +557,7 @@ class DepthFirstIterator(object):
     leaf
     leaf
     """
+    #TODO: Find out if this is reeally depth first iteration.
 
     def __init__(self, treeRoot, returnDepth=False):
         """
@@ -846,7 +854,7 @@ class TestAST(unittest.TestCase):
         self.tree1.insertChild(0, 'qwert')
 
     def test__delChild(self):
-        self.tree1.delChild(0)
+        del self.tree1[0]
         self.assertEqual(1, len(self.tree1))   #one child removed
         self.assertEqual(5, self.tree1[0].loc) #at the begining
 

@@ -195,4 +195,5 @@ class SimlCompilerMain(object):
 
 if __name__ == '__main__':
     #do self tests
+    #TODO: try to compile all example models as unit test
     pass

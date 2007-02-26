@@ -271,7 +271,7 @@ class ParseStage(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpPrefix1()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.dat = tokList[0]  #Store operator
+        nCurr.operator = tokList[0]  #Store operator
         nCurr.kids=[tokList[1]] #Store child tree
         return nCurr
 
@@ -289,7 +289,7 @@ class ParseStage(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         #create children and store operator
         lhsTree = tokList[0]   #child lhs
-        nCurr.dat = tokList[1] #operator
+        nCurr.operator = tokList[1] #operator
         rhsTree = tokList[2]   #child rhs
         nCurr.kids=[lhsTree, rhsTree]
         return nCurr
@@ -358,7 +358,7 @@ class ParseStage(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         #create children and store operator
         lhsTree = tokList[0]   #child lhs
-        nCurr.dat = tokList[1] #operator
+        nCurr.operator = tokList[1] #operator
         rhsTree = tokList[2]   #child rhs
         nCurr.kids=[lhsTree, rhsTree]
         return nCurr
@@ -1189,7 +1189,7 @@ class ILTProcessGenerator(object):
             if not isinstance(assignStmt, NodeAssignment):
                 continue
             #those assignments must assign values to parameters
-            accPar = assignStmt.lhs()
+            accPar = assignStmt.lhs
             if not accPar.attrName in parameters:
                 continue
             #OK, this parameter is initialized, remember it
@@ -1237,14 +1237,14 @@ class ILTProcessGenerator(object):
             accPar.attrName = paramReplaceDict[oldParamName]
 
         #delete replaced parameters
-        for i in range(len(self.process)-1, -1, -1):
+        for i in range(len(self.process)-1, -1, -1): #iterate backwards
             defPar = self.process[i]
             if not isinstance(defPar, NodeAttrDef):
                 continue
             parName = defPar.attrName
             if not parName in paramReplaceDict:
                 continue
-            self.process.delChild(i)
+            del self.process[i]
             self.processAttributes.pop(parName)
 
 
@@ -1254,7 +1254,7 @@ class ILTProcessGenerator(object):
         for node in block.iterDepthFirst():
             if not isinstance(node, NodeAssignment):
                 continue
-            lVal = node.lhs() #must be NodeValAccess
+            lVal = node.lhs #must be NodeValAccess
             lValDef = self.processAttributes[lVal.attrName]
             #No assignment to parameters
             if lValDef.role == RoleParameter:
@@ -1298,7 +1298,7 @@ class ILTProcessGenerator(object):
             if not isinstance(assign, NodeAssignment):
                 continue
             #the assignment must be to a parameter
-            paramName = assign.lhs().attrName
+            paramName = assign.lhs.attrName
             if not paramName in parameters:
                 continue
             #OK: this is an assignment to a parameter
@@ -1306,12 +1306,11 @@ class ILTProcessGenerator(object):
             #create the helper function for parameter overriding
             funcNode = NodeBuiltInFuncCall([], loc, 'overrideParam')
             paramNameNode = NodeString([], loc, makeDotName(paramName))
-            origExprNode = assign.rhs()
+            origExprNode = assign.rhs
             funcNode.appendChild(paramNameNode)
             funcNode.appendChild(origExprNode)
             #use helper function as new rhs
-            #TODO:use rhs propperty
-            assign.kids[1] = funcNode
+            assign.rhs = funcNode
             
             
     def createProcess(self, inAstProc):

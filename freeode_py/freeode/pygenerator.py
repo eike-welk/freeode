@@ -45,7 +45,7 @@ class PyGenException(Exception):
         Exception.__init__(self, *params)
 
 
-
+#TODO: remove this class and find more general line wrapping solution
 class LongLineWriter(object):
     '''
     Automate writing lines with a maximum length.
@@ -130,7 +130,7 @@ class StatementGenerator(object):
         '''
         super(StatementGenerator, self).__init__()
         self.outPy = outPyFile
-        '''File where the Python program will be stored.'''
+        '''File like object, where the Python program will be stored.'''
 
 
     def createFormula(self, iltFormula):
@@ -150,12 +150,13 @@ class StatementGenerator(object):
             nameDict = {'pi':'pi', 'time':'time'}
             return nameDict[iltFormula.dat]
         #Built in function: sin(...)
-        #TODO: check if number of function arguments is correct. Where?
         elif isinstance(iltFormula, NodeBuiltInFuncCall):
             nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
                         'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
                         'overrideParam':'self._overrideParam' }
-            funcName = nameDict[iltFormula.dat] #get name of the corresponding Python function
+            #get name of the corresponding Python function
+            funcName = nameDict[iltFormula.dat] 
+            #produce output
             retStr = funcName + '('
             for funcArgument in iltFormula:
                 retStr += self.createFormula(funcArgument) + ','
@@ -176,14 +177,14 @@ class StatementGenerator(object):
                       '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ',
                       '==':' == ', '!=':' != ',
                       'and':' and ', 'or':' or '}
-            opStr = opDict[iltFormula.dat]
-            return (self.createFormula(iltFormula[0]) + opStr +
-                    self.createFormula(iltFormula[1]))
+            opStr = opDict[iltFormula.operator]
+            return (self.createFormula(iltFormula.lhs) + opStr +
+                    self.createFormula(iltFormula.rhs))
         #Prefix operator: - not
         elif isinstance(iltFormula, NodeOpPrefix1):
             opDict = {'-':' -', 'not':' not '}
-            opStr = opDict[iltFormula.dat]
-            return opStr + self.createFormula(iltFormula[0])
+            opStr = opDict[iltFormula.operator]
+            return opStr + self.createFormula(iltFormula.rhs)
         #variable or parameter
         elif isinstance(iltFormula, NodeAttrAccess):
             return iltFormula.targetName
@@ -208,16 +209,18 @@ class StatementGenerator(object):
         ind4 = ' '*4
         #Assignment  ---------------------------------------------------------
         if isinstance(iltStmt, NodeAssignment):
-            outPy.write(indent + iltStmt.lhs().targetName + ' = ' +
-                                 self.createFormula(iltStmt.rhs()) + '\n')
+            outPy.write(indent + iltStmt.lhs.targetName + ' = ' +
+                                 self.createFormula(iltStmt.rhs) + '\n')
         #if statement --------------------------------------------------------
         elif isinstance(iltStmt, NodeIfStmt):
             outPy.write(indent + 'if '
-                               + self.createFormula(iltStmt.condition())
+                               + self.createFormula(iltStmt.condition)
                                + ':\n')
-            self.createStatements(iltStmt.ifTruePart(), indent + ind4)
-            outPy.write(indent + 'else: \n')
-            self.createStatements(iltStmt.elsePart(), indent + ind4)
+            self.createStatements(iltStmt.ifTruePart, indent + ind4)
+            #Only create else clause if necessary
+            if len(iltStmt.elsePart) > 0:
+                outPy.write(indent + 'else: \n')
+                self.createStatements(iltStmt.elsePart, indent + ind4)
         #print statement -----------------------------------------------------
         elif isinstance(iltStmt, NodePrintStmt):
             line = indent + 'print '
@@ -504,11 +507,15 @@ class ProcessGenerator(object):
         #take the state variables out of the state vector
         #sequence of variables in the array is determined by self.stateVariables
         outPy.write(ind8 + '#take the state variables out of the state vector \n')
-        #TODO: use enumerate(...) ?
         stateVarNames = self.stateVariables.values()
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
             outPy.write(ind8 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
-        #outPy.write(ind8 + '#TODO: Create all algebraic variables? \n')
+        #Create all algebraic variables
+        #TODO: remove this, once proper detection of unused variables exists
+        outPy.write(ind8 + '#create all algebraic variables with value 0; ' +
+                           'to prevent runtime errors.\n')
+        for varDef in (self.algebraicVariables.values()):
+            outPy.write(ind8 + '%s = 0.0 \n' % varDef.targetName[tuple()])
 
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
@@ -550,7 +557,7 @@ class ProcessGenerator(object):
                 break
         #write method definition
         outPy = self.outPy
-        ind8 = ' '*8; ind12 = ' '*12; ind16 = ' '*16
+        ind8 = ' '*8; #ind12 = ' '*12; ind16 = ' '*16
         outPy.write('    def final(self): \n')
         outPy.write(ind8 + '\'\'\' \n')
         outPy.write(ind8 + 'Display and save simulation results. \n')
@@ -558,7 +565,7 @@ class ProcessGenerator(object):
         outPy.write(ind8 + 'have been computed. \n')
         outPy.write(ind8 + '\'\'\' \n')
         #TODO: create all variables, with values from the last iteration?
-        #genrate code for the statements
+        #generate code for the statements
         outPy.write(ind8 + '#the final method\'s statements \n')
         stmtGen = StatementGenerator(outPy)
         stmtGen.createStatements(finMethod, ind8)
