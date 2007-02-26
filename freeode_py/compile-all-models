@@ -1,0 +1,8 @@
+#!/bin/bash
+# Compile all simulation programs with the SIML compiler.
+# Usefull before putting the models to the website.
+
+set -x #enable debug output
+
+compiler="./simlc"
+find -L . -name "*.siml" -exec $compiler {} ";"
