@@ -45,88 +45,20 @@ class PyGenException(Exception):
         Exception.__init__(self, *params)
 
 
-#TODO: remove this class and find more general line wrapping solution
-class LongLineWriter(object):
-    '''
-    Automate writing lines with a maximum length.
-
-    This class is usefull for writing lines with multiple statements.
-    '''
-
-    def __init__(self, file=None, startStr='', endStr='', maxLen=80):
-        '''
-        Parameters:
-            file     : Object with write(string) method where the
-                       completed lines are put (most possibly a file).
-                       If file=None a buffer string is used instead, that
-                       can be retrieved with the buffer() method
-            maxLen   : Maximum length of a line.
-            startStr : Lines start with this string (usually the indent)
-                       unless startLine(...)
-            endStr   : Lines end with this string unless endLine(...) is called.
-        '''
-        self.file = file
-        self.multiLineBuf = ''
-        self.lineBuf = startStr
-        self.maxLen = maxLen
-        self.startStr = startStr
-        self.endStr = endStr
-
-    def _putLine(self, lineStr):
-        '''Put the finished line into the file or into the buffer'''
-        if not self.file:
-            self.multiLineBuf += lineStr
-        else:
-            self.file.write(lineStr)
-
-    def write(self, inStr):
-        '''
-        Put this string at he end of the current line.
-        If the line is too long statrt a new line.
-        '''
-        if len(self.lineBuf) + len(inStr) + len(self.endStr) > self.maxLen:
-            self._putLine(self.lineBuf + self.endStr + '\n')
-            self.lineBuf = self.startStr + inStr
-        else:
-            self.lineBuf += inStr
-        #return self
-
-    def endLine(self, finalStr):
-        '''Put inStr unconditionally at the line's end and start a new line.'''
-        self._putLine(self.lineBuf + finalStr + '\n')
-        self.lineBuf = self.startStr
-        #return self
-
-    def startLine(self, beginStr):
-        '''
-        Begin a new line with beginStr.
-        The normal start string (self.startStr) is omitted.
-        If the current line is not empty it is ended with self.endLine('').
-        '''
-        if self.lineBuf != self.startStr:
-            self.endLine('')
-        else:
-            self.lineBuf = beginStr
-        #return self
-
-    def buffer(self):
-        '''
-        Return the buffer where the completed lines are.
-        Only usefull when no file object is used.
-        '''
-        return self.multiLineBuf
-
-
 
 class StatementGenerator(object):
     '''
-    Generate a statement in Python from an AST or ILT syntax tree.
+    Generate statements in Python from an AST or ILT syntax tree.
+    
+    self.createStatements(stmtList, indent) can take the entire body
+    of a function and convert it to Python statements.
     '''
 
     def __init__(self, outPyFile):
         '''
         Arguments:
-            outPyFile : File where the Python program will be stored.
+            outPyFile : File like object where the Python program 
+                        will be stored.
         '''
         super(StatementGenerator, self).__init__()
         self.outPy = outPyFile
@@ -461,31 +393,28 @@ class ProcessGenerator(object):
         outPy.write(ind8 + '#assemble initial values to array and store them \n')
         #sequence of variables in the array is determined by self.stateVariables
         #create long lines with 'var_ame11, var_name12, var_name13, ...'
-        lineW = LongLineWriter(outPy, ' '*16)
-        lineW.startLine(ind8 + 'self.initialValues = array([')
+        outPy.write(ind8 + 'self.initialValues = array([')
         for varDef in self.stateVariables.values():
-            lineW.write('%s, ' % varDef.targetName[tuple()])
-        lineW.endLine('], \'float64\')')
+            outPy.write('%s, ' % varDef.targetName[tuple()])
+        outPy.write('], \'float64\') \n')
         outPy.write(ind8 + 'self.stateVectorLen = len(self.initialValues) \n')
         #assemble vector with algebraic variables to compute their total size
         outPy.write(ind8 + '#put algebraic variables into array, only to compute its size \n')
-        lineW = LongLineWriter(outPy, ' '*16)
-        lineW.startLine(ind8 + 'algVars = array([')
+        outPy.write(ind8 + 'algVars = array([')
         for varDef in self.algebraicVariables.values():
-            lineW.write('%s, ' % varDef.targetName[tuple()])
-        lineW.endLine('], \'float64\')')
+            outPy.write('%s, ' % varDef.targetName[tuple()])
+        outPy.write('], \'float64\') \n')
         outPy.write(ind8 + 'self.algVectorLen = len(algVars) \n')
         #TODO: compute self.variableNameMap from the actual sizes of the variables
         outPy.write(ind8 + '#Create maping between variable names and array indices \n')
         #Create maping between variable names and array indices
-        longW = LongLineWriter(outPy, ' '*16)
-        longW.startLine(ind8 + 'self.variableNameMap = {')
+        outPy.write(ind8 + 'self.variableNameMap = {')
         for i, varName in zip(range(len(self.stateVariables) +
                                     len(self.algebraicVariables)),
                               self.stateVariables.keys() +
                               self.algebraicVariables.keys()):
-            longW.write('\'%s\':%d, ' % (makeDotName(varName), i))
-        longW.endLine('}')
+            outPy.write('\'%s\':%d, ' % (makeDotName(varName), i))
+        outPy.write('}')
         outPy.write('\n\n')
 
 
@@ -498,7 +427,7 @@ class ProcessGenerator(object):
                 break
         #write method definition
         outPy = self.outPy
-        ind8 = ' '*8; ind12 = ' '*12; ind16 = ' '*16
+        ind8 = ' '*8; ind12 = ' '*12; #ind16 = ' '*16
         outPy.write('    def dynamic(self, time, state, returnAlgVars=False): \n')
         outPy.write(ind8 + '\'\'\' \n')
         outPy.write(ind8 + 'Compute time derivative of state variables. \n')
@@ -527,21 +456,19 @@ class ProcessGenerator(object):
         outPy.write(ind8 + 'if returnAlgVars: \n')
         #assemble vector with algebraic variables
         outPy.write(ind12 + '#put algebraic variables into array \n')
-        lineW = LongLineWriter(outPy, ind16)
-        lineW.startLine(ind12 + 'algVars = array([')
+        outPy.write(ind12 + 'algVars = array([')
         for varDef in self.algebraicVariables.values():
-            lineW.write('%s, ' % varDef.targetName[tuple()])
-        lineW.endLine('], \'float64\')')
+            outPy.write('%s, ' % varDef.targetName[tuple()])
+        outPy.write('], \'float64\') \n')
         outPy.write(ind12 + 'return algVars \n')
 
         outPy.write(ind8 + 'else: \n')
         #assemble the time derivatives into the return vector
         outPy.write(ind12 + '#assemble the time derivatives into the return vector \n')
-        lineW = LongLineWriter(outPy, ind16)
-        lineW.startLine(ind12 + 'stateDt = array([')
+        outPy.write(ind12 + 'stateDt = array([')
         for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-            lineW.write('%s, ' % varDef.targetName[('time',)])
-        lineW.endLine('], \'float64\')')
+            outPy.write('%s, ' % varDef.targetName[('time',)])
+        outPy.write('], \'float64\') \n')
         outPy.write(ind12 + 'return stateDt \n')
 
         outPy.write('\n\n')

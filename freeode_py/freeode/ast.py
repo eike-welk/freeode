@@ -39,7 +39,7 @@ import pyparsing
 #version of the Siml compiler.
 #global variable defined here is valid for all parts of the program.
 global progVersion
-progVersion = '0.3.1'
+progVersion = '0.3.1-dev-1'
 
 
 
