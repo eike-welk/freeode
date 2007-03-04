@@ -100,10 +100,6 @@
     <item modified_time="1171231963" url="usage.php" uploadstatus="1" />
     <item url="../models/biological/bioreactor.py" uploadstatus="1" />
     <item url="../models/biological/bioreactor_simple.py" uploadstatus="1" />
-    <item url="../models/mechanical/FillTank.simres" uploadstatus="1" />
-    <item url="../models/mechanical/tank.py" uploadstatus="1" />
-    <item url="../models/mechanical/tank.siml" uploadstatus="1" />
-    <item url="../models/mechanical/tuned_abs_damper.py" uploadstatus="1" />
     <item url="../models/mechanical/tuned_abs_damper.siml" uploadstatus="1" />
   </project>
 </webproject>

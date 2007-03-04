@@ -28,6 +28,9 @@ Parser for the SIML simulation language.
 '''
 
 
+__version__ = "$Revision: $"
+
+
 #import debuger
 #import pdb
 #import operation system stuff

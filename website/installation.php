@@ -105,6 +105,12 @@
 
   <!--============================== Installing Dependencies ========================================-->
   <h2>Installing Dependencies</h2>
+
+  <strong>
+    TODO: Add generic installation instructions for simple Python packages.
+    Shorten pyparsing and Freeode instructions.
+  </strong>
+
   <!--========================== Python ==========================-->
   <A name="install-python"></A>
   <h3>Python</h3>
@@ -302,6 +308,7 @@ Password:
     </pre>
   </div>
   <h4>Windows</h4>
+  <p>Someone please try out the Windows installer! I want to know if it works.</p>
   <ul>
     <li>
       <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">Download</A>

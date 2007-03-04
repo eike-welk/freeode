@@ -35,6 +35,8 @@ import copy
 import pyparsing
 
 
+__version__ = "$Revision: $"
+
 
 #version of the Siml compiler.
 #global variable defined here is valid for all parts of the program.

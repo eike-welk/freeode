@@ -39,6 +39,9 @@ import cStringIO
 from freeode.ast import *
 
 
+__version__ = "$Revision: $"
+
+
 class PyGenException(Exception):
     '''Exception thrown by the python code generator classes'''
     def __init__(self, *params):
@@ -77,6 +80,7 @@ class StatementGenerator(object):
         Returns:
             string, formula in Python language
         '''
+        #TODO: Replace big 'if elif' by independent functions for each statement.
         #Built in value: pi, time
         if isinstance(iltFormula, NodeBuiltInVal):
             nameDict = {'pi':'pi', 'time':'time'}
@@ -137,6 +141,9 @@ class StatementGenerator(object):
         output:
             self.outPy - text is written to object
         '''
+        #TODO: Replace big 'if elif' by independent functions for each statement.
+        #TODO: See: http://cheeseshop.python.org/pypi/simplegeneric/0.6
+        #TODO: See: http://peak.telecommunity.com/DevCenter/VisitorRevisited
         outPy = self.outPy
         ind4 = ' '*4
         #Assignment  ---------------------------------------------------------
