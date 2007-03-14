@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ############################################################################
 #    Copyright (C) 2006 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
@@ -33,6 +34,8 @@ The highlevel wrapper class is Program generator.
 It consumes a modified AST, the intermediate language tree (ILT), and
 generates some python classes that perform the simulations.
 '''
+
+from __future__ import division
 
 import cStringIO
 #import freeode.ast #necessary for ast.progVersion

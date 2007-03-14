@@ -895,7 +895,7 @@ class DictStore(BaseStore):
         
         Arguments:
         varName : attribute name; string.
-        values  : an array of compatible size
+        values  : an array of compatible size, or a float, or an int.
         
         Retuns:
         self, the object (so operations can be chained).
@@ -903,10 +903,11 @@ class DictStore(BaseStore):
         #attribute names must be strings
         if not isinstance(varName, str):
             raise TypeError('Argument "varName" must be of type str.') 
-        #functions accepts arrays and floats
+        #function accepts arrays and floats
         if not isinstance(newVal, (ndarray, float, int)):
             raise TypeError('Argument "newVals" must be of either type ' + 
                             'numpy.ndarray", "float" or "int".') 
+        #TODO:convert int to float?
         #if self._numObs is undetermined; this array sets the number of array elements
         if self._numObs == None and isinstance(newVal, ndarray):
             self._numObs = newVal.shape[0]
@@ -1357,19 +1358,23 @@ if __name__ == '__main__':
             #try if copy is really equal to original - just in case
             newStore = self.store.copy()
             self.assertTrue(newStore == self.store)
+            self.assertFalse(newStore != self.store)
             #make a copy, mutate and test for inequality
             #change existing vector
             newStore = self.store.copy()
             newStore['b'] = array([0., 1., 0., 1., 0., 1.])
             self.assertFalse(newStore == self.store)
+            self.assertTrue(newStore != self.store)
             #change existing float
             newStore = self.store.copy()
             newStore['p'] = 0. 
             self.assertFalse(newStore == self.store)
+            self.assertTrue(newStore != self.store)
             #add new attribute
             newStore = self.store.copy()
             newStore['dummy'] = 23 
             self.assertFalse(newStore == self.store)
+            self.assertTrue(newStore != self.store)
             
 
 #------ Run the tests --------------------------------------------------------

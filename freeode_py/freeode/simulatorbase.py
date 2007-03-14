@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ############################################################################
 #    Copyright (C) 2007 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
@@ -27,6 +28,8 @@ This file is imported by the generated simulation programs,
 and not by the Siml compiler.
 '''
 
+
+from __future__ import division
 
 import sys
 
@@ -396,8 +399,12 @@ class SimulatorBase(object):
 def secureShow():
     '''Show the graphs; but don't crash if no graphs exist.'''
     from matplotlib._pylab_helpers import Gcf
+    #see if there are any diagrams
     if len(Gcf.get_all_fig_managers()) == 0:
         return
+    #matplotlib bug: show thinks there is already a QT mainloop
+    show._needmain = True 
+    #enter mainloop
     show()
 
 

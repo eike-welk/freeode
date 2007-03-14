@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ############################################################################
 #    Copyright (C) 2006 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
@@ -30,6 +31,8 @@ of freeode.
 #TODO: this class may inherit from tuple, but have a customized
 #TODO: init function and __str__ function.
 
+
+from __future__ import division
 
 import copy
 import pyparsing

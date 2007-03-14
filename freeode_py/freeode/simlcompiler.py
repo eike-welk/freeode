@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ############################################################################
 #    Copyright (C) 2006 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
@@ -23,6 +24,8 @@ Compiler main loop with hight level functions for parsing command line
 options, compiling and running the compiled program.
 '''
 
+
+from __future__ import division
 
 #import pdb
 import optparse

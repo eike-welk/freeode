@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #***************************************************************************
 #    Copyright (C) 2006 by Eike Welk                                       *
 #    eike.welk@post.rwth-aachen.de                                         *
@@ -22,11 +23,13 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
-__doc__ = \
+
 '''
 Parser for the SIML simulation language.
 '''
 
+
+from __future__ import division
 
 __version__ = "$Revision: $"
 
@@ -34,7 +37,7 @@ __version__ = "$Revision: $"
 #import debuger
 #import pdb
 #import operation system stuff
-import sys
+#import sys
 import os
 #import parser library
 from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
