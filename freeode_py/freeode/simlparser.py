@@ -23,7 +23,6 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
-
 '''
 Parser for the SIML simulation language.
 '''
@@ -42,7 +41,7 @@ import os
 #import parser library
 from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
     ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,  \
-    StringEnd, sglQuotedString, ParserElement, NoMatch
+    StringEnd, sglQuotedString, ParserElement, NoMatch, MatchFirst
     # ParseException, ParseResults, QuotedString, ParseFatalException, 
 #import our own syntax tree classes
 from freeode.ast import *
@@ -188,7 +187,7 @@ class ParseStage(object):
         #create AST node
         nCurr = NodeBuiltInVal()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.dat = tokList[0] #Store the built in value's name
+        nCurr.dat = tokList #Store the built in value's name
         return nCurr
 
 
@@ -599,7 +598,7 @@ class ParseStage(object):
         L = Literal # Usage: L('+')
 
         #Values that are built into the language
-        builtInValue = Group( kw('pi') | kw('time'))                .setParseAction(self._actionBuiltInValue)\
+        builtInValue = (kw('pi') | kw('time'))                      .setParseAction(self._actionBuiltInValue)\
                                                                     .setName('builtInValue')#.setDebug(True)
 
         #Functions that are built into the language
@@ -607,10 +606,9 @@ class ParseStage(object):
         self._builtInFunc = {'sin':1, 'cos':1, 'tan':1, 
                              'sqrt':1, 'exp':1, 'log':1,
                              'min':2, 'max':2}
-        builtInFuncName = NoMatch()
-        for funcName in self._builtInFunc.keys():
-            builtInFuncName = builtInFuncName | kw(funcName)
-        builtInFuncName                                             .setName('builtInFuncName')#.setDebug(True)
+        builtInFuncName = MatchFirst(
+            [kw(funcName) 
+             for funcName in self._builtInFunc.keys()])             .setName('builtInFuncName')#.setDebug(True)
 
         #Integer (unsigned).
         uInteger = Word(nums)                                       .setName('uInteger')#.setDebug(True)
