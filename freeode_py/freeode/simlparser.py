@@ -1450,7 +1450,7 @@ def doTests():
 #------------ testProg1 -----------------------
     testProg1 = (
 '''
-class Test(m.model):
+class Test(Model):
     data V, h: Real;
     data A_bott, A_o, mu, q, g: Real parameter;
 
@@ -1467,7 +1467,7 @@ class Test(m.model):
     end
 end
 
-class RunTest(process):
+class RunTest(Process):
     data g: Real parameter;
     data test: Test;
 
@@ -1482,7 +1482,7 @@ class RunTest(process):
         solutionParameters.reportingInterval = 1;
     end
     func final():
-        store;
+        #store;
         graph test.V, test.h;
         print 'Simulation finished successfully.';
     end

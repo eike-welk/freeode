@@ -32,6 +32,20 @@ of freeode.
 #TODO: init function and __str__ function.
 
 
+#TODO: Write class that acts as a visitor for the AST. 
+#TODO: - Switching which memberfuncion is used is done based on type 
+#TODO:   and inheritance.
+#TODO: - Association between type and memberfunction is done with decorators.
+#TODO: See: http://cheeseshop.python.org/pypi/simplegeneric/0.6#inspection-and-extension
+#TODO: See: http://peak.telecommunity.com/DevCenter/VisitorRevisited
+#TODO: Usefull for: pygenerator.StatementGenerator.createFormula
+#TODO: Usefull for: pygenerator.StatementGenerator.create1Statement
+
+
+#TODO: Propperties are currently undocumented!
+#TODO: Unit tests for the more complex Node would be usefull.
+
+
 from __future__ import division
 
 import copy
@@ -315,13 +329,13 @@ class NodeIfStmt(Node):
     #Condition proppery
     def getCondition(self): return self.kids[0]
     def setCondition(self, inCondtion): self.kids[0] = inCondtion
-    condition = property(getCondition, None, None, 
+    condition = property(getCondition, setCondition, None, 
         'Condition of if:...else:...end statement.')
     
     #ifTruePart proppery
     def getIfTruePart(self): return self.kids[1]
     def setIfTruePart(self, inStatements): self.kids[1] = inStatements
-    ifTruePart = property(getIfTruePart, None, None, 
+    ifTruePart = property(getIfTruePart, setIfTruePart, None, 
         'Statements executed when condition is true.')
     
     #ifFalsePart proppery
@@ -335,7 +349,7 @@ class NodeIfStmt(Node):
             self.kids[2] = inStatements
         else:
             raise KeyError('NodeIfStmt has no "else" clause.')
-    elsePart = property(getElsePart, None, None, 
+    elsePart = property(getElsePart, setElsePart, None, 
         'Statements executed when condition is false.')
 
 
@@ -460,6 +474,7 @@ class NodeAttrDef(Node):
                           Variables with derivatives have multiple target names.
                           Example:
                           {():'v_foo', ('time',):'v_foo_dt'}
+                          TODO: replace by accessor functions to create more robust interface
    '''
     def __init__(self, kids=[], loc=None, dat=None,
                         attrName=None, className=None, role=RoleAny, targetName=None):
