@@ -32,22 +32,13 @@ of freeode.
 #TODO: init function and __str__ function.
 
 
-#TODO: Write class that acts as a visitor for the AST. 
-#TODO: - Switching which memberfuncion is used is done based on type 
-#TODO:   and inheritance.
-#TODO: - Association between type and memberfunction is done with decorators.
-#TODO: See: http://cheeseshop.python.org/pypi/simplegeneric/0.6#inspection-and-extension
-#TODO: See: http://peak.telecommunity.com/DevCenter/VisitorRevisited
-#TODO: Usefull for: pygenerator.StatementGenerator.createFormula
-#TODO: Usefull for: pygenerator.StatementGenerator.create1Statement
-
-
 #TODO: Propperties are currently undocumented!
-#TODO: Unit tests for the more complex Node would be usefull.
+#TODO: Unit tests for the more complex Nodes would be usefull.
 
 
 from __future__ import division
 
+from types import ClassType, FunctionType, NoneType
 import copy
 import pyparsing
 
@@ -606,7 +597,7 @@ class DepthFirstIterator(object):
         if self.start:
             self.start = False
             currNode, currChild = self.stack[-1]
-            return self._handleReturnDepth(currNode, currChild)
+            return self._createReturnVals(currNode, currChild)
 
         #go to next node.
         #get current state, from top of stack
@@ -624,15 +615,16 @@ class DepthFirstIterator(object):
         #remember to visit next child when we come here again
         self.stack[-1] = (currNode, currChild+1)
         #get node that will be visited next
+        #TODO: Make iterator work also with objects that are not children of Node.
         nextNode = currNode[currChild]
         #go to one level down, to current child.
         self.stack.append((nextNode, 0))
         self.depth += 1
         #return the next node
-        return self._handleReturnDepth(nextNode, self.depth)
+        return self._createReturnVals(nextNode, self.depth)
 
 
-    def _handleReturnDepth(self, node, depth):
+    def _createReturnVals(self, node, depth):
         if self.returnDepth:
             return (node, depth)
         else:
@@ -756,7 +748,7 @@ class MultiErrorException(UserException):
 
 class TextLocation(object):
     '''
-    Store the location of parsed pattern, or error.
+    Store the location of a parsed pattern, or error.
 
     Includes the file's contents and the file's name.
     Object is intended to be stored in a Node's self.loc
@@ -802,6 +794,168 @@ class TextLocation(object):
         return 'File "' + self.fileName() + '", line ' + str(self.lineNo())
 
 
+
+
+class Visitor(object):
+    '''
+    Visitor for the AST
+    
+    TODO: better documentation with usage
+    
+    TODO: Change to use of visitor: pygenerator.StatementGenerator.createFormula
+    TODO: Change to use of visitor: pygenerator.StatementGenerator.create1Statement
+
+    - Single dispatch
+    - Switching which memberfuncion is used is done based on type 
+      and inheritance.
+    - Association between type and memberfunction is done with decorators.
+    
+    Inspiration came from: 
+    Phillip J. Eby's 'simplegeneric' library
+    http://cheeseshop.python.org/pypi/simplegeneric/0.6
+    
+    External documentation
+    - Single dispatch:
+    See: http://cheeseshop.python.org/pypi/simplegeneric/0.6
+    See: http://peak.telecommunity.com/DevCenter/VisitorRevisited
+    - Multiple dispatch:
+    See: http://www.artima.com/weblogs/viewpost.jsp?thread=101605
+    See: http://gnosis.cx/download/gnosis/magic/multimethods.py
+    '''
+    
+    def __init__(self):
+        cls = self.__class__
+        #Create rule table and cache only once.
+        if not hasattr(cls, '_ruleTable'):
+            #List of types, functions and priorities
+            cls._ruleTable = []
+            #Dictionary of types and functions, no inheritance is considered
+            cls._cache = {}
+            #populate the rule table if necessary
+            self.createRuleTable()
+
+
+    def dispatch(self, inObject, *args):
+        '''
+        Call the different handler functions depending on the type of inObject
+        '''
+        cls = self.__class__
+        objCls = inObject.__class__
+        #search handler function in cache
+        handlerFunc = cls._cache.get(objCls, None)    #IGNORE:E1101
+        if handlerFunc == None:
+            #Handler function is not in cache
+            #search handler function in rule table and store it in cache
+            handlerFunc = self.findFuncInRuleTable(objCls)
+            cls._cache[objCls] = handlerFunc    #IGNORE:E1101
+        return handlerFunc(self, inObject, *args)
+        
+        
+    def simpleDefaultFunc(self, inObject, *args):
+        raise TypeError('No function to handle type %s in class %s'
+                        % (str(type(inObject)), str(type(self))))
+        
+        
+    @classmethod
+    def findFuncInRuleTable(cls, objCls):
+        '''
+        Find a function to handle a given class in the rule table.
+        If no matching rules could be found return the default rule
+        '''
+        #find handler function for class 'objCls'
+        for func1, cls1, prio1 in cls._ruleTable:
+            if issubclass(cls1, objCls):
+                return func1
+        #no specific handler could be found: return the default function
+        func1, cls1, prio1 = cls._ruleTable[-1]
+        return func1
+        
+        
+    @classmethod
+    def createRuleTable(cls):
+        '''
+        Create the rule table.
+        Look at all methods of the class, if they have 
+        _dispatchIfType and _dispatchPriority data attributes
+        put them into the rule table.
+        
+        - The rule table is sorted according to _dispatchPriority.
+        - If _dispatchIfType has the value None the function is considered 
+          the default function
+        '''
+        ruleTable = []
+        defaultFunc = Visitor.simpleDefaultFunc
+        #TODO: look into methods of parent classes too
+        #loop over the class' attributes and put them into the table if appropriate
+        for func in cls.__dict__.itervalues():
+            if not isinstance(func, FunctionType):
+                continue
+            if not (hasattr(func, '_dispatchIfType') and 
+                    hasattr(func, '_dispatchPriority')):
+                continue
+            if func._dispatchIfType == None:
+                defaultFunc = func
+            else:
+                ruleTable.append((func, func._dispatchIfType, func._dispatchPriority))
+        #sort rule table according to priority
+        getPrio = lambda tup: tup[2]
+        ruleTable.sort(key=getPrio)
+        #put default function at end of table
+        ruleTable.append((defaultFunc, NoneType, 0.0))
+        #store the tble in the most derived class
+        cls._ruleTable = ruleTable
+        
+        
+    @staticmethod
+    def when_type(inType, inPriority=1):
+        '''
+        Decorator to mark a function with some extra data members that carry
+        information with which type they should be invoked
+        '''
+        #Test if inType is really a type or a user defined class.
+        legalTypes = type, ClassType
+        if not isinstance(inType, legalTypes):
+            raise TypeError(
+                'Visitor.when_type: Argument 1 must be a type or class, but it is: %s' 
+                % str(type(inType)))
+        #Argument "inPriority" must be an integer number
+        if not isinstance(inPriority, (int, float)):
+            raise TypeError(
+                'Visitor.when_type: Argument 2 must be an int or float number, '
+                'but it is: %s'
+                % str(type(inPriority)))
+        #create function that attatches the decorations 
+        #(the extra data members)
+        def decorateWithType(funcToDecorate):
+            if not isinstance(funcToDecorate, FunctionType):
+                raise TypeError(
+                    'Visitor.when_type: Can only decorate class methods, '
+                    'but I got: %s'
+                    % str(type(funcToDecorate)))
+            funcToDecorate._dispatchIfType = inType
+            funcToDecorate._dispatchPriority = float(inPriority)
+            return funcToDecorate
+        #give the decorator function to the Pyton interpreter;
+        #the interpreter will call the function.
+        return decorateWithType
+    
+    
+    @staticmethod
+    def default(funcToDecorate):
+        '''
+        Decorator to mark a function as the default function
+        '''
+        if not isinstance(funcToDecorate, FunctionType):
+            raise TypeError(
+                'Visitor.default: Can only decorate class methods, '
+                'but I got: %s \n'
+                '(No arguments for @Visitor.default are allowed)'
+                % str(type(funcToDecorate)))
+        funcToDecorate._dispatchIfType = None
+        funcToDecorate._dispatchPriority = 0.0
+        return funcToDecorate
+         
+    
 
 #------------ testcode --------------------------------------------------
 import unittest
@@ -916,6 +1070,131 @@ class TestAST(unittest.TestCase):
 
 
 
+class TestVisitor(unittest.TestCase):
+
+    def setUp(self):
+        '''perform common setup tasks for each test'''
+        pass
+        
+#    def test__when_type(self):
+#        #this tests implementation details
+#        #define dummy class to test the decorators       
+#        class FooClass(Visitor):
+#            @Visitor.when_type(list, 23)
+#            def test(self):
+#                print 'test(...) called'
+#            
+#        #print FooClass.test._dispatchIfType
+#        self.assertEqual(FooClass.test._dispatchIfType, list)
+#        self.assertEqual(FooClass.test._dispatchPriority, 23)
+#        fooInst = FooClass()
+#        #print fooInst.test._dispatchIfType
+#        #print fooInst.test._dispatchPriority
+#        self.assertEqual(fooInst.test._dispatchIfType, list)
+#        self.assertEqual(fooInst.test._dispatchPriority, 23)
+#        #print fooInst._ruleTable
+#        #fooInst.test()
+
+
+    def test__dispatch(self):
+        '''Visitor: Test normal operation.'''
+        #define dummy class to test the decorators       
+        class FooClass(Visitor):
+            def __init__(self):
+                Visitor.__init__(self)
+            @Visitor.when_type(list)
+            def visitList(self, inObject):
+                return 'list'
+            @Visitor.when_type(int)
+            def visitInt(self, inObject):
+                return 'int'
+            @Visitor.when_type(float)
+            def visitFloat(self, inObject):
+                return 'float'
+            @Visitor.default
+            def visitDefault(self, inObject):
+                return 'default'
+
+        #test dispatching - dispatching multiple times also tries the cache
+        fooInst = FooClass()
+        #print fooInst.dispatch([])
+        self.assertEqual(fooInst.dispatch([]), 'list')
+        self.assertEqual(fooInst.dispatch([1,2]), 'list')
+        self.assertEqual(fooInst.dispatch([]), 'list')
+        #print fooInst.dispatch(1)
+        self.assertEqual(fooInst.dispatch(1), 'int')
+        self.assertEqual(fooInst.dispatch(2), 'int')
+        self.assertEqual(fooInst.dispatch(3), 'int')
+        #print fooInst.dispatch(1.0)
+        self.assertEqual(fooInst.dispatch(1.0), 'float')
+        #print fooInst.dispatch('qwert')
+        self.assertEqual(fooInst.dispatch('qwert'), 'default')
+        
+        
+    def test__switching_inheritance_priority(self):
+        '''TODO: Visitor: Test switching based on inheritance and priority.'''
+        
+        
+    def test__built_in_default_func(self):
+        '''Visitor: Test the built in default function.'''
+        #define dummy class to test the decorators       
+        class FooClass(Visitor):
+            def __init__(self):
+                Visitor.__init__(self)
+            @Visitor.when_type(list)
+            def visitList(self, inObject):
+                return 'list'
+            @Visitor.when_type(int)
+            def visitInt(self, inObject):
+                return 'int'
+
+
+        fooInst = FooClass()
+        #print fooInst.dispatch([])
+        self.assertEqual(fooInst.dispatch([]), 'list')
+         #print fooInst.dispatch(1)
+        self.assertEqual(fooInst.dispatch(1), 'int')
+        #the built in default function raises an exception. 
+        try:
+            self.assertEqual(fooInst.dispatch(1.0), 'float')
+        except TypeError, err:
+            #print err
+            pass
+
+
+    def test__decorator_errors(self):
+        '''Visitor: Test errors because of wrong decorator use.'''
+        self.assertRaises(TypeError, self.raise__decorator_error_1)
+        self.assertRaises(TypeError, self.raise__decorator_error_2)
+        self.assertRaises(TypeError, self.raise__decorator_error_3)
+        self.assertRaises(TypeError, self.raise__decorator_error_4)
+    def raise__decorator_error_1(self):
+        '''Error: No parameters for @Visitor.when_type.'''
+        class FooClass(Visitor):
+            @Visitor.when_type
+            def visitList(self, inObject):
+                return 'list'
+    def raise__decorator_error_2(self):
+        '''Error: Wrong 1st parameter for @Visitor.when_type.'''
+        class FooClass(Visitor):
+            @Visitor.when_type([])
+            def visitList(self, inObject):
+                return 'list'
+    def raise__decorator_error_3(self):
+        '''Error: Wrong 2nd parameter for @Visitor.when_type.'''
+        class FooClass(Visitor):
+            @Visitor.when_type(list, 'qwert')
+            def visitList(self, inObject):
+                return 'list'
+    def raise__decorator_error_4(self):
+        '''Error: Parameters for @Visitor.default.'''
+        class FooClass(Visitor):
+            @Visitor.default(int)
+            def visitDefault(self, inObject):
+                return 'default'
+ 
+
+
 if __name__ == '__main__':
     # Self-testing code goes here.
 
@@ -927,36 +1206,10 @@ if __name__ == '__main__':
 
     #perform the unit tests
     #unittest.main() #exits interpreter
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestAST)
+    suite = unittest.TestSuite()
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAST))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVisitor))
     unittest.TextTestRunner(verbosity=2).run(suite)
-
-#    print 'Test the AST:'
-#    t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'),
-#               Node([],5,'leaf')], 1, 'root')
-#    print 'print the tree'
-#    print t1
-#
-#    print 'test line wrapping'
-#    nBig = Node([])
-#    nBig.test1 = 'qworieoqwiruuqrw'
-#    nBig.test2 = 'qworieoqwiruuqrw'
-#    nBig.test3 = 'qworieoqwiruuqrw'
-#    nBig.test4 = 'qworieoqwiruuqrw'
-#    nBig.test5 = 'qworieoqwiruuqrw'
-#    nBig.test6 = 'qworieoqwiruuqrw'
-#    nBig.test7 = 'qworieoqwiruuqrw'
-#    nBig.test8 = 'qworieoqwiruuqrw'
-#    nBig.test9 = 'qworieoqwiruuqrw'
-#    t1[0][1].appendChild(nBig)
-#    print t1
-#
-#    print 'iterating over only the children of a node:'
-#    for n in t1:
-#        print n.loc
-#
-#    print 'iterating over the whole tree:'
-#    for n,d in t1.iterDepthFirst(returnDepth=True):
-#        print n.dat, 'depth: ', d
 
 else:
     # This will be executed in case the
