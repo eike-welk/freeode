@@ -42,8 +42,8 @@ from types import ClassType, FunctionType, NoneType
 import copy
 import pyparsing
 
-
-__version__ = "$Revision: $"
+#TODO: svn command: svn propset svn:keywords Revision ast.py
+__fileVersion__ = "$Rev: 43 $"
 
 
 #version of the Siml compiler.
