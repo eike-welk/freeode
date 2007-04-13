@@ -43,7 +43,7 @@ import copy
 import pyparsing
 
 #TODO: svn command: svn propset svn:keywords Revision ast.py
-__fileVersion__ = "$Rev: 43 $"
+__fileVersion__ = "$LastChangedRevision: 43 $"
 
 
 #version of the Siml compiler.
