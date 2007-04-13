@@ -22,17 +22,27 @@
 ############################################################################
 
 '''
-Implementation of an abstact syntax tree.
-Module contains specialized nodes and tools for tree handling.
-Additionaly it contins some common infrastructure used by the other modules
-of freeode.
+Abstrakt syntax tree and tools for tree handling.
+
+- Syntax tree with specialized nodes for all elements of the language.
+- Iterator to iterate over the tree.
+- Printer to convert tree to pretty printed string.
+- Visitor to invoke different code depending on node type.
+
+Additionaly this module contains some common infrastructure used by other 
+modules of freeode:
+- Class to store text locations together with file names.
+- Excepions to carry user visible errors.
+- Handling for dotted attribute names.
+- The program's version string.
 '''
+
 #TODO: write class that represents a dotted name (pr1.m1.a).
 #TODO: this class may inherit from tuple, but have a customized
 #TODO: init function and __str__ function.
 
 
-#TODO: Propperties are currently undocumented!
+#TODO: Propperties are currently undocumented in AST classes!
 #TODO: Unit tests for the more complex Nodes would be usefull.
 
 
@@ -42,13 +52,13 @@ from types import ClassType, FunctionType, NoneType
 import copy
 import pyparsing
 
-#TODO: svn command: svn propset svn:keywords Revision ast.py
-__fileVersion__ = "$LastChangedRevision: 43 $"
+
+##TODO: svn command: svn propset svn:keywords Revision ast.py
+#__fileVersion__ = "$LastChangedRevision: 43 $"
+#__fileVersion__ = "$Rev: 43 $"
 
 
 #version of the Siml compiler.
-#global variable defined here is valid for all parts of the program.
-global progVersion
 progVersion = '0.3.1-dev-1'
 
 
@@ -811,16 +821,22 @@ class Visitor(object):
     - Association between type and memberfunction is done with decorators.
     
     Inspiration came from: 
-    Phillip J. Eby's 'simplegeneric' library
+    Phillip J. Eby's 'simplegeneric' library and his very good online articles:
     http://cheeseshop.python.org/pypi/simplegeneric/0.6
+    http://peak.telecommunity.com/DevCenter/VisitorRevisited
     
-    External documentation
+    External documentation:
     - Single dispatch:
     See: http://cheeseshop.python.org/pypi/simplegeneric/0.6
     See: http://peak.telecommunity.com/DevCenter/VisitorRevisited
     - Multiple dispatch:
     See: http://www.artima.com/weblogs/viewpost.jsp?thread=101605
     See: http://gnosis.cx/download/gnosis/magic/multimethods.py
+    - Introduction to Decorators
+    http://personalpages.tds.net/~kent37/kk/00001.html
+    
+    Thanks to all authors for writing high quality online articles 
+    and free software.
     '''
     
     def __init__(self):
@@ -864,7 +880,7 @@ class Visitor(object):
         '''
         #find handler function for class 'objCls'
         for func1, cls1, prio1 in cls._ruleTable:
-            if issubclass(cls1, objCls):
+            if issubclass(objCls, cls1):
                 return func1
         #no specific handler could be found: return the default function
         func1, cls1, prio1 = cls._ruleTable[-1]
@@ -899,7 +915,7 @@ class Visitor(object):
                 ruleTable.append((func, func._dispatchIfType, func._dispatchPriority))
         #sort rule table according to priority
         getPrio = lambda tup: tup[2]
-        ruleTable.sort(key=getPrio)
+        ruleTable.sort(key=getPrio, reverse=True)
         #put default function at end of table
         ruleTable.append((defaultFunc, NoneType, 0.0))
         #store the tble in the most derived class
@@ -907,24 +923,35 @@ class Visitor(object):
         
         
     @staticmethod
-    def when_type(inType, inPriority=1):
+    def when_type(inType, inPriority=1.0):
         '''
-        Decorator to mark a function with some extra data members that carry
-        information with which type they should be invoked
+        Decorator to mark a method with some extra data members that carry
+        information with which argument type it should be invoked.
+        
+        Use as decorator in method definition:
+            @Visitor.when_type(int, 5)
+            def handleInt(self, intVal):
+                .....
+                
+        ARGUMENTS:
+            inType      : The type of the (second) argument for which 
+                          the decorated method is associated.
+             inPriority : The priority if multiple methods fit on one type.
+                          Higher numbers mean higher priority.
         '''
-        #Test if inType is really a type or a user defined class.
+        #This function 
+        #Test if arguments are of the required type
         legalTypes = type, ClassType
         if not isinstance(inType, legalTypes):
             raise TypeError(
                 'Visitor.when_type: Argument 1 must be a type or class, but it is: %s' 
                 % str(type(inType)))
-        #Argument "inPriority" must be an integer number
         if not isinstance(inPriority, (int, float)):
             raise TypeError(
                 'Visitor.when_type: Argument 2 must be an int or float number, '
                 'but it is: %s'
                 % str(type(inPriority)))
-        #create function that attatches the decorations 
+        #create function that really attatches the decorations 
         #(the extra data members)
         def decorateWithType(funcToDecorate):
             if not isinstance(funcToDecorate, FunctionType):
@@ -944,6 +971,13 @@ class Visitor(object):
     def default(funcToDecorate):
         '''
         Decorator to mark a function as the default function
+        
+        Use as decorator in method definition:
+            @Visitor.default
+            def handleAnyType(self, val):
+            
+        The decorated method will have the least priority.
+        There can be only one default function in a class definition.
         '''
         if not isinstance(funcToDecorate, FunctionType):
             raise TypeError(
@@ -1098,7 +1132,7 @@ class TestVisitor(unittest.TestCase):
 
     def test__dispatch(self):
         '''Visitor: Test normal operation.'''
-        #define dummy class to test the decorators       
+        #define visitor class       
         class FooClass(Visitor):
             def __init__(self):
                 Visitor.__init__(self)
@@ -1132,12 +1166,49 @@ class TestVisitor(unittest.TestCase):
         
         
     def test__switching_inheritance_priority(self):
-        '''TODO: Visitor: Test switching based on inheritance and priority.'''
+        '''Visitor: Test switching based on inheritance and priority.'''
+        #Define class hierarchy
+        class Base(object):
+            pass
+        class Derived1(Base):
+            pass
+        class Derived2(Base):
+            pass
         
+        #define visitor class       
+        class TestVisitor(Visitor):
+            def __init__(self):
+                Visitor.__init__(self)
+            #Can handle all Base objects but has low priority
+            @Visitor.when_type(Base, 1)
+            def visitBase(self, inObject):
+                return 'Base'
+            #Specialized method for Derived1 with high priority
+            @Visitor.when_type(Derived1, 5)
+            def visitDerived1(self, inObject):
+                return 'Derived1'
+            @Visitor.when_type(int)
+            def visitInt(self, inObject):
+                return 'int'
+        
+        #create some objects that the visitor should handle
+        baseInst = Base()
+        derived1Inst = Derived1()
+        derived2Inst = Derived2()
+        intInst = 2
+        #create the visitor
+        visitor = TestVisitor()
+        
+        #try the visitor
+        self.assertEqual(visitor.dispatch(baseInst), 'Base')
+        self.assertEqual(visitor.dispatch(derived1Inst), 'Derived1')
+        self.assertEqual(visitor.dispatch(derived2Inst), 'Base')
+        self.assertEqual(visitor.dispatch(intInst), 'int')
+       
         
     def test__built_in_default_func(self):
         '''Visitor: Test the built in default function.'''
-        #define dummy class to test the decorators       
+        #define visitor class       
         class FooClass(Visitor):
             def __init__(self):
                 Visitor.__init__(self)
@@ -1148,7 +1219,6 @@ class TestVisitor(unittest.TestCase):
             def visitInt(self, inObject):
                 return 'int'
 
-
         fooInst = FooClass()
         #print fooInst.dispatch([])
         self.assertEqual(fooInst.dispatch([]), 'list')
@@ -1157,6 +1227,8 @@ class TestVisitor(unittest.TestCase):
         #the built in default function raises an exception. 
         try:
             self.assertEqual(fooInst.dispatch(1.0), 'float')
+            #if we get till here there was an error
+            raise Exception('Expected exception was not raised!')
         except TypeError, err:
             #print err
             pass
