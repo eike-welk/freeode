@@ -27,6 +27,10 @@
 Parser for the SIML simulation language.
 '''
 
+#TODO: Implement namespaces. Usefull would be: 
+#TODO: - Global namespace for: classes, global functions.
+#TODO: - Function local namespace for: data attrbutes, function attributes
+
 
 from __future__ import division
 
