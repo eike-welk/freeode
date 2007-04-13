@@ -52,6 +52,100 @@ class PyGenException(Exception):
 
 
 
+class FormulaGenerator(Visitor):
+    '''
+    Take ILT sub-tree that describes a formula and
+    convert it into a formula in the Python programming language.
+    
+    USAGE:
+        Call the method
+            createFormula(iltFormula)
+        with an ILT tree as an argument. The method will convert it into
+        a Python string, which it returns.
+    '''
+    
+    def __init__(self):
+        Visitor.__init__(self)
+        
+    def createFormula(self, iltFormula):
+        '''
+        Take ILT sub-tree that describes a formula and
+        convert it into a formula in the Python programming language.
+        (recursive)
+
+        Arguments:
+            iltFormula : tree of Node objects
+        Returns:
+            string, formula in Python language
+        '''
+        return self.dispatch(iltFormula)
+    
+    @Visitor.when_type(NodeBuiltInVal, 1)
+    def _createBuiltInVal(self, iltFormula):
+        #Built in value: pi, time
+        nameDict = {'pi':'pi', 'time':'time'}
+        return nameDict[iltFormula.dat]
+        
+    @Visitor.when_type(NodeBuiltInFuncCall, 1)
+    def _createBuiltInFuncCall(self, iltFormula):
+        #Built in function: sin(...)
+        nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
+                    'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
+                    'overrideParam':'self._overrideParam' }
+        #get name of the corresponding Python function
+        funcName = nameDict[iltFormula.dat] 
+        #produce output
+        retStr = funcName + '('
+        for funcArgument in iltFormula:
+            retStr += self.dispatch(funcArgument) + ','
+        retStr += ')'
+        return retStr
+        
+    @Visitor.when_type(NodeNum, 1)
+    def _createNum(self, iltFormula):
+        #Number: 123.5
+        return str(float(iltFormula.dat))
+        
+    @Visitor.when_type(NodeString, 1)
+    def _createString(self, iltFormula):
+        #String: 'hello world'
+        return '\'' + iltFormula.dat + '\''
+        
+    @Visitor.when_type(NodeParentheses, 1)
+    def _createParentheses(self, iltFormula):
+        #pair of prentheses: ( ... )
+        return '(' + self.dispatch(iltFormula[0]) + ')'
+        
+    @Visitor.when_type(NodeOpInfix2, 1)
+    def _createOpInfix2(self, iltFormula):
+    #Infix operator: + - * / ^ and or
+        opDict = {'+':' + ', '-':' - ', '*':'*', '/':'/', '**':'**',
+                  '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ',
+                  '==':' == ', '!=':' != ',
+                  'and':' and ', 'or':' or '}
+        opStr = opDict[iltFormula.operator]
+        return (self.dispatch(iltFormula.lhs) + opStr +
+                self.dispatch(iltFormula.rhs))
+        
+    @Visitor.when_type(NodeOpPrefix1, 1)
+    def _createOpPrefix1(self, iltFormula):
+        #Prefix operator: - not
+        opDict = {'-':' -', 'not':' not '}
+        opStr = opDict[iltFormula.operator]
+        return opStr + self.dispatch(iltFormula.rhs)
+        
+    @Visitor.when_type(NodeAttrAccess, 1)
+    def _createAttrAccess(self, iltFormula):
+        #variable or parameter
+        return iltFormula.targetName
+        
+    @Visitor.default
+    def _createError(self, iltFormula):
+        #Internal error: unknown node
+        raise PyGenException('Unknown node in FormulaGenerator:\n' + str(iltFormula))
+
+
+
 class StatementGenerator(object):
     '''
     Generate statements in Python from an AST or ILT syntax tree.
@@ -67,8 +161,10 @@ class StatementGenerator(object):
                         will be stored.
         '''
         super(StatementGenerator, self).__init__()
+        #File like object, where the Python program will be stored.
         self.outPy = outPyFile
-        '''File like object, where the Python program will be stored.'''
+        #Object that creates a formula from an AST sub-tree
+        self.genFormula = FormulaGenerator()
 
 
     def createFormula(self, iltFormula):
@@ -83,53 +179,7 @@ class StatementGenerator(object):
         Returns:
             string, formula in Python language
         '''
-        #TODO: Replace big 'if elif' by independent functions for each statement.
-        #Built in value: pi, time
-        if isinstance(iltFormula, NodeBuiltInVal):
-            nameDict = {'pi':'pi', 'time':'time'}
-            return nameDict[iltFormula.dat]
-        #Built in function: sin(...)
-        elif isinstance(iltFormula, NodeBuiltInFuncCall):
-            nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
-                        'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
-                        'overrideParam':'self._overrideParam' }
-            #get name of the corresponding Python function
-            funcName = nameDict[iltFormula.dat] 
-            #produce output
-            retStr = funcName + '('
-            for funcArgument in iltFormula:
-                retStr += self.createFormula(funcArgument) + ','
-            retStr += ')'
-            return retStr
-        #Number: 123.5
-        elif isinstance(iltFormula, NodeNum):
-            return str(float(iltFormula.dat))
-        #String: 'hello world'
-        elif isinstance(iltFormula, NodeString):
-            return '\'' + iltFormula.dat + '\''
-        #pair of prentheses: ( ... )
-        elif isinstance(iltFormula, NodeParentheses):
-            return '(' + self.createFormula(iltFormula[0]) + ')'
-        #Infix operator: + - * / ^ and or
-        elif isinstance(iltFormula, NodeOpInfix2):
-            opDict = {'+':' + ', '-':' - ', '*':'*', '/':'/', '**':'**',
-                      '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ',
-                      '==':' == ', '!=':' != ',
-                      'and':' and ', 'or':' or '}
-            opStr = opDict[iltFormula.operator]
-            return (self.createFormula(iltFormula.lhs) + opStr +
-                    self.createFormula(iltFormula.rhs))
-        #Prefix operator: - not
-        elif isinstance(iltFormula, NodeOpPrefix1):
-            opDict = {'-':' -', 'not':' not '}
-            opStr = opDict[iltFormula.operator]
-            return opStr + self.createFormula(iltFormula.rhs)
-        #variable or parameter
-        elif isinstance(iltFormula, NodeAttrAccess):
-            return iltFormula.targetName
-        #unknown node
-        else:
-            raise PyGenException('Unknown node in FormulaGenerator:\n' + str(iltFormula))
+        return self.genFormula.createFormula(iltFormula)
 
 
     def create1Statement(self, iltStmt, indent):
