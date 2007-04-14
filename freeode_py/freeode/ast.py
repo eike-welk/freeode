@@ -811,13 +811,11 @@ class Visitor(object):
     Visitor for the AST
     
     TODO: better documentation with usage
-    
-    TODO: Change to use of visitor: pygenerator.StatementGenerator.createFormula
-    TODO: Change to use of visitor: pygenerator.StatementGenerator.create1Statement
 
     - Single dispatch
     - Switching which memberfuncion is used is done based on type 
       and inheritance.
+    - The algorithm for matching is 'issubclass'
     - Association between type and memberfunction is done with decorators.
     
     Inspiration came from: 
@@ -848,7 +846,7 @@ class Visitor(object):
             #Dictionary of types and functions, no inheritance is considered
             cls._cache = {}
             #populate the rule table if necessary
-            self.createRuleTable()
+            self._createRuleTable()
 
 
     def dispatch(self, inObject, *args):
@@ -862,24 +860,26 @@ class Visitor(object):
         if handlerFunc == None:
             #Handler function is not in cache
             #search handler function in rule table and store it in cache
-            handlerFunc = self.findFuncInRuleTable(objCls)
+            handlerFunc = self._findFuncInRuleTable(objCls)
             cls._cache[objCls] = handlerFunc    #IGNORE:E1101
         return handlerFunc(self, inObject, *args)
         
         
-    def simpleDefaultFunc(self, inObject, *args):
+    def _simpleDefaultFunc(self, inObject, *args):
         raise TypeError('No function to handle type %s in class %s'
                         % (str(type(inObject)), str(type(self))))
         
         
     @classmethod
-    def findFuncInRuleTable(cls, objCls):
+    def _findFuncInRuleTable(cls, objCls):
         '''
         Find a function to handle a given class in the rule table.
         If no matching rules could be found return the default rule
+        
+        The algorithm for matching is 'issubclass'
         '''
         #find handler function for class 'objCls'
-        for func1, cls1, prio1 in cls._ruleTable:
+        for func1, cls1, prio1 in cls._ruleTable: 
             if issubclass(objCls, cls1):
                 return func1
         #no specific handler could be found: return the default function
@@ -888,7 +888,7 @@ class Visitor(object):
         
         
     @classmethod
-    def createRuleTable(cls):
+    def _createRuleTable(cls):
         '''
         Create the rule table.
         Look at all methods of the class, if they have 
@@ -900,7 +900,7 @@ class Visitor(object):
           the default function
         '''
         ruleTable = []
-        defaultFunc = Visitor.simpleDefaultFunc
+        defaultFunc = Visitor._simpleDefaultFunc
         #TODO: look into methods of parent classes too
         #loop over the class' attributes and put them into the table if appropriate
         for func in cls.__dict__.itervalues():
@@ -934,14 +934,15 @@ class Visitor(object):
                 .....
                 
         ARGUMENTS:
-            inType      : The type of the (second) argument for which 
-                          the decorated method is associated.
-             inPriority : The priority if multiple methods fit on one type.
-                          Higher numbers mean higher priority.
+            inType     : The type of the (second) argument for which 
+                         the decorated method is associated.
+                         TODO: May also be a tuple of types.
+            inPriority : The priority if multiple methods fit on one type.
+                         Higher numbers mean higher priority.
         '''
         #This function 
         #Test if arguments are of the required type
-        legalTypes = type, ClassType
+        legalTypes = (type, ClassType)
         if not isinstance(inType, legalTypes):
             raise TypeError(
                 'Visitor.when_type: Argument 1 must be a type or class, but it is: %s' 
