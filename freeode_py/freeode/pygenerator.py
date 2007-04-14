@@ -140,13 +140,14 @@ class FormulaGenerator(Visitor):
         return iltFormula.targetName
         
     @Visitor.default
-    def _createError(self, iltFormula):
+    def _ErrorUnknownNode(self, iltFormula):
         #Internal error: unknown node
-        raise PyGenException('Unknown node in FormulaGenerator:\n' + str(iltFormula))
+        raise PyGenException('Unknown node in FormulaGenerator:\n' 
+                             + str(iltFormula))
 
 
 
-class StatementGenerator(object):
+class StatementGenerator(Visitor):
     '''
     Generate statements in Python from an AST or ILT syntax tree.
     
@@ -156,7 +157,7 @@ class StatementGenerator(object):
 
     def __init__(self, outPyFile):
         '''
-        Arguments:
+        ARGUMENT:
             outPyFile : File like object where the Python program 
                         will be stored.
         '''
@@ -167,114 +168,146 @@ class StatementGenerator(object):
         self.genFormula = FormulaGenerator()
 
 
+    def createStatement(self, iltStmt, indent):
+        '''
+        Take ILT sub-tree and convert it into one
+        or several Python statements.
+        This is the dispatcher function for the statements.
+
+        ARGUMENT:
+            iltStmt : tree of Node objects
+            indent  : string of whitespace, put in front of each line
+        RETURN:
+            None
+        OUTPUT:
+            self.outPy - text is written to object
+        '''
+        self.dispatch(iltStmt, indent)
+        
+        
+    def createFuncBody(self, funcDef, indent):
+        '''
+        Take NodeFuncDef and hanlae it as a list of statement
+        Nodes. Convert it into one or several Python statements.
+
+        ARGUMENT:
+            iltStmt : tree of Node objects
+            indent  : string of whitespace, put in front of each line
+        RETURN:
+            None
+        OUTPUT:
+            self.outPy - text is written to object
+        '''
+        #Take NodeFuncDef ----------------------------------------------------
+        self._createStatementList(funcDef, indent)
+
+
     def createFormula(self, iltFormula):
         '''
-        Take ILT sub-tree that describes a formula and
+        Take ILT sub-tree that describes a formula (expression) and
         convert it into a formula in the Python programming language.
         (recursive)
-        This is the dispatcher for expression nodes.
 
-        Arguments:
+        ARGUMENT:
             iltFormula : tree of Node objects
-        Returns:
+        RETURN:
             string, formula in Python language
         '''
         return self.genFormula.createFormula(iltFormula)
 
 
-    def create1Statement(self, iltStmt, indent):
-        '''
-        Take ILT sub-tree and convert it into one
-        Python statement.
-        This is the dispatcher function for the statements.
-
-        arguments:
-            iltStmt : tree of Node objects
-            indent  : string of whitespace, put in front of each line
-        output:
-            self.outPy - text is written to object
-        '''
-        #TODO: Replace big 'if elif' by independent functions for each statement.
-        #TODO: See: http://cheeseshop.python.org/pypi/simplegeneric/0.6
-        #TODO: See: http://peak.telecommunity.com/DevCenter/VisitorRevisited
+    @Visitor.when_type(NodeAssignment, 1)
+    def _createAssignment(self, iltStmt, indent):
+        #Assignment  ---------------------------------------------------------
+        outPy = self.outPy
+        outPy.write(indent + iltStmt.lhs.targetName + ' = ' +
+                    self.createFormula(iltStmt.rhs) + '\n')
+    
+        
+    @Visitor.when_type(NodeIfStmt, 1)
+    def _createIfStmt(self, iltStmt, indent):
+        #if statement --------------------------------------------------------
         outPy = self.outPy
         ind4 = ' '*4
-        #Assignment  ---------------------------------------------------------
-        if isinstance(iltStmt, NodeAssignment):
-            outPy.write(indent + iltStmt.lhs.targetName + ' = ' +
-                                 self.createFormula(iltStmt.rhs) + '\n')
-        #if statement --------------------------------------------------------
-        elif isinstance(iltStmt, NodeIfStmt):
-            outPy.write(indent + 'if '
-                               + self.createFormula(iltStmt.condition)
-                               + ':\n')
-            self.createStatements(iltStmt.ifTruePart, indent + ind4)
-            #Only create else clause if necessary
-            if len(iltStmt.elsePart) > 0:
-                outPy.write(indent + 'else: \n')
-                self.createStatements(iltStmt.elsePart, indent + ind4)
+        outPy.write(indent + 'if '
+                           + self.createFormula(iltStmt.condition)
+                           + ':\n')
+        self.dispatch(iltStmt.ifTruePart, indent + ind4)
+        #Only create else clause if necessary
+        if len(iltStmt.elsePart) > 0:
+            outPy.write(indent + 'else: \n')
+            self.dispatch(iltStmt.elsePart, indent + ind4)
+
+
+    @Visitor.when_type(NodePrintStmt, 1)
+    def _createPrintStmt(self, iltStmt, indent):
         #print statement -----------------------------------------------------
-        elif isinstance(iltStmt, NodePrintStmt):
-            line = indent + 'print '
-            for expr in iltStmt:
-                line += self.createFormula(expr) + ', '
-            #take awway last comma if newline is wanted
-            if iltStmt.newline:
-                line = line[:-2]
-            outPy.write(line + '\n')
+        outPy = self.outPy
+        line = indent + 'print '
+        for expr in iltStmt:
+            line += self.createFormula(expr) + ', '
+        #take awway last comma if newline is wanted
+        if iltStmt.newline:
+            line = line[:-2]
+        outPy.write(line + '\n')
+
+
+    @Visitor.when_type(NodeStoreStmt, 1)
+    def _createStoreStmt(self, iltStmt, indent):
         #save statement -----------------------------------------------------
         #One optional argument:
         #    -the file name: string
         #generated code is a function call:
         #    self.save('file_name')
-        elif isinstance(iltStmt, NodeStoreStmt):
-            if len(iltStmt) > 1:               #Number of arguments: 0,1
-                raise UserException('The save statement can have 1 or no arguments.',
+        outPy = self.outPy
+        if len(iltStmt) > 1:               #Number of arguments: 0,1
+            raise UserException('The save statement can have 1 or no arguments.',
+                                iltStmt.loc)
+        outPy.write(indent + 'self.save(') #write start of statement
+        for expr in iltStmt:               #iterate over arguments (max 1)
+            #child is a string
+            if isinstance(expr, NodeString):
+                self.createFormula(expr)   #write filename
+            #anything else is illegal
+            else:
+                raise UserException('Argument of save statement must be a file name.',
                                     iltStmt.loc)
-            outPy.write(indent + 'self.save(') #write start of statement
-            for expr in iltStmt:               #iterate over arguments (max 1)
-                #child is a string
-                if isinstance(expr, NodeString):
-                    self.createFormula(expr)   #write filename
-                #anything else is illegal
-                else:
-                    raise UserException('Argument of save statement must be a file name.',
-                                        iltStmt.loc)
-            outPy.write(') \n')                #write end of statement
+        outPy.write(') \n')                #write end of statement
+
+
+    @Visitor.when_type(NodeGraphStmt, 1)
+    def _createGraphStmt(self, iltStmt, indent):
         #graph statement -----------------------------------------------------
         #Any number of arguments. Legal types are:
         #    -Variable for inclusion in graph: attribute access
         #    -Graph title: string
         #generated code is a function call:
         #    self.graph(['t.V', 't.h', 't.qOut0', 't.qOut1', ], 'graph title')
-        elif isinstance(iltStmt, NodeGraphStmt):
-            graphTitle = ''
-            outPy.write(indent + 'self.graph([') #write start of statement
-            for expr in iltStmt:                 #iterate over arguments
-                #Argument is variable name
-                if   isinstance(expr, NodeAttrAccess):
-                    outPy.write("'%s', " % makeDotName(expr.attrName)) #write variable name
-                #Argument is graph title
-                elif isinstance(expr, NodeString):
-                    graphTitle = expr.dat        #store graph title
-                #anything else is illegal
-                else:
-                    raise UserException('Illegal argument in graph statement.',
-                                        iltStmt.loc)
-            outPy.write('], ')                   #end list of var names
-            #A graph title was found
-            if graphTitle:
-                outPy.write("'%s'" % graphTitle) #write write grapt title as 2nd argument
-            outPy.write(') \n')                  #write end of statement
-        #Internal error: unknown statement -----------------------------------
-        else:
-            raise PyGenException('Unknown node in StatementGenerator:\n'
-                                 + str(iltStmt))
+        outPy = self.outPy
+        graphTitle = ''
+        outPy.write(indent + 'self.graph([') #write start of statement
+        for expr in iltStmt:                 #iterate over arguments
+            #Argument is variable name
+            if   isinstance(expr, NodeAttrAccess):
+                outPy.write("'%s', " % makeDotName(expr.attrName)) #write variable name
+            #Argument is graph title
+            elif isinstance(expr, NodeString):
+                graphTitle = expr.dat        #store graph title
+            #anything else is illegal
+            else:
+                raise UserException('Illegal argument in graph statement.',
+                                    iltStmt.loc)
+        outPy.write('], ')                   #end list of var names
+        #A graph title was found
+        if graphTitle:
+            outPy.write("'%s'" % graphTitle) #write write grapt title as 2nd argument
+        outPy.write(') \n')                  #write end of statement
 
 
-    def createStatements(self, stmtList, indent):
+    @Visitor.when_type(NodeStmtList, 1)
+    def _createStatementList(self, stmtList, indent):
         '''
-        Take NodeStmtList or NodeFuncDef and convert
+        Take NodeStmtList and convert
         into multiple Python statements.
 
         arguments:
@@ -287,7 +320,14 @@ class StatementGenerator(object):
             self.outPy.write(indent + 'pass \n')
             return
         for stmt1 in stmtList:
-            self.create1Statement(stmt1, indent)
+            self.dispatch(stmt1, indent)
+            
+            
+    @Visitor.default
+    def _ErrorUnknownNode(self, iltStmt, indent):
+        #Internal error: unknown statement -----------------------------------
+        raise PyGenException('Unknown node in StatementGenerator:\n'
+                             + str(iltStmt))
 
 
 
@@ -446,7 +486,7 @@ class ProcessGenerator(object):
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
-        stmtGen.createStatements(initMethod, ind8)
+        stmtGen.createFuncBody(initMethod, ind8)
         outPy.write(ind8 + '\n')
 
         #put initial values into array and store them
@@ -509,7 +549,7 @@ class ProcessGenerator(object):
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
-        stmtGen.createStatements(dynMethod, ind8)
+        stmtGen.createFuncBody(dynMethod, ind8)
         outPy.write(ind8 + '\n')
 
         #return either state variables or algebraic variables
@@ -555,7 +595,7 @@ class ProcessGenerator(object):
         #generate code for the statements
         outPy.write(ind8 + '#the final method\'s statements \n')
         stmtGen = StatementGenerator(outPy)
-        stmtGen.createStatements(finMethod, ind8)
+        stmtGen.createFuncBody(finMethod, ind8)
         outPy.write(ind8 + "print 'simulation %s finished.'\n" % self.processPyName)
         outPy.write(ind8 + '\n')
 
