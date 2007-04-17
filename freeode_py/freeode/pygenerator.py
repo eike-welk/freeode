@@ -187,8 +187,8 @@ class StatementGenerator(Visitor):
         
     def createFuncBody(self, funcDef, indent):
         '''
-        Take NodeFuncDef and hanlae it as a list of statement
-        Nodes. Convert it into one or several Python statements.
+        Take NodeFuncDef and handle it as a list of statement
+        nodes. Convert it into one or several Python statements.
 
         ARGUMENT:
             iltStmt : tree of Node objects
@@ -198,7 +198,6 @@ class StatementGenerator(Visitor):
         OUTPUT:
             self.outPy - text is written to object
         '''
-        #Take NodeFuncDef ----------------------------------------------------
         self._createStatementList(funcDef, indent)
 
 
