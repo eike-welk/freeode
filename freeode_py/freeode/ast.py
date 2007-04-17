@@ -37,10 +37,6 @@ modules of freeode:
 - The program's version string.
 '''
 
-#TODO: write class that represents a dotted name (pr1.m1.a).
-#TODO: this class may inherit from tuple, but have a customized
-#TODO: init function and __str__ function.
-
 
 #TODO: Propperties are currently undocumented in AST classes!
 #TODO: Unit tests for the more complex Nodes would be usefull.
@@ -48,7 +44,7 @@ modules of freeode:
 
 from __future__ import division
 
-from types import ClassType, FunctionType, NoneType
+from types import ClassType, FunctionType, NoneType #, TupleType, StringType
 import copy
 import pyparsing
 
@@ -436,9 +432,10 @@ class AttributeRole(object):
     '''
     Constants to denote the role of an attribute.
 
-    Intention to create someting like
-    enums. Classes are objects in python; not only
-    class instances.
+    Intention to create someting like enums. 
+    Additionally this solution provides a 
+    means for documentation and expresses the tree 
+    shaped relationship between the roles. 
     '''
     pass
 class RoleAny(AttributeRole):
@@ -498,7 +495,7 @@ class NodeAttrAccess(Node):
         deriv      : Denote if a derivation operator acted on the attribute.
                      Empty tuple means no derivation took place. can be:
                      (,),('time',) or tuple of distibution domains
-        attrName   : ['proc', 'model1', 'a'], list of strings; the dot separated name.
+        attrName   : ('proc', 'model1', 'a'), tuple of strings; the dot separated name.
         targetName : name in the target language (string)
     '''
     def __init__(self, kids=[], loc=None, dat=None, deriv=None,
@@ -540,7 +537,7 @@ class NodeClassDef(Node):
 
         className : name of the class defined here.
         superName : name of the class, from which this class inherits;
-                    usually"process", "model"
+                    usually "Process", "Model"
     """
     def __init__(self, kids=[], loc=None, dat=None, className=None, superName=None):
         super(NodeClassDef, self).__init__(kids, loc, dat)
@@ -703,6 +700,8 @@ class TreePrinter(object):
 
 
 
+#TODO: replace all occurences of makeDotName(...) with str(...) function.
+#TODO: remove this function in favor of DotName class 
 def makeDotName(inTuple):
     '''
     Create a dotted name from a tuple of strings.
@@ -716,6 +715,54 @@ def makeDotName(inTuple):
             dotName += '.'+namePart
     return dotName
 
+
+
+#TODO: Replace all tuples by DotName objects (simlparser)
+class DotName(tuple):
+    '''
+    Class that represents a dotted name ('pr1.m1.a').
+    
+    This class inherits from tuple, but can be sensibly constructed
+    from a string: The dots are used to separate tuple components.
+    >>> dn = DotName('a.b.c')
+    >>> dn
+    DotName('a.b.c')
+    >>> tuple(dn)
+    ('a', 'b', 'c')
+    
+    The str() function converts the object back to a dotted name.
+    >>> str(dn)
+    'a.b.c'
+    
+    The object can be freely mixed with tuples.
+    >>> dn == ('a', 'b', 'c')
+    True
+    >>> dn + ('d', 'e', 'f')
+    DotName('a.b.c.d.e.f')
+    '''
+    #immutable classes are created by the _new_(...) method.
+    def __new__(cls, iterable):
+        '''Create tuple. Strings get special treatment.'''
+        if isinstance(iterable, str):
+            iterable = iterable.split('.')
+        return tuple.__new__(cls, iterable)
+        
+    def __str__(self):
+        '''Create string with dots between tuple components.'''
+        return '.'.join(self)
+    
+    def __repr__(self):
+        '''Create string representation that can be used in Python program'''
+        return "DotName('" + self.__str__() + "')"
+
+    def __add__(self, other):
+        '''Concatenate with tuple or DotName. Return: self + other.'''
+        return DotName(tuple.__add__(self, other))
+    
+    def __radd__(self, other):
+        '''Concatenate with tuple or DotName. Return: other + self.'''
+        return DotName(tuple.__add__(other, self))
+    
 
 
 class UserException(Exception):
@@ -1268,6 +1315,51 @@ class TestVisitor(unittest.TestCase):
  
 
 
+class TestDotName(unittest.TestCase):
+
+    def setUp(self):
+        '''perform common setup tasks for each test'''
+        pass
+        
+    def test__new__(self):
+        '''DotName: Test constructor.'''
+        #create DotName object from string
+        abc = DotName('a.b.c')
+        self.assertTrue(abc == ('a','b','c'))
+        self.assertTrue(tuple(abc) == ('a','b','c'))
+        #create DotName from other iterable
+        abc1 = DotName(('a','b','c'))
+        self.assertTrue(abc1 == ('a','b','c'))
+       
+    def test__str__(self):
+        '''DotName: Test conversion to string.'''
+        abc = DotName('a.b.c')
+        self.assertTrue(str(abc) == 'a.b.c')
+
+    def test__repr__(self):
+        '''DotName: Test repr method.'''
+        abc = DotName('a.b.c')
+        self.assertTrue(repr(abc) == "DotName('a.b.c')")
+
+    def test__add__(self):
+        '''DotName: Test addition (concatenating).'''
+        #addition of two DotNames
+        abc = DotName('a.b.c')
+        efg = DotName('e.f.g')
+        abcefg = abc + efg
+        self.assertTrue(abcefg == DotName('a.b.c.e.f.g'))
+        self.assertTrue(isinstance(abcefg, DotName))
+        #mixed addition with tuple 1
+        abcefg = abc + ('e', 'f', 'g')
+        self.assertTrue(abcefg == DotName('a.b.c.e.f.g'))
+        self.assertTrue(isinstance(abcefg, DotName))
+        #mixed addition with tuple 2
+        abcefg = ('a', 'b', 'c') + efg
+        self.assertTrue(abcefg == DotName('a.b.c.e.f.g'))
+        self.assertTrue(isinstance(abcefg, DotName))
+        
+        
+
 if __name__ == '__main__':
     # Self-testing code goes here.
 
@@ -1282,8 +1374,9 @@ if __name__ == '__main__':
     suite = unittest.TestSuite()
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAST))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVisitor))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDotName))
     unittest.TextTestRunner(verbosity=2).run(suite)
-
+    
 else:
     # This will be executed in case the
     #    source has been imported as a
