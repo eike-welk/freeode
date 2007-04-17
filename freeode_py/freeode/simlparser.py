@@ -27,6 +27,9 @@
 Parser for the SIML simulation language.
 '''
 
+
+#TODO: write unit tests that exercise every error message of simlparser.py
+
 #TODO: Implement namespaces. Usefull would be: 
 #TODO: - Global namespace for: classes, global functions.
 #TODO: - Function local namespace for: data attrbutes, function attributes
@@ -66,10 +69,11 @@ class ParseActionException(Exception):
 class ParseStage(object):
     '''
     The syntax definition (BNF) resides here.
-    Mainly a wrapper for the Pyparsing library. It combines lexer
-    and parser.
-    The Pyparsing library generates a ParseResult objects. These objects
-    are replaced by ast.Node objects (really opjects inheriting from ast.Node)
+    
+    The parsing is done by the pyparsing libraryy which combines 
+    lexer and parser. The Pyparsing library generates a tree of 
+    ParseResult objects. These objects
+    are replaced by objects inheriting from ast.Node
     in the parse actions of this class.
 
     Normally a file name is given to the class, and a tree of ast.Node ojects is
