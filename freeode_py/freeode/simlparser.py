@@ -324,7 +324,7 @@ class ParseStage(object):
             nCurr.deriv = ('time',)
             del tokList[0]
         #The remaining tokens are the dot separated name
-        nCurr.attrName = tuple(tokList)
+        nCurr.attrName = DotName(tokList)
         return nCurr
 
 
@@ -393,7 +393,7 @@ class ParseStage(object):
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeFuncExecute()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.funcName = tuple(toks.funcName)    #full (dotted) function name
+        nCurr.funcName = DotName(toks.funcName)    #full (dotted) function name
         return nCurr
 
 
@@ -477,7 +477,7 @@ class ParseStage(object):
             'data foo, bar: baz.boo parameter;
         One such statement can define multiple parmeters; and an individual
         NodeAttrDef is created for each. They are returned together inside a
-        list node of type NodeAttrDefMulti.
+        list node of type NodeStmtList.
         BNF:
         attrNameList = Group( identifier +
                                 ZeroOrMore(',' + identifier))
@@ -499,8 +499,8 @@ class ParseStage(object):
         nameList = toks.attrNameList.asList()
         for name in nameList:
             attrDef = NodeAttrDef(loc=self.createTextLocation(loc))
-            attrDef.attrName = tuple([name]) #store attribute name
-            attrDef.className = tuple(toks.className.asList())  #store class name
+            attrDef.attrName = DotName(name) #store attribute name
+            attrDef.className = DotName(toks.className.asList())  #store class name
             #store the role
             if toks.attrRole == 'parameter':
                 attrDef.role = RoleParameter
@@ -534,7 +534,7 @@ class ParseStage(object):
         nCurr = NodeFuncDef()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store name of block
-        nCurr.name = (toks.funcName,)
+        nCurr.name = DotName(toks.funcName)
         #create children - each child is a statement
         statements = []
         if len(toks.funcBody) > 0:
@@ -564,8 +564,8 @@ class ParseStage(object):
         nCurr = NodeClassDef()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store class name and name of super class
-        nCurr.className = (toks.className,)
-        nCurr.superName = tuple(toks.superName)
+        nCurr.className = DotName(toks.className)
+        nCurr.superName = DotName(toks.superName)
         #create children (may or may not be present):  data, functions
         data, funcs = [], [] #special cases for empty edinitions necessary
         if len(toks.attributeDef) > 0:
@@ -916,7 +916,7 @@ class ILTProcessGenerator(object):
             #check for duplicate classes
             if classDef.className in self.astClasses:
                 raise UserException('Redefinition of class: %s'
-                                    % makeDotName(classDef.className),
+                                    % str(classDef.className),
                                     classDef.loc)
             self.astClasses[classDef.className] = classDef
 
@@ -930,12 +930,12 @@ class ILTProcessGenerator(object):
          built-in values, like pi.
         '''
         #Put solutionparameters as first attribute into the process
-        solParAttr = NodeAttrDef(loc=0, attrName=('solutionParameters',),
-                                 className=('solutionParametersClass',))
+        solParAttr = NodeAttrDef(loc=0, attrName=DotName('solutionParameters'),
+                                 className=DotName('solutionParametersClass'))
         self.astProcess.insertChild(0, solParAttr)
 
 
-    def findAttributesRecursive(self, astClass, namePrefix=tuple(), recursionDepth=0):
+    def findAttributesRecursive(self, astClass, namePrefix=DotName(), recursionDepth=0):
         '''
         Find all of the process' attributes (recursing into the sub-models)
         and put then into self.astProcessAttributes.
@@ -979,7 +979,7 @@ class ILTProcessGenerator(object):
             #Check redefinition
             if longAttrName in self.astProcessAttributes:
                 raise UserException('Redefinition of: ' +
-                                    makeDotName(longAttrName), attrDef.loc)
+                                    str(longAttrName), attrDef.loc)
             #put new attribute into dict.
             self.astProcessAttributes[longAttrName] = attrDef
 
@@ -989,7 +989,7 @@ class ILTProcessGenerator(object):
                 #User visible error if class does not exist
                 if not attrDef.className in self.astClasses:
                     raise UserException('Undefined class: '
-                                        + makeDotName(attrDef.className),
+                                        + str(attrDef.className),
                                         attrDef.loc)
                 subModel = self.astClasses[attrDef.className]
                 self.findAttributesRecursive(subModel, longAttrName,
@@ -1039,14 +1039,14 @@ class ILTProcessGenerator(object):
 #                #Error if submodel or method does not exist
 #                if not subModelName in self.astProcessAttributes:
 #                    raise UserException('Undefined submodel: ' +
-#                                        makeDotName(subModelName), statement.loc)
+#                                        str(subModelName), statement.loc)
                 if not subBlockName in self.astProcessAttributes:
                     raise UserException('Undefined method: ' +
-                                        makeDotName(subBlockName), statement.loc)
+                                        str(subBlockName), statement.loc)
                 #Check if executing (inlining) this block is allowed
                 if statement.funcName in illegalBlocks:
                     raise UserException('Function can not be called here: ' +
-                                        makeDotName(statement.funcName), statement.loc)
+                                        str(statement.funcName), statement.loc)
                 #Find definition of function
                 subBlockDef = self.astProcessAttributes[subBlockName]
                 #Check if subBlockDef is really a function definition
@@ -1081,7 +1081,7 @@ class ILTProcessGenerator(object):
                 continue
             if not (node.attrName) in self.processAttributes:
                 raise UserException('Undefined reference: ' +
-                                    makeDotName(node.attrName), node.loc)
+                                    str(node.attrName), node.loc)
 
 
 
@@ -1119,7 +1119,7 @@ class ILTProcessGenerator(object):
             #Check conceptual constraint: no $parameter allowed
             if stateVarDef.role == RoleParameter:
                 raise UserException('Parameters can not be state variables: ' +
-                              makeDotName(node.attrName), node.loc)
+                              str(node.attrName), node.loc)
             #remember: this is a state variable; in definition and in dict
             stateVarDef.role = RoleStateVariable
             self.stateVariables[node.attrName] = stateVarDef
@@ -1234,7 +1234,7 @@ class ILTProcessGenerator(object):
             errList = [(msg, loc)]
             #mention all uninited params
             for nPar in notInitedParams:
-                msg = 'Uninitialized prameter: %s' % makeDotName(parameters[nPar].attrName)
+                msg = 'Uninitialized prameter: %s' % str(parameters[nPar].attrName)
                 loc = parameters[nPar].loc
                 errList.append((msg, loc))
             raise MultiErrorException(errList)
@@ -1271,13 +1271,13 @@ class ILTProcessGenerator(object):
             #No assignment to parameters
             if lValDef.role == RoleParameter:
                 raise UserException('Illegal assignment to parameter: ' +
-                                    makeDotName(lVal.attrName), lVal.loc)
+                                    str(lVal.attrName), lVal.loc)
             #No assignment to state variables - only to their time derivatives
             if lValDef.role == RoleStateVariable and (lVal.deriv != ('time',)):
                 raise UserException('Illegal assignment to state variable: ' +
-                                    makeDotName(lVal.attrName) +
+                                    str(lVal.attrName) +
                                     '. You must however assign to its time derivative. ($' +
-                                    makeDotName(lVal.attrName) +')', lVal.loc)
+                                    str(lVal.attrName) +')', lVal.loc)
 
 
     def checkInitMethodConstraints(self, block):
@@ -1317,7 +1317,7 @@ class ILTProcessGenerator(object):
             loc = assign.loc
             #create the helper function for parameter overriding
             funcNode = NodeBuiltInFuncCall([], loc, 'overrideParam')
-            paramNameNode = NodeString([], loc, makeDotName(paramName))
+            paramNameNode = NodeString([], loc, str(paramName))
             origExprNode = assign.rhs
             funcNode.appendChild(paramNameNode)
             funcNode.appendChild(origExprNode)
@@ -1347,34 +1347,36 @@ class ILTProcessGenerator(object):
         #create the new process' data attributes
         self.copyDataAttributes()
 
-        #these are the prosess' main functions.
+        #dynamic(...), init(...), final(...) are the prosess' main functions.
         #if they are not defined an empty function is created
-        principalFuncs = set([('dynamic',),('init',),('final',)])
+        principalFuncs = set([DotName('dynamic'), DotName('init'),
+                              DotName('final')])
         #create dynamic function
-        dynamicFunc = NodeFuncDef(name=('dynamic',)) #create new ILT function
+        dynamicFunc = NodeFuncDef(name=DotName('dynamic')) #create empty function
         self.process.appendChild(dynamicFunc) #put new function into process
         #if function is defined in the AST, copy it into the new ILT function
-        if ('dynamic',) in self.astProcessAttributes:
+        if DotName('dynamic') in self.astProcessAttributes:
             #set of functions that should not appear in dynamic function
-            illegalFuncs = principalFuncs - set([('dynamic',)]) \
-                           | set([('load',), ('store',), ('graph',)])
+            illegalFuncs = principalFuncs - set([DotName('dynamic')]) \
+                           | set([DotName('load'), DotName('store'), 
+                                  DotName('graph',)])
             #copy the function's statements from AST to ILT; recursive
-            self.copyFuncRecursive(self.astProcessAttributes[('dynamic',)],
-                                    tuple(), dynamicFunc, illegalFuncs)
+            self.copyFuncRecursive(self.astProcessAttributes[DotName('dynamic')],
+                                   DotName(), dynamicFunc, illegalFuncs)
         #create init function
-        initFunc = NodeFuncDef(name=('init',))
+        initFunc = NodeFuncDef(name=DotName('init'))
         self.process.appendChild(initFunc) #put new block into process
-        if ('init',) in self.astProcessAttributes:
-            illegalFuncs = principalFuncs - set([('init',)])
-            self.copyFuncRecursive(self.astProcessAttributes[('init',)],
-                                    tuple(), initFunc, illegalFuncs)
+        if DotName('init') in self.astProcessAttributes:
+            illegalFuncs = principalFuncs - set([DotName('init')])
+            self.copyFuncRecursive(self.astProcessAttributes[DotName('init')],
+                                   DotName(), initFunc, illegalFuncs)
         #create final function
-        finalFunc = NodeFuncDef(name=('final',))
+        finalFunc = NodeFuncDef(name=DotName('final'))
         self.process.appendChild(finalFunc) #put new block into process
-        if ('final',) in self.astProcessAttributes:
-            illegalFuncs = principalFuncs - set([('final',)])
-            self.copyFuncRecursive(self.astProcessAttributes[('final',)],
-                                    tuple(), finalFunc, illegalFuncs)
+        if DotName('final') in self.astProcessAttributes:
+            illegalFuncs = principalFuncs - set([DotName('final')])
+            self.copyFuncRecursive(self.astProcessAttributes[DotName('final')],
+                                   DotName(), finalFunc, illegalFuncs)
 
         self.checkUndefindedReferences(self.process) #Check undefined refference
         self.findStateVariables(dynamicFunc) #Mark state variables
@@ -1411,12 +1413,17 @@ class ILTGenerator(object):
          built-in values and functions, like pi, sin(x).
         '''
         #Create the solution parameters' definition
-        solPars = NodeClassDef(loc=0, className=('solutionParametersClass',),
-                               superName=('Model',))
-        solPars.appendChild(NodeAttrDef(loc=0, attrName=('simulationTime',),
-                                        className=('Real',), role=RoleParameter))
-        solPars.appendChild(NodeAttrDef(loc=0, attrName=('reportingInterval',),
-                                        className=('Real',), role=RoleParameter))
+        solPars = NodeClassDef(loc=0, 
+                               className=DotName('solutionParametersClass'),
+                               superName=DotName('Model'))
+        solPars.appendChild(NodeAttrDef(loc=0, 
+                                        attrName=DotName('simulationTime'),
+                                        className=DotName('Real'), 
+                                        role=RoleParameter))
+        solPars.appendChild(NodeAttrDef(loc=0, 
+                                        attrName=DotName('reportingInterval'),
+                                        className=DotName('Real'), 
+                                        role=RoleParameter))
         #add solutionparameTers to AST, and update class dict
         astRoot.insertChild(0, solPars)
 
@@ -1436,7 +1443,7 @@ class ILTGenerator(object):
         #search for processes in the AST and instantiate them in the ILT
         for processDef in astRoot:
             if ((not isinstance(processDef, NodeClassDef)) or
-                (not processDef.superName == ('Process',))):
+                (not processDef.superName == DotName('Process'))):
                 continue
             newProc = procGen.createProcess(processDef)
             iltRoot.appendChild(newProc)

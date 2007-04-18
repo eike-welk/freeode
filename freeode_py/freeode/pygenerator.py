@@ -288,7 +288,7 @@ class StatementGenerator(Visitor):
         for expr in iltStmt:                 #iterate over arguments
             #Argument is variable name
             if   isinstance(expr, NodeAttrAccess):
-                outPy.write("'%s', " % makeDotName(expr.attrName)) #write variable name
+                outPy.write("'%s', " % str(expr.attrName)) #write variable name
             #Argument is graph title
             elif isinstance(expr, NodeString):
                 graphTitle = expr.dat        #store graph title
@@ -512,7 +512,7 @@ class ProcessGenerator(object):
                                     len(self.algebraicVariables)),
                               self.stateVariables.keys() +
                               self.algebraicVariables.keys()):
-            outPy.write('\'%s\':%d, ' % (makeDotName(varName), i))
+            outPy.write('\'%s\':%d, ' % (str(varName), i))
         outPy.write('}')
         outPy.write('\n\n')
 
@@ -700,7 +700,7 @@ if __name__ == '__main__':
     simulatorClasses = ['''     )
         #create list with generated classes
         for name in self.processClassNames:
-            self.outPy.write(makeDotName(name) + ', ')
+            self.outPy.write(str(name) + ', ')
         self.outPy.write(']')
         self.outPy.write(
 '''
