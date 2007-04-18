@@ -700,24 +700,22 @@ class TreePrinter(object):
 
 
 
-#TODO: replace all occurences of makeDotName(...) with str(...) function.
-#TODO: remove this function in favor of DotName class 
-def makeDotName(inTuple):
-    '''
-    Create a dotted name from a tuple of strings.
-    The dotted names are parsed into (and stored as) tuples of strings.
-    '''
-    dotName = ''
-    for namePart in inTuple:
-        if dotName == '':
-            dotName = namePart
-        else:
-            dotName += '.'+namePart
-    return dotName
+#def makeDotName(inTuple):
+#    '''
+#    Create a dotted name from a tuple of strings.
+#    The dotted names are parsed into (and stored as) tuples of strings.
+#    '''
+#    dotName = ''
+#    for namePart in inTuple:
+#        if dotName == '':
+#            dotName = namePart
+#        else:
+#            dotName += '.'+namePart
+#    return dotName
 
 
 
-#TODO: Replace all tuples by DotName objects (simlparser)
+#TODO: Add indexing operations 
 class DotName(tuple):
     '''
     Class that represents a dotted name ('pr1.m1.a').
@@ -740,12 +738,17 @@ class DotName(tuple):
     >>> dn + ('d', 'e', 'f')
     DotName('a.b.c.d.e.f')
     '''
-    #immutable classes are created by the _new_(...) method.
-    def __new__(cls, iterable):
+    #Immutable classes are created by the _new_(...) method.
+    def __new__(cls, iterable=None):
         '''Create tuple. Strings get special treatment.'''
+        #Interpret string as dot separated list (of strings)
         if isinstance(iterable, str):
             iterable = iterable.split('.')
-        return tuple.__new__(cls, iterable)
+        #Special handling for no arguments (DotName())
+        if iterable == None:
+            return tuple.__new__(cls)
+        else:
+            return tuple.__new__(cls, iterable)
         
     def __str__(self):
         '''Create string with dots between tuple components.'''
