@@ -818,22 +818,21 @@ class ParseStage(object):
 
     def parseProgramFile(self, fileName):
         '''Parse a whole program. The program's file name is supplied.'''
+        self.progFileName = os.path.abspath(fileName)
         #open and read the file
         try:
-            inputFile = open(fileName, 'r')
+            inputFile = open(self.progFileName, 'r')
             inputFileContents = inputFile.read()
             inputFile.close()
         except IOError, theError:
             message = 'Could not read input file.\n' + str(theError)
             raise UserException(message, None)
-#            print >> sys.stderr, 'error: could not read input file\n', theError
-#            sys.exit(1)
-        #TODO: This won't work with absolute file names.
-        self.progFileName = os.getcwd() + '/' + fileName
         #parse the program
         try:
             astTree = self.parseProgramStr(inputFileContents)
         except pyparsing.ParseException, theError:
+            #add additional information to exceptions that come directly 
+            #from pyparsing.
             #see if there is the loc of a successfully parsed statement
             if not self._locLastStmt.isValid():
                 raise theError # no: raise old error
