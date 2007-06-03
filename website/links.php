@@ -33,8 +33,8 @@
     <li><A href="http://www.amazon.com/gp/product/3540294155/">
           Python Scripting for Computational Science</A>
       <p>
-        Book. Introduction to Python and to topical libraries for
-        people who want to do numerical computations. A little dated
+        Book. Introduction to Python and to numerical libraries for
+        scientists and engineers. A little dated
         but still very usefull.
       </p>
     </li>
@@ -67,6 +67,15 @@
     <!-- <li>http://sourceforge.net/projects/qme-dev/</li> -->
   </ul>
 
+  <h2>Similar Projects</h2>
+  <ul>
+    <li><a href="http://math.colgate.edu:16080/~wweckesser/software/vfgen/">VFGEN</a>
+      <p>
+        Differential equation is specified through XML.
+        Can generate code for wide variety of solvers and other tools.
+      </p>
+    </li>
+  </ul>
 
 
 
