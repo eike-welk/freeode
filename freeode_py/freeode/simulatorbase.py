@@ -398,12 +398,10 @@ class SimulatorBase(object):
 
 def secureShow():
     '''Show the graphs; but don't crash if no graphs exist.'''
-    from matplotlib._pylab_helpers import Gcf
-    #see if there are any diagrams
-    if len(Gcf.get_all_fig_managers()) == 0:
-        return
-    #matplotlib bug: show thinks there is already a QT mainloop
-    show._needmain = True 
+    #from matplotlib._pylab_helpers import Gcf
+    ##see if there are any diagrams
+    #if len(Gcf.get_all_fig_managers()) == 0:
+        #return
     #enter mainloop
     show()
 
@@ -475,7 +473,7 @@ def parseCommandLineOptions(simulationClassList):
         sys.exit(0)
 
     #user has said which simulation procedure should be run
-    #TODO: code to run the simulationa is a mess. 
+    #TODO: code to run the simulationa is a mess.
     #There are three different places where simulations are run!
     if options.run == 'all': #special argument 'all': -r all
         runSimulations(simulationClassList)
