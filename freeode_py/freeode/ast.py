@@ -212,6 +212,8 @@ class NodeBuiltInVal(Node):
 
     self.dat : string representing the value
     '''
+    #TODO: remove this class. These nodes should be replaced by regular
+    #global constants (NodeAttrAccess)
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeBuiltInVal, self).__init__(kids, loc, dat)
 
@@ -224,6 +226,8 @@ class NodeBuiltInFuncCall(Node):
     self.dat  : the function's name
     self.kids : the function's arguments
     '''
+    #TODO: remove this class. These nodes should be replaced by regular 
+    #function calls.
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeBuiltInFuncCall, self).__init__(kids, loc, dat)
 

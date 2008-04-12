@@ -47,7 +47,7 @@ __version__ = "$Revision: $"
 import os
 #import parser library
 from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
-    ZeroOrMore,OneOrMore,Forward,nums,alphas,restOfLine,  \
+    ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,  \
     StringEnd, sglQuotedString, ParserElement, NoMatch, MatchFirst
     # ParseException, ParseResults, QuotedString, ParseFatalException, 
 #import our own syntax tree classes
@@ -702,7 +702,7 @@ class ParseStage(object):
         #TODO: Check if identifier is equal to a keyword. It must not! - .setParseAction(self._actionCheckIdentifier) \
         #TODO: Statement parsing must become more robust, with forward looking parsers.
         #TODO: 'end' is currently parsed first as an identifier and then as keyword.
-        identifier = Word(alphas, alphas+nums+'_')              .setName('identifier')#.setDebug(True)
+        identifier = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
 
         #Compound identifiers for variables or parameters 'aaa.bbb'.
         dotSup = Literal('.').suppress()
