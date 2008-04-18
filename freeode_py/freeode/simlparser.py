@@ -40,23 +40,69 @@ from __future__ import division
 __version__ = "$Revision: $"
 
 
-#import debuger
+#import debugger
 #import pdb
 #import operation system stuff
 #import sys
 import os
 #import parser library
-from pyparsing import Literal,CaselessLiteral,Keyword,Word,Combine,Group,Optional, \
-    ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,  \
-    StringEnd, sglQuotedString, ParserElement, NoMatch, MatchFirst
-    # ParseException, ParseResults, QuotedString, ParseFatalException, 
+import pyparsing
+from pyparsing import ( _ustr, Literal, CaselessLiteral, Keyword, Word,  
+    ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,  
+    StringEnd, sglQuotedString, MatchFirst, Combine, Group, Optional,
+    ParseException, ParseFatalException, ParseElementEnhance )
 #import our own syntax tree classes
 from freeode.ast import *
 
 
 
 #Enable a fast parsing mode with caching. May not always work.
-ParserElement.enablePackrat()
+pyparsing.ParserElement.enablePackrat()
+
+
+
+#Took code from pyparsing.Optional as a template
+class ErrStop(ParseElementEnhance):
+    """Parser that prevents backtracking.
+       The parser tries to match the given expression. If this expression does not match
+       the parser raises a ParseFatalException and parsing stops.
+       Otherwise, if the given expression matches, its parse results are returned and
+       the ErrStop has no effect on the parse results.
+    """
+    #TODO: implement setErrorAction( callableObject )
+    #TODO: implement setErrorMessage( errorMsgStr )
+    def __init__(self, expr):
+        super(ErrStop, self).__init__(expr, savelist=False)
+        self.mayReturnEmpty = True
+        #Additional string, that will be put in front of the error message.
+        self.errMsgStart = '' 
+
+    def parseImpl(self, instring, loc, doActions=True):
+        try:
+            loc, tokens = self.expr._parse(instring, loc, doActions, callPreParse=False)
+        except IndexError:
+            raise ParseFatalException(instring, loc, 'Index error: ', self.expr)
+        except ParseException, theError:
+            errMsg = self.errMsgStart + theError.msg
+            raise ParseFatalException(instring, theError.loc, errMsg, self.expr)
+        return loc, tokens
+
+    def setErrMsgStart(self, msg):
+        """Set additional error message. 
+           This string will be put in front of the error message of the given 
+           parser.
+        """
+        self.errMsgStart = msg
+        return self
+        
+    def __str__(self):
+        if hasattr(self,"name"):
+            return self.name
+
+        if self.strRepr is None:
+            self.strRepr = "[" + _ustr(self.expr) + "]"
+
+        return self.strRepr
 
 
 
@@ -726,6 +772,7 @@ class ParseStage(object):
                                                                      .setName('assignment')#.setDebug(True)
         #execute a block - insert code of a child model
         #function arguments are currently missing
+        #TODO: Unify with builtin functions.
         funcExecute = Group(kw('call')
                              + dotIdentifier                         .setResultsName('funcName')
                              + '(' + ')'
@@ -760,10 +807,11 @@ class ParseStage(object):
         attrRole = kw('parameter') | kw('variable')
         #parse 'data foo, bar: baz.boo parameter;
         attributeDef = Group(kw('data')
-                             + attrNameList                          .setResultsName('attrNameList')
-                             + ':' + dotIdentifier                   .setResultsName('className')
-                             + Optional(attrRole)                    .setResultsName('attrRole')
-                             + ';')                                  .setParseAction(self._actionAttrDefinition)\
+                             + ErrStop(attrNameList                  .setResultsName('attrNameList')
+                                       + ':' + dotIdentifier         .setResultsName('className')
+                                       + Optional(attrRole)          .setResultsName('attrRole')
+                                       + ';')                        .setErrMsgStart('Wrong syntax in data definition. ')
+                             )                                       .setParseAction(self._actionAttrDefinition)\
                                                                      .setName('attributeDef')#.setDebug(True)
         #define member function (method) - function arguments are currently missing
         memberFuncDef = Group(kw('func')
@@ -830,7 +878,7 @@ class ParseStage(object):
         #parse the program
         try:
             astTree = self.parseProgramStr(inputFileContents)
-        except pyparsing.ParseException, theError:
+        except (ParseException, ParseFatalException), theError:
             #add additional information to exceptions that come directly 
             #from pyparsing.
             #see if there is the loc of a successfully parsed statement
