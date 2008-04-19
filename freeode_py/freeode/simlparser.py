@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2006 by Eike Welk                                       *
+#    Copyright (C) 2008 by Eike Welk                                       *
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
 #    Inspiration came from:                                                *
@@ -8,6 +8,8 @@
 #    and the 'Spark' library by John Aycock.                               *
 #    Many thanks for their exelent contributions to publicly available     *
 #    knowledge.                                                            *
+#                                                                          #
+#    License: GPL                                                          #
 #                                                                          *
 #    This program is free software; you can redistribute it and/or modify  *
 #    it under the terms of the GNU General Public License as published by  *

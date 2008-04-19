@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ############################################################################
-#    Copyright (C) 2006 by Eike Welk                                       #
+#    Copyright (C) 2008 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
 #    License: GPL                                                          #
@@ -55,7 +55,7 @@ import pyparsing
 
 
 #version of the Siml compiler.
-progVersion = '0.3.1-dev-for-0.3.2'
+progVersion = '0.3.2'
 
 
 

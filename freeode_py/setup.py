@@ -34,7 +34,7 @@
 # Some commands are:
 #    sdist         : create source distribution. (*.tar.gz or *.zip)
 #    bdist_wininst : create Windows executable installer (binary distribution). (*.exe)
-#    bdist_rpm     : create binary RPM disribution (*.rpm)
+#    bdist_rpm     : create binary RPM distribution (*.rpm)
 #    install       : install the software
 #    --dry-run     : test the operation without doing anything
 #
@@ -58,9 +58,9 @@ setup(name = 'freeode',
       url = 'http://freeode.berlios.de/',
       description = 'Simulation Language for Differential Equations',
       long_description = \
-'''This packge contains a compiler for a specialized language (SIML) for the
+'''This package contains a compiler for a specialized language (SIML) for the
 simulation of differential equations (ODE). The generated simulation program
-is in the Python programing language, using the Numpy and Scipy libraries.''',
+is in the Python programming language, using the Numpy and Scipy libraries.''',
       license = 'GPL',
       packages = ['freeode'],
       scripts = ['simlc'],
