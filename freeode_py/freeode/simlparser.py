@@ -212,12 +212,13 @@ class ParseStage(object):
         identier = tokList[0]
         if identier in ParseStage.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
-            #raise ParseException(str, loc, 'Identifier same as keyword: %s' % toks[0])
+            raise ParseException(str, loc, 
+                                 'Keyword can not be used as an identifier: ' + identier)
             #raise ParseFatalException(
             #    str, loc, 'Identifier same as keyword: %s' % toks[0] )
-            raise UserException(
-                'keyword can not be used as an identifier: ' + identier,
-                 self.createTextLocation(loc))
+#            raise UserException(
+#                'Keyword can not be used as an identifier: ' + identier,
+#                 self.createTextLocation(loc))
 
 
     def _actionStoreStmtLoc(self, str, loc, toks):
@@ -745,10 +746,8 @@ class ParseStage(object):
         #................ End mathematical expression ................................................---
 
         #................ Identifiers ...................................................................
-        #TODO: Check if identifier is equal to a keyword. It must not! - .setParseAction(self._actionCheckIdentifier) \
-        #TODO: Statement parsing must become more robust, with forward looking parsers.
-        #TODO: 'end' is currently parsed first as an identifier and then as keyword.
-        identifier = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
+        identifier = Word(alphas+'_', alphanums+'_')            .setParseAction(self._actionCheckIdentifier) \
+                                                                .setName('identifier')#.setDebug(True)
 
         #Compound identifiers for variables or parameters 'aaa.bbb'.
         dotSup = Literal('.').suppress()
@@ -879,15 +878,17 @@ class ParseStage(object):
         try:
             astTree = self.parseProgramStr(inputFileContents)
         except (ParseException, ParseFatalException), theError:
-            #add additional information to exceptions that come directly 
-            #from pyparsing.
-            #see if there is the loc of a successfully parsed statement
-            if not self._locLastStmt.isValid():
-                raise theError # no: raise old error
-            #make new error with loc of a successfully parsed statement
-            msg = 'syntax error: last parsed statement was:'
+            #add additional information to the pyparsing exceptions.
             msgPyParsing = str(theError) + '\n'
-            raise UserException(msgPyParsing + msg, self._locLastStmt)
+            #see if there is the loc of a successfully parsed statement
+            if self._locLastStmt.isValid():
+                msgLastStmt = 'Last parsed statement was: \n' \
+                              + str(self._locLastStmt)
+            else:
+                msgLastStmt = ''
+            #make UserException that will be visible to the user
+            loc =  TextLocation(theError.loc, theError.pstr, self.progFileName)
+            raise UserException(msgPyParsing + msgLastStmt, loc)
         return astTree
 
 
