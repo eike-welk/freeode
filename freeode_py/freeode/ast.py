@@ -29,7 +29,7 @@ Abstrakt syntax tree and tools for tree handling.
 - Printer to convert tree to pretty printed string.
 - Visitor to invoke different code depending on node type.
 
-Additionaly this module contains some common infrastructure used by other 
+Additionaly this module contains some common infrastructure used by other
 modules of freeode:
 - Class to store text locations together with file names.
 - Excepions to carry user visible errors.
@@ -55,7 +55,7 @@ import pyparsing
 
 
 #version of the Siml compiler.
-progVersion = '0.3.2'
+progVersion = '0.3.2-dev-1'
 
 
 
@@ -226,7 +226,7 @@ class NodeBuiltInFuncCall(Node):
     self.dat  : the function's name
     self.kids : the function's arguments
     '''
-    #TODO: remove this class. These nodes should be replaced by regular 
+    #TODO: remove this class. These nodes should be replaced by regular
     #function calls.
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeBuiltInFuncCall, self).__init__(kids, loc, dat)
@@ -287,13 +287,13 @@ class NodeOpInfix2(Node):
     #Get and set the left hand side
     def getLhs(self): return self.kids[0]
     def setLhs(self, inLhs): self.kids[0] = inLhs
-    lhs = property(getLhs, setLhs, None, 
+    lhs = property(getLhs, setLhs, None,
                    'Left hand side of operator (proppery).')
-    
+
     #Get and set the right hand side
     def getRhs(self): return self.kids[1]
     def setRhs(self, inRhs): self.kids[1] = inRhs
-    rhs = property(getRhs, setRhs, None, 
+    rhs = property(getRhs, setRhs, None,
                    'Right hand side of operator (proppery).')
 
 
@@ -308,11 +308,11 @@ class NodeOpPrefix1(Node):
     def __init__(self, kids=[], loc=None, dat=None, operator=None):
         super(NodeOpPrefix1, self).__init__(kids, loc, dat)
         self.operator = operator
-        
+
     #Get and set the right hand side
     def getRhs(self): return self.kids[0]
     def setRhs(self, inRhs): self.kids[0] = inRhs
-    rhs = property(getRhs, setRhs, None, 
+    rhs = property(getRhs, setRhs, None,
                    'Right hand side of operator (proppery).')
 
 
@@ -326,19 +326,19 @@ class NodeIfStmt(Node):
     '''
     def __init__(self, kids=[], loc=None, dat=None):
         super(NodeIfStmt, self).__init__(kids, loc, dat)
-        
+
     #Condition proppery
     def getCondition(self): return self.kids[0]
     def setCondition(self, inCondtion): self.kids[0] = inCondtion
-    condition = property(getCondition, setCondition, None, 
+    condition = property(getCondition, setCondition, None,
         'Condition of if:...else:...end statement.')
-    
+
     #ifTruePart proppery
     def getIfTruePart(self): return self.kids[1]
     def setIfTruePart(self, inStatements): self.kids[1] = inStatements
-    ifTruePart = property(getIfTruePart, setIfTruePart, None, 
+    ifTruePart = property(getIfTruePart, setIfTruePart, None,
         'Statements executed when condition is true.')
-    
+
     #ifFalsePart proppery
     def getElsePart(self):
         if len(self.kids) == 3:
@@ -350,7 +350,7 @@ class NodeIfStmt(Node):
             self.kids[2] = inStatements
         else:
             raise KeyError('NodeIfStmt has no "else" clause.')
-    elsePart = property(getElsePart, setElsePart, None, 
+    elsePart = property(getElsePart, setElsePart, None,
         'Statements executed when condition is false.')
 
 
@@ -436,10 +436,10 @@ class AttributeRole(object):
     '''
     Constants to denote the role of an attribute.
 
-    Intention to create someting like enums. 
-    Additionally this solution provides a 
-    means for documentation and expresses the tree 
-    shaped relationship between the roles. 
+    Intention to create someting like enums.
+    Additionally this solution provides a
+    means for documentation and expresses the tree
+    shaped relationship between the roles.
     '''
     pass
 class RoleAny(AttributeRole):
@@ -719,11 +719,11 @@ class TreePrinter(object):
 
 
 
-#TODO: Add indexing operations 
+#TODO: Add indexing operations
 class DotName(tuple):
     '''
     Class that represents a dotted name ('pr1.m1.a').
-    
+
     This class inherits from tuple, but can be sensibly constructed
     from a string: The dots are used to separate tuple components.
     >>> dn = DotName('a.b.c')
@@ -731,11 +731,11 @@ class DotName(tuple):
     DotName('a.b.c')
     >>> tuple(dn)
     ('a', 'b', 'c')
-    
+
     The str() function converts the object back to a dotted name.
     >>> str(dn)
     'a.b.c'
-    
+
     The object can be freely mixed with tuples.
     >>> dn == ('a', 'b', 'c')
     True
@@ -753,11 +753,11 @@ class DotName(tuple):
             return tuple.__new__(cls)
         else:
             return tuple.__new__(cls, iterable)
-        
+
     def __str__(self):
         '''Create string with dots between tuple components.'''
         return '.'.join(self)
-    
+
     def __repr__(self):
         '''Create string representation that can be used in Python program'''
         return "DotName('" + self.__str__() + "')"
@@ -765,11 +765,11 @@ class DotName(tuple):
     def __add__(self, other):
         '''Concatenate with tuple or DotName. Return: self + other.'''
         return DotName(tuple.__add__(self, other))
-    
+
     def __radd__(self, other):
         '''Concatenate with tuple or DotName. Return: other + self.'''
         return DotName(tuple.__add__(other, self))
-    
+
 
 
 class UserException(Exception):
@@ -863,20 +863,20 @@ class TextLocation(object):
 class Visitor(object):
     '''
     Visitor for the AST
-    
+
     TODO: better documentation with usage
 
     - Single dispatch
-    - Switching which memberfuncion is used is done based on type 
+    - Switching which memberfuncion is used is done based on type
       and inheritance.
     - The algorithm for matching is 'issubclass'
     - Association between type and memberfunction is done with decorators.
-    
-    Inspiration came from: 
+
+    Inspiration came from:
     Phillip J. Eby's 'simplegeneric' library and his very good online articles:
     http://cheeseshop.python.org/pypi/simplegeneric/0.6
     http://peak.telecommunity.com/DevCenter/VisitorRevisited
-    
+
     External documentation:
     - Single dispatch:
     See: http://cheeseshop.python.org/pypi/simplegeneric/0.6
@@ -886,11 +886,11 @@ class Visitor(object):
     See: http://gnosis.cx/download/gnosis/magic/multimethods.py
     - Introduction to Decorators
     http://personalpages.tds.net/~kent37/kk/00001.html
-    
-    Thanks to all authors for writing high quality online articles 
+
+    Thanks to all authors for writing high quality online articles
     and free software.
     '''
-    
+
     def __init__(self):
         cls = self.__class__
         #Create rule table and cache only once.
@@ -917,40 +917,40 @@ class Visitor(object):
             handlerFunc = self._findFuncInRuleTable(objCls)
             cls._cache[objCls] = handlerFunc    #IGNORE:E1101
         return handlerFunc(self, inObject, *args)
-        
-        
+
+
     def _simpleDefaultFunc(self, inObject, *args):
         raise TypeError('No function to handle type %s in class %s'
                         % (str(type(inObject)), str(type(self))))
-        
-        
+
+
     @classmethod
     def _findFuncInRuleTable(cls, objCls):
         '''
         Find a function to handle a given class in the rule table.
         If no matching rules could be found return the default rule
-        
+
         The algorithm for matching is 'issubclass'
         '''
         #find handler function for class 'objCls'
-        for func1, cls1, prio1 in cls._ruleTable: 
+        for func1, cls1, prio1 in cls._ruleTable:
             if issubclass(objCls, cls1):
                 return func1
         #no specific handler could be found: return the default function
         func1, cls1, prio1 = cls._ruleTable[-1]
         return func1
-        
-        
+
+
     @classmethod
     def _createRuleTable(cls):
         '''
         Create the rule table.
-        Look at all methods of the class, if they have 
+        Look at all methods of the class, if they have
         _dispatchIfType and _dispatchPriority data attributes
         put them into the rule table.
-        
+
         - The rule table is sorted according to _dispatchPriority.
-        - If _dispatchIfType has the value None the function is considered 
+        - If _dispatchIfType has the value None the function is considered
           the default function
         '''
         ruleTable = []
@@ -960,7 +960,7 @@ class Visitor(object):
         for func in cls.__dict__.itervalues():
             if not isinstance(func, FunctionType):
                 continue
-            if not (hasattr(func, '_dispatchIfType') and 
+            if not (hasattr(func, '_dispatchIfType') and
                     hasattr(func, '_dispatchPriority')):
                 continue
             if func._dispatchIfType == None:
@@ -974,21 +974,21 @@ class Visitor(object):
         ruleTable.append((defaultFunc, NoneType, 0.0))
         #store the tble in the most derived class
         cls._ruleTable = ruleTable
-        
-        
+
+
     @staticmethod
     def when_type(inType, inPriority=1.0):
         '''
         Decorator to mark a method with some extra data members that carry
         information with which argument type it should be invoked.
-        
+
         Use as decorator in method definition:
             @Visitor.when_type(int, 5)
             def handleInt(self, intVal):
                 .....
-                
+
         ARGUMENTS:
-            inType     : The type of the (second) argument for which 
+            inType     : The type of the (second) argument for which
                          the decorated method is associated.
                          TODO: May also be a tuple of types.
             inPriority : The priority if multiple methods fit on one type.
@@ -998,14 +998,14 @@ class Visitor(object):
         legalTypes = (type, ClassType)
         if not isinstance(inType, legalTypes):
             raise TypeError(
-                'Visitor.when_type: Argument 1 must be a type or class, but it is: %s' 
+                'Visitor.when_type: Argument 1 must be a type or class, but it is: %s'
                 % str(type(inType)))
         if not isinstance(inPriority, (int, float)):
             raise TypeError(
                 'Visitor.when_type: Argument 2 must be an int or float number, '
                 'but it is: %s'
                 % str(type(inPriority)))
-        #create function that really attatches the decorations 
+        #create function that really attatches the decorations
         #(the extra data members)
         def decorateWithType(funcToDecorate):
             if not isinstance(funcToDecorate, FunctionType):
@@ -1019,17 +1019,17 @@ class Visitor(object):
         #give the decorator function to the Pyton interpreter;
         #the interpreter will call the function.
         return decorateWithType
-    
-    
+
+
     @staticmethod
     def default(funcToDecorate):
         '''
         Decorator to mark a function as the default function
-        
+
         Use as decorator in method definition:
             @Visitor.default
             def handleAnyType(self, val):
-            
+
         The decorated method will have the least priority.
         There can be only one default function in a class definition.
         '''
@@ -1042,8 +1042,8 @@ class Visitor(object):
         funcToDecorate._dispatchIfType = None
         funcToDecorate._dispatchPriority = 0.0
         return funcToDecorate
-         
-    
+
+
 
 #------------ testcode --------------------------------------------------
 import unittest
@@ -1163,15 +1163,15 @@ class TestVisitor(unittest.TestCase):
     def setUp(self):
         '''perform common setup tasks for each test'''
         pass
-        
+
 #    def test__when_type(self):
 #        #this tests implementation details
-#        #define dummy class to test the decorators       
+#        #define dummy class to test the decorators
 #        class FooClass(Visitor):
 #            @Visitor.when_type(list, 23)
 #            def test(self):
 #                print 'test(...) called'
-#            
+#
 #        #print FooClass.test._dispatchIfType
 #        self.assertEqual(FooClass.test._dispatchIfType, list)
 #        self.assertEqual(FooClass.test._dispatchPriority, 23)
@@ -1186,7 +1186,7 @@ class TestVisitor(unittest.TestCase):
 
     def test__dispatch(self):
         '''Visitor: Test normal operation.'''
-        #define visitor class       
+        #define visitor class
         class FooClass(Visitor):
             def __init__(self):
                 Visitor.__init__(self)
@@ -1217,8 +1217,8 @@ class TestVisitor(unittest.TestCase):
         self.assertEqual(fooInst.dispatch(1.0), 'float')
         #print fooInst.dispatch('qwert')
         self.assertEqual(fooInst.dispatch('qwert'), 'default')
-        
-        
+
+
     def test__switching_inheritance_priority(self):
         '''Visitor: Test switching based on inheritance and priority.'''
         #Define class hierarchy
@@ -1228,8 +1228,8 @@ class TestVisitor(unittest.TestCase):
             pass
         class Derived2(Base):
             pass
-        
-        #define visitor class       
+
+        #define visitor class
         class TestVisitor(Visitor):
             def __init__(self):
                 Visitor.__init__(self)
@@ -1244,7 +1244,7 @@ class TestVisitor(unittest.TestCase):
             @Visitor.when_type(int)
             def visitInt(self, inObject):
                 return 'int'
-        
+
         #create some objects that the visitor should handle
         baseInst = Base()
         derived1Inst = Derived1()
@@ -1252,17 +1252,17 @@ class TestVisitor(unittest.TestCase):
         intInst = 2
         #create the visitor
         visitor = TestVisitor()
-        
+
         #try the visitor
         self.assertEqual(visitor.dispatch(baseInst), 'Base')
         self.assertEqual(visitor.dispatch(derived1Inst), 'Derived1')
         self.assertEqual(visitor.dispatch(derived2Inst), 'Base')
         self.assertEqual(visitor.dispatch(intInst), 'int')
-       
-        
+
+
     def test__built_in_default_func(self):
         '''Visitor: Test the built in default function.'''
-        #define visitor class       
+        #define visitor class
         class FooClass(Visitor):
             def __init__(self):
                 Visitor.__init__(self)
@@ -1278,7 +1278,7 @@ class TestVisitor(unittest.TestCase):
         self.assertEqual(fooInst.dispatch([]), 'list')
          #print fooInst.dispatch(1)
         self.assertEqual(fooInst.dispatch(1), 'int')
-        #the built in default function raises an exception. 
+        #the built in default function raises an exception.
         try:
             self.assertEqual(fooInst.dispatch(1.0), 'float')
             #if we get till here there was an error
@@ -1318,7 +1318,7 @@ class TestVisitor(unittest.TestCase):
             @Visitor.default(int)
             def visitDefault(self, inObject):
                 return 'default'
- 
+
 
 
 class TestDotName(unittest.TestCase):
@@ -1326,7 +1326,7 @@ class TestDotName(unittest.TestCase):
     def setUp(self):
         '''perform common setup tasks for each test'''
         pass
-        
+
     def test__new__(self):
         '''DotName: Test constructor.'''
         #create DotName object from string
@@ -1336,7 +1336,7 @@ class TestDotName(unittest.TestCase):
         #create DotName from other iterable
         abc1 = DotName(('a','b','c'))
         self.assertTrue(abc1 == ('a','b','c'))
-       
+
     def test__str__(self):
         '''DotName: Test conversion to string.'''
         abc = DotName('a.b.c')
@@ -1363,8 +1363,8 @@ class TestDotName(unittest.TestCase):
         abcefg = ('a', 'b', 'c') + efg
         self.assertTrue(abcefg == DotName('a.b.c.e.f.g'))
         self.assertTrue(isinstance(abcefg, DotName))
-        
-        
+
+
 
 if __name__ == '__main__':
     # Self-testing code goes here.
@@ -1382,7 +1382,7 @@ if __name__ == '__main__':
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVisitor))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDotName))
     unittest.TextTestRunner(verbosity=2).run(suite)
-    
+
 else:
     # This will be executed in case the
     #    source has been imported as a
