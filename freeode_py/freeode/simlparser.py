@@ -6,7 +6,7 @@
 #    Inspiration came from:                                                *
 #    'fourFn.py', an example program, by Paul McGuire,                     *
 #    and the 'Spark' library by John Aycock.                               *
-#    Many thanks for their exelent contributions to publicly available     *
+#    Many thanks for their excellent contributions to publicly available     *
 #    knowledge.                                                            *
 #                                                                          #
 #    License: GPL                                                          #
@@ -33,9 +33,9 @@ Parser for the SIML simulation language.
 
 #TODO: write unit tests that exercise every error message of simlparser.py
 
-#TODO: Implement namespaces. Usefull would be: 
+#TODO: Implement namespaces. Usefull would be:
 #TODO: - Global namespace for: classes, global functions.
-#TODO: - Function local namespace for: data attrbutes, function attributes
+#TODO: - Function local namespace for: data attributes, function attributes
 
 
 from __future__ import division
@@ -50,8 +50,8 @@ __version__ = "$Revision: $"
 import os
 #import parser library
 import pyparsing
-from pyparsing import ( _ustr, Literal, CaselessLiteral, Keyword, Word,  
-    ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,  
+from pyparsing import ( _ustr, Literal, CaselessLiteral, Keyword, Word,
+    ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,
     StringEnd, sglQuotedString, MatchFirst, Combine, Group, Optional,
     ParseException, ParseFatalException, ParseElementEnhance )
 #import our own syntax tree classes
@@ -67,10 +67,10 @@ pyparsing.ParserElement.enablePackrat()
 #Took code from pyparsing.Optional as a template
 class ErrStop(ParseElementEnhance):
     """Parser that prevents backtracking.
-       The parser tries to match the given expression (wich consists of other 
-       parsers). If this expression does not match the parser raises a 
+       The parser tries to match the given expression (which consists of other
+       parsers). If this expression does not match the parser raises a
        ParseFatalException and parsing stops.
-       Otherwise, if the given expression matches, its parse results are returned 
+       Otherwise, if the given expression matches, its parse results are returned
        and the ErrStop has no effect on the parse results.
     """
     #TODO: implement setErrorAction( callableObject )
@@ -79,7 +79,7 @@ class ErrStop(ParseElementEnhance):
         super(ErrStop, self).__init__(expr, savelist=False)
         self.mayReturnEmpty = True
         #Additional string, that will be put in front of the error message.
-        self.errMsgStart = '' 
+        self.errMsgStart = ''
 
     def parseImpl(self, instring, loc, doActions=True):
         try:
@@ -92,13 +92,13 @@ class ErrStop(ParseElementEnhance):
         return loc, tokens
 
     def setErrMsgStart(self, msg):
-        """Set additional error message. 
-           This string will be put in front of the error message of the given 
+        """Set additional error message.
+           This string will be put in front of the error message of the given
            parser.
         """
         self.errMsgStart = msg
         return self
-        
+
     def __str__(self):
         if hasattr(self,"name"):
             return self.name
@@ -119,14 +119,14 @@ class ParseActionException(Exception):
 class ParseStage(object):
     '''
     The syntax definition (BNF) resides here.
-    
-    The parsing is done by the pyparsing libraryy which combines 
-    lexer and parser. The Pyparsing library generates a tree of 
+
+    The parsing is done by the pyparsing library which combines
+    lexer and parser. The Pyparsing library generates a tree of
     ParseResult objects. These objects
     are replaced by objects inheriting from ast.Node
     in the parse actions of this class.
 
-    Normally a file name is given to the class, and a tree of ast.Node ojects is
+    Normally a file name is given to the class, and a tree of ast.Node objects is
     returned. The program can also be entered as a string.
     Additionally the class can parse parts of a program: expressions.
 
@@ -142,7 +142,7 @@ class ParseStage(object):
     noTreeModification = 0
     '''
     Define how much the parse result is modified, for easier debuging.
-    0: normal operation. Compilaton does not work otherwise.
+    0: normal operation. Compilation does not work otherwise.
     1: Do not modify parse result (from pyParsing library).
 
     ParseResult objects are printed as nested lists: ['1', '+', ['2', '*', '3']]
@@ -193,7 +193,7 @@ class ParseStage(object):
 
 #------------- Parse Actions -------------------------------------------------*
     def _actionDebug(self, str, loc, toks):
-        '''Parse action for debuging.'''
+        '''Parse action for debugging.'''
         print '------debug action'
         print str
         print loc
@@ -208,7 +208,7 @@ class ParseStage(object):
         If the identifier is equal to any keyword the parse action raises
         an exception.
         Does not change any parse results
-        
+
         tokList is structured like this: ['a1']
         '''
         #
@@ -216,7 +216,7 @@ class ParseStage(object):
         identier = tokList[0]
         if identier in ParseStage.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
-            raise ParseException(str, loc, 
+            raise ParseException(str, loc,
                                  'Keyword can not be used as an identifier: ' + identier)
             #raise ParseFatalException(
             #    str, loc, 'Identifier same as keyword: %s' % toks[0] )
@@ -229,7 +229,7 @@ class ParseStage(object):
         '''
         Remember location of last parsed statement. Useful for error
         error message creation, since the locations of pyparsing's
-        syntax errors are frequenly quit off.
+        syntax errors are frequently quit off.
         '''
         self._locLastStmt = self.createTextLocation(loc)
 
@@ -241,7 +241,7 @@ class ParseStage(object):
         [<identifier>]
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         #create AST node
         nCurr = NodeBuiltInVal()
@@ -257,7 +257,7 @@ class ParseStage(object):
         [<number>]
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeNum()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -272,7 +272,7 @@ class ParseStage(object):
         [<string>]
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeString()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -284,7 +284,7 @@ class ParseStage(object):
     def _actionBuiltInFunction(self, str, loc, toks):
         '''
         Create node for function call: sin(2.1)
-        
+
         Definition:
         funcCall = Group(builtInFuncName         .setResultsName('funcName')
                          + '(' + expressionList  .setResultsName('arguments')
@@ -292,7 +292,7 @@ class ParseStage(object):
                                                  .setName('funcCall')#.setDebug(True)
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeBuiltInFuncCall()
@@ -301,8 +301,8 @@ class ParseStage(object):
         nCurr.kids = toks.arguments.asList() #child expression(s)
         #check if number of function arguments is correct
         if len(nCurr.kids) != self._builtInFunc[nCurr.dat]:
-            msg = ('Illegal number of function arguments. \n' + 
-                   'Function: %s, required number of arguments: %d, ' + 
+            msg = ('Illegal number of function arguments. \n' +
+                   'Function: %s, required number of arguments: %d, ' +
                    'given arguments: %d.') % \
                   (nCurr.dat, self._builtInFunc[nCurr.dat], len(nCurr.kids))
             raise UserException(msg, self.createTextLocation(loc))
@@ -316,7 +316,7 @@ class ParseStage(object):
         ['(', <expression>, ')']
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeParentheses()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -331,7 +331,7 @@ class ParseStage(object):
         [<operator>, <expression_l>]
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpPrefix1()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -347,7 +347,7 @@ class ParseStage(object):
         [<expression_l>, <operator>, <expression_r>]
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpInfix2()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -361,12 +361,12 @@ class ParseStage(object):
 
     def _actionAttributeAccess(self, str, loc, toks):
         '''
-        Create node for acces to a variable or parameter: bb.ccc.dd
+        Create node for access to a variable or parameter: bb.ccc.dd
         tokList has the following structure:
         [<part1>, <part2>, <part3>, ...]
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeAttrAccess()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -389,7 +389,7 @@ class ParseStage(object):
                             + kw('end'))
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeIfStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -416,7 +416,7 @@ class ParseStage(object):
         assignment = Group(valAccess + '=' + expression + ';')
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeAssignment()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -458,7 +458,7 @@ class ParseStage(object):
                           + ';')                  .setParseAction(self._actionPrintStmt)\
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodePrintStmt()
@@ -478,7 +478,7 @@ class ParseStage(object):
                           + ';')                  .setParseAction(self._actionDebug)\
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeGraphStmt()
@@ -496,7 +496,7 @@ class ParseStage(object):
                           + ';')                  .setParseAction(self._actionDebug)\
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeStoreStmt()
@@ -512,7 +512,7 @@ class ParseStage(object):
         statementList << Group(OneOrMore(statement))
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeStmtList()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -541,11 +541,11 @@ class ParseStage(object):
                              + ';')
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         #multiple attributes can be defined in a single statement
-        #Create a node for each of them and put them into a statemnt list
+        #Create a node for each of them and put them into a statement list
         attrDefList = NodeStmtList(loc=self.createTextLocation(loc))
         nameList = toks.attrNameList.asList()
         for name in nameList:
@@ -560,7 +560,7 @@ class ParseStage(object):
                 attrDef.role = RoleParameter
             else:
                 #we do not know if variable or parameter; submodels will be
-                #labled variables even thoug these categories don't apply
+                #labled variables even though these categories don't apply
                 #to them.
                 attrDef.role = RoleVariable
             attrDefList.appendChild(attrDef)
@@ -612,7 +612,7 @@ class ParseStage(object):
                          + kw('end'))
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeClassDef()
@@ -621,7 +621,7 @@ class ParseStage(object):
         nCurr.className = DotName(toks.className)
         nCurr.superName = DotName(toks.superName)
         #create children (may or may not be present):  data, functions
-        data, funcs = [], [] #special cases for empty edinitions necessary
+        data, funcs = [], [] #special cases for empty sections necessary
         if len(toks.attributeDef) > 0:
             data = toks.attributeDef.asList()[0]
         if len(toks.memberFuncDef) > 0:
@@ -638,7 +638,7 @@ class ParseStage(object):
         program = Group(OneOrMore(classDef))
         '''
         if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
+            return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeProgram()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -665,11 +665,11 @@ class ParseStage(object):
 
         #Functions that are built into the language
         #Dict: {'function_name':number_of_function_arguments}
-        self._builtInFunc = {'sin':1, 'cos':1, 'tan':1, 
+        self._builtInFunc = {'sin':1, 'cos':1, 'tan':1,
                              'sqrt':1, 'exp':1, 'log':1,
                              'min':2, 'max':2}
         builtInFuncName = MatchFirst(
-            [kw(funcName) 
+            [kw(funcName)
              for funcName in self._builtInFunc.keys()])             .setName('builtInFuncName')#.setDebug(True)
 
         #Integer (unsigned).
@@ -712,7 +712,7 @@ class ParseStage(object):
                  funcCall | valAccess | parentheses     )           .setName('atom')#.setDebug(True)
 
         #The basic mathematical operations: -a+b*c^d.
-        #All operations have right-to-left associativity; althoug this is only
+        #All operations have right-to-left associativity; although this is only
         #required for exponentiation. Precedence decreases towards the bottom.
         #Unary minus: -a, not a;
         negop = '-' | kw('not')
@@ -746,7 +746,7 @@ class ParseStage(object):
         boolExpr2 = Group(expression + relop + boolExpression)  .setParseAction(self._actionInfixOp) \
                                                                 .setName('boolExpr2')#.setDebug(True)
         boolExpression << (boolExpr2 | boolExpr1)               .setName('boolExpression')#.setDebug(True)
-        
+
         #expression list - sparse: 2, foo.bar, 3*sin(baz)
         commaSup = Literal(',').suppress()
         expressionList << Group(boolExpression
@@ -761,8 +761,8 @@ class ParseStage(object):
         dotSup = Literal('.').suppress()
         dotIdentifier = Group(identifier +
                               ZeroOrMore(dotSup + identifier))  .setName('dotIdentifier')#.setDebug(True)
-        #Method to access a stored value: dotted name ('a.b.c'), 
-        # with optional differentiation operator ('$a.b.c'), 
+        #Method to access a stored value: dotted name ('a.b.c'),
+        # with optional differentiation operator ('$a.b.c'),
         # and optional partial access ('a.b.c[2:5]'). (partial access is currently not implemented)
         valAccess << Group( Optional('$') +
                             identifier +
@@ -772,16 +772,16 @@ class ParseStage(object):
 #------------------- Statements ---------------------------------------------------------------
         statementList = Forward()
         #Flow control - if then else
-        ifStatement = Group(kw('if') 
+        ifStatement = Group(kw('if')
                             + ErrStop( boolExpression + ':'
                                        + statementList
-                                       + Optional(kw('else') 
+                                       + Optional(kw('else')
                                                   + ErrStop(':' + statementList))
                                        + kw('end'))
                             )                                        .setParseAction(self._actionIfStatement)\
                                                                      .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
-        assignment = Group(valAccess + '=' 
+        assignment = Group(valAccess + '='
                            + ErrStop(boolExpression + ';')           .setErrMsgStart('Assignment statement: ')
                            )                                         .setParseAction(self._actionAssignment)\
                                                                      .setName('assignment')#.setDebug(True)
@@ -795,20 +795,20 @@ class ParseStage(object):
                              )                                       .setParseAction(self._actionFuncExecute)\
                                                                      .setName('blockExecute')#.setDebug(True)
         #print something to stdout
-        printStmt = Group(kw('print') 
+        printStmt = Group(kw('print')
                           + ErrStop(expressionList                   .setResultsName('argList')
                                     + Optional(',')                  .setResultsName('trailComma')
                                     + ';')                           .setErrMsgStart('Print statement: ')
                           )                                          .setParseAction(self._actionPrintStmt)\
                                                                      .setName('printStmt')#.setDebug(True)
         #show graphs
-        graphStmt = Group(kw('graph') 
+        graphStmt = Group(kw('graph')
                           + ErrStop(expressionList                   .setResultsName('argList')
                                     + ';')                           .setErrMsgStart('Graph statement: ')
                           )                                          .setParseAction(self._actionGraphStmt)\
                                                                      .setName('graphStmt')#.setDebug(True)
         #store to disk
-        storeStmt = Group(kw('save') 
+        storeStmt = Group(kw('save')
                           + ErrStop(Group(Optional(stringConst))     .setResultsName('argList')
                                     + ';')                           .setErrMsgStart('Save statement: ')
                           )                                          .setParseAction(self._actionStoreStmt)\
@@ -823,7 +823,7 @@ class ParseStage(object):
 #---------- Define new objects ---------------------------------------------------------------------*
         #define parameters, variables and submodels
         #commaSup = Literal(',').suppress()
-        #parse: 'foo, bar, baz 
+        #parse: 'foo, bar, baz
         #Identifiers must not be keywords, check is done in _actionAttrDefinition
         newAttrList = Group(identifier
                             + ZeroOrMore(commaSup + identifier))     .setName('attrNameList')
@@ -836,7 +836,7 @@ class ParseStage(object):
                                        + ';')                        .setErrMsgStart('Wrong syntax in data definition. ')
                              )                                       .setParseAction(self._actionAttrDefinition)\
                                                                      .setName('attributeDef')#.setDebug(True)
-        #define member function (method) 
+        #define member function (method)
         #TODO: function arguments are currently missing
         #TODO: unify with built in functions
         funcDef = Group(kw('func')
@@ -955,8 +955,8 @@ class ILTProcessGenerator(object):
     Generate process for the intermediate language tree (ILT).
 
     Takes a process from the AST and generates a new process. This new process
-    contains the atributes of all submodels. The code of the submodels' blocks
-    is inserted (imlined) into the new process' blocks.
+    contains the attributes of all submodels. The code of the submodels' blocks
+    is inserted (inlined) into the new process' blocks.
     The new process is a 'flattened' version of the original structured process.
     '''
     def __init__(self, astRoot):
@@ -1073,7 +1073,7 @@ class ILTProcessGenerator(object):
     def copyDataAttributes(self):
         '''
         Copy variables and parameters from all submodels into the procedure
-        Additionaly puts all attributes into self.processAttributes
+        Additionally puts all attributes into self.processAttributes
         arguments:
         '''
         #Iterate over the (variable, parameter, submodel, function) definitions
@@ -1125,11 +1125,11 @@ class ILTProcessGenerator(object):
                 subBlockDef = self.astProcessAttributes[subBlockName]
                 #Check if subBlockDef is really a function definition
                 if not isinstance(subBlockDef, NodeFuncDef):
-                    raise UserException('Only functions can be called', 
+                    raise UserException('Only functions can be called',
                                         statement.loc)
-                #Recurse into the function definition. 
+                #Recurse into the function definition.
                 #Insert its text in place of the call statement
-                self.copyFuncRecursive(subBlockDef, subModelName, newBlock, 
+                self.copyFuncRecursive(subBlockDef, subModelName, newBlock,
                                        illegalBlocks, recursionDepth+1)
             #Any other statement: copy statement
             else:
@@ -1369,16 +1369,16 @@ class ILTProcessGenerator(object):
     def modifyInitMethod(self, method):
         '''
         Modify init function for parameter value overriding
-        
-        Assignments to parameters are changed. The built in 
+
+        Assignments to parameters are changed. The built in
         function 'overrideParam' is inserted:
         par1 = 5; ---> par1 = overrideParam('par1', 5);
-        
+
         Override param looks into an overide dict and may return
-        a new value for the parameter if it finds one in the 
+        a new value for the parameter if it finds one in the
         override dict. Otherwise it returns the original value.
         '''
-        parameters = self.findParameters() 
+        parameters = self.findParameters()
         for assign in method.iterDepthFirst():
             #we only want to see assignments
             if not isinstance(assign, NodeAssignment):
@@ -1397,8 +1397,8 @@ class ILTProcessGenerator(object):
             funcNode.appendChild(origExprNode)
             #use helper function as new rhs
             assign.rhs = funcNode
-            
-            
+
+
     def createProcess(self, inAstProc):
         '''generate ILT subtree for one process'''
         #store original process
@@ -1432,7 +1432,7 @@ class ILTProcessGenerator(object):
         if DotName('dynamic') in self.astProcessAttributes:
             #set of functions that should not appear in dynamic function
             illegalFuncs = principalFuncs - set([DotName('dynamic')]) \
-                           | set([DotName('load'), DotName('store'), 
+                           | set([DotName('load'), DotName('store'),
                                   DotName('graph',)])
             #copy the function's statements from AST to ILT; recursive
             self.copyFuncRecursive(self.astProcessAttributes[DotName('dynamic')],
@@ -1461,10 +1461,10 @@ class ILTProcessGenerator(object):
         #TODO: Check correct order of assignments (or initialization).
         #TODO: Check if all parameters and state vars have been initialized.
         #TODO: Check if any variable name is equal to a keyword. (in findAttributesRecursive)
-        
+
         #Modify init function for parameter value overriding
         self.modifyInitMethod(initFunc)
-        
+
         return self.process
 
 
@@ -1487,16 +1487,16 @@ class ILTGenerator(object):
          built-in values and functions, like pi, sin(x).
         '''
         #Create the solution parameters' definition
-        solPars = NodeClassDef(loc=0, 
+        solPars = NodeClassDef(loc=0,
                                className=DotName('solutionParametersClass'),
                                superName=DotName('Model'))
-        solPars.appendChild(NodeAttrDef(loc=0, 
+        solPars.appendChild(NodeAttrDef(loc=0,
                                         attrName=DotName('simulationTime'),
-                                        className=DotName('Real'), 
+                                        className=DotName('Real'),
                                         role=RoleParameter))
-        solPars.appendChild(NodeAttrDef(loc=0, 
+        solPars.appendChild(NodeAttrDef(loc=0,
                                         attrName=DotName('reportingInterval'),
-                                        className=DotName('Real'), 
+                                        className=DotName('Real'),
                                         role=RoleParameter))
         #add solutionparameTers to AST, and update class dict
         astRoot.insertChild(0, solPars)
@@ -1524,8 +1524,8 @@ class ILTGenerator(object):
         #warnig if no code was generated
         if len(iltRoot) == 0:
             print 'Warnig: program contains no "Process" objects. ' + \
-                  'No simulation code is generated.'    
-        
+                  'No simulation code is generated.'
+
         return iltRoot
 
 
