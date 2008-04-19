@@ -61,7 +61,6 @@ class Batch(Process): #Define a concrete simulation expriment
         #Note: the full path has to be specified for variables.
         r.X = X_init; #initial biomass concentration
         r.S = S_init;  #initial sugar concentration
-
     end
 
     func dynamic():
@@ -171,7 +170,7 @@ class ContiSmartStart(Process): #Define a concrete simulation expriment
         if r.X < Sf*Yxs*0.90:
             r.D = 0; #low biomasss concentration: pump off
         else:
-            r.D = D_fin;# high biomasss concentration: pump on
+            r.D = D_fin; # high biomasss concentration: pump on
         end
         #compute the reactor's dynamic equations
         call r.dynamic();

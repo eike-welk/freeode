@@ -55,7 +55,7 @@ import pyparsing
 
 
 #version of the Siml compiler.
-progVersion = '0.3.1-dev-1'
+progVersion = '0.3.1-dev-for-0.3.2'
 
 
 
@@ -994,7 +994,6 @@ class Visitor(object):
             inPriority : The priority if multiple methods fit on one type.
                          Higher numbers mean higher priority.
         '''
-        #This function 
         #Test if arguments are of the required type
         legalTypes = (type, ClassType)
         if not isinstance(inType, legalTypes):

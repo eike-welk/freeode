@@ -4,9 +4,10 @@
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
 #    Inspiration came from:                                                *
-#    'fourFn.py', an example program, by Paul McGuire                      *
-#    and the 'Spark' library by John Aycock                                *
-#                                                                          *
+#    'fourFn.py', an example program, by Paul McGuire,                     *
+#    and the 'Spark' library by John Aycock.                               *
+#    Many thanks for their exelent contributions to publicly available     *
+#    knowledge.                                                            *
 #                                                                          *
 #    This program is free software; you can redistribute it and/or modify  *
 #    it under the terms of the GNU General Public License as published by  *
@@ -64,10 +65,11 @@ pyparsing.ParserElement.enablePackrat()
 #Took code from pyparsing.Optional as a template
 class ErrStop(ParseElementEnhance):
     """Parser that prevents backtracking.
-       The parser tries to match the given expression. If this expression does not match
-       the parser raises a ParseFatalException and parsing stops.
-       Otherwise, if the given expression matches, its parse results are returned and
-       the ErrStop has no effect on the parse results.
+       The parser tries to match the given expression (wich consists of other 
+       parsers). If this expression does not match the parser raises a 
+       ParseFatalException and parsing stops.
+       Otherwise, if the given expression matches, its parse results are returned 
+       and the ErrStop has no effect on the parse results.
     """
     #TODO: implement setErrorAction( callableObject )
     #TODO: implement setErrorMessage( errorMsgStr )
@@ -545,6 +547,9 @@ class ParseStage(object):
         attrDefList = NodeStmtList(loc=self.createTextLocation(loc))
         nameList = toks.attrNameList.asList()
         for name in nameList:
+            if name in self.keywords:
+                errMsg = 'Keyword can not be used as an identifier: ' + name
+                raise ParseFatalException(str, loc, errMsg)
             attrDef = NodeAttrDef(loc=self.createTextLocation(loc))
             attrDef.attrName = DotName(name) #store attribute name
             attrDef.className = DotName(toks.className.asList())  #store class name
@@ -682,7 +687,7 @@ class ParseStage(object):
 
         # .............. Mathematical expression .............................................................
         #'Forward declarations' for recursive rules
-        expressionList = Forward() #For built in functions
+        expressionList = Forward() #For built in functions TODO: this should be a list of bool expressions
         boolExpression = Forward()
         expression = Forward()
         term =  Forward()
@@ -694,6 +699,7 @@ class ParseStage(object):
         #sin(2*a), (a+2), a.b.c(2.5:3.5))
         #Function call, parenthesis and memory access can however contain
         #expressions.
+        #TODO: funcCall should be unified with with call to member function
         funcCall = Group(builtInFuncName                            .setResultsName('funcName')
                          + '(' + expressionList                     .setResultsName('arguments')
                          + ')' )                                    .setParseAction(self._actionBuiltInFunction) \
@@ -746,13 +752,16 @@ class ParseStage(object):
         #................ End mathematical expression ................................................---
 
         #................ Identifiers ...................................................................
-        identifier = Word(alphas+'_', alphanums+'_')            .setParseAction(self._actionCheckIdentifier) \
-                                                                .setName('identifier')#.setDebug(True)
-
+        identifier = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
+        #Use this when defining new objects. The new identifier is checked if it is not a keyword
+        newIdentifier = identifier.copy()                       .setParseAction(self._actionCheckIdentifier)
         #Compound identifiers for variables or parameters 'aaa.bbb'.
         dotSup = Literal('.').suppress()
         dotIdentifier = Group(identifier +
                               ZeroOrMore(dotSup + identifier))  .setName('dotIdentifier')#.setDebug(True)
+        #Method to access a stored value: dotted name ('a.b.c'), 
+        # with optional differentiation operator ('$a.b.c'), 
+        # and optional partial access ('a.b.c[2:5]'). (partial access is currently not implemented)
         valAccess << Group( Optional('$') +
                             identifier +
                             ZeroOrMore(dotSup + identifier) )   .setParseAction(self._actionAttributeAccess) \
@@ -761,34 +770,46 @@ class ParseStage(object):
 #------------------- Statements ---------------------------------------------------------------
         statementList = Forward()
         #Flow control - if then else
-        ifStatement = Group(kw('if') + boolExpression + ':'
-                            + statementList
-                            + Optional(kw('else') +':' + statementList)
-                            + kw('end'))                             .setParseAction(self._actionIfStatement)\
+        ifStatement = Group(kw('if') 
+                            + ErrStop( boolExpression + ':'
+                                       + statementList
+                                       + Optional(kw('else') 
+                                                  + ErrStop(':' + statementList))
+                                       + kw('end'))
+                            )                                        .setParseAction(self._actionIfStatement)\
                                                                      .setName('ifStatement')#.setDebug(True)
         #compute expression and assign to value
-        assignment = Group(valAccess + '=' + boolExpression + ';')   .setParseAction(self._actionAssignment)\
+        assignment = Group(valAccess + '=' 
+                           + ErrStop(boolExpression + ';')           .setErrMsgStart('Assignment statement: ')
+                           )                                         .setParseAction(self._actionAssignment)\
                                                                      .setName('assignment')#.setDebug(True)
         #execute a block - insert code of a child model
         #function arguments are currently missing
         #TODO: Unify with builtin functions.
         funcExecute = Group(kw('call')
-                             + dotIdentifier                         .setResultsName('funcName')
-                             + '(' + ')'
-                             + ';')                                  .setParseAction(self._actionFuncExecute)\
+                             + ErrStop(dotIdentifier                 .setResultsName('funcName')
+                                       + '(' + ')'
+                                       + ';')                        .setErrMsgStart('Call statement: ')
+                             )                                       .setParseAction(self._actionFuncExecute)\
                                                                      .setName('blockExecute')#.setDebug(True)
         #print something to stdout
-        printStmt = Group(kw('print') + expressionList               .setResultsName('argList')
-                          + Optional(',')                            .setResultsName('trailComma')
-                          + ';')                                     .setParseAction(self._actionPrintStmt)\
+        printStmt = Group(kw('print') 
+                          + ErrStop(expressionList                   .setResultsName('argList')
+                                    + Optional(',')                  .setResultsName('trailComma')
+                                    + ';')                           .setErrMsgStart('Print statement: ')
+                          )                                          .setParseAction(self._actionPrintStmt)\
                                                                      .setName('printStmt')#.setDebug(True)
         #show graphs
-        graphStmt = Group(kw('graph') + expressionList               .setResultsName('argList')
-                          + ';')                                     .setParseAction(self._actionGraphStmt)\
+        graphStmt = Group(kw('graph') 
+                          + ErrStop(expressionList                   .setResultsName('argList')
+                                    + ';')                           .setErrMsgStart('Graph statement: ')
+                          )                                          .setParseAction(self._actionGraphStmt)\
                                                                      .setName('graphStmt')#.setDebug(True)
         #store to disk
-        storeStmt = Group(kw('save') + Group(Optional(stringConst))  .setResultsName('argList')
-                          + ';')                                     .setParseAction(self._actionStoreStmt)\
+        storeStmt = Group(kw('save') 
+                          + ErrStop(Group(Optional(stringConst))     .setResultsName('argList')
+                                    + ';')                           .setErrMsgStart('Save statement: ')
+                          )                                          .setParseAction(self._actionStoreStmt)\
                                                                      .setName('storeStmt')#.setDebug(True)
 
         statement = (storeStmt | graphStmt | printStmt |
@@ -797,47 +818,50 @@ class ParseStage(object):
         statementList << Group(OneOrMore(statement))                 .setParseAction(self._actionStatementList)\
                                                                      .setName('statementList')#.setDebug(True)
 
-#---------- Class Def ---------------------------------------------------------------------*
+#---------- Define new objects ---------------------------------------------------------------------*
         #define parameters, variables and submodels
         #commaSup = Literal(',').suppress()
-        #parse: 'foo, bar, baz
-        attrNameList = Group(identifier
-                             + ZeroOrMore(commaSup + identifier))    .setName('attrNameList')
+        #parse: 'foo, bar, baz 
+        #Identifiers must not be keywords, check is done in _actionAttrDefinition
+        newAttrList = Group(identifier
+                            + ZeroOrMore(commaSup + identifier))     .setName('attrNameList')
         attrRole = kw('parameter') | kw('variable')
         #parse 'data foo, bar: baz.boo parameter;
         attributeDef = Group(kw('data')
-                             + ErrStop(attrNameList                  .setResultsName('attrNameList')
+                             + ErrStop(newAttrList                   .setResultsName('attrNameList')
                                        + ':' + dotIdentifier         .setResultsName('className')
                                        + Optional(attrRole)          .setResultsName('attrRole')
                                        + ';')                        .setErrMsgStart('Wrong syntax in data definition. ')
                              )                                       .setParseAction(self._actionAttrDefinition)\
                                                                      .setName('attributeDef')#.setDebug(True)
-        #define member function (method) - function arguments are currently missing
-        memberFuncDef = Group(kw('func')
-                              + identifier                           .setResultsName('funcName')
-                              + '(' + ')' + ':'
-                              + ZeroOrMore(statement)                .setResultsName('funcBody', True)
-                              + kw('end'))                           .setParseAction(self._actionFuncDefinition)\
+        #define member function (method) 
+        #TODO: function arguments are currently missing
+        #TODO: unify with built in functions
+        funcDef = Group(kw('func')
+                        + ErrStop(newIdentifier                      .setResultsName('funcName')
+                                  + '(' + ')' + ':'
+                                  + ZeroOrMore(statement)            .setResultsName('funcBody', True)
+                                  + kw('end'))                       .setErrMsgStart('Wrong syntax in function definition. ')
+                        )                                            .setParseAction(self._actionFuncDefinition)\
                                                                      .setName('memberFuncDef')#.setDebug(True)
         #definition of a class (process, model, type?)
         classDef = Group(kw('class')
-                         + identifier                                .setResultsName('className')
-                         + '(' + dotIdentifier                       .setResultsName('superName')
-                         + ')' + ':'
-                         + ZeroOrMore(attributeDef)                  .setResultsName('attributeDef', True)
-                         + ZeroOrMore(memberFuncDef)                 .setResultsName('memberFuncDef', True)
-                         + kw('end'))                                .setParseAction(self._actionClassDef)\
+                         + ErrStop(newIdentifier                     .setResultsName('className')
+                                   + '(' + dotIdentifier             .setResultsName('superName')
+                                   + ')' + ':'
+                                   + ZeroOrMore(attributeDef)        .setResultsName('attributeDef', True)
+                                   + ZeroOrMore(funcDef)             .setResultsName('memberFuncDef', True)
+                                   + kw('end'))                      .setErrMsgStart('Wrong syntax in class definition. ')
+                         )                                           .setParseAction(self._actionClassDef)\
                                                                      .setName('classDef')#.setDebug(True)
 
-        program = Group(OneOrMore(classDef))                        .setParseAction(self._actionProgram)\
-                                                                    .setName('program')#.setDebug(True)
+        program = (Group(OneOrMore(classDef)) + StringEnd())         .setParseAction(self._actionProgram)\
+                                                                     .setName('program')#.setDebug(True)
 
-        #special rule against incomplete parsing and faillure without error message
-        file = program + StringEnd()
         #................ End of language definition ..................................................
 
         #determine start symbol
-        startSymbol = file
+        startSymbol = program
         #set up comments
         singleLineCommentCpp = '//' + restOfLine
         singleLineCommentPy = '#' + restOfLine
