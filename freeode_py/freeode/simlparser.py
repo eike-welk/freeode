@@ -6,10 +6,10 @@
 #    Inspiration came from:                                                *
 #    'fourFn.py', an example program, by Paul McGuire,                     *
 #    and the 'Spark' library by John Aycock.                               *
-#    Many thanks for their excellent contributions to publicly available     *
+#    Many thanks for their excellent contributions to publicly available   *
 #    knowledge.                                                            *
-#                                                                          #
-#    License: GPL                                                          #
+#                                                                          *
+#    License: GPL                                                          *
 #                                                                          *
 #    This program is free software; you can redistribute it and/or modify  *
 #    it under the terms of the GNU General Public License as published by  *
@@ -74,7 +74,6 @@ class ErrStop(ParseElementEnhance):
        and the ErrStop has no effect on the parse results.
     """
     #TODO: implement setErrorAction( callableObject )
-    #TODO: implement setErrorMessage( errorMsgStr )
     def __init__(self, expr):
         super(ErrStop, self).__init__(expr, savelist=False)
         self.mayReturnEmpty = True
@@ -211,13 +210,12 @@ class ParseStage(object):
 
         tokList is structured like this: ['a1']
         '''
-        #
         tokList = toks.asList() #asList() this time ads *no* extra pair of brackets
         identier = tokList[0]
         if identier in ParseStage.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
-            raise ParseException(str, loc,
-                                 'Keyword can not be used as an identifier: ' + identier)
+            errMsg = 'Keyword can not be used as an identifier: ' + identier
+            raise ParseException(str, loc, errMsg)
             #raise ParseFatalException(
             #    str, loc, 'Identifier same as keyword: %s' % toks[0] )
 #            raise UserException(
@@ -229,7 +227,7 @@ class ParseStage(object):
         '''
         Remember location of last parsed statement. Useful for error
         error message creation, since the locations of pyparsing's
-        syntax errors are frequently quit off.
+        syntax errors are frequently quite off.
         '''
         self._locLastStmt = self.createTextLocation(loc)
 
@@ -1580,8 +1578,8 @@ end
 
 
     #test the intermedite tree generator ------------------------------------------------------------------
-    flagTestILTGenerator = True
-    #flagTestILTGenerator = False
+    #flagTestILTGenerator = True
+    flagTestILTGenerator = False
     if flagTestILTGenerator:
         parser = ParseStage()
         iltGen = ILTGenerator()
@@ -1596,8 +1594,8 @@ end
 
 
     #test the parser ----------------------------------------------------------------------
-    #flagTestParser = True
-    flagTestParser = False
+    flagTestParser = True
+    #flagTestParser = False
     if flagTestParser:
         parser = ParseStage()
         #ParseStage.debugSyntax = 1
