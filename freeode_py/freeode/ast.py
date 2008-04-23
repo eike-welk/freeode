@@ -22,7 +22,7 @@
 ############################################################################
 
 '''
-Abstrakt syntax tree and tools for tree handling.
+Abstract syntax tree and tools for tree handling.
 
 - Syntax tree with specialized nodes for all elements of the language.
 - Iterator to iterate over the tree.

@@ -102,7 +102,7 @@ class SimlCompilerMain(object):
         #see if user whishes to run the simulation after compiling
         if options.runone == 'all':
             self.runSimulation = 'all'
-        elif options.runone: #anythin else is considered a number
+        elif options.runone: #anything else is considered a number
             #test if argument is a number
             try:
                 int(options.runone)
@@ -135,6 +135,7 @@ class SimlCompilerMain(object):
         except UserException, theError:
             print >> sys.stderr, theError
             sys.exit(1)
+        #TODO: remove this: all user visible error messages should be of type UserException.
         #errors from pyparsing. Don't remove: parser may re-raise pyparsing errors.
         except pyparsing.ParseException, theError:
             print >> sys.stderr, 'syntax error: ', theError
@@ -149,7 +150,7 @@ class SimlCompilerMain(object):
             modeBits = os.stat(self.outputFileName).st_mode
             os.chmod(self.outputFileName, modeBits | stat.S_IEXEC)
         except IOError, theError:
-            print >> sys.stderr, 'error: could nor write output file\n', theError
+            print >> sys.stderr, 'error: could not write output file\n', theError
             sys.exit(1)
 
         print 'Compilation finished successfully.'
@@ -169,15 +170,18 @@ class SimlCompilerMain(object):
         print 'running generated program. PID: %d' % proc.pid
 
 
-    def mainFunc(self):
-        '''the main function'''
+    def mainFunc(self): 
+        '''The main function. 
+           Create the compiler object (SimlCompilerMain) and run this function 
+           to run the compiler.
+        '''
         try:
             self.parseCmdLine()
             self.doCompile()
             self.runProgram()
         except SystemExit:
             raise #for sys.exit() - the error message was already printed
-        except Exception: #Any othe exception must be an internal error
+        except Exception: #Any other exception must be an internal error
             print >> sys.stderr, \
                   '\nOh my golly! Compiler internal error! \n\n', \
                   'Please file a bug report at the project\'s website,', \

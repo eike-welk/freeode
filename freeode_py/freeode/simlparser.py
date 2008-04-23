@@ -26,16 +26,19 @@
 #    Free Software Foundation, Inc.,                                       *
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
+
 '''
 Parser for the SIML simulation language.
 '''
 
+#TODO: Split this file: put intermeditate language generation into separate file.
 
 #TODO: write unit tests that exercise every error message of simlparser.py
 
 #TODO: Implement namespaces. Usefull would be:
-#TODO: - Global namespace for: classes, global functions.
-#TODO: - Function local namespace for: data attributes, function attributes
+#       - Global namespace for: classes, global functions.
+#       - Class namespace for class attributes
+#       - Function local namespace for: data attributes, function attributes
 
 
 from __future__ import division
@@ -819,13 +822,19 @@ class ParseStage(object):
                                                                      .setName('statementList')#.setDebug(True)
 
 #---------- Define new objects ---------------------------------------------------------------------*
-        #define parameters, variables and submodels
+        #define parameters, variables, constants and submodels
         #commaSup = Literal(',').suppress()
         #parse: 'foo, bar, baz
         #Identifiers must not be keywords, check is done in _actionAttrDefinition
         newAttrList = Group(identifier
                             + ZeroOrMore(commaSup + identifier))     .setName('attrNameList')
-        attrRole = kw('parameter') | kw('variable')
+        #The roles of data (maybe call it storage class?):
+        #variable:    changes during the simulation 
+        #parameter:   constant during a (dynamic?) simulation, can change beween simulations,
+        #             can be computed in the init function.
+        #constant:    must be known at compile time, may be optimized away, 
+        #             the compiler may generate special code depending on the value.
+        attrRole = kw('variable') | kw('parameter') | kw('constant')
         #parse 'data foo, bar: baz.boo parameter;
         attributeDef = Group(kw('data')
                              + ErrStop(newAttrList                   .setResultsName('attrNameList')
