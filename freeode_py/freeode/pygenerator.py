@@ -266,7 +266,8 @@ class StatementGenerator(Visitor):
         for expr in iltStmt:               #iterate over arguments (max 1)
             #child is a string
             if isinstance(expr, NodeString):
-                self.createFormula(expr)   #write filename
+                filename = self.createFormula(expr)   #write filename
+                outPy.write(filename)
             #anything else is illegal
             else:
                 raise UserException('Argument of save statement must be a file name.',

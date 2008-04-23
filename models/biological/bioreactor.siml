@@ -77,6 +77,8 @@ class Batch(Process): #Define a concrete simulation expriment
         if  showGraph != 0:
             graph 'Batch', r.mu, r.X, r.S;
         end
+        print 'Simulation finished!';
+        save 'Batch.csv';
     end
 end
 
@@ -179,9 +181,10 @@ class ContiSmartStart(Process): #Define a concrete simulation expriment
     #Show results
     func final():
         if  showGraph != 0:
-            graph 'ContiSmartStart', r.mu, r.X, r.S;
-            graph 'ContiSmartStart', r.D, r.mu;
+            graph 'ContiSmartStart - mu, X, S', r.mu, r.X, r.S;
+            graph 'ContiSmartStart - mu, D', r.D, r.mu;
         end
+        save 'ContiSmartStart-results.csv';
     end
 end
 

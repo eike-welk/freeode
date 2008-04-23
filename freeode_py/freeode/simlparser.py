@@ -464,7 +464,7 @@ class ParseStage(object):
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodePrintStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.kids = toks.argList.asList()
+        nCurr.kids = toks.argList.asList()[0]
         if toks.trailComma:
             nCurr.newline = False
         return nCurr
@@ -484,7 +484,7 @@ class ParseStage(object):
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeGraphStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.kids = toks.argList.asList()
+        nCurr.kids = toks.argList.asList()[0]
         return nCurr
 
 
