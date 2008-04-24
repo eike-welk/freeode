@@ -35,6 +35,7 @@ import stat
 from subprocess import Popen #, PIPE, STDOUT
 import pyparsing
 import freeode.simlparser as simlparser
+import freeode.intermediate as intermediate
 import freeode.pygenerator as pygenerator
 import freeode.ast as ast  #for ast.progVersion
 from freeode.ast import UserException
@@ -120,7 +121,7 @@ class SimlCompilerMain(object):
         '''Do the work'''
         #create the top level objects that do the compilation
         parser = simlparser.ParseStage()
-        iltGen = simlparser.ILTGenerator()
+        iltGen = intermediate.ILTGenerator()
         progGen = pygenerator.ProgramGenerator()
 
         #the compilation proper
