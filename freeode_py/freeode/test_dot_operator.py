@@ -37,8 +37,6 @@ product would exist:
 from __future__ import division
 
 import numpy as np
-from numpy import dot as np_dot
-from numpy import ndarray
 
 
 
@@ -46,53 +44,58 @@ class DotHelper1(object):
     '''Helper class for the dot pseudo operator'''
     __array_priority__ = 10.0
     
-    def __init__(self):
-        pass
+    def __init__(self, axes=None):
+        self.axes = axes
     
-    def __call__(self, dim=None):
+    def __call__(self, axes=None):
         '''Might be used to pass the dimension over which the dot product is taken'''
-        print '__call__ is not yet implemented.'
-        return DotHelper1()
+        return DotHelper1(axes)
     
     def __rmul__(self, leftOP):
-        if not isinstance(leftOP, ndarray):
+        if not isinstance(leftOP, np.ndarray):
             return NotImplemented
-        return DotHelper2(leftOP)
+        return DotHelper2(leftOP, self.axes)
 
 
 class DotHelper2(object):
     '''Helper class for the dot pseudo operator'''
     
-    def __init__(self, operand=None):
+    def __init__(self, operand=None, axes=None):
         self.operand = operand
+        self.axes = axes
     
     def __mul__(self, rightOp):
         if not isinstance(rightOp, np.ndarray):
             return NotImplemented
         if self.operand is None:
             raise Exception('Unknown left operand!')
-        return np_dot(self.operand, rightOp)
+        #finally do the desired computation
+        if self.axes is None:
+            return np.dot(self.operand, rightOp)
+        else:
+            return np.tensordot(self.operand, rightOp, self.axes)
     
     
 dot = DotHelper1()
 
 
 if __name__ == '__main__':
-    from numpy import array, linspace, identity
+    from numpy import array, linspace
     
     a = array([1.0, 2, 3])
     b = array([4.0, 5, 6])
-    m = linspace(1, 9, 9).reshape((3,3))
-    id = identity(3, float)
+    m = linspace(1, 9, 9).reshape((3,3)) #IGNORE:E1101
     
     print 'a: ', a 
     print 'b: ', b 
-    print 'm: ', m 
+    print 'm: '; print m 
     print
     
-    #print a *dot(2)* b 
-    print 'a *dot* b         : ', a *dot* b 
+    print 'a *dot* b         : ', a *dot* b
     print 'm *dot* a         : ', m *dot* a
     print 'a *dot* m         : ', a *dot* m
-    print 'a *dot* id *dot* a: ', a *dot* id *dot* a
- 
+    print 'a *dot* m *dot* a : ', a *dot* m *dot* a
+    
+    print 'm *dot* m : ';        print m *dot* m
+    print 'm *dot((1,0))* m : '; print m *dot((1,0))* m
+    print 'm *dot((0,0))* m : '; print m *dot((0,0))* m

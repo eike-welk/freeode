@@ -657,10 +657,12 @@ class ParseStage(object):
         L = Literal # Usage: L('+')
 
         #Values that are built into the language
+        #TODO: remove use global constants instead (maybe keep time)
         builtInValue = (kw('pi') | kw('time'))                      .setParseAction(self._actionBuiltInValue)\
                                                                     .setName('builtInValue')#.setDebug(True)
 
         #Functions that are built into the language
+        #TODO: remove, use global functions instead
         #Dict: {'function_name':number_of_function_arguments}
         self._builtInFunc = {'sin':1, 'cos':1, 'tan':1,
                              'sqrt':1, 'exp':1, 'log':1,
@@ -744,7 +746,7 @@ class ParseStage(object):
                                                                 .setName('boolExpr2')#.setDebug(True)
         boolExpression << (boolExpr2 | boolExpr1)               .setName('boolExpression')#.setDebug(True)
 
-        #expression list - sparse: 2, foo.bar, 3*sin(baz)
+        #expression list - parse: 2, foo.bar, 3*sin(baz)
         commaSup = Literal(',').suppress()
         expressionList << Group(boolExpression
                                 + ZeroOrMore(commaSup + boolExpression)).setName('exprList')

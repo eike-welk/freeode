@@ -740,7 +740,8 @@ if __name__ == '__main__':
     #TODO: add doctest tests.
 
 
-    from simlparser import ParseStage, ILTGenerator
+    from simlparser import ParseStage
+    from intermediate import ILTGenerator
 #------------ testProg1 -----------------------
     testProg1 = (
 '''

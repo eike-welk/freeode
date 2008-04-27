@@ -802,7 +802,7 @@ class MultiErrorException(UserException):
 
     def __str__(self):
         errMsg = 'Error!\n'
-        for msg1, loc1 in self.errTupList:
+        for msg1, loc1 in self.errTupList: 
             errMsg += '%s \n    %s \n' % (msg1, str(self.loc))
         errMsg += '------------------------\n'
         errMsg += 'Total: %d Error(s).' % len(self.errTupList)
@@ -937,7 +937,7 @@ class Visitor(object):
             if issubclass(objCls, cls1):
                 return func1
         #no specific handler could be found: return the default function
-        func1, cls1, prio1 = cls._ruleTable[-1]
+        func1, cls1, prio1 = cls._ruleTable[-1] #IGNORE:E1101
         return func1
 
 
