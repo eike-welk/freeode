@@ -99,3 +99,4 @@ if __name__ == '__main__':
     print 'm *dot* m : ';        print m *dot* m
     print 'm *dot((1,0))* m : '; print m *dot((1,0))* m
     print 'm *dot((0,0))* m : '; print m *dot((0,0))* m
+
