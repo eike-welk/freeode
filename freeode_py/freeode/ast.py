@@ -222,9 +222,10 @@ class NodeBuiltInFuncCall(Node):
     '''
     Represent a built in function in the AST.
     Example: sin( ... )
-
-    self.dat  : the function's name
-    self.kids : the function's arguments
+    Data attributes:
+        kids : the function's arguments
+        loc  : location in input string
+        dat  : the function's name
     '''
     #TODO: remove this class. These nodes should be replaced by regular
     #function calls.
@@ -445,6 +446,9 @@ class AttributeRole(object):
 class RoleAny(AttributeRole):
     '''The attribute's role is undecided'''
     pass
+class RoleConstant(AttributeRole):
+    '''The attribute is a constant'''
+    pass
 class RoleParameter(AttributeRole):
     '''The attribute is a parameter'''
     pass
@@ -463,20 +467,22 @@ class NodeAttrDef(Node):
     '''
     AST node for definition of a variable, parameter or submodel.
     Data attributes:
-        kids        : []
+        kids        : default value (expression), or []
         loc         : location in input string
         dat         : None
 
         attrName        : name of the attribute. can be dotted name which is stored
                           as a tuple of strings: ('aa', 'bb')
         className       : type of the attribute; possibly dotted name: ('aa', 'bb')
-        role            : Is this attribute a state or algebraic variable,
-                          or a parameter? must be AttributeRole subclass.
+        role            : Is this attribute a state or algebraic variable, a constant
+                          or a parameter? (AttributeRole subclass).
         targetName      : Name in the target language (dict).
                           Variables with derivatives have multiple target names.
                           Example:
                           {():'v_foo', ('time',):'v_foo_dt'}
                           TODO: replace by accessor functions to create more robust interface
+                          TODO: Derivatives should be separate variables. These variable should 
+                                be created in the intermediate language logic.
    '''
     def __init__(self, kids=[], loc=None, dat=None,
                         attrName=None, className=None, role=RoleAny, targetName=None):
@@ -484,8 +490,17 @@ class NodeAttrDef(Node):
         self.attrName = attrName
         self.className = className
         self.role = role
-        #self.isAtomic = isAtomic
         self.targetName = targetName
+        
+    #Get or set the default value
+    def getDefaultValue(self): 
+        if len(self.kids) > 0: return self.kids[0]
+        else: return None
+    def setDefaultValue(self, defaultValue): 
+        if len(self.kids) > 0: self.kids[0] = defaultValue
+        else: self.kids.append(defaultValue)
+    defaultValue = property(getDefaultValue, setDefaultValue, None,
+                   'Default value or initial value of the defined data (proppery).')
 
 
 class NodeAttrAccess(Node):

@@ -51,6 +51,7 @@ import os
 import pyparsing
 from pyparsing import ( _ustr, Literal, CaselessLiteral, Keyword, Word,
     ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,
+    delimitedList,
     StringEnd, sglQuotedString, MatchFirst, Combine, Group, Optional,
     ParseException, ParseFatalException, ParseElementEnhance )
 #import our own syntax tree classes
@@ -215,14 +216,9 @@ class ParseStage(object):
             #print 'found keyword', toks[0], 'at loc: ', loc
             errMsg = 'Keyword can not be used as an identifier: ' + identier
             raise ParseException(str, loc, errMsg)
-            #raise ParseFatalException(
-            #    str, loc, 'Identifier same as keyword: %s' % toks[0] )
-#            raise UserException(
-#                'Keyword can not be used as an identifier: ' + identier,
-#                 self.createTextLocation(loc))
 
 
-    #TODO remove when new error checking proves reliable
+    #TODO: remove when new error checking proves reliable
     def _actionStoreStmtLoc(self, str, loc, toks):
         '''
         Remember location of last parsed statement. Useful for error
@@ -232,6 +228,7 @@ class ParseStage(object):
         self._locLastStmt = self.createTextLocation(loc)
 
 
+    #TODO: remove when built in values are united with normal value access
     def _actionBuiltInValue(self, str, loc, toks):
         '''
         Create AST node for a built in value: pi, time
@@ -279,6 +276,7 @@ class ParseStage(object):
         return nCurr
 
 
+    #TODO: remove when built in functions have been united with user defined functions
     def _actionBuiltInFunction(self, str, loc, toks):
         '''
         Create node for function call: sin(2.1)
@@ -527,15 +525,18 @@ class ParseStage(object):
         NodeAttrDef is created for each. They are returned together inside a
         list node of type NodeStmtList.
         BNF:
-        attrNameList = Group( identifier +
+        newAttrList = Group( identifier +
                                 ZeroOrMore(',' + identifier))
-        attrRole = kw('parameter') | kw('variable')
-        #parse 'data foo, bar: baz.boo parameter;
+        attrRole = kw('state_variable') |kw('variable') | kw('param') | kw('const')
+        #parse 'data foo, bar: baz.boo param;
         attributeDef = Group(kw('data')
-                             + attrNameList                          .setResultsName('attrNameList')
-                             + ':' + dotIdentifier                   .setResultsName('className')
-                             + Optional(attrRole)                    .setResultsName('attrRole')
-                             + ';')
+                             + ES(newAttrList                        .setResultsName('attrNameList')
+                                  + ':' + dotIdentifier              .setResultsName('className')
+                                  + Optional(attrRole)               .setResultsName('attrRole')
+                                  + Optional('=' + ES(expression     .setResultsName('value')
+                                                      )              .setErrMsgStart('default value: ') )
+                                  + stmtEnd)                         .setErrMsgStart('data definition: ')
+                             )                                       .setParseAction(self._actionAttrDefinition)\
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
@@ -546,20 +547,24 @@ class ParseStage(object):
         attrDefList = NodeStmtList(loc=self.createTextLocation(loc))
         nameList = toks.attrNameList.asList()
         for name in nameList:
+            #TODO: better location of the error (currently at the beginning of the 'data' keyword).
             if name in self.keywords:
                 errMsg = 'Keyword can not be used as an identifier: ' + name
                 raise ParseFatalException(str, loc, errMsg)
             attrDef = NodeAttrDef(loc=self.createTextLocation(loc))
             attrDef.attrName = DotName(name) #store attribute name
             attrDef.className = DotName(toks.className.asList())  #store class name
-            #store the role
-            if toks.attrRole == 'parameter':
-                attrDef.role = RoleParameter
-            else:
-                #we do not know if variable or parameter; submodels will be
-                #labled variables even though these categories don't apply
-                #to them.
-                attrDef.role = RoleVariable
+            #map role string to role object, and store the role
+            #If role is not specified RoleVariable is assumed. TODO: change to RoleAny.
+            #Submodels will be labled variables even though these categories don't apply to them.
+            roleDict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleVariable,
+                        'algebraic_variable':RoleAlgebraicVariable, 
+                        'state_variable':RoleStateVariable}
+            attrDef.role = roleDict.get(toks.attrRole, RoleVariable)
+            #store the default value
+            if toks.defaultValue:
+                attrDef.setDefaultValue(toks.defaultValue)
+            #store the attribute definition in the statement list
             attrDefList.appendChild(attrDef)
         #Special case: only one attribute defined
         if len(attrDefList) == 1:
@@ -568,30 +573,65 @@ class ParseStage(object):
             return attrDefList #return list with multiple definitions
 
 
+    def _actionFuncArgument(self, str, loc, toks):
+        '''
+        Create node for one function argument. A NodeAttrDef is created;
+        therefore this method is quite similar to _actionAttrDefinition.
+        BNF:
+        funcArgDefault = Group(identifier                            .setResultsName('attrName')
+                               + Optional(':' + ES(dotIdentifier     .setResultsName('className')
+                                                   )                 .setErrMsgStart('type specifier: '))
+                               + Optional('=' + ES(expression        .setResultsName('defaultValue')
+                                                   )                 .setErrMsgStart('default value: '))
+                               )                                     .setParseAction(self._actionFuncArgument)
+        '''
+        if ParseStage.noTreeModification:
+            return None #No parse result modifications for debuging
+        #tokList = toks.asList()[0] #there always seems to be
+        toks = toks[0]             #an extra pair of brackets
+        nCurr = NodeAttrDef()
+        nCurr.loc = self.createTextLocation(loc) #Store position
+        nCurr.attrName = DotName(toks.attrName)
+        if toks.className:
+            nCurr.className = DotName(toks.className.asList())
+        if toks.defaultValue:
+            nCurr.setDefaultValue(toks.defaultValue)
+        nCurr.role = RoleAlgebraicVariable
+        return nCurr
+        
+    
     def _actionFuncDefinition(self, str, loc, toks):
         '''
-        Create node for definition of a (member) function:
-            func init(): a=1; end
+        Create node for definition of a function or method.
         BNF:
-        memberFuncDef = Group(kw('func')
-                              + identifier                           .setResultsName('funcName')
-                              + '(' + ')' + ':'
-                              + ZeroOrMore(statement)                .setResultsName('funcBody', True)
-                              + kw('end'))        '''
+        funcDef = Group(kw('func') + ES(
+                        newIdentifier                                .setResultsName('funcName')
+                        + '(' + ES(funcArgList                       .setResultsName('argList')
+                                   )                                 .setErrMsgStart('argument List: ')
+                        + ')'                                    
+                        + Optional('->' + ES(dotIdentifier           .setResultsName('returnType')
+                                             )                       .setErrMsgStart('return type: '))
+                        + ':' 
+                        + blockBegin
+                        + ZeroOrMore(statement)                      .setResultsName('funcBody')
+                        + blockEnd)                                  .setErrMsgStart('function definition: ')
+                        )                                            .setParseAction(self._actionFuncDefinition)\
+        '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeFuncDef()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        #store name of block
+        #store function name
         nCurr.name = DotName(toks.funcName)
-        #create children - each child is a statement
-        statements = []
-        if len(toks.funcBody) > 0:
-            statements = toks.funcBody.asList()[0]
-        for stmt1 in statements:
-            nCurr.appendChild(stmt1)
+        #TODO: store function arguments
+        #TODO: store return type
+        #store function body - each statemrnt is a child
+        if toks.funcBody:
+            statements = toks.funcBody.asList()
+            for stmt1 in statements:
+                nCurr.appendChild(stmt1)
         return nCurr
 
 
@@ -775,11 +815,11 @@ class ParseStage(object):
         blockEnd = Literal('}').suppress()
         stmtEnd = Literal(';').suppress()
         
-        #Statement and list of statements - for compund statements
+        #Statement and list of statements - for compund statements and functions
         statement = Forward()
         block = blockBegin + ES(ZeroOrMore(statement) + blockEnd)    .setErrMsgStart('Block: ')
         suite = Group(block | statement)                             .setParseAction(self._actionStatementList)\
-                                                                     .setName('statementList')#.setDebug(True)
+                                                                     #.setName('statementList')#.setDebug(True)
         #Flow control - if then else
         ifStatement = \
             Group(kw('if') + ES(expression + ':' + suite
@@ -839,25 +879,45 @@ class ParseStage(object):
         #             can be computed in the init function.
         #constant:    must be known at compile time, may be optimized away, 
         #             the compiler may generate special code depending on the value.
-        attrRole = kw('variable') | kw('parameter') | kw('constant')
+        attrRole = kw('state_variable') | kw('algebraic_variable') | \
+                   kw('variable') | kw('param') | kw('const')
         #parse 'data foo, bar: baz.boo parameter;
         attributeDef = Group(kw('data')
                              + ES(newAttrList                        .setResultsName('attrNameList')
-                                       + ':' + dotIdentifier         .setResultsName('className')
-                                       + Optional(attrRole)          .setResultsName('attrRole')
-                                       + stmtEnd)                    .setErrMsgStart('Wrong syntax in data definition. ')
+                                  + ':' + dotIdentifier              .setResultsName('className')
+                                  + Optional(attrRole)               .setResultsName('attrRole')
+                                  + Optional('=' + ES(expression     .setResultsName('defaultValue')
+                                                      )              .setErrMsgStart('default value: ') )
+                                  + stmtEnd)                         .setErrMsgStart('data definition: ')
                              )                                       .setParseAction(self._actionAttrDefinition)\
-                                                                     .setName('attributeDef')#.setDebug(True)
-        #define function (method attribute of global function)
-        #TODO: function arguments are currently missing
+                                                                     #.setName('attributeDef')#.setDebug(True)
+        #define function (class method or global function)
+        #one function argument: inX:Real=2.5
+        funcArgDefault = Group(identifier                            .setResultsName('attrName')
+                               + Optional(':' + ES(dotIdentifier     .setResultsName('className')
+                                                   )                 .setErrMsgStart('type specifier: '))
+                               + Optional('=' + ES(expression        .setResultsName('defaultValue')
+                                                   )                 .setErrMsgStart('default value: '))
+                               )                                     .setParseAction(self._actionFuncArgument)
+        funcArgList = Optional(delimitedList(funcArgDefault, ','))
         #TODO: unify with built in functions
-        funcDef = Group(kw('func')
-                        + ES(newIdentifier                           .setResultsName('funcName')
-                                  + '(' + ')' + ':' + blockBegin
-                                  + ZeroOrMore(statement)            .setResultsName('funcBody', True)
-                                  + blockEnd)                       .setErrMsgStart('Wrong syntax in function definition. ')
+        #the function: func doFoo(a:Real=2.5, b) -> Real {...}
+        funcDef = Group(kw('func') + ES(
+                        newIdentifier                                .setResultsName('funcName')
+                        + '(' + ES(funcArgList                       .setResultsName('argList')
+                                   )                                 .setErrMsgStart('argument List: ')
+                        + ')'                                    
+                        + Optional('->' + ES(dotIdentifier           .setResultsName('returnType')
+                                             )                       .setErrMsgStart('return type: '))
+                        + ':' 
+#                        + suite                                      .setResultsName('funcBody')
+                        + blockBegin
+                        + ES(Group(ZeroOrMore(statement))            .setResultsName('funcBody')
+                                                                     #.setParseAction(self._actionStatementList)
+                             + blockEnd)                             .setErrMsgStart('function body: ')
+                        )                                            .setErrMsgStart('function definition: ')
                         )                                            .setParseAction(self._actionFuncDefinition)\
-                                                                     .setName('memberFuncDef')#.setDebug(True)
+                                                                     #.setName('memberFuncDef')#.setDebug(True)
         #definition of a class (process, model, type?)
         classDef = Group(kw('class')
                          + ES(newIdentifier                          .setResultsName('className')
@@ -865,7 +925,7 @@ class ParseStage(object):
                                    + ')' + ':' + blockBegin
                                    + ZeroOrMore(attributeDef)        .setResultsName('attributeDef', True)
                                    + ZeroOrMore(funcDef)             .setResultsName('memberFuncDef', True)
-                                   + blockEnd)                       .setErrMsgStart('Wrong syntax in class definition. ')
+                                   + blockEnd)                       .setErrMsgStart('class definition: ')
                          )                                           .setParseAction(self._actionClassDef)\
                                                                      .setName('classDef')#.setDebug(True)
 
@@ -984,11 +1044,15 @@ end
 '''
 class RunTest(Process): 
 {
-    data a,b: Real;
+    data x: Real;
+    data a,b: Real const = sin(3*pi);
 
-    func dynamic(): 
+    func foo():
+    {}
+    
+    func dynamic(a, b:Real=5*b.s.d**2, c:foo.Val) -> Real: 
     {
-        a = 2;
+        b = 2;
         if   a == 3: { b = 3;}
         elif a == 2: { b = a**2; }
         elif a == 1:  b = 5;  
