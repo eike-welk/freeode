@@ -591,11 +591,15 @@ class ParseStage(object):
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeAttrDef()
         nCurr.loc = self.createTextLocation(loc) #Store position
+        #store argument name
         nCurr.attrName = DotName(toks.attrName)
+        #store optional type of argument
         if toks.className:
             nCurr.className = DotName(toks.className.asList())
-        if toks.defaultValue:
+        #store optional default value
+        if isinstance(toks.defaultValue, Node):
             nCurr.setDefaultValue(toks.defaultValue)
+        #store role
         nCurr.role = RoleAlgebraicVariable
         return nCurr
         
@@ -603,18 +607,18 @@ class ParseStage(object):
     def _actionFuncDefinition(self, str, loc, toks):
         '''
         Create node for definition of a function or method.
+            func doFoo(a:Real=2.5, b) -> Real: {... }
         BNF:
         funcDef = Group(kw('func') + ES(
                         newIdentifier                                .setResultsName('funcName')
-                        + '(' + ES(funcArgList                       .setResultsName('argList')
+                        + '(' + ES(Group(funcArgList)                .setResultsName('argList')
                                    )                                 .setErrMsgStart('argument List: ')
                         + ')'                                    
                         + Optional('->' + ES(dotIdentifier           .setResultsName('returnType')
                                              )                       .setErrMsgStart('return type: '))
                         + ':' 
-                        + blockBegin
-                        + ZeroOrMore(statement)                      .setResultsName('funcBody')
-                        + blockEnd)                                  .setErrMsgStart('function definition: ')
+                        + Group(suite)                               .setResultsName('funcBody')
+                        )                                            .setErrMsgStart('function definition: ')
                         )                                            .setParseAction(self._actionFuncDefinition)\
         '''
         if ParseStage.noTreeModification:
@@ -625,13 +629,14 @@ class ParseStage(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store function name
         nCurr.name = DotName(toks.funcName)
-        #TODO: store function arguments
-        #TODO: store return type
-        #store function body - each statemrnt is a child
-        if toks.funcBody:
-            statements = toks.funcBody.asList()
-            for stmt1 in statements:
-                nCurr.appendChild(stmt1)
+        #store function arguments: statement list of 'data' statements
+        nCurr.argList = toks.argList[0]
+        #store return type
+        if toks.returnType:
+            nCurr.returnType = DotName(toks.returnType)
+        #store function body: statement list
+        nCurr.funcBody = toks.funcBody[0]
+
         return nCurr
 
 
@@ -899,22 +904,20 @@ class ParseStage(object):
                                + Optional('=' + ES(expression        .setResultsName('defaultValue')
                                                    )                 .setErrMsgStart('default value: '))
                                )                                     .setParseAction(self._actionFuncArgument)
-        funcArgList = Optional(delimitedList(funcArgDefault, ','))
+        funcArgList = \
+                Group(Optional(delimitedList(funcArgDefault, ',')))  .setParseAction(self._actionStatementList)
         #TODO: unify with built in functions
         #the function: func doFoo(a:Real=2.5, b) -> Real {...}
+#--------------- Function ---------
         funcDef = Group(kw('func') + ES(
                         newIdentifier                                .setResultsName('funcName')
-                        + '(' + ES(funcArgList                       .setResultsName('argList')
+                        + '(' + ES(Group(funcArgList)                .setResultsName('argList')
                                    )                                 .setErrMsgStart('argument List: ')
                         + ')'                                    
                         + Optional('->' + ES(dotIdentifier           .setResultsName('returnType')
                                              )                       .setErrMsgStart('return type: '))
                         + ':' 
-#                        + suite                                      .setResultsName('funcBody')
-                        + blockBegin
-                        + ES(Group(ZeroOrMore(statement))            .setResultsName('funcBody')
-                                                                     #.setParseAction(self._actionStatementList)
-                             + blockEnd)                             .setErrMsgStart('function body: ')
+                        + Group(suite)                               .setResultsName('funcBody')
                         )                                            .setErrMsgStart('function definition: ')
                         )                                            .setParseAction(self._actionFuncDefinition)\
                                                                      #.setName('memberFuncDef')#.setDebug(True)
@@ -1048,7 +1051,10 @@ class RunTest(Process):
     data a,b: Real const = sin(3*pi);
 
     func foo():
-    {}
+    {
+#        a=1;
+#        b=2;
+    }
     
     func dynamic(a, b:Real=5*b.s.d**2, c:foo.Val) -> Real: 
     {

@@ -284,6 +284,8 @@ class NodeOpInfix2(Node):
     def __init__(self, kids=[], loc=None, dat=None, operator=None):
         super(NodeOpInfix2, self).__init__(kids, loc, dat)
         self.operator = operator
+        if not self.kids:
+            self.kids = [Node(), Node()]
 
     #Get and set the left hand side
     def getLhs(self): return self.kids[0]
@@ -535,15 +537,31 @@ class NodeFuncDef(Node):
 
     The block's childern are the statements.
     Data attributes:
-        kids : The statements, the block's code.
+        kids : [<argument list>, <function body>]
         loc  : location in input string
         dat  : None
 
-        name : name of the block; tuple of strings: ('init',)
+        name       : name of the function; tuple of strings: ('init',)
+        returnType : class name of return value; tuple of strings: ('Real',)
     """
-    def __init__(self, kids=[], loc=None, dat=None, name=None):
+    def __init__(self, kids=[], loc=None, dat=None, name=None, returnType=None):
         super(NodeFuncDef, self).__init__(kids, loc, dat)
         self.name = name
+        if not self.kids:
+            self.kids = [NodeStmtList(), NodeStmtList()]
+        self.returnType = returnType
+
+    #Get and set the argument list
+    def getArgList(self): return self.kids[0]
+    def setArgList(self, inArgs): self.kids[0] = inArgs; inArgs.dat = 'argument list'
+    argList = property(getArgList, setArgList, None,
+                   'The argument list (proppery).')
+
+    #Get and set the function body
+    def getFuncBody(self): return self.kids[1]
+    def setFuncBody(self, inBody): self.kids[1] = inBody; inBody.dat = 'function body'
+    funcBody = property(getFuncBody, setFuncBody, None,
+                   'The function body (proppery).')
 
 
 class NodeClassDef(Node):
