@@ -33,12 +33,6 @@ Parser for the SIML simulation language.
 
 #TODO: write unit tests that exercise every error message of simlparser.py
 
-#TODO: Implement namespaces. Usefull would be:
-#       - Global namespace for: classes, global functions.
-#       - Class namespace for class attributes
-#       - Function local namespace for: data attributes, function attributes
-
-
 from __future__ import division
 
 
@@ -73,7 +67,7 @@ class ErrStop(ParseElementEnhance):
        Otherwise, if the given expression matches, its parse results are returned
        and the ErrStop has no effect on the parse results.
     """
-    #TODO: implement setErrorAction( callableObject )
+
     def __init__(self, expr):
         super(ErrStop, self).__init__(expr, savelist=False)
         self.mayReturnEmpty = True
@@ -159,8 +153,7 @@ class ParseStage(object):
         '''The parser object for the whole program (from pyParsing).'''
         self._expressionParser = None
         '''The parser for expressions'''
-        #self._lastStmtLocator = StoreLoc(self)
-        self._locLastStmt = TextLocation()
+        #self._locLastStmt = TextLocation()
         '''Object to remember location of last parsed statement; for
            error message creation.'''
         self.progFileName = None
@@ -218,14 +211,13 @@ class ParseStage(object):
             raise ParseException(str, loc, errMsg)
 
 
-    #TODO: remove when new error checking proves reliable
-    def _actionStoreStmtLoc(self, str, loc, toks):
-        '''
-        Remember location of last parsed statement. Useful for error
-        error message creation, since the locations of pyparsing's
-        syntax errors are frequently quite off.
-        '''
-        self._locLastStmt = self.createTextLocation(loc)
+#    def _actionStoreStmtLoc(self, str, loc, toks):
+#        '''
+#        Remember location of last parsed statement. Useful for error
+#        error message creation, since the locations of pyparsing's
+#        syntax errors are frequently quite off.
+#        '''
+#        self._locLastStmt = self.createTextLocation(loc)
 
 
     #TODO: remove when built in values are united with normal value access
@@ -273,35 +265,6 @@ class ParseStage(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         #nCurr.dat = tokList #Store the string
         nCurr.dat = tokList[1:-1] #Store the string; remove quotes
-        return nCurr
-
-
-    #TODO: remove when built in functions have been united with user defined functions
-    def _actionBuiltInFunction(self, str, loc, toks):
-        '''
-        Create node for function call: sin(2.1)
-
-        Definition:
-        funcCall = Group(builtInFuncName         .setResultsName('funcName')
-                         + '(' + expressionList  .setResultsName('arguments')
-                         + ')' )                 .setParseAction(self._actionBuiltInFunction) \
-                                                 .setName('funcCall')#.setDebug(True)
-        '''
-        if ParseStage.noTreeModification:
-            return None #No parse result modifications for debugging
-        #tokList = toks.asList()[0] #there always seems to be
-        toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeBuiltInFuncCall()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.dat = toks.funcName #function dentifier
-        nCurr.kids = toks.arguments.asList() #child expression(s)
-        #check if number of function arguments is correct
-        if len(nCurr.kids) != self._builtInFunc[nCurr.dat]:
-            msg = ('Illegal number of function arguments. \n' +
-                   'Function: %s, required number of arguments: %d, ' +
-                   'given arguments: %d.') % \
-                  (nCurr.dat, self._builtInFunc[nCurr.dat], len(nCurr.kids))
-            raise UserException(msg, self.createTextLocation(loc))
         return nCurr
 
 
@@ -547,7 +510,6 @@ class ParseStage(object):
         attrDefList = NodeStmtList(loc=self.createTextLocation(loc))
         nameList = toks.attrNameList.asList()
         for name in nameList:
-            #TODO: better location of the error (currently at the beginning of the 'data' keyword).
             if name in self.keywords:
                 errMsg = 'Keyword can not be used as an identifier: ' + name
                 raise ParseFatalException(str, loc, errMsg)
@@ -698,7 +660,7 @@ class ParseStage(object):
         nCurr.name = DotName(toks.funcName)
         #store function arguments: statement list of 'data' statements
         nCurr.argList = toks.argList[0]
-        #TODO: check argument list - arguments without default values must come first!
+        #check argument list - arguments without default values must come first!
         thereWasDefaultArgument = False
         for arg in nCurr.argList:
             if arg.defaultValue is not None:
@@ -777,13 +739,13 @@ class ParseStage(object):
         ES = ErrStop
 
         #Values that are built into the language
-        #TODO: remove use global constants instead 
-        #TODO: change time, this to specially handled attribute access.
+        #TODO: pi should go into standard library (global constant)
+        #TODO: time, this: keep as keywords, handle specially at attribute access.
         builtInValue = (kw('pi') | kw('time') | kw('this'))         .setParseAction(self._actionBuiltInValue)\
                                                                     .setName('builtInValue')#.setDebug(True)
 
         #Functions that are built into the language
-        #TODO: remove, use global functions instead
+        #TODO: remove, this should go into a standard library
         #Dict: {'function_name':number_of_function_arguments}
         self._builtInFunc = {'sin':1, 'cos':1, 'tan':1,
                              'sqrt':1, 'exp':1, 'log':1,
@@ -932,8 +894,7 @@ class ParseStage(object):
                                                                      .setName('storeStmt')#.setDebug(True)
 
         statement << (storeStmt | graphStmt | printStmt |
-                      ifStatement | assignment | funcCallStmt)       .setParseAction(self._actionStoreStmtLoc)\
-                                                                     .setName('statement')#.setDebug(True)
+                      ifStatement | assignment | funcCallStmt)       .setName('statement')#.setDebug(True)
 
 #------------- Function ............................................................................
         #Function call 
@@ -1058,17 +1019,10 @@ class ParseStage(object):
         try:
             astTree = self.parseProgramStr(inputFileContents)
         except (ParseException, ParseFatalException), theError:
-            #add additional information to the pyparsing exceptions.
-            msgPyParsing = str(theError) + '\n'
-            #see if there is the loc of a successfully parsed statement
-            if self._locLastStmt.isValid():
-                msgLastStmt = 'Last parsed statement was: \n' \
-                              + str(self._locLastStmt)
-            else:
-                msgLastStmt = ''
             #make UserException that will be visible to the user
+            msgPyParsing = str(theError)
             loc =  TextLocation(theError.loc, theError.pstr, self.progFileName)
-            raise UserException(msgPyParsing + msgLastStmt, loc)
+            raise UserException(msgPyParsing, loc)
         return astTree
 
 

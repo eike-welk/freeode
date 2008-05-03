@@ -30,6 +30,11 @@ It is created from the abstract syntax tree (AST), and it is given to the
 generator of the output language (currently only Python). 
 '''
 
+#TODO: Implement namespaces. Usefull would be:
+#       - Global namespace for: classes, global functions.
+#       - Class namespace for class attributes
+#       - Function local namespace for: data attributes, function attributes
+
 
 from __future__ import division
 
