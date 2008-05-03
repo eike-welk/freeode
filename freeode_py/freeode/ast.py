@@ -365,14 +365,17 @@ class NodeAssignment(NodeOpInfix2):
         dat     : None
         operator: operator symbol e.g.: '+'
     '''
-    def __init__(self, kids=[], loc=None, dat=None, operator=None):
-        super(NodeAssignment, self).__init__(kids, loc, dat, operator)
+    def __init__(self, kids=[], loc=None, dat=None):
+        super(NodeAssignment, self).__init__(kids, loc, dat, operator='=')
 
 
+#TODO: rename to NodeFuncCall
 class NodeFuncExecute(Node):
     '''
-    AST Node for inserting the code of a sub-model's member function.
-    Similar to calling a user defined template function.
+    AST Node for calling a function.  
+    This will be usually done by inserting the code of the function's body
+    into the top level function.
+    Similar to an inline function in C++.
     Data attributes:
         kids        : []
         loc         : location in input string
@@ -516,14 +519,14 @@ class NodeAttrAccess(Node):
         deriv      : Denote if a derivation operator acted on the attribute.
                      Empty tuple means no derivation took place. can be:
                      (,),('time',) or tuple of distibution domains
-        attrName   : ('proc', 'model1', 'a'), tuple of strings; the dot separated name.
+        attrName   : DotName('proc.model1.a'), the dot separated name (basically tuple of strings).
         targetName : name in the target language (string)
     '''
     def __init__(self, kids=[], loc=None, dat=None, deriv=None,
                  attrName=None, targetName=None):
         super(NodeAttrAccess, self).__init__(kids, loc, dat)
         self.deriv = deriv
-        self.attrName = attrName
+        self.attrName = DotName(attrName)
         self.targetName = targetName
 
 
@@ -714,10 +717,12 @@ class TreePrinter(object):
             line = indentStr + node.__class__.__name__ + ':: ' #buffer one line
             if self.showID:
                 line += ' ID: ' + str(id(node))
-#            #special case for foreign objects
-#            if not isinstance(node, Node):
-#                treeStr += line + str(node) + '\n'
-#                continue
+            #special case for foreign objects
+            if not isinstance(node, Node):
+                treeStr += line + str(node) + '\n'
+                print treeStr
+                raise Exception('All children must inherit from ast.Node!')
+                #continue
             #the node's attributes are printed in sorted order
             attrNames = node.__dict__.keys()
             attrNames.sort()

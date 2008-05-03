@@ -573,10 +573,77 @@ class ParseStage(object):
             return attrDefList #return list with multiple definitions
 
 
-    def _actionFuncArgument(self, str, loc, toks):
+    def _actionFuncArgCall(self, s, loc, toks):
         '''
-        Create node for one function argument. A NodeAttrDef is created;
-        therefore this method is quite similar to _actionAttrDefinition.
+        Create node for one argument of a function call. 
+            x=2.5  ,  x*2+sin(a)
+        Node types are: either a mathematical expression, or an assignment. 
+        BNF:
+        funcArgCall = (  Group(identifier                            .setResultsName('argName')
+                               + '=' + expression                    .setResultsName('value')
+                               )                                     .setResultsName('namedArg') 
+                       | Group(expression)                           .setResultsName('positionalArg') 
+                       )                                             .setParseAction(self._actionFuncArgCall)
+        '''
+        if ParseStage.noTreeModification:
+            return None #No parse result modifications for debuging
+        #named argument: x=2.5  
+        if toks.namedArg:
+            #TODO:Should a new node NodeNamedArg be introduced? A named argument is 
+            # not really an assignment. Making it an assignment may break the 
+            # attribute renaming algorithm.
+            raise UserException('Named arguments are currently unsupported!',
+                                self.createTextLocation(loc))
+            nCurr = NodeAssignment()
+            nCurr.loc = self.createTextLocation(loc) #Store position
+            nArgName = NodeAttrAccess()
+            nArgName.attrName = DotName(toks.namedArg.argName)
+            nCurr.lhs = nArgName
+            nCurr.rhs = toks.namedArg.value
+        #positional argument: 2.5
+        elif toks.positionalArg:
+            nCurr = toks.positionalArg[0]
+        else:
+            raise ParseActionException('Broken function argument. ' +
+                                        str(self.createTextLocation(loc)) + ' ' +
+                                        str(toks))
+        return nCurr
+    
+    def _actionFuncCall(self, str, loc, toks):
+        '''
+        Create node for calling a function or method.
+            bar.doFoo(10, x, a=2.5)
+        BNF:
+        funcCall << Group(dotIdentifier                              .setResultsName('funcName')
+                         + '(' + ES(funcArgListCall                  .setResultsName('argList')
+                                    + ')' ))                         .setParseAction(self._actionFuncCall)
+        '''
+        if ParseStage.noTreeModification:
+            return None #No parse result modifications for debuging
+        #tokList = toks.asList()[0] #there always seems to be
+        toks = toks[0]             #an extra pair of brackets
+        nCurr = NodeFuncExecute()
+        nCurr.loc = self.createTextLocation(loc) #Store position
+        #store function name
+        nCurr.funcName = DotName(toks.funcName)
+        #store function arguments: 
+        thereWasNamedArgument = False
+        for arg in toks.argList:
+            nCurr.appendChild(arg)
+            #check argument list - positional arguments must come before named arguments
+            if isinstance(arg, NodeAssignment):
+                thereWasNamedArgument = True
+            elif thereWasNamedArgument:
+                raise UserException('Positional arguments must come before named arguments!',
+                                    nCurr.loc)  
+        return nCurr
+    
+    
+    def _actionFuncArgDef(self, s, loc, toks):
+        '''
+        Create node for one function argument of a function definition. 
+        A NodeAttrDef is created; therefore this method is quite similar 
+        to _actionAttrDefinition.
         BNF:
         funcArgDefault = Group(identifier                            .setResultsName('attrName')
                                + Optional(':' + ES(dotIdentifier     .setResultsName('className')
@@ -604,7 +671,7 @@ class ParseStage(object):
         return nCurr
         
     
-    def _actionFuncDefinition(self, str, loc, toks):
+    def _actionFuncDef(self, str, loc, toks):
         '''
         Create node for definition of a function or method.
             func doFoo(a:Real=2.5, b) -> Real: {... }
@@ -631,12 +698,19 @@ class ParseStage(object):
         nCurr.name = DotName(toks.funcName)
         #store function arguments: statement list of 'data' statements
         nCurr.argList = toks.argList[0]
+        #TODO: check argument list - arguments without default values must come first!
+        thereWasDefaultArgument = False
+        for arg in nCurr.argList:
+            if arg.defaultValue is not None:
+                thereWasDefaultArgument = True
+            elif thereWasDefaultArgument:
+                raise UserException('Arguments without defaut values must come first!',
+                                    nCurr.loc)  
         #store return type
         if toks.returnType:
             nCurr.returnType = DotName(toks.returnType)
         #store function body: statement list
         nCurr.funcBody = toks.funcBody[0]
-
         return nCurr
 
 
@@ -714,9 +788,6 @@ class ParseStage(object):
         self._builtInFunc = {'sin':1, 'cos':1, 'tan':1,
                              'sqrt':1, 'exp':1, 'log':1,
                              'min':2, 'max':2}
-        builtInFuncName = MatchFirst(
-            [kw(funcName)
-             for funcName in self._builtInFunc.keys()])             .setName('builtInFuncName')#.setDebug(True)
 
         #Integer (unsigned).
         uInteger = Word(nums)                                       .setName('uInteger')#.setDebug(True)
@@ -728,30 +799,19 @@ class ParseStage(object):
                     Optional(eE + Word('+-'+nums, nums))))          .setParseAction(self._actionNumber)\
                                                                     .setName('uNumber')#.setDebug(True)
         #string
-#        stringConst = QuotedString(quoteChar='\'', escChar='\\')    .setParseAction(self._actionString)\
-#                                                                    .setName('string')#.setDebug(True)
         stringConst = sglQuotedString                               .setParseAction(self._actionString)\
                                                                     .setName('string')#.setDebug(True)
 
-        # .............. Mathematical expression .............................................................
-        #'Forward declarations' for recursive rules
-        expressionList = Forward() #For built in functions TODO: this should be a list of bool expressions
-        expression = Forward()
-        algExpr = Forward()
-        term =  Forward()
-        factor = Forward()
-        signedAtom = Forward()
-        valAccess = Forward() #For PDE: may also contain expressions for slices: a.b.c(2.5:3.5)
+#------------------ Mathematical expression .............................................................
+        #Forward declarations for recursive top level rules
+        expression = Forward() #mathematical expression (incuding bool logic)
+        valAccess = Forward()  #Refer to data: a.b.c[2.5:3.5]
+        funcCall = Forward()   #Call a function: a.b.c(2, d)
 
         #Basic building blocks of mathematical expressions e.g.: (1, x, e,
         #sin(2*a), (a+2), a.b.c(2.5:3.5))
         #Function call, parenthesis and memory access can however contain
         #expressions.
-        #TODO: funcCall should be unified with with call to member function
-        funcCall = Group(builtInFuncName                            .setResultsName('funcName')
-                         + '(' + expressionList                     .setResultsName('arguments')
-                         + ')' )                                    .setParseAction(self._actionBuiltInFunction) \
-                                                                    .setName('funcCall')#.setDebug(True)
         parentheses = Group('(' + expression + ')')                 .setParseAction(self._actionParenthesesPair) \
                                                                     .setName('parentheses')#.setDebug(True)
         atom = ( uNumber | stringConst | builtInValue |
@@ -762,11 +822,13 @@ class ParseStage(object):
         #required for exponentiation. Precedence decreases towards the bottom.
         #Unary minus: -a, not a;
         negop = '-' | kw('not')
+        signedAtom = Forward()
         unaryMinus = Group(negop + signedAtom)          .setParseAction(self._actionPrefixOp) \
                                                         .setName('unaryMinus')#.setDebug(True)
         signedAtom << (atom | unaryMinus)               .setName('signedAtom')#.setDebug(True)
 
         #Exponentiation: a^b;
+        factor = Forward()
         factor1 = signedAtom                            .setName('factor1')#.setDebug(True)
         factor2 = Group(signedAtom + '**' + factor)     .setParseAction(self._actionInfixOp) \
                                                         .setName('factor2')#.setDebug(True)
@@ -774,6 +836,7 @@ class ParseStage(object):
 
         #multiplicative operations: a*b; a/b
         multop = L('*') | L('/') | L('and')
+        term =  Forward()
         term1 = factor                                  .setName('term1')#.setDebug(True)
         term2 = Group(factor + multop + term)           .setParseAction(self._actionInfixOp) \
                                                         .setName('term2')#.setDebug(True)
@@ -781,6 +844,7 @@ class ParseStage(object):
 
         #additive operations: a+b; a-b
         addop  = L('+') | L('-') | L('or')
+        algExpr = Forward()
         algExpr1 = term                                 .setName('expression1')#.setDebug(True)
         algExpr2 = Group(term + addop + algExpr)        .setParseAction(self._actionInfixOp) \
                                                         .setName('expression2')#.setDebug(True)
@@ -793,13 +857,9 @@ class ParseStage(object):
                                                          .setName('boolExpr2')#.setDebug(True)
         expression << (expression2 | expression1)        .setName('expression')#.setDebug(True)
 
-        #expression list - parse: 2, foo.bar, 3*sin(baz)
-        commaSup = Literal(',').suppress()
-        expressionList << Group(expression
-                                + ZeroOrMore(commaSup + expression)).setName('exprList')
         #................ End mathematical expression ................................................---
 
-        #................ Identifiers ...................................................................
+#------------------ Identifiers .................................................................
         identifier = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
         #Use this when defining new objects. The new identifier is checked if it is not a keyword
         newIdentifier = identifier.copy()                       .setParseAction(self._actionCheckIdentifier)
@@ -820,7 +880,7 @@ class ParseStage(object):
         blockEnd = Literal('}').suppress()
         stmtEnd = Literal(';').suppress()
         
-        #Statement and list of statements - for compund statements and functions
+        #Statement and list of statements - for compund statements and function bodies
         statement = Forward()
         block = blockBegin + ES(ZeroOrMore(statement) + blockEnd)    .setErrMsgStart('Block: ')
         suite = Group(block | statement)                             .setParseAction(self._actionStatementList)\
@@ -838,15 +898,19 @@ class ParseStage(object):
                            + ES(expression + stmtEnd)                .setErrMsgStart('Assignment statement: ')
                            )                                         .setParseAction(self._actionAssignment)\
                                                                      .setName('assignment')#.setDebug(True)
-        #execute a block - insert code of a child model
+        #execute a class method (or a function) - 
+        #usually inserts the function bodie's code into the current method. 
+        #This code insertion (inlinig) is done recursively and leaves only 
+        #a few big top level methods
         #function arguments are currently missing
-        #TODO: Unify with builtin functions.
-        funcExecute = Group(kw('call')
-                             + ES(dotIdentifier                      .setResultsName('funcName')
-                                       + '(' + ')'
-                                       + stmtEnd)                    .setErrMsgStart('Call statement: ')
-                             )                                       .setParseAction(self._actionFuncExecute)\
-                                                                     .setName('blockExecute')#.setDebug(True)
+        funcCallStmt = funcCall + ES(stmtEnd)                        .setErrMsgStart('Call statement: ')
+        
+        #TODO add return statement
+        
+        #expression list - parse: 2, foo.bar, 3*sin(baz)
+        commaSup = Literal(',').suppress()
+        expressionList = Group(expression
+                                + ZeroOrMore(commaSup + expression)).setName('exprList')
         #print something to stdout
         printStmt = Group(kw('print')
                           + ES(expressionList                        .setResultsName('argList')
@@ -868,8 +932,48 @@ class ParseStage(object):
                                                                      .setName('storeStmt')#.setDebug(True)
 
         statement << (storeStmt | graphStmt | printStmt |
-                      funcExecute | ifStatement | assignment)        .setParseAction(self._actionStoreStmtLoc)\
+                      ifStatement | assignment | funcCallStmt)       .setParseAction(self._actionStoreStmtLoc)\
                                                                      .setName('statement')#.setDebug(True)
+
+#------------- Function ............................................................................
+        #Function call 
+        #one argument at the call site: x=2.5  ,  x  ,  2.5
+        funcArgCall = (  Group(identifier                            .setResultsName('argName')
+                               + '=' + expression                    .setResultsName('value')
+                               )                                     .setResultsName('namedArg') 
+                       | Group(expression)                           .setResultsName('positionalArg') 
+                       )                                             .setParseAction(self._actionFuncArgCall)
+        funcArgListCall = \
+                Group(Optional(delimitedList(funcArgCall, ',')))     #.setParseAction(self._actionStatementList)
+        #the function call
+        #The funcCall parser is is forward decdlared, because it is used in 
+        #the (mathematical) expression and in the function call statement.
+        funcCall << Group(dotIdentifier                              .setResultsName('funcName')
+                         + '(' + ES(funcArgListCall                  .setResultsName('argList')
+                                    + ')' ))                         .setParseAction(self._actionFuncCall)
+
+        #Function definition (class method or global function)
+        #one argument of the definition: inX:Real=2.5
+        funcArgDef = Group(identifier                                .setResultsName('attrName')
+                           + Optional(':' + ES(dotIdentifier         .setResultsName('className')
+                                               )                     .setErrMsgStart('type specifier: '))
+                           + Optional('=' + ES(expression            .setResultsName('defaultValue')
+                                               )                     .setErrMsgStart('default value: '))
+                           )                                         .setParseAction(self._actionFuncArgDef)
+        funcArgListDef = \
+                Group(Optional(delimitedList(funcArgDef, ',')))      .setParseAction(self._actionStatementList)
+        #the function: func doFoo(a:Real=2.5, b) -> Real {...}
+        funcDef = Group(kw('func') + ES(
+                        newIdentifier                                .setResultsName('funcName')
+                        + '(' + ES(Group(funcArgListDef)             .setResultsName('argList')
+                                   + ')' )                           .setErrMsgStart('argument List: ')            
+                        + Optional('->' + ES(dotIdentifier           .setResultsName('returnType')
+                                             )                       .setErrMsgStart('return type: '))
+                        + ':' 
+                        + Group(suite)                               .setResultsName('funcBody')
+                        )                                            .setErrMsgStart('function definition: ')
+                        )                                            .setParseAction(self._actionFuncDef)\
+                                                                     #.setName('memberFuncDef')#.setDebug(True)
 
 #---------- Define new objects ---------------------------------------------------------------------*
         #define parameters, variables, constants and submodels
@@ -896,31 +1000,6 @@ class ParseStage(object):
                                   + stmtEnd)                         .setErrMsgStart('data definition: ')
                              )                                       .setParseAction(self._actionAttrDefinition)\
                                                                      #.setName('attributeDef')#.setDebug(True)
-        #define function (class method or global function)
-        #one function argument: inX:Real=2.5
-        funcArgDefault = Group(identifier                            .setResultsName('attrName')
-                               + Optional(':' + ES(dotIdentifier     .setResultsName('className')
-                                                   )                 .setErrMsgStart('type specifier: '))
-                               + Optional('=' + ES(expression        .setResultsName('defaultValue')
-                                                   )                 .setErrMsgStart('default value: '))
-                               )                                     .setParseAction(self._actionFuncArgument)
-        funcArgList = \
-                Group(Optional(delimitedList(funcArgDefault, ',')))  .setParseAction(self._actionStatementList)
-        #TODO: unify with built in functions
-        #the function: func doFoo(a:Real=2.5, b) -> Real {...}
-#--------------- Function ---------
-        funcDef = Group(kw('func') + ES(
-                        newIdentifier                                .setResultsName('funcName')
-                        + '(' + ES(Group(funcArgList)                .setResultsName('argList')
-                                   )                                 .setErrMsgStart('argument List: ')
-                        + ')'                                    
-                        + Optional('->' + ES(dotIdentifier           .setResultsName('returnType')
-                                             )                       .setErrMsgStart('return type: '))
-                        + ':' 
-                        + Group(suite)                               .setResultsName('funcBody')
-                        )                                            .setErrMsgStart('function definition: ')
-                        )                                            .setParseAction(self._actionFuncDefinition)\
-                                                                     #.setName('memberFuncDef')#.setDebug(True)
         #definition of a class (process, model, type?)
         classDef = Group(kw('class')
                          + ES(newIdentifier                          .setResultsName('className')
@@ -1047,23 +1126,24 @@ end
 '''
 class RunTest(Process): 
 {
-    data x: Real;
-    data a,b: Real const = sin(3*pi);
+#    data x: Real;
+#    data a,b: Real const = sin(3*pi);
 
     func foo():
     {
-#        a=1;
-#        b=2;
+        foo.bar(2, x );
+        b=foo.bar(2);
     }
     
-    func dynamic(a, b:Real=5*b.s.d**2, c:foo.Val) -> Real: 
-    {
-        b = 2;
-        if   a == 3: { b = 3;}
-        elif a == 2: { b = a**2; }
-        elif a == 1:  b = 5;  
-        else: a = 3;
-    }
+#    func dynamic(a, b:Real=5*b.s.d**2, c=2) -> Real: 
+#    {
+#        foo(a,2);
+#        b = 2;
+#        if   a == 3: { b = 3;}
+#        elif a == 2: { b = a**2; }
+#        elif a == 1:  b = 5;  
+#        else: a = 3;
+#    }
 }
 ''')
 
