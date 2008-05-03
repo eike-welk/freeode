@@ -45,7 +45,7 @@ import os
 import pyparsing
 from pyparsing import ( _ustr, Literal, CaselessLiteral, Keyword, Word,
     ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,
-    delimitedList,
+    delimitedList, QuotedString,
     StringEnd, sglQuotedString, MatchFirst, Combine, Group, Optional,
     ParseException, ParseFatalException, ParseElementEnhance )
 #import our own syntax tree classes
@@ -386,26 +386,6 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionFuncExecute(self, str, loc, toks):
-        '''
-        Create node for execution of a function (insertion of the code):
-            call foo.init()
-        BNF:
-        funcExecute = Group(kw('call')
-                             + dotIdentifier    .setResultsName('funcName')
-                             + '(' + ')'
-                             + ';')             .setParseAction(self._createBlockExecute)\
-        '''
-        if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be
-        toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeFuncExecute()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.funcName = DotName(toks.funcName)    #full (dotted) function name
-        return nCurr
-
-
     def _actionPrintStmt(self, str, loc, toks):
         '''
         Create node for print statement:
@@ -460,6 +440,68 @@ class ParseStage(object):
         nCurr = NodeStoreStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.kids = toks.argList.asList()
+        return nCurr
+
+
+    def _actionReturnStmt(self, str, loc, toks):
+        '''
+        Create node for return statement:
+            return 2*a;
+        BNF:
+        returnStmt = (kw('return') + ES(Optional(expression          .setResultsName('retVal')) 
+                                        + stmtEnd)                   .setErrMsgStart('Return statement: ')
+                      )                                              .setParseAction(self._actionReturnStmt)
+        '''
+        if ParseStage.noTreeModification:
+            return None #No parse result modifications for debugging
+        nCurr = NodeReturnStmt()
+        nCurr.loc = self.createTextLocation(loc) #Store position
+        if isinstance(toks.retVal, Node):
+            nCurr.appendChild(toks.retVal)
+        return nCurr
+
+
+    def _actionPragmaStmt(self, str, loc, toks):
+        '''
+        Create node for pragma statement:
+            pragma no flatten;
+        BNF:
+        pragmaStmt = (kw('pragma') 
+                      + ES(OneOrMore(Word(alphanums+'_')) + stmtEnd) .setErrMsgStart('Pragma statement: ')
+                      )                                              #.setParseAction(self._actionPragmaStmt)
+         '''
+        if ParseStage.noTreeModification:
+            return None #No parse result modifications for debugging
+        nCurr = NodePragmaStmt()
+        nCurr.loc = self.createTextLocation(loc) #Store position
+        for i in range(1, len(toks)):
+            nCurr.options.append(toks[i])
+        return nCurr
+
+
+    def _actionForeignCodeStmt(self, str, loc, toks):
+        '''
+        Create node for foreign_code statement:
+            foreign_code python replace_call ::{{ sin(x) }}:: ;
+        BNF:
+        foreignCodeStmt = (kw('foreign_code') 
+                           + ES(Word(alphanums+'_')                  .setResultsName('language')
+                                                                     .setName('language specification')
+                                + Word(alphanums+'_')                .setResultsName('method')
+                                                                     .setName('code insertion method')
+                                + QuotedString(quoteChar='::{{', 
+                                               endQuoteChar='}}::')  .setResultsName('code')
+                                                                     .setName('code to insert')
+                                + stmtEnd)                           .setErrMsgStart('Foreign code statement: ')
+                           )                                         .setParseAction(self._actionForeignCodeStmt)
+         '''
+        if ParseStage.noTreeModification:
+            return None #No parse result modifications for debugging
+        nCurr = NodeForeignCodeStmt()
+        nCurr.loc = self.createTextLocation(loc) #Store position
+        nCurr.language = toks.language
+        nCurr.method = toks.method
+        nCurr.code = toks.code
         return nCurr
 
 
@@ -524,7 +566,7 @@ class ParseStage(object):
                         'state_variable':RoleStateVariable}
             attrDef.role = roleDict.get(toks.attrRole, RoleVariable)
             #store the default value
-            if toks.defaultValue:
+            if isinstance(toks.defaultValue, Node):
                 attrDef.setDefaultValue(toks.defaultValue)
             #store the attribute definition in the statement list
             attrDefList.appendChild(attrDef)
@@ -837,7 +879,7 @@ class ParseStage(object):
                             ZeroOrMore(dotSup + identifier) )   .setParseAction(self._actionAttributeAccess) \
                                                                 .setName('valAccess')#.setDebug(True)
 
-#------------------- Statements ---------------------------------------------------------------
+#------------------- Statements ..................................................................
         blockBegin = Literal('{').suppress()
         blockEnd = Literal('}').suppress()
         stmtEnd = Literal(';').suppress()
@@ -866,8 +908,31 @@ class ParseStage(object):
         #a few big top level methods
         #function arguments are currently missing
         funcCallStmt = funcCall + ES(stmtEnd)                        .setErrMsgStart('Call statement: ')
+
+        #Return values from a function
+        returnStmt = (kw('return') + ES(Optional(expression          .setResultsName('retVal')) 
+                                        + stmtEnd)                   .setErrMsgStart('Return statement: ')
+                      )                                              .setParseAction(self._actionReturnStmt)
         
-        #TODO add return statement
+        #pragma statement: tell any kind of options to the compiler
+        pragmaStmt = (kw('pragma') 
+                      + ES(OneOrMore(Word(alphanums+'_')             .setName('pragma option')
+                                     ) + stmtEnd)                    .setErrMsgStart('Pragma statement: ')
+                      )                                              .setParseAction(self._actionPragmaStmt)
+        
+        #foreign code statement: specify code in the target language that is
+        #inserted into the compiled program
+        #    foreign_code python replace_call ::{{ sin(x) }}:: ;
+        foreignCodeStmt = (kw('foreign_code') 
+                           + ES(Word(alphanums+'_')                  .setResultsName('language')
+                                                                     .setName('language specification')
+                                + Word(alphanums+'_')                .setResultsName('method')
+                                                                     .setName('code insertion method')
+                                + QuotedString(quoteChar='::{{', 
+                                               endQuoteChar='}}::')  .setResultsName('code')
+                                                                     .setName('code to insert')
+                                + stmtEnd)                           .setErrMsgStart('Foreign code statement: ')
+                           )                                         .setParseAction(self._actionForeignCodeStmt)
         
         #expression list - parse: 2, foo.bar, 3*sin(baz)
         commaSup = Literal(',').suppress()
@@ -894,6 +959,7 @@ class ParseStage(object):
                                                                      .setName('storeStmt')#.setDebug(True)
 
         statement << (storeStmt | graphStmt | printStmt |
+                      returnStmt | pragmaStmt | foreignCodeStmt |
                       ifStatement | assignment | funcCallStmt)       .setName('statement')#.setDebug(True)
 
 #------------- Function ............................................................................
@@ -936,7 +1002,7 @@ class ParseStage(object):
                         )                                            .setParseAction(self._actionFuncDef)\
                                                                      #.setName('memberFuncDef')#.setDebug(True)
 
-#---------- Define new objects ---------------------------------------------------------------------*
+#---------- Define new objects ......................................................................
         #define parameters, variables, constants and submodels
         #commaSup = Literal(',').suppress()
         #parse: 'foo, bar, baz
@@ -1037,42 +1103,50 @@ def doTests():
     testProg1 = (
 '''
 class Test(Model):
+{
     data V, h: Real;
-    data A_bott, A_o, mu, q, g: Real parameter;
+    data A_bott, A_o, mu, q, g: Real param;
 
     func dynamic():
+    {
         h = V/A_bott;
         $V = q - mu*A_o*sqrt(2*g*h);
         print 'h: ', h,;
-    end
-
+    }
+    
     func init():
+    {
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
         q = 0.05;
-    end
-end
+    }
+}
 
 class RunTest(Process):
-    data g: Real parameter;
+{
+    data g: Real param;
     data test: Test;
 
     func dynamic():
-        call test.dynamic();
-    end
-
+    {
+        test.dynamic();
+    }
+    
     func init():
+    {
         g = 9.81;
-        call test.init();
+        test.init();
         solutionParameters.simulationTime = 100;
         solutionParameters.reportingInterval = 1;
-    end
+    }
+    
     func final():
+    {
         #store;
         graph test.V, test.h;
         print 'Simulation finished successfully.';
-    end
-end
+    }
+}
 ''' )
 
 #------------ testProg2 -----------------------
@@ -1083,21 +1157,15 @@ class RunTest(Process):
 #    data x: Real;
 #    data a,b: Real const = sin(3*pi);
 
-    func foo():
+    func foo(a:real, b:Real=2):
     {
         foo.bar(2, x );
         b=foo.bar(2);
+        return 2;
+        pragma hello world;
+        foreign_code python replace_call 
+        ::{{ sin(x) }}:: ;
     }
-    
-#    func dynamic(a, b:Real=5*b.s.d**2, c=2) -> Real: 
-#    {
-#        foo(a,2);
-#        b = 2;
-#        if   a == 3: { b = 3;}
-#        elif a == 2: { b = a**2; }
-#        elif a == 1:  b = 5;  
-#        else: a = 3;
-#    }
 }
 ''')
 
@@ -1108,8 +1176,8 @@ class RunTest(Process):
         parser = ParseStage()
         #ParseStage.noTreeModification = 1
 
-        #print parser.parseProgramStr(testProg1)
-        print parser.parseProgramStr(testProg2)
+        print parser.parseProgramStr(testProg1)
+        #print parser.parseProgramStr(testProg2)
         
         #print parser.parseProgram('if a==0 then b=-1; else b=2+3+4; a=1; end')
         #print parser.parseExpression('0*1*2*3*4').asList()[0]

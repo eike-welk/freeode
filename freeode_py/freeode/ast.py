@@ -429,6 +429,53 @@ class NodeStoreStmt(Node):
         super(NodeStoreStmt, self).__init__(kids, loc, dat)
 
 
+class NodeReturnStmt(Node):
+    '''
+    AST Node for the return statement
+    Data attributes:
+        kids        : the expressions of the argument list
+        loc         : location in input string
+        dat         : The return value (expression)
+    '''
+    def __init__(self, kids=[], loc=None, dat=None):
+        super(NodeReturnStmt, self).__init__(kids, loc, dat)
+
+
+class NodePragmaStmt(Node):
+    '''
+    AST Node for the pragma statement
+    Data attributes:
+        kids        : the expressions of the argument list
+        loc         : location in input string
+        dat         : None
+        
+        options     : the arguments of the prgma statements: list of strings
+    '''
+    def __init__(self, kids=[], loc=None, dat=None, options=None):
+        super(NodePragmaStmt, self).__init__(kids, loc, dat)
+        self.options = []
+        if options: self.options = options
+
+
+class NodeForeignCodeStmt(Node):
+    '''
+    AST Node for the foreign_code statement
+    Data attributes:
+        kids        : the expressions of the argument list
+        loc         : location in input string
+        dat         : None
+        
+        language    : the progamming languae of the foreign code: string
+        method      : the insertion method - type of the foreign code: string
+        code        : the piece of program code that should be inserted: string  
+    '''
+    def __init__(self, kids=[], loc=None, dat=None, language='', method='', code=''):
+        super(NodeForeignCodeStmt, self).__init__(kids, loc, dat)
+        self.language = language
+        self.method = method
+        self.code = code
+
+
 class NodeStmtList(Node):
     '''
     AST Node for list of statements
