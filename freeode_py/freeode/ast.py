@@ -205,32 +205,32 @@ class Node(object):
 
 
 
-class NodeBuiltInVal(Node):
-    '''
-    Represent a built in value in the AST.
-    Example: pi
+#class NodeBuiltInVal(Node):
+#    '''
+#    Represent a built in value in the AST.
+#    Example: pi
+#
+#    self.dat : string representing the value
+#    '''
+#    #TODO: remove this class. These nodes should be replaced by regular
+#    #global constants (NodeAttrAccess)
+#    def __init__(self, kids=[], loc=None, dat=None):
+#        super(NodeBuiltInVal, self).__init__(kids, loc, dat)
 
-    self.dat : string representing the value
-    '''
-    #TODO: remove this class. These nodes should be replaced by regular
-    #global constants (NodeAttrAccess)
-    def __init__(self, kids=[], loc=None, dat=None):
-        super(NodeBuiltInVal, self).__init__(kids, loc, dat)
 
-
-class NodeBuiltInFuncCall(Node):
-    '''
-    Represent a built in function in the AST.
-    Example: sin( ... )
-    Data attributes:
-        kids : the function's arguments
-        loc  : location in input string
-        dat  : the function's name
-    '''
-    #TODO: remove this class. These nodes should be replaced by regular
-    #function calls.
-    def __init__(self, kids=[], loc=None, dat=None):
-        super(NodeBuiltInFuncCall, self).__init__(kids, loc, dat)
+#class NodeBuiltInFuncCall(Node):
+#    '''
+#    Represent a built in function in the AST.
+#    Example: sin( ... )
+#    Data attributes:
+#        kids : the function's arguments
+#        loc  : location in input string
+#        dat  : the function's name
+#    '''
+#    #TODO: remove this class. These nodes should be replaced by regular
+#    #function calls.
+#    def __init__(self, kids=[], loc=None, dat=None):
+#        super(NodeBuiltInFuncCall, self).__init__(kids, loc, dat)
 
 
 class NodeNum(Node):
@@ -485,6 +485,17 @@ class NodeStmtList(Node):
         super(NodeStmtList, self).__init__(kids, loc, dat)
 
 
+class NodeAttrDefList(NodeStmtList):
+    '''
+    AST Node for list of atribute definitions.
+    Each child is an attribute definition statement.
+    Used to identify these lists so they can be flattened with a pretty 
+    simple algogithm.
+    '''
+    def __init__(self, kids=[], loc=None, dat=None):
+        super(NodeAttrDefList, self).__init__(kids, loc, dat)
+
+
 class AttributeRole(object):
     '''
     Constants to denote the role of an attribute.
@@ -708,8 +719,10 @@ class DepthFirstIterator(object):
 
         #remember to visit next child when we come here again
         self.stack[-1] = (currNode, currChild+1)
+        #TODO: Make iterator work also with objects that are not children of Node;
+        #TODO: or make iterator throw an erception with useful error message when 
+        #      non Node object is discovered
         #get node that will be visited next
-        #TODO: Make iterator work also with objects that are not children of Node.
         nextNode = currNode[currChild]
         #go to one level down, to current child.
         self.stack.append((nextNode, 0))
@@ -786,21 +799,6 @@ class TreePrinter(object):
             treeStr += line + '\n'
 
         return treeStr
-
-
-
-#def makeDotName(inTuple):
-#    '''
-#    Create a dotted name from a tuple of strings.
-#    The dotted names are parsed into (and stored as) tuples of strings.
-#    '''
-#    dotName = ''
-#    for namePart in inTuple:
-#        if dotName == '':
-#            dotName = namePart
-#        else:
-#            dotName += '.'+namePart
-#    return dotName
 
 
 
@@ -940,8 +938,11 @@ class TextLocation(object):
 
     def __str__(self):
         '''Return meaningfull string'''
-        return 'File "' + self.fileName() + '", line ' + str(self.lineNo())
-
+        #Including the column is not useful because it is often wrong 
+        #for higher level errors. Preserving the text of the original
+        #pyparsing error is transporting the column information for parsing
+        #errors. Only parsing errors have useful column information. 
+        return '  File "' + self.fileName() + '", line ' + str(self.lineNo())
 
 
 

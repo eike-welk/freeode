@@ -141,10 +141,12 @@ class ParseStage(object):
     ParseResult objects are printed as nested lists: ['1', '+', ['2', '*', '3']]
     '''
 
-    keywords = set([])
+    keywords = set()
     '''
-    List of all keywords (filled by _defineLanguageSyntax() and defineKeyword).
+    List of all keywords (filled by _defineLanguageSyntax() and defineKeyword(...)).
     '''
+    #Special variables, that are built into the language (filled by _defineLanguageSyntax())
+    builtInVars = set()
 
 
     def __init__(self):
@@ -153,17 +155,10 @@ class ParseStage(object):
         '''The parser object for the whole program (from pyParsing).'''
         self._expressionParser = None
         '''The parser for expressions'''
-        #self._locLastStmt = TextLocation()
-        '''Object to remember location of last parsed statement; for
-           error message creation.'''
         self.progFileName = None
         '''Name of SIML program file, that will be parsed'''
         self.inputString = None
         '''String that will be parsed'''
-        self._builtInFunc = {}
-        '''Names of built in functions and some info about them.
-           Format: {'function_name':number_of_function_arguments}
-           Example: {'sin':1, 'max':2}'''
         #Create parser objects
         self._defineLanguageSyntax()
 
@@ -220,21 +215,20 @@ class ParseStage(object):
 #        self._locLastStmt = self.createTextLocation(loc)
 
 
-    #TODO: remove when built in values are united with normal value access
-    def _actionBuiltInValue(self, str, loc, toks):
-        '''
-        Create AST node for a built in value: pi, time
-        tokList has the following structure:
-        [<identifier>]
-        '''
-        if ParseStage.noTreeModification:
-            return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        #create AST node
-        nCurr = NodeBuiltInVal()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.dat = tokList #Store the built in value's name
-        return nCurr
+#    def _actionBuiltInValue(self, str, loc, toks):
+#        '''
+#        Create AST node for a built in value: pi, time
+#        tokList has the following structure:
+#        [<identifier>]
+#        '''
+#        if ParseStage.noTreeModification:
+#            return None #No parse result modifications for debugging
+#        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+#        #create AST node
+#        nCurr = NodeBuiltInVal()
+#        nCurr.loc = self.createTextLocation(loc) #Store position
+#        nCurr.dat = tokList #Store the built in value's name
+#        return nCurr
 
 
     def _actionNumber(self, str, loc, toks):
@@ -549,11 +543,14 @@ class ParseStage(object):
         toks = toks[0]             #an extra pair of brackets
         #multiple attributes can be defined in a single statement
         #Create a node for each of them and put them into a statement list
-        attrDefList = NodeStmtList(loc=self.createTextLocation(loc))
+        attrDefList = NodeAttrDefList(loc=self.createTextLocation(loc))
         nameList = toks.attrNameList.asList()
         for name in nameList:
-            if name in self.keywords:
-                errMsg = 'Keyword can not be used as an identifier: ' + name
+            if name in ParseStage.keywords:
+                if name in ParseStage.builtInVars:
+                    errMsg = 'Special name can not be redefined: ' + name
+                else:
+                    errMsg = 'Keyword can not be used as an identifier: ' + name
                 raise ParseFatalException(str, loc, errMsg)
             attrDef = NodeAttrDef(loc=self.createTextLocation(loc))
             attrDef.attrName = DotName(name) #store attribute name
@@ -721,15 +718,17 @@ class ParseStage(object):
     def _actionClassDef(self, str, loc, toks):
         '''
         Create node for definition of a class:
-            class foo(Model): ... end
+            class foo(Model):{ }
         BNF:
+        classBodyStmts = pragmaStmt | attributeDef | funcDef | assignment
         classDef = Group(kw('class')
-                         + identifier                 .setResultsName('className')
-                         + '(' + dotIdentifier        .setResultsName('superName')
-                         + ')' + ':'
-                         + OneOrMore(attributeDef)    .setResultsName('attributeDef', True)
-                         + ZeroOrMore(memberFuncDef)  .setResultsName('memberFuncDef', True)
-                         + kw('end'))
+                         + ES(newIdentifier                          .setResultsName('className')
+                              + '(' + ES(dotIdentifier               .setResultsName('superName')
+                                         + ')')                      .setErrMsgStart('Definition of base class: ')
+                              + ':' + blockBegin
+                              + ZeroOrMore(classBodyStmts)            .setResultsName('classBodyStmts')
+                              + blockEnd)                            .setErrMsgStart('class definition: ')
+                         )                                           .setParseAction(self._actionClassDef)\
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
@@ -741,13 +740,9 @@ class ParseStage(object):
         nCurr.className = DotName(toks.className)
         nCurr.superName = DotName(toks.superName)
         #create children (may or may not be present):  data, functions
-        data, funcs = [], [] #special cases for empty sections necessary
-        if len(toks.attributeDef) > 0:
-            data = toks.attributeDef.asList()[0]
-        if len(toks.memberFuncDef) > 0:
-            funcs =  toks.memberFuncDef.asList()[0]
-        for stmt1 in data + funcs:
-            nCurr.appendChild(stmt1)
+        if len(toks.classBodyStmts) > 0:
+            for stmt in toks.classBodyStmts:
+                nCurr.appendChild(stmt)
         return nCurr
 
 
@@ -781,18 +776,6 @@ class ParseStage(object):
         ES = ErrStop
 
         #Values that are built into the language
-        #TODO: pi should go into standard library (global constant)
-        #TODO: time, this: keep as keywords, handle specially at attribute access.
-        builtInValue = (kw('pi') | kw('time') | kw('this'))         .setParseAction(self._actionBuiltInValue)\
-                                                                    .setName('builtInValue')#.setDebug(True)
-
-        #Functions that are built into the language
-        #TODO: remove, this should go into a standard library
-        #Dict: {'function_name':number_of_function_arguments}
-        self._builtInFunc = {'sin':1, 'cos':1, 'tan':1,
-                             'sqrt':1, 'exp':1, 'log':1,
-                             'min':2, 'max':2}
-
         #Integer (unsigned).
         uInteger = Word(nums)                                       .setName('uInteger')#.setDebug(True)
         #Floating point number (unsigned).
@@ -818,7 +801,7 @@ class ParseStage(object):
         #expressions.
         parentheses = Group('(' + expression + ')')                 .setParseAction(self._actionParenthesesPair) \
                                                                     .setName('parentheses')#.setDebug(True)
-        atom = ( uNumber | stringConst | builtInValue |
+        atom = ( uNumber | stringConst | 
                  funcCall | valAccess | parentheses     )           .setName('atom')#.setDebug(True)
 
         #The basic mathematical operations: -a+b*c^d.
@@ -864,6 +847,10 @@ class ParseStage(object):
         #................ End mathematical expression ................................................---
 
 #------------------ Identifiers .................................................................
+        #Built in variables, handled specially at attribute access. (also keywords)
+        kw('time'); kw('this')
+        ParseStage.builtInVars = set(['time', 'this'])   
+        #identifiers   
         identifier = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
         #Use this when defining new objects. The new identifier is checked if it is not a keyword
         newIdentifier = identifier.copy()                       .setParseAction(self._actionCheckIdentifier)
@@ -1026,19 +1013,20 @@ class ParseStage(object):
                                                       )              .setErrMsgStart('default value: ') )
                                   + stmtEnd)                         .setErrMsgStart('data definition: ')
                              )                                       .setParseAction(self._actionAttrDefinition)\
-                                                                     #.setName('attributeDef')#.setDebug(True)
+
         #definition of a class (process, model, type?)
+        classBodyStmts = pragmaStmt | attributeDef | funcDef | assignment
         classDef = Group(kw('class')
                          + ES(newIdentifier                          .setResultsName('className')
-                                   + '(' + dotIdentifier             .setResultsName('superName')
-                                   + ')' + ':' + blockBegin
-                                   + ZeroOrMore(attributeDef)        .setResultsName('attributeDef', True)
-                                   + ZeroOrMore(funcDef)             .setResultsName('memberFuncDef', True)
-                                   + blockEnd)                       .setErrMsgStart('class definition: ')
+                              + '(' + ES(dotIdentifier               .setResultsName('superName')
+                                         + ')')                      .setErrMsgStart('Definition of base class: ')
+                              + ':' + blockBegin
+                              + ZeroOrMore(classBodyStmts)           .setResultsName('classBodyStmts')
+                              + blockEnd)                            .setErrMsgStart('class definition: ')
                          )                                           .setParseAction(self._actionClassDef)\
-                                                                     .setName('classDef')#.setDebug(True)
 
-        program = (Group(OneOrMore(classDef)) + StringEnd())         .setParseAction(self._actionProgram)\
+        topLevelStms = classDef | funcDef | attributeDef | assignment
+        program = (Group(ZeroOrMore(topLevelStms)) + StringEnd())    .setParseAction(self._actionProgram)\
                                                                      .setName('program')#.setDebug(True)
 
         #................ End of language definition ..................................................
@@ -1154,15 +1142,15 @@ class RunTest(Process):
 '''
 class RunTest(Process): 
 {
-#    data x: Real;
-#    data a,b: Real const = sin(3*pi);
+    data test: Real;
+    data a,b: Real const = sin(3*pi);
 
     func foo(a:real, b:Real=2):
     {
         foo.bar(2, x );
-        b=foo.bar(2);
+        a=foo.bar(2)+time;
         return 2;
-        pragma hello world;
+        pragma no_flatten;
         foreign_code python replace_call 
         ::{{ sin(x) }}:: ;
     }
@@ -1176,8 +1164,8 @@ class RunTest(Process):
         parser = ParseStage()
         #ParseStage.noTreeModification = 1
 
-        print parser.parseProgramStr(testProg1)
-        #print parser.parseProgramStr(testProg2)
+        #print parser.parseProgramStr(testProg1)
+        print parser.parseProgramStr(testProg2)
         
         #print parser.parseProgram('if a==0 then b=-1; else b=2+3+4; a=1; end')
         #print parser.parseExpression('0*1*2*3*4').asList()[0]

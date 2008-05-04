@@ -629,6 +629,61 @@ class ILTGenerator(object):
 
 
 
+standardLibrarySiml = \
+'''
+#------------- base objects -----------------------------------------
+#class object():{}
+
+class Numeric(object):{pragma no_flatten;}
+
+class Real(Numeric):{pragma no_flatten;}
+
+class Model(object):{}
+
+class SolutionParameterClass(object):{
+    data simulationTime: Real param; 
+    data reportingInterval: Real param; 
+}
+
+class Process(Model):{
+    data solutionParameters: SolutionParameterClass;
+}
+
+
+#------------- mathematical functions -------------------------------
+func sin(x):{
+    foreign_code python replace_call ::{{ sin(x) }}:: ;
+}
+func cos(x):{
+    foreign_code python replace_call ::{{ cos(x) }}:: ;
+}
+func tan(x):{
+    foreign_code python replace_call ::{{ tan(x) }}:: ;
+}
+func sqrt(x):{
+    foreign_code python replace_call ::{{ sqrt(x) }}:: ;
+}
+func exp(x):{
+    foreign_code python replace_call ::{{ exp(x) }}:: ;
+}
+func log(x):{
+    foreign_code python replace_call ::{{ log(x) }}:: ;
+}
+func min(a, b):{
+    foreign_code python replace_call ::{{ min(a, b) }}:: ;
+}
+func max(a, b):{
+    foreign_code python replace_call ::{{ max(a, b) }}:: ;
+}
+
+
+#------------- constants --------------------------------------------
+data pi:Real const;
+pi = 3.141592653589793;
+'''
+
+
+
 def doTests():
     '''Perform various tests.'''
     import freeode.simlparser as simlparser
@@ -677,8 +732,8 @@ end
 
 
     #test the intermedite tree generator ------------------------------------------------------------------
-    flagTestILTGenerator = True
-    #flagTestILTGenerator = False
+    flagTestILTGenerator = False
+    #flagTestILTGenerator = True
     if flagTestILTGenerator:
         parser = simlparser.ParseStage()
         iltGen = ILTGenerator()
@@ -691,6 +746,21 @@ end
         print 'ILT tree:'
         print iltTree
 
+
+    #test the intermedite tree generator ------------------------------------------------------------------
+    flagTestStdLib = False
+    flagTestStdLib = True
+    if flagTestStdLib:
+        parser = simlparser.ParseStage()
+        #iltGen = ILTGenerator()
+
+        astTree = parser.parseProgramStr(standardLibrarySiml)
+        print 'AST tree:'
+        print astTree
+
+#        iltTree = iltGen.createIntermediateTree(astTree)
+#        print 'ILT tree:'
+#        print iltTree
 
 
 if __name__ == '__main__':
