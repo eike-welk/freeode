@@ -66,6 +66,8 @@ class ErrStop(ParseElementEnhance):
        ParseFatalException and parsing stops.
        Otherwise, if the given expression matches, its parse results are returned
        and the ErrStop has no effect on the parse results.
+       
+       TODO: usage
     """
 
     def __init__(self, expr):
@@ -111,20 +113,20 @@ class ParseActionException(Exception):
 
 class ParseStage(object):
     '''
+    Parse the Siml program. Generate a parse tree.
+    
     The syntax definition (BNF) resides here.
 
     The parsing is done by the pyparsing library which combines
     lexer and parser. The Pyparsing library generates a tree of
-    ParseResult objects. These objects
-    are replaced by objects inheriting from ast.Node
-    in the parse actions of this class.
+    ParseResult objects. These objects are replaced by objects inheriting 
+    from ast.Node in the parse actions (_action* functions) of this class.
 
     Normally a file name is given to the class, and a tree of ast.Node objects is
     returned. The program can also be entered as a string.
     Additionally the class can parse parts of a program: expressions.
 
-    The parse* methods return a tree of Node objects; the abstract syntax
-    tree (AST)
+    The parse* methods return a tree of ast.Node objects; the parse tree.
 
     Usage:
     parser = ParseStage()
@@ -556,12 +558,12 @@ class ParseStage(object):
             attrDef.attrName = DotName(name) #store attribute name
             attrDef.className = DotName(toks.className.asList())  #store class name
             #map role string to role object, and store the role
-            #If role is not specified RoleVariable is assumed. TODO: change to RoleAny.
+            #If role is not specified RoleVariable is assumed. 
             #Submodels will be labled variables even though these categories don't apply to them.
             roleDict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleVariable,
                         'algebraic_variable':RoleAlgebraicVariable, 
                         'state_variable':RoleStateVariable}
-            attrDef.role = roleDict.get(toks.attrRole, RoleVariable)
+            attrDef.role = roleDict.get(toks.attrRole, None)
             #store the default value
             if isinstance(toks.defaultValue, Node):
                 attrDef.setDefaultValue(toks.defaultValue)
