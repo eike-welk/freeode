@@ -51,7 +51,7 @@ from pyparsing import ( _ustr, Literal, CaselessLiteral, Keyword, Word,
 #import our own syntax tree classes
 from freeode.ast import *
 
-
+ 
 
 #Enable a fast parsing mode with caching. May not always work.
 pyparsing.ParserElement.enablePackrat()
@@ -181,17 +181,17 @@ class ParseStage(object):
 
 
 #------------- Parse Actions -------------------------------------------------*
-    def _actionDebug(self, str, loc, toks):
+    def _actionDebug(self, s, loc, toks):
         '''Parse action for debugging.'''
         print '------debug action'
-        print str
+        print s
         print loc
         print toks
         print '-------------------'
         return None
 
 
-    def _actionCheckIdentifier(self, str, loc, toks):
+    def _actionCheckIdentifier(self, s, loc, toks):
         '''
         Tests wether an identifier is legal.
         If the identifier is equal to any keyword the parse action raises
@@ -205,7 +205,7 @@ class ParseStage(object):
         if identier in ParseStage.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
             errMsg = 'Keyword can not be used as an identifier: ' + identier
-            raise ParseException(str, loc, errMsg)
+            raise ParseException(s, loc, errMsg)
 
 
 #    def _actionStoreStmtLoc(self, str, loc, toks):
@@ -233,7 +233,7 @@ class ParseStage(object):
 #        return nCurr
 
 
-    def _actionNumber(self, str, loc, toks):
+    def _actionNumber(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for a number: 5.23
         tokList has the following structure:
@@ -248,7 +248,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionString(self, str, loc, toks):
+    def _actionString(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for a string: 'qwert'
         tokList has the following structure:
@@ -264,7 +264,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionParenthesesPair(self, str, loc, toks):
+    def _actionParenthesesPair(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for a pair of parentheses that enclose an expression: (...)
         tokList has the following structure:
@@ -279,7 +279,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionPrefixOp(self, str, loc, toks):
+    def _actionPrefixOp(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for math prefix operators: -
         tokList has the following structure:
@@ -295,7 +295,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionInfixOp(self, str, loc, toks):
+    def _actionInfixOp(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for math infix operators: + - * / ^
         tokList has the following structure:
@@ -314,7 +314,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionAttributeAccess(self, str, loc, toks):
+    def _actionAttributeAccess(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for access to a variable or parameter: bb.ccc.dd
         tokList has the following structure:
@@ -334,7 +334,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionIfStatement(self, str, loc, toks):
+    def _actionIfStatement(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for if ... : ... else: ... statement.
         BNF:
@@ -351,7 +351,7 @@ class ParseStage(object):
         #there must be the correct number of tokens
         if len(tokList) < 7 or (len(tokList)-7) % 4: 
             raise ParseActionException('Broken "if" statement! loc: ' 
-                                       + nCurr.loc.__str__())
+                                       + str(nCurr.loc))
         #extract the interesting tokens 
         for i in range(1, len(tokList)-4, 4):
             condition = tokList[i]
@@ -363,7 +363,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionAssignment(self, str, loc, toks):
+    def _actionAssignment(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for assignment: a = 2*b
         BNF:
@@ -382,7 +382,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionPrintStmt(self, str, loc, toks):
+    def _actionPrintStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for print statement:
             print 'hello', foo.x
@@ -403,7 +403,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionGraphStmt(self, str, loc, toks):
+    def _actionGraphStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for graph statement:
             graph foo.x, foo.p
@@ -421,7 +421,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionStoreStmt(self, str, loc, toks):
+    def _actionStoreStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for graph statement:
             graph foo.x, foo.p
@@ -439,7 +439,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionReturnStmt(self, str, loc, toks):
+    def _actionReturnStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for return statement:
             return 2*a;
@@ -457,7 +457,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionPragmaStmt(self, str, loc, toks):
+    def _actionPragmaStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for pragma statement:
             pragma no flatten;
@@ -475,7 +475,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionForeignCodeStmt(self, str, loc, toks):
+    def _actionForeignCodeStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for foreign_code statement:
             foreign_code python replace_call ::{{ sin(x) }}:: ;
@@ -501,7 +501,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionStatementList(self, str, loc, toks):
+    def _actionStatementList(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for list of statements: a=1; b=2; ...
         BNF:
@@ -518,7 +518,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionAttrDefinition(self, str, loc, toks):
+    def _actionAttrDefinition(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for defining parameter, variable or submodel:
             'data foo, bar: baz.boo parameter;
@@ -576,7 +576,7 @@ class ParseStage(object):
             return attrDefList #return list with multiple definitions
 
 
-    def _actionFuncArgCall(self, s, loc, toks):
+    def _actionFuncArgCall(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for one argument of a function call. 
             x=2.5  ,  x*2+sin(a)
@@ -597,12 +597,12 @@ class ParseStage(object):
             # attribute renaming algorithm.
             raise UserException('Named arguments are currently unsupported!',
                                 self.createTextLocation(loc))
-            nCurr = NodeAssignment()
-            nCurr.loc = self.createTextLocation(loc) #Store position
-            nArgName = NodeAttrAccess()
-            nArgName.attrName = DotName(toks.namedArg.argName)
-            nCurr.lhs = nArgName
-            nCurr.rhs = toks.namedArg.value
+#            nCurr = NodeAssignment()
+#            nCurr.loc = self.createTextLocation(loc) #Store position
+#            nArgName = NodeAttrAccess()
+#            nArgName.attrName = DotName(toks.namedArg.argName)
+#            nCurr.lhs = nArgName
+#            nCurr.rhs = toks.namedArg.value
         #positional argument: 2.5
         elif toks.positionalArg:
             nCurr = toks.positionalArg[0]
@@ -612,7 +612,7 @@ class ParseStage(object):
                                         str(toks))
         return nCurr
     
-    def _actionFuncCall(self, str, loc, toks):
+    def _actionFuncCall(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for calling a function or method.
             bar.doFoo(10, x, a=2.5)
@@ -642,7 +642,7 @@ class ParseStage(object):
         return nCurr
     
     
-    def _actionFuncArgDef(self, s, loc, toks):
+    def _actionFuncArgDef(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for one function argument of a function definition. 
         A NodeAttrDef is created; therefore this method is quite similar 
@@ -674,7 +674,7 @@ class ParseStage(object):
         return nCurr
         
     
-    def _actionFuncDef(self, str, loc, toks):
+    def _actionFuncDef(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for definition of a function or method.
             func doFoo(a:Real=2.5, b) -> Real: {... }
@@ -717,7 +717,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionClassDef(self, str, loc, toks):
+    def _actionClassDef(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for definition of a class:
             class foo(Model):{ }
@@ -748,7 +748,7 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionProgram(self, str, loc, toks):
+    def _actionProgram(self, s, loc, toks): #IGNORE:W0613
         '''
         Create the root node of a program.
         BNF:
@@ -814,14 +814,14 @@ class ParseStage(object):
         signedAtom = Forward()
         unaryMinus = Group(negop + signedAtom)          .setParseAction(self._actionPrefixOp) \
                                                         .setName('unaryMinus')#.setDebug(True)
-        signedAtom << (atom | unaryMinus)               .setName('signedAtom')#.setDebug(True)
+        signedAtom << (atom | unaryMinus)               .setName('signedAtom')  #IGNORE:W0104
 
         #Exponentiation: a^b;
         factor = Forward()
         factor1 = signedAtom                            .setName('factor1')#.setDebug(True)
         factor2 = Group(signedAtom + '**' + factor)     .setParseAction(self._actionInfixOp) \
                                                         .setName('factor2')#.setDebug(True)
-        factor << (factor2 | factor1)                   .setName('factor')#.setDebug(True)
+        factor << (factor2 | factor1)                   .setName('factor')  #IGNORE:W0104
 
         #multiplicative operations: a*b; a/b
         multop = L('*') | L('/') | L('and')
@@ -829,7 +829,7 @@ class ParseStage(object):
         term1 = factor                                  .setName('term1')#.setDebug(True)
         term2 = Group(factor + multop + term)           .setParseAction(self._actionInfixOp) \
                                                         .setName('term2')#.setDebug(True)
-        term << (term2 | term1)                         .setName('term')#.setDebug(True)
+        term << (term2 | term1)                         .setName('term')  #IGNORE:W0104
 
         #additive operations: a+b; a-b
         addop  = L('+') | L('-') | L('or')
@@ -837,14 +837,14 @@ class ParseStage(object):
         algExpr1 = term                                 .setName('expression1')#.setDebug(True)
         algExpr2 = Group(term + addop + algExpr)        .setParseAction(self._actionInfixOp) \
                                                         .setName('expression2')#.setDebug(True)
-        algExpr << (algExpr2 | algExpr1)                .setName('algExpr')#.setDebug(True)
+        algExpr << (algExpr2 | algExpr1)                .setName('algExpr')  #IGNORE:W0104
 
         #Relational operators : <, >, ==, ...
         relop = L('<') | L('>') | L('<=') | L('>=') | L('==') | L('!=')
         expression1 = algExpr
         expression2 = Group(algExpr + relop + expression).setParseAction(self._actionInfixOp) \
                                                          .setName('boolExpr2')#.setDebug(True)
-        expression << (expression2 | expression1)        .setName('expression')#.setDebug(True)
+        expression << (expression2 | expression1)        .setName('expression')  #IGNORE:W0104
 
         #................ End mathematical expression ................................................---
 
@@ -863,10 +863,10 @@ class ParseStage(object):
         #Method to access a stored value: dotted name ('a.b.c'),
         # with optional differentiation operator ('$a.b.c'),
         # and optional partial access ('a.b.c[2:5]'). (partial access is currently not implemented)
-        valAccess << Group( Optional('$') +
+        valAccess << Group( Optional('$') +                                            #IGNORE:W0104
                             identifier +
                             ZeroOrMore(dotSup + identifier) )   .setParseAction(self._actionAttributeAccess) \
-                                                                .setName('valAccess')#.setDebug(True)
+                                                                .setName('valAccess')
 
 #------------------- Statements ..................................................................
         blockBegin = Literal('{').suppress()
@@ -947,9 +947,9 @@ class ParseStage(object):
                           )                                          .setParseAction(self._actionStoreStmt)\
                                                                      .setName('storeStmt')#.setDebug(True)
 
-        statement << (storeStmt | graphStmt | printStmt |
+        statement << (storeStmt | graphStmt | printStmt |                                   #IGNORE:W0104
                       returnStmt | pragmaStmt | foreignCodeStmt |
-                      ifStatement | assignment | funcCallStmt)       .setName('statement')#.setDebug(True)
+                      ifStatement | assignment | funcCallStmt)       .setName('statement')
 
 #------------- Function ............................................................................
         #Function call 
@@ -964,7 +964,7 @@ class ParseStage(object):
         #the function call
         #The funcCall parser is is forward decdlared, because it is used in 
         #the (mathematical) expression and in the function call statement.
-        funcCall << Group(dotIdentifier                              .setResultsName('funcName')
+        funcCall << Group(dotIdentifier                              .setResultsName('funcName')  #IGNORE:W0104
                          + '(' + ES(funcArgListCall                  .setResultsName('argList')
                                     + ')' ))                         .setParseAction(self._actionFuncCall)
 

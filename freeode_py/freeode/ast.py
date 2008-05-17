@@ -1463,11 +1463,11 @@ if __name__ == '__main__':
 
     #perform the unit tests
     #unittest.main() #exits interpreter
-    suite = unittest.TestSuite()
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAST))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVisitor))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDotName))
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    testSuite = unittest.TestSuite()
+    testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAST))
+    testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVisitor))
+    testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDotName))
+    unittest.TextTestRunner(verbosity=2).run(testSuite)
 
 else:
     # This will be executed in case the

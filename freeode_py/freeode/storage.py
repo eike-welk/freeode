@@ -1162,6 +1162,7 @@ if __name__ == '__main__':
         def test__repr__(self):
             '''ArrayStore: Test __repr__ function.'''
             repStr = repr(self.store)
+            newStore = None
             exec 'newStore = ' + repStr #IGNORE:W0122
             self.assertTrue(self.store == newStore) #IGNORE:E0602
     
@@ -1346,6 +1347,7 @@ if __name__ == '__main__':
             '''DictStore: Test __repr__ function.'''
             repStr = repr(self.store)
             #print repStr
+            newStore = None
             exec 'newStore = ' + repStr #IGNORE:W0122
             self.assertTrue(self.store == newStore) #IGNORE:E0602
     
@@ -1386,10 +1388,10 @@ if __name__ == '__main__':
     
     #perform the unit tests
     #unittest.main() #exits interpreter
-    suite = unittest.TestSuite()
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestArrayStore))
-    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDictStore))
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    testSuite = unittest.TestSuite()
+    testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestArrayStore))
+    testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDictStore))
+    unittest.TextTestRunner(verbosity=2).run(testSuite)
 
     #pylab.show()
     
