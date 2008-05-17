@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2008 by Eike Welk                                       *
+#    Copyright (C) 2006 - 2008 by Eike Welk                                *
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
 #    Inspiration came from:                                                *
@@ -1053,11 +1053,34 @@ class ParseStage(object):
         return self._expressionParser.parseString(inString).asList()[0]
 
 
-    def parseProgramStr(self, inString):
-        '''Parse a whole program. The program is entered as a string.'''
-        self.inputString = inString
-        result = self._parser.parseString(inString).asList()[0]
-        return result
+    def parseProgramStr(self, inProgram, fileName=None):
+        '''
+        Parse a whole program. The program is entered as a string.
+        
+        Parameters
+        ----------
+        inProgram : str
+            A program in the Siml language. This might also be a module.
+        fileName : str
+            File name, so that good error messages can be generated.
+    
+        Returns
+        -------
+        parse tree : ast.Node
+            The parse tree of the program. 
+        '''
+        self.inputString = inProgram
+        if fileName is not None:
+            self.progFileName = fileName
+        #parse the program
+        try:
+            astTree = self._parser.parseString(inProgram).asList()[0]
+        except (ParseException, ParseFatalException), theError:
+            #make UserException that will be visible to the user
+            msgPyParsing = str(theError)
+            loc =  TextLocation(theError.loc, theError.pstr, self.progFileName)
+            raise UserException(msgPyParsing, loc)
+        return astTree
 
 
     def parseProgramFile(self, fileName):
@@ -1072,14 +1095,7 @@ class ParseStage(object):
             message = 'Could not read input file.\n' + str(theError)
             raise UserException(message, None)
         #parse the program
-        try:
-            astTree = self.parseProgramStr(inputFileContents)
-        except (ParseException, ParseFatalException), theError:
-            #make UserException that will be visible to the user
-            msgPyParsing = str(theError)
-            loc =  TextLocation(theError.loc, theError.pstr, self.progFileName)
-            raise UserException(msgPyParsing, loc)
-        return astTree
+        return self.parseProgramStr(inputFileContents)
 
 
 
