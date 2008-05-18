@@ -20,7 +20,6 @@
 #    Free Software Foundation, Inc.,                                       #
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
-
 '''
 Creation of the program's intermediate representation (language). 
 
@@ -40,6 +39,8 @@ from __future__ import division
 
 #import our own syntax tree classes
 from freeode.ast import *
+#import the standard library of the SIML language
+import simlstdlib
 
 
 class ILTGenException(Exception):
@@ -629,6 +630,55 @@ class ILTGenerator(object):
 
 
 
+#--------------- new intermediate tree creation ----------------------------------
+class ProgramTreeCreator(object):
+    '''Create the AST for the whole program,'''
+    
+    def __init__(self):
+        self.stdLib = simlstdlib.createParseTree()
+        self.flattenMultiDataDefs(self.stdLib)
+        
+    @staticmethod
+    def flattenMultiDataDefs(tree):
+        '''
+        Take data definitions out of statement lists.
+        
+        Data definitions of the form:
+            data a,b,c: Real;
+        are in statement special lists. This funciton takes them out and 
+        places them in the top level or class body.
+        
+        The function calls itself recursively.
+        
+        Parameters
+        ----------
+        tree : ast.Node
+            A piece of a parse tree. It must be a program or a class definiton
+            to be useful.
+    
+        Returns
+        -------
+        None
+        ''' 
+        i = 0
+        while i < len(tree):
+            node = tree[i]
+            if isinstance(node, NodeAttrDefList):
+                #this is a multiple definition
+                #copy data statements, delete list, correct index
+                tree.insertChildren(i+1, node)
+                del tree[i]
+                i += len(node) - 1
+            elif isinstance(node, NodeClassDef):
+                #this is a class definition: recurse
+                ProgramTreeCreator.flattenMultiDataDefs(node)
+            elif isinstance(node, NodeFuncDef):
+                #this is a function definition: recurse
+                ProgramTreeCreator.flattenMultiDataDefs(node.funcBody)
+            i += 1
+
+
+
 def doTests():
     '''Perform various tests.'''
     import freeode.simlparser as simlparser
@@ -637,48 +687,70 @@ def doTests():
     testProg1 = (
 '''
 class Test(Model):
+{
     data V, h: Real;
-    data A_bott, A_o, mu, q, g: Real parameter;
+    data A_bott, A_o, mu, q, g: Real param;
 
     func dynamic():
+    {
         h = V/A_bott;
         $V = q - mu*A_o*sqrt(2*g*h);
         print 'h: ', h,;
-    end
+    }
 
     func init():
+    {
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
         q = 0.05;
-    end
-end
+    }
+}
 
 class RunTest(Process):
-    data g: Real parameter;
+{
+    data g: Real param;
     data test: Test;
 
     func dynamic():
-        call test.dynamic();
-    end
-
+    {
+        test.dynamic();
+    }
     func init():
+    {
         g = 9.81;
-        call test.init();
+        test.init();
         solutionParameters.simulationTime = 100;
         solutionParameters.reportingInterval = 1;
-    end
+    }
     func final():
+    {
         #store;
         graph test.V, test.h;
         print 'Simulation finished successfully.';
-    end
-end
+    }
+}
 ''' )
 
+#------------ testProg2 -----------------------
+    testProg2 = (
+'''
+data a, b, c: Real;
+
+class Test(Model):
+{
+    data a, b, c: Real;
+    data d: Real;
+    
+    func test(a,b,c): 
+    {
+        
+    }
+}
+''' )
 
     #test the intermedite tree generator ------------------------------------------------------------------
     flagTestILTGenerator = False
-    flagTestILTGenerator = True
+    #flagTestILTGenerator = True
     if flagTestILTGenerator:
         parser = simlparser.ParseStage()
         iltGen = ILTGenerator()
@@ -690,6 +762,24 @@ end
         iltTree = iltGen.createIntermediateTree(astTree)
         print 'ILT tree:'
         print iltTree
+
+    #test program 2 ------------------------------------------------------------------
+    flagTestProg2 = False
+    flagTestProg2 = True
+    if flagTestProg2:
+        parser = simlparser.ParseStage()
+        iltGen = ILTGenerator()
+
+        astTree = parser.parseProgramStr(testProg2)
+        ProgramTreeCreator.flattenMultiDataDefs(astTree)
+        
+        print 'AST tree:'
+        print astTree
+
+        c = ProgramTreeCreator()
+#        iltTree = iltGen.createIntermediateTree(astTree)
+#        print 'ILT tree:'
+#        print iltTree
 
 
 
