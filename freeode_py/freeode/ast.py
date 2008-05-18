@@ -174,17 +174,68 @@ class Node(object):
             raise TypeError('Children must inherit from Node!')
         self.kids.insert(index, inNode)
 
+    def insertChildren(self, index, inSequence):
+        '''
+        Insert a node's children into list of own children.
+        
+        New childen are inserted before the child at position self[index].
+        
+        Parameters
+        ----------
+        index: int
+            The children are inserted before the this index.
+        inSequence: Node
+            Container of the children that will be inserted.
+        
+        Returns
+        -------
+        None
+        '''
+        if(not isinstance(inSequence, Node)):
+            raise TypeError('Node.insertChildrenChildren: '
+                            'argument 2 must inherit from Node!')
+        self.kids[index:index] = inSequence.kids
+
     def __delitem__(self, index):
         '''Delete child at specified index'''
         del self.kids[index]
 
     def __getitem__(self, i):
-        '''Access to childern through []'''
+        '''
+        Retriev children through []
+        
+        Parameters
+        ----------
+        i: int, slice
+            Index of element which is retrieved, or slice object describing 
+            the subsequence which should be retrieved
+            
+        Returns
+        -------
+        Node, sequence of Node
+            The nodes that should be returned
+        '''
         return self.kids[i]
-    #def __getslice__(self, low, high):
-        #return self.kids[low:high]
-    #def __setslice__(self, low, high, childList):
-        #self.kids[low:high] = seq
+    
+#    def __setitem__(self, i, item):
+#        '''
+#        Change children through []
+#        
+#        Parameters
+#        ----------
+#        i: int, slice
+#            Index of element which is changed, or slice object describing 
+#            the subsequence which should be changed
+#        item: Node, sequence of Node
+#        
+#        Returns
+#        -------
+#        None
+#        '''
+#        #TODO: type checking
+#        #TODO: How should Nodes be treated in case slices are given? 
+#        #      As sequences or as single objects?
+#        self.kids[i] = item
 
 ##    def __cmp__(self, o):
 ##        return cmp(self.type, o)
