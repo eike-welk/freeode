@@ -37,12 +37,12 @@ declarations, that are treated specially by the compiler.
 
 from __future__ import division
 
+import os
+import unittest
 #import our own syntax tree classes
 import freeode.ast as ast
 #import the parser
 import freeode.simlparser as simlparser
-
-
 
 
 
@@ -104,22 +104,39 @@ func max(a, b):{
 
 #------------- constants --------------------------------------------
 data pi:Real const;
-pi = 3.141592653589793;
+pi = 3.141592653589793; 
 '''
 
 
 def createParseTree():
-    '''Create a complete parse tree of the standard library'''
+    '''Create a complete parse ast of the standard library'''
+    #Add newline chars to the library, so that the line numbers of error  
+    #messages match the line numbers in this file. Use filename of this file.
+    stdLibExt = '\n'*50 + standardLibraryStr
+    fileName = os.path.abspath(__file__)
     #parse the library
     parser = simlparser.ParseStage()
-    tree = parser.parseProgramStr(standardLibraryStr, '--- standard library ---')
-    #TODO:put in real file name (simlstdlib.py), catch exception and correct line number in exception.
+    parseTree = parser.parseProgramStr(stdLibExt, fileName)
     #Create the 'object' class, the parent class of all classes
     objectClass = ast.NodeClassDef(className='Object', superName=None) 
-    tree.insertChild(0, objectClass)
-    return tree
+    parseTree.insertChild(0, objectClass)
+    return parseTree
 
 
+
+class TestStdLib(unittest.TestCase):
+
+    def setUp(self):
+        '''perform common setup tasks for each test'''
+        pass
+
+    def test__new__(self):
+        '''Standard Library: Test if library can be parsed.'''
+        #parse the library (and attach some nodes by hand)
+        tree = createParseTree()
+        self.assertTrue(isinstance(tree, ast.NodeProgram))
+
+    
     
 def doTests():
     '''Perform various tests.'''
@@ -133,10 +150,16 @@ def doTests():
 
 if __name__ == '__main__':
     # Self-testing code goes here.
-    #TODO: add unit tests
     #TODO: add doctest tests. With doctest tests are embedded in the documentation
 
-    doTests()
+    #doTests()
+    
+    #perform the unit tests
+    #unittest.main() #exits interpreter
+    testSuite = unittest.TestSuite()
+    testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStdLib))
+    unittest.TextTestRunner(verbosity=2).run(testSuite)
+    
 else:
     # This will be executed in case the
     #    source has been imported as a
