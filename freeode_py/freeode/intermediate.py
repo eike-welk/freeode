@@ -37,10 +37,13 @@ generator of the output language (currently only Python).
 
 from __future__ import division
 
+import os
 #import our own syntax tree classes
 from freeode.ast import *
 #import the standard library of the SIML language
-import simlstdlib
+import freeode.simlstdlib as simlstdlib
+#import the parser for the siml language
+import freeode.simlparser as simlparser
 
 
 class ILTGenException(Exception):
@@ -635,8 +638,13 @@ class ProgramTreeCreator(object):
     '''Create the AST for the whole program,'''
     
     def __init__(self):
-        self.stdLib = simlstdlib.createParseTree()
-        self.flattenMultiDataDefs(self.stdLib)
+        #cache for imported modules
+        self.moduleCache = {}
+        #the standard library (treated specially)
+        self.stdLib = None
+        stdLib = simlstdlib.createParseTree()
+        self.stdLib = self.importModuleTree(stdLib)
+
         
     @staticmethod
     def flattenMultiDataDefs(tree):
@@ -678,10 +686,101 @@ class ProgramTreeCreator(object):
             i += 1
 
 
+    def importModuleTree(self, parseTree):
+        '''
+        Import a module given as a parse tree.
+        
+        This function performs the semantic analysis and creates the complete 
+        program tree from multiple modules.
+        
+        Parameters
+        ----------
+        parseTree : ast.Node
+            The module's parse tree, the output of 
+            simlparser.ParseStage.parseModuleStr(...).
+    
+        Returns
+        -------
+        moduleTree : ast.Node
+            AST of a module. Will be assembled into a complete program tree.
+        '''
+        self.flattenMultiDataDefs(parseTree)
+        #TODO: Give default data roles to definitions where role==None
+        #If the standard library exists prepend it to the module.
+        # This way the standard library can be processed by this method too.
+        if self.stdLib is not None:
+            parseTree.insertChildren(0, self.stdLib)
+        #TODO: Build symbol tables
+        #TODO: Create inheritance pointers?
+        #TODO: Create pointers to class definitions?
+        return parseTree
+        
+        
+    def importModuleFile(self, fileName):
+        '''
+        Import a module (program file).
+        
+        Semantic analysis is performed by self.importModuleTree(...).
+        TODO: Modules are cached, and their AST is constucted only once, 
+              even when they are imported multiple times.
+        The function is recursively executed for each import statement.
+        
+        Parameters
+        ----------
+        fileName : str
+            The module's file name. The module's text is read from this file.
+    
+        Returns
+        -------
+        moduleTree : ast.Node
+            AST of a module. Will be assembled into a complete program tree.
+        '''
+        absFileName = os.path.abspath(fileName)
+        #Test if tree is in cache and return cached tree if yes
+        if absFileName in self.moduleCache:
+            return self.moduleCache[absFileName]
+        #open and read the file
+        try:
+            inputFile = open(absFileName, 'r')
+            inputFileContents = inputFile.read()
+            inputFile.close()
+        except IOError, theError:
+            message = 'Could not read input file.\n' + str(theError)
+            raise UserException(message, None)
+        #parse the program
+        parser = simlparser.ParseStage()
+        parseTree = parser.parseModuleStr(inputFileContents, fileName) 
+        #do semantic analysis and decorate tree
+        ast = self.importModuleTree(parseTree)
+        #put tree in cache
+        self.moduleCache[absFileName] = ast
+        return ast
+        
+        
+    def importModuleStr(self, moduleStr, fileName=None):
+        '''
+        Import a module (program file) as a string.
+        Convenience function for development. (See self.importModuleFile)
+               
+        Parameters
+        ----------
+        moduleStr : str
+            The module's (program's) text.
+        fileName : str
+            The module's file name, used for generating error messages.
+    
+        Returns
+        -------
+        moduleTree : ast.Node
+            AST of a module. Will be assembled into a complete program tree.
+        '''
+        parser = simlparser.ParseStage()
+        parseTree = parser.parseModuleStr(moduleStr, fileName) 
+        return self.importModuleTree(parseTree)
+        
 
 def doTests():
     '''Perform various tests.'''
-    import freeode.simlparser as simlparser
 
 #------------ testProg1 -----------------------
     testProg1 = (
@@ -755,7 +854,7 @@ class Test(Model):
         parser = simlparser.ParseStage()
         iltGen = ILTGenerator()
 
-        astTree = parser.parseProgramStr(testProg1)
+        astTree = parser.parseModuleStr(testProg1)
         print 'AST tree:'
         print astTree
 
@@ -767,16 +866,13 @@ class Test(Model):
     flagTestProg2 = False
     flagTestProg2 = True
     if flagTestProg2:
-        parser = simlparser.ParseStage()
-        iltGen = ILTGenerator()
-
-        astTree = parser.parseProgramStr(testProg2)
-        ProgramTreeCreator.flattenMultiDataDefs(astTree)
+        
+        tc = ProgramTreeCreator()
+        astTree = tc.importModuleStr(testProg2)
         
         print 'AST tree:'
         print astTree
 
-        c = ProgramTreeCreator()
 #        iltTree = iltGen.createIntermediateTree(astTree)
 #        print 'ILT tree:'
 #        print iltTree

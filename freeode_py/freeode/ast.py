@@ -917,7 +917,7 @@ class UserException(Exception):
         Includes input string and file name'''
 
     def __str__(self):
-       return 'Error! %s \n' % self.message + str(self.loc)
+        return 'Error! %s \n' % self.message + str(self.loc)
 
 
 
@@ -1413,7 +1413,7 @@ class TestVisitor(unittest.TestCase):
         fooInst = FooClass()
         #print fooInst.dispatch([])
         self.assertEqual(fooInst.dispatch([]), 'list')
-         #print fooInst.dispatch(1)
+        #print fooInst.dispatch(1)
         self.assertEqual(fooInst.dispatch(1), 'int')
         #the built in default function raises an exception.
         try:

@@ -80,26 +80,26 @@ class FormulaGenerator(Visitor):
         '''
         return self.dispatch(iltFormula)
     
-    @Visitor.when_type(NodeBuiltInVal, 1)
-    def _createBuiltInVal(self, iltFormula):
-        #Built in value: pi, time
-        nameDict = {'pi':'pi', 'time':'time'}
-        return nameDict[iltFormula.dat]
+#    @Visitor.when_type(NodeBuiltInVal, 1)
+#    def _createBuiltInVal(self, iltFormula):
+#        #Built in value: pi, time
+#        nameDict = {'pi':'pi', 'time':'time'}
+#        return nameDict[iltFormula.dat]
         
-    @Visitor.when_type(NodeBuiltInFuncCall, 1)
-    def _createBuiltInFuncCall(self, iltFormula):
-        #Built in function: sin(...)
-        nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
-                    'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
-                    'overrideParam':'self._overrideParam' }
-        #get name of the corresponding Python function
-        funcName = nameDict[iltFormula.dat] 
-        #produce output
-        retStr = funcName + '('
-        for funcArgument in iltFormula:
-            retStr += self.dispatch(funcArgument) + ','
-        retStr += ')'
-        return retStr
+#    @Visitor.when_type(NodeBuiltInFuncCall, 1)
+#    def _createBuiltInFuncCall(self, iltFormula):
+#        #Built in function: sin(...)
+#        nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
+#                    'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
+#                    'overrideParam':'self._overrideParam' }
+#        #get name of the corresponding Python function
+#        funcName = nameDict[iltFormula.dat] 
+#        #produce output
+#        retStr = funcName + '('
+#        for funcArgument in iltFormula:
+#            retStr += self.dispatch(funcArgument) + ','
+#        retStr += ')'
+#        return retStr
         
     @Visitor.when_type(NodeNum, 1)
     def _createNum(self, iltFormula):
@@ -782,7 +782,7 @@ end
     iltGen = ILTGenerator()
     progGen = ProgramGenerator()
 
-    astTree = parser.parseProgramStr(testProg1)
+    astTree = parser.parseModuleStr(testProg1)
     print 'AST tree:'
     print astTree
 

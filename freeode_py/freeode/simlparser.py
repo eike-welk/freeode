@@ -131,7 +131,7 @@ class ParseStage(object):
     Usage:
     parser = ParseStage()
     ast1 = parser.parseExpressionStr('0+1+2+3+4')
-    ast2 = parser.parseProgramFile('foo-bar.siml')
+    ast2 = parser.parseModuleFile('foo-bar.siml')
     '''
 
     noTreeModification = 0
@@ -1053,7 +1053,7 @@ class ParseStage(object):
         return self._expressionParser.parseString(inString).asList()[0]
 
 
-    def parseProgramStr(self, inProgram, fileName=None):
+    def parseModuleStr(self, inProgram, fileName=None):
         '''
         Parse a whole program. The program is entered as a string.
         
@@ -1083,7 +1083,7 @@ class ParseStage(object):
         return astTree
 
 
-    def parseProgramFile(self, fileName):
+    def parseModuleFile(self, fileName):
         '''Parse a whole program. The program's file name is supplied.'''
         self.progFileName = os.path.abspath(fileName)
         #open and read the file
@@ -1095,7 +1095,7 @@ class ParseStage(object):
             message = 'Could not read input file.\n' + str(theError)
             raise UserException(message, None)
         #parse the program
-        return self.parseProgramStr(inputFileContents)
+        return self.parseModuleStr(inputFileContents)
 
 
 
@@ -1182,8 +1182,8 @@ class RunTest(Process):
         parser = ParseStage()
         #ParseStage.noTreeModification = 1
 
-        #print parser.parseProgramStr(testProg1)
-        print parser.parseProgramStr(testProg2)
+        #print parser.parseModuleStr(testProg1)
+        print parser.parseModuleStr(testProg2)
         
         #print parser.parseProgram('if a==0 then b=-1; else b=2+3+4; a=1; end')
         #print parser.parseExpression('0*1*2*3*4').asList()[0]

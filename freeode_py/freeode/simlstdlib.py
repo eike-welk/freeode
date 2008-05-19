@@ -116,7 +116,7 @@ def createParseTree():
     fileName = os.path.abspath(__file__)
     #parse the library
     parser = simlparser.ParseStage()
-    parseTree = parser.parseProgramStr(stdLibExt, fileName)
+    parseTree = parser.parseModuleStr(stdLibExt, fileName)
     #Create the 'object' class, the parent class of all classes
     objectClass = ast.NodeClassDef(className='Object', superName=None) 
     parseTree.insertChild(0, objectClass)
