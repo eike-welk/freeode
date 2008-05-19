@@ -755,8 +755,8 @@ class ProgramTreeCreator(object):
         Import a module (program file).
         
         Semantic analysis is performed by self.importModuleTree(...).
-        TODO: Modules are cached, and their AST is constucted only once, 
-              even when they are imported multiple times.
+        Modules are cached, and their AST is constucted only once, 
+        even when they are imported multiple times.
         The function is recursively executed for each import statement.
         
         Parameters
