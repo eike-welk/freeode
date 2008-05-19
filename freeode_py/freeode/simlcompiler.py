@@ -128,7 +128,7 @@ class SimlCompilerMain(object):
 
         #the compilation proper
         try:
-            astTree = parser.parseProgramFile(self.inputFileName)
+            astTree = parser.parseModuleFile(self.inputFileName) 
             #print astTree
             iltTree = iltGen.createIntermediateTree(astTree)
             #print iltTree

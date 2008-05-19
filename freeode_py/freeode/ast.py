@@ -222,14 +222,14 @@ class Node(object):
 #        Change children through []
 #        
 #        Parameters
-#        ----------
+    #        ----------
 #        i: int, slice
 #            Index of element which is changed, or slice object describing 
 #            the subsequence which should be changed
 #        item: Node, sequence of Node
 #        
 #        Returns
-#        -------
+    #        -------
 #        None
 #        '''
 #        #TODO: type checking
@@ -564,10 +564,36 @@ class RoleConstant(AttributeRole):
     '''The attribute is a constant'''
     pass
 class RoleParameter(AttributeRole):
-    '''The attribute is a parameter'''
+    '''
+    Attribute is a parameter of the simulation:
+    - is constant during the simulation, but can vary between simulations.
+    - is stored.
+    '''
+class RoleDataCanVaryDuringSimulation(AttributeRole):
+    '''Data that can vary during the simulation. (Base class.)'''
     pass
-class RoleVariable(AttributeRole):
-    '''The attribute is a state or algebraic variable'''
+class RoleFuncArgument(RoleDataCanVaryDuringSimulation):
+    '''
+    The attribute is a function/method argument:
+    - can vary during the simulation
+    - should be optmized away 
+    - is not stored.
+    '''
+    pass
+class RoleLocalVariable(RoleDataCanVaryDuringSimulation):
+    '''
+    The attribute is a local variable:
+    - can vary during the simulation
+    - should be optmized away 
+    - is not stored.
+    '''
+    pass
+class RoleVariable(RoleDataCanVaryDuringSimulation):
+    '''
+    The attribute is a state or algebraic variable:
+    - can vary during the simulation
+    - is stored.
+    '''
     pass
 class RoleStateVariable(RoleVariable):
     '''The attribute is a state variable'''
@@ -694,16 +720,16 @@ class NodeClassDef(Node):
         self.superName = superName
 
 
-class NodeProgram(Node):
+class NodeModule(Node):
     '''
-    Root node of the program
+    Root node of a module (or of the program)
     Data attributes:
         kids      : Definitions, the program's code.
         loc       : location in input string (~0)
         dat       : None
 '''
     def __init__(self, kids=[], loc=None, dat=None):
-        super(NodeProgram, self).__init__(kids, loc, dat)
+        super(NodeModule, self).__init__(kids, loc, dat)
 
 
 class DepthFirstIterator(object):

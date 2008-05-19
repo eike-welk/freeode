@@ -670,7 +670,7 @@ class ParseStage(object):
         if isinstance(toks.defaultValue, Node):
             nCurr.setDefaultValue(toks.defaultValue)
         #store role
-        nCurr.role = RoleAlgebraicVariable
+        nCurr.role = RoleFuncArgument
         return nCurr
         
     
@@ -748,16 +748,16 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionProgram(self, s, loc, toks): #IGNORE:W0613
+    def _actionModule(self, s, loc, toks): #IGNORE:W0613
         '''
-        Create the root node of a program.
+        Create the root node of a module.
         BNF:
         program = Group(OneOrMore(classDef))
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeProgram()
+        nCurr = NodeModule()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #create children - each child is a class
         for tok in tokList:
@@ -910,7 +910,7 @@ class ParseStage(object):
                       )                                              .setParseAction(self._actionPragmaStmt)
         
         #foreign code statement: specify code in the target language that is
-        #inserted into the compiled program
+        #inserted into the compiled module
         #    foreign_code python replace_call ::{{ sin(x) }}:: ;
         foreignCodeStmt = (kw('foreign_code') 
                            + ES(Word(alphanums+'_')                  .setResultsName('language')
@@ -1028,13 +1028,13 @@ class ParseStage(object):
                          )                                           .setParseAction(self._actionClassDef)\
 
         topLevelStms = classDef | funcDef | attributeDef | assignment
-        program = (Group(ZeroOrMore(topLevelStms)) + StringEnd())    .setParseAction(self._actionProgram)\
-                                                                     .setName('program')#.setDebug(True)
+        module = (Group(ZeroOrMore(topLevelStms)) + StringEnd())    .setParseAction(self._actionModule)\
+                                                                     .setName('module')#.setDebug(True)
 
         #................ End of language definition ..................................................
 
         #determine start symbol
-        startSymbol = program
+        startSymbol = module
         #set up comments
         singleLineCommentCpp = '//' + restOfLine
         singleLineCommentPy = '#' + restOfLine

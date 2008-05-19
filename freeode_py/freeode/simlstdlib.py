@@ -134,7 +134,7 @@ class TestStdLib(unittest.TestCase):
         '''Standard Library: Test if library can be parsed.'''
         #parse the library (and attach some nodes by hand)
         tree = createParseTree()
-        self.assertTrue(isinstance(tree, ast.NodeProgram))
+        self.assertTrue(isinstance(tree, ast.NodeModule))
 
     
     

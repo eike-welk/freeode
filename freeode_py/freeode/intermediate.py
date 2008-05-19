@@ -613,7 +613,7 @@ class ILTGenerator(object):
 #        self.replaceMultiAttributeDefinitions(astRoot)
 #        print astRoot
         #create ILT root node
-        iltRoot = NodeProgram()
+        iltRoot = NodeModule()
         iltRoot.loc = astRoot.loc
 
         procGen = ILTProcessGenerator(astRoot)
@@ -662,11 +662,7 @@ class ProgramTreeCreator(object):
         ----------
         tree : ast.Node
             A piece of a parse tree. It must be a program or a class definiton
-            to be useful.
-    
-        Returns
-        -------
-        None
+            to be useful. The argument is modified.
         ''' 
         i = 0
         while i < len(tree):
@@ -686,6 +682,42 @@ class ProgramTreeCreator(object):
             i += 1
 
 
+    @staticmethod
+    def setDataRoleDefault(tree):
+        '''
+        Put default roles into data definitions that don't define roles.
+        
+        The default roles are different depending on where the data is 
+        defined:
+        module (top level): constant
+        class             : variable (state or algebraic is determined later)
+        function          : local variable
+        
+        The function calls itself recursively.
+        
+        Parameters
+        ----------
+        tree : ast.Node
+            A piece of a parse tree. It must be a program or a class definiton
+            to be useful. The argument is modified.
+        '''
+        #determione the default role for the current subtree
+        if isinstance(tree, NodeModule):
+            defaultRole = RoleConstant
+        elif isinstance(tree, NodeClassDef):
+            defaultRole = RoleVariable
+        elif isinstance(tree, NodeFuncDef):
+            defaultRole = RoleLocalVariable
+        else:
+            raise Exception('Unexpected node type: ' + str(type(tree)))
+        #go throught children, set role or recurse
+        for child in tree:
+            if isinstance(child, NodeAttrDef) and child.role is None:
+                child.role = defaultRole
+            elif isinstance(child, (NodeModule, NodeClassDef, NodeFuncDef)):
+                ProgramTreeCreator.setDataRoleDefault(child)
+                
+        
     def importModuleTree(self, parseTree):
         '''
         Import a module given as a parse tree.
@@ -704,8 +736,10 @@ class ProgramTreeCreator(object):
         moduleTree : ast.Node
             AST of a module. Will be assembled into a complete program tree.
         '''
+        #flatten data a,b,c: Real; into tree separate definitions.
         self.flattenMultiDataDefs(parseTree)
-        #TODO: Give default data roles to definitions where role==None
+        #Give default data roles to definitions where role==None
+        self.setDataRoleDefault(parseTree)
         #If the standard library exists prepend it to the module.
         # This way the standard library can be processed by this method too.
         if self.stdLib is not None:
