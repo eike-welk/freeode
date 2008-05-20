@@ -99,24 +99,23 @@ class Node(object):
     leaf  depth:  1
     '''
 
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         #TODO: write an init function that can accept any number of named arguments
         #Variabe number of arguments:
         #*args    : is a list of all normal arguments
         #**kwargs : is a dict of keyword arguments
         #Code for derived classes: super(A, self).__init__(*args, **kwds)
-        super(Node, self).__init__()
         #self.parent = None
+        #list of children
         self.kids = []
-        '''list of children'''
         #appendChild checks the type
-        for child in kids:
-            self.appendChild(child)
+        if kids is not None:
+            for child in kids:
+                self.appendChild(child)
         #the node's location in the parsed text
         self.loc  = loc
-        '''the location in the program'''
+        #any data; whatever is appropriate
         self.dat = dat
-        '''any data; whatever is appropriate.'''
 
 
     def __repr__(self):
@@ -269,21 +268,6 @@ class Node(object):
 #        super(NodeBuiltInVal, self).__init__(kids, loc, dat)
 
 
-#class NodeBuiltInFuncCall(Node):
-#    '''
-#    Represent a built in function in the AST.
-#    Example: sin( ... )
-#    Data attributes:
-#        kids : the function's arguments
-#        loc  : location in input string
-#        dat  : the function's name
-#    '''
-#    #TODO: remove this class. These nodes should be replaced by regular
-#    #function calls.
-#    def __init__(self, kids=[], loc=None, dat=None):
-#        super(NodeBuiltInFuncCall, self).__init__(kids, loc, dat)
-
-
 class NodeNum(Node):
     '''
     Represent a real number in the AST.
@@ -293,7 +277,7 @@ class NodeNum(Node):
         loc     : location in input string
         dat     : the number as a string
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeNum, self).__init__(kids, loc, dat)
 
 
@@ -306,7 +290,7 @@ class NodeString(Node):
         loc     : location in input string
         dat     : the string
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeString, self).__init__(kids, loc, dat)
 
 
@@ -319,7 +303,7 @@ class NodeParentheses(Node):
         loc     : location in input string
         dat     : None
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeParentheses, self).__init__(kids, loc, dat)
 
 
@@ -332,7 +316,7 @@ class NodeOpInfix2(Node):
         dat     : None
         operator: operator symbol e.g.: '+'
     '''
-    def __init__(self, kids=[], loc=None, dat=None, operator=None):
+    def __init__(self, kids=None, loc=None, dat=None, operator=None):
         super(NodeOpInfix2, self).__init__(kids, loc, dat)
         self.operator = operator
         if not self.kids:
@@ -359,7 +343,7 @@ class NodeOpPrefix1(Node):
         dat     : None
         operator: operator symbol e.g.: '+'
     '''
-    def __init__(self, kids=[], loc=None, dat=None, operator=None):
+    def __init__(self, kids=None, loc=None, dat=None, operator=None):
         super(NodeOpPrefix1, self).__init__(kids, loc, dat)
         self.operator = operator
 
@@ -378,7 +362,7 @@ class NodeIfStmt(Node):
         loc     : location in input string
         dat     : None
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeIfStmt, self).__init__(kids, loc, dat)
 
     #Condition proppery
@@ -416,7 +400,7 @@ class NodeAssignment(NodeOpInfix2):
         dat     : None
         operator: operator symbol e.g.: '+'
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeAssignment, self).__init__(kids, loc, dat, operator='=')
 
 
@@ -435,7 +419,7 @@ class NodeFuncExecute(Node):
         funcName   : Dotted name of the block. Tuple of strings:
                       ('model1','init')
     '''
-    def __init__(self, kids=[], loc=None, dat=None, funcName=None):
+    def __init__(self, kids=None, loc=None, dat=None, funcName=None):
         super(NodeFuncExecute, self).__init__(kids, loc, dat)
         self.funcName = funcName
 
@@ -451,7 +435,7 @@ class NodePrintStmt(Node):
         newline     : if True: add newline to end of output;
                       if False: don't add newline.
     '''
-    def __init__(self, kids=[], loc=None, dat=None, newline=True):
+    def __init__(self, kids=None, loc=None, dat=None, newline=True):
         super(NodePrintStmt, self).__init__(kids, loc, dat)
         self.newline = newline
 
@@ -464,7 +448,7 @@ class NodeGraphStmt(Node):
         loc         : location in input string
         dat         : None
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeGraphStmt, self).__init__(kids, loc, dat)
 
 
@@ -476,7 +460,7 @@ class NodeStoreStmt(Node):
         loc         : location in input string
         dat         : None
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeStoreStmt, self).__init__(kids, loc, dat)
 
 
@@ -488,7 +472,7 @@ class NodeReturnStmt(Node):
         loc         : location in input string
         dat         : The return value (expression)
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeReturnStmt, self).__init__(kids, loc, dat)
 
 
@@ -502,7 +486,7 @@ class NodePragmaStmt(Node):
         
         options     : the arguments of the prgma statements: list of strings
     '''
-    def __init__(self, kids=[], loc=None, dat=None, options=None):
+    def __init__(self, kids=None, loc=None, dat=None, options=None):
         super(NodePragmaStmt, self).__init__(kids, loc, dat)
         self.options = []
         if options: self.options = options
@@ -520,7 +504,7 @@ class NodeForeignCodeStmt(Node):
         method      : the insertion method - type of the foreign code: string
         code        : the piece of program code that should be inserted: string  
     '''
-    def __init__(self, kids=[], loc=None, dat=None, language='', method='', code=''):
+    def __init__(self, kids=None, loc=None, dat=None, language='', method='', code=''):
         super(NodeForeignCodeStmt, self).__init__(kids, loc, dat)
         self.language = language
         self.method = method
@@ -532,7 +516,7 @@ class NodeStmtList(Node):
     AST Node for list of statements
     Each child is a statement.
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeStmtList, self).__init__(kids, loc, dat)
 
 
@@ -543,7 +527,7 @@ class NodeAttrDefList(NodeStmtList):
     Used to identify these lists so they can be flattened with a pretty 
     simple algogithm.
     '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeAttrDefList, self).__init__(kids, loc, dat)
 
 
@@ -624,7 +608,7 @@ class NodeAttrDef(Node):
                           TODO: Derivatives should be separate variables. These variable should 
                                 be created in the intermediate language logic.
    '''
-    def __init__(self, kids=[], loc=None, dat=None,
+    def __init__(self, kids=None, loc=None, dat=None,
                         attrName=None, className=None, role=RoleAny, targetName=None):
         super(NodeAttrDef, self).__init__(kids, loc, dat)
         self.attrName = attrName
@@ -657,7 +641,7 @@ class NodeAttrAccess(Node):
         attrName   : DotName('proc.model1.a'), the dot separated name (basically tuple of strings).
         targetName : name in the target language (string)
     '''
-    def __init__(self, kids=[], loc=None, dat=None, deriv=None,
+    def __init__(self, kids=None, loc=None, dat=None, deriv=None,
                  attrName=None, targetName=None):
         super(NodeAttrAccess, self).__init__(kids, loc, dat)
         self.deriv = deriv
@@ -682,7 +666,7 @@ class NodeFuncDef(Node):
         name       : name of the function; tuple of strings: ('init',)
         returnType : class name of return value; tuple of strings: ('Real',)
     """
-    def __init__(self, kids=[], loc=None, dat=None, name=None, returnType=None):
+    def __init__(self, kids=None, loc=None, dat=None, name=None, returnType=None):
         super(NodeFuncDef, self).__init__(kids, loc, dat)
         self.name = name
         if not self.kids:
@@ -714,7 +698,7 @@ class NodeClassDef(Node):
         superName : name of the class, from which this class inherits;
                     usually "Process", "Model"
     """
-    def __init__(self, kids=[], loc=None, dat=None, className=None, superName=None):
+    def __init__(self, kids=None, loc=None, dat=None, className=None, superName=None):
         super(NodeClassDef, self).__init__(kids, loc, dat)
         self.className = className
         self.superName = superName
@@ -728,7 +712,7 @@ class NodeModule(Node):
         loc       : location in input string (~0)
         dat       : None
 '''
-    def __init__(self, kids=[], loc=None, dat=None):
+    def __init__(self, kids=None, loc=None, dat=None):
         super(NodeModule, self).__init__(kids, loc, dat)
 
 
@@ -962,7 +946,7 @@ class MultiErrorException(UserException):
 
     def __str__(self):
         errMsg = 'Error!\n'
-        for msg1, loc1 in self.errTupList: 
+        for msg1, _loc1 in self.errTupList:
             errMsg += '%s \n    %s \n' % (msg1, str(self.loc))
         errMsg += '------------------------\n'
         errMsg += 'Total: %d Error(s).' % len(self.errTupList)
@@ -1079,7 +1063,7 @@ class Visitor(object):
             #search handler function in rule table and store it in cache
             handlerFunc = self._findFuncInRuleTable(objCls)
             cls._cache[objCls] = handlerFunc    #IGNORE:E1101
-        return handlerFunc(self, inObject, *args)
+        return handlerFunc(self, inObject, *args) #IGNORE:W0142
 
 
     def _simpleDefaultFunc(self, inObject, *args):
@@ -1096,11 +1080,11 @@ class Visitor(object):
         The algorithm for matching is 'issubclass'
         '''
         #find handler function for class 'objCls'
-        for func1, cls1, prio1 in cls._ruleTable:
+        for func1, cls1, _prio1 in cls._ruleTable:
             if issubclass(objCls, cls1):
                 return func1
         #no specific handler could be found: return the default function
-        func1, cls1, prio1 = cls._ruleTable[-1] #IGNORE:E1101
+        func1, cls1, _prio1 = cls._ruleTable[-1] #IGNORE:E1101
         return func1
 
 
@@ -1117,7 +1101,7 @@ class Visitor(object):
           the default function
         '''
         ruleTable = []
-        defaultFunc = Visitor._simpleDefaultFunc
+        defaultFunc = Visitor._simpleDefaultFunc #IGNORE:W0212
         #TODO: look into methods of parent classes too
         #loop over the class' attributes and put them into the table if appropriate
         for func in cls.__dict__.itervalues():
@@ -1126,10 +1110,10 @@ class Visitor(object):
             if not (hasattr(func, '_dispatchIfType') and
                     hasattr(func, '_dispatchPriority')):
                 continue
-            if func._dispatchIfType == None:
+            if func._dispatchIfType == None: #IGNORE:W0212
                 defaultFunc = func
             else:
-                ruleTable.append((func, func._dispatchIfType, func._dispatchPriority))
+                ruleTable.append((func, func._dispatchIfType, func._dispatchPriority)) #IGNORE:W0212
         #sort rule table according to priority
         getPrio = lambda tup: tup[2]
         ruleTable.sort(key=getPrio, reverse=True)
@@ -1222,6 +1206,9 @@ class TestAST(unittest.TestCase):
 
     def test__init__(self):
         n1 = Node()
+        self.assertEqual(n1.kids, [])
+        self.assertEqual(n1.loc, None)
+        self.assertEqual(n1.dat, None)
         n2 = Node([],1,'test')
         self.assertEqual(n2.loc, 1)
         self.assertEqual(n2.dat, 'test')
@@ -1245,7 +1232,7 @@ class TestAST(unittest.TestCase):
         nBig.test8 = 'qworieoqwiruuqrw'
         nBig.test9 = 'qworieoqwiruuqrw'
         self.tree1[0][1].appendChild(nBig)
-        str1 = self.tree1.__str__()
+        _str1 = self.tree1.__str__()
         #to see it:
         #print
         #print self.tree1
@@ -1354,16 +1341,16 @@ class TestVisitor(unittest.TestCase):
             def __init__(self):
                 Visitor.__init__(self)
             @Visitor.when_type(list)
-            def visitList(self, inObject):
+            def visitList(self, _inObject):
                 return 'list'
             @Visitor.when_type(int)
-            def visitInt(self, inObject):
+            def visitInt(self, _inObject):
                 return 'int'
             @Visitor.when_type(float)
-            def visitFloat(self, inObject):
+            def visitFloat(self, _inObject):
                 return 'float'
             @Visitor.default
-            def visitDefault(self, inObject):
+            def visitDefault(self, _inObject):
                 return 'default'
 
         #test dispatching - dispatching multiple times also tries the cache
@@ -1393,19 +1380,19 @@ class TestVisitor(unittest.TestCase):
             pass
 
         #define visitor class
-        class TestVisitor(Visitor):
+        class TestVisitorClass(Visitor):
             def __init__(self):
                 Visitor.__init__(self)
             #Can handle all Base objects but has low priority
             @Visitor.when_type(Base, 1)
-            def visitBase(self, inObject):
+            def visitBase(self, _inObject):
                 return 'Base'
             #Specialized method for Derived1 with high priority
             @Visitor.when_type(Derived1, 5)
-            def visitDerived1(self, inObject):
+            def visitDerived1(self, _inObject):
                 return 'Derived1'
             @Visitor.when_type(int)
-            def visitInt(self, inObject):
+            def visitInt(self, _inObject):
                 return 'int'
 
         #create some objects that the visitor should handle
@@ -1414,7 +1401,7 @@ class TestVisitor(unittest.TestCase):
         derived2Inst = Derived2()
         intInst = 2
         #create the visitor
-        visitor = TestVisitor()
+        visitor = TestVisitorClass()
 
         #try the visitor
         self.assertEqual(visitor.dispatch(baseInst), 'Base')
@@ -1430,10 +1417,10 @@ class TestVisitor(unittest.TestCase):
             def __init__(self):
                 Visitor.__init__(self)
             @Visitor.when_type(list)
-            def visitList(self, inObject):
+            def visitList(self, _inObject):
                 return 'list'
             @Visitor.when_type(int)
-            def visitInt(self, inObject):
+            def visitInt(self, _inObject):
                 return 'int'
 
         fooInst = FooClass()
@@ -1446,7 +1433,7 @@ class TestVisitor(unittest.TestCase):
             self.assertEqual(fooInst.dispatch(1.0), 'float')
             #if we get till here there was an error
             raise Exception('Expected exception was not raised!')
-        except TypeError, err:
+        except TypeError: #IGNORE:W0704
             #print err
             pass
 
@@ -1459,27 +1446,27 @@ class TestVisitor(unittest.TestCase):
         self.assertRaises(TypeError, self.raise__decorator_error_4)
     def raise__decorator_error_1(self):
         '''Error: No parameters for @Visitor.when_type.'''
-        class FooClass(Visitor):
+        class FooClass(Visitor): #IGNORE:W0612
             @Visitor.when_type
-            def visitList(self, inObject):
+            def visitList(self, _inObject):
                 return 'list'
     def raise__decorator_error_2(self):
         '''Error: Wrong 1st parameter for @Visitor.when_type.'''
-        class FooClass(Visitor):
+        class FooClass(Visitor): #IGNORE:W0612
             @Visitor.when_type([])
-            def visitList(self, inObject):
+            def visitList(self, _inObject):
                 return 'list'
     def raise__decorator_error_3(self):
         '''Error: Wrong 2nd parameter for @Visitor.when_type.'''
-        class FooClass(Visitor):
+        class FooClass(Visitor): #IGNORE:W0612
             @Visitor.when_type(list, 'qwert')
-            def visitList(self, inObject):
+            def visitList(self, _inObject):
                 return 'list'
     def raise__decorator_error_4(self):
         '''Error: Parameters for @Visitor.default.'''
-        class FooClass(Visitor):
+        class FooClass(Visitor): #IGNORE:W0612
             @Visitor.default(int)
-            def visitDefault(self, inObject):
+            def visitDefault(self, _inObject):
                 return 'default'
 
 
