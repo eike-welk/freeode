@@ -4,6 +4,7 @@
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
 #    License: GPL                                                          #
+#    TODO: GPL exception for generated code!
 #                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #
 #    it under the terms of the GNU General Public License as published by  #
@@ -116,7 +117,7 @@ def createParseTree():
     fileName = os.path.abspath(__file__)
     #parse the library
     parser = simlparser.ParseStage()
-    parseTree = parser.parseModuleStr(stdLibExt, fileName)
+    parseTree = parser.parseModuleStr(stdLibExt, fileName, 'simlstdlib')
     #Create the 'object' class, the parent class of all classes
     objectClass = ast.NodeClassDef(className='Object', superName=None) 
     parseTree.insertChild(0, objectClass)

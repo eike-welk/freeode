@@ -682,6 +682,7 @@ class ProgramTreeCreator(object):
             i += 1
 
 
+    #TODO: put into interpreter.
     @staticmethod
     def setDataRoleDefault(tree):
         '''
@@ -701,7 +702,7 @@ class ProgramTreeCreator(object):
             A piece of a parse tree. It must be a program or a class definiton
             to be useful. The argument is modified.
         '''
-        #determione the default role for the current subtree
+        #determine the default role for the current subtree
         if isinstance(tree, NodeModule):
             defaultRole = RoleConstant
         elif isinstance(tree, NodeClassDef):
@@ -723,7 +724,9 @@ class ProgramTreeCreator(object):
         Import a module given as a parse tree.
         
         This function performs the semantic analysis and creates the complete 
-        program tree from multiple modules.
+        program tree from multiple modules. The function interprets the 
+        statements at the module level.
+        The function may call itself recursively.
         
         Parameters
         ----------
@@ -743,14 +746,16 @@ class ProgramTreeCreator(object):
         #If the standard library exists prepend it to the module.
         # This way the standard library can be processed by this method too.
         if self.stdLib is not None:
-            parseTree.insertChildren(0, self.stdLib)
+            stdImportStmt = NodeImportStmt(moduleName='simlstdlib', fromStmt=True, 
+                                           attrsToImport=["*"], kids=[self.stdLib])
+            parseTree.insertChild(0, stdImportStmt)
         #TODO: Build symbol tables
         #TODO: Create inheritance pointers?
         #TODO: Create pointers to class definitions?
         return parseTree
         
         
-    def importModuleFile(self, fileName):
+    def importModuleFile(self, fileName, moduleName=None):
         '''
         Import a module (program file).
         
@@ -783,7 +788,7 @@ class ProgramTreeCreator(object):
             raise UserException(message, None)
         #parse the program
         parser = simlparser.ParseStage()
-        parseTree = parser.parseModuleStr(inputFileContents, fileName) 
+        parseTree = parser.parseModuleStr(inputFileContents, fileName, moduleName) 
         #do semantic analysis and decorate tree
         ast = self.importModuleTree(parseTree)
         #put tree in cache
@@ -791,7 +796,7 @@ class ProgramTreeCreator(object):
         return ast
         
         
-    def importModuleStr(self, moduleStr, fileName=None):
+    def importModuleStr(self, moduleStr, fileName=None, moduleName=None):
         '''
         Import a module (program file) as a string.
         Convenience function for development. (See self.importModuleFile)
@@ -809,7 +814,7 @@ class ProgramTreeCreator(object):
             AST of a module. Will be assembled into a complete program tree.
         '''
         parser = simlparser.ParseStage()
-        parseTree = parser.parseModuleStr(moduleStr, fileName) 
+        parseTree = parser.parseModuleStr(moduleStr, fileName, moduleName) 
         return self.importModuleTree(parseTree)
         
 

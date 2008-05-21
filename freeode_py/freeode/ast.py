@@ -59,6 +59,78 @@ progVersion = '0.3.2-dev-1'
 
 
 
+class NameSpace(object):
+    '''
+    Namespace for modules, classes and functions. 
+    '''
+    def __init__(self):
+        #the attributes of the namespace
+        self.attributes = {}
+        #the next upper level scope
+        self.enclosingScope = None
+        
+        
+    #TODO: other function signature: (newName, newAttr) ????
+    def setAttr(self, newAttr):
+        '''
+        Add new attribute to the name space.
+        
+        Attributes can exist multiple times.
+        
+        Parameters
+        ----------
+        newAttr: NodeAttrDef, NodeClassDef, NodeFuncDef
+            The new attribute, which is added to the name space.
+        '''
+        #get necessary data from the new attribute
+        #TODO: should the different attribute types 
+        #      (NodeAttrDef, NodeClassDef, NodeFuncDef, NodeModule) be unified?
+        #TODO: is this necessary at all!
+        if isinstance(newAttr, NodeAttrDef):
+            attrName = newAttr.attrName
+        elif isinstance(newAttr, NodeClassDef):
+            attrName = newAttr.className
+        elif isinstance(newAttr, NodeFuncDef):
+            attrName = newAttr.name
+        elif isinstance(newAttr, NodeModule):
+            attrName = newAttr.name
+        else:
+            raise Exception('Attributes must have type: '
+                            'NodeAttrDef, NodeClassDef, NodeFuncDef, '
+                            'NodeModule.')
+        #add attribute to name space
+        if attrName in self.attributes:
+            #attributes with this name already exist
+            oldAttr = self.attributes[attrName]
+            if isinstance(oldAttr, list):
+                #There is already a list of attrs, append this attr to it.
+                oldAttr.append(newAttr) 
+            else:
+                #until now only 1 attr; create list to hold multiple attrs
+                self.attributes[attrName] = [oldAttr, newAttr]
+        else: 
+            self.attributes[attrName] = newAttr #This is a new attribute
+            
+            
+    def hasAttr(self, attrName):
+        '''
+        Test if attribute exists in this name space.
+        
+        Parameter
+        ---------
+        attrName: str
+            Attribute name to be tested.
+            
+        Returns
+        ------- 
+        bool
+            True if a attribute of this name exists in this name space, 
+            False otherwise.
+        '''
+        return attrName in self.attributes
+
+
+
 class Node(object):
     '''
     Building block of a n-ary tree structure.
@@ -511,6 +583,35 @@ class NodeForeignCodeStmt(Node):
         self.code = code
 
 
+class NodeImportStmt(Node):
+    '''
+    AST Node for the pragma statement
+    Data attributes:
+        kids        : The modulse's AST
+        loc         : location in input string
+        dat         : None
+        
+        moduleName : str
+            Name of the module that should be imported
+        fromStmt : bool
+            Put the module's attributes directly into the namespace of the 
+            module that executes this statement. Behave as Python's "from" 
+            statement.
+        attrsToImport : list of string
+            List of attributes that should be imported. Special symbol "*" 
+            means all attributes in the module. 
+            if fromStmt == False, this list is ignored.
+    '''
+    def __init__(self, kids=None, loc=None, dat=None, 
+                 moduleName=None, fromStmt=False, attrsToImport=None, 
+                 moduleTree=None):
+        super(NodeImportStmt, self).__init__(kids, loc, dat)
+        self.moduleName = moduleName
+        self.fromStmt = fromStmt
+        self.attrsToImport = [] if attrsToImport is None else attrsToImport
+        self.moduleTree = moduleTree
+        
+
 class NodeStmtList(Node):
     '''
     AST Node for list of statements
@@ -587,7 +688,7 @@ class RoleAlgebraicVariable(RoleVariable):
     pass
 
 
-class NodeAttrDef(Node):
+class NodeAttrDef(Node, NameSpace):
     '''
     AST node for definition of a variable, parameter or submodel.
     Data attributes:
@@ -649,7 +750,7 @@ class NodeAttrAccess(Node):
         self.targetName = targetName
 
 
-class NodeFuncDef(Node):
+class NodeFuncDef(Node, NameSpace):
     """
     AST node for block (method, function?) definition.
 
@@ -686,7 +787,7 @@ class NodeFuncDef(Node):
                    'The function body (proppery).')
 
 
-class NodeClassDef(Node):
+class NodeClassDef(Node, NameSpace):
     """
     AST node for class definition.
     Data attributes:
@@ -704,16 +805,19 @@ class NodeClassDef(Node):
         self.superName = superName
 
 
-class NodeModule(Node):
+class NodeModule(Node, NameSpace):
     '''
     Root node of a module (or of the program)
     Data attributes:
         kids      : Definitions, the program's code.
         loc       : location in input string (~0)
         dat       : None
-'''
-    def __init__(self, kids=None, loc=None, dat=None):
+        
+        name      : Name of the module
+    '''
+    def __init__(self, kids=None, loc=None, dat=None, name=None):
         super(NodeModule, self).__init__(kids, loc, dat)
+        self.name = name
 
 
 class DepthFirstIterator(object):
@@ -734,7 +838,7 @@ class DepthFirstIterator(object):
     leaf
     leaf
     """
-    #TODO: Find out if this is reeally depth first iteration.
+    #TODO: Find out if this is really depth first iteration.
 
     def __init__(self, treeRoot, returnDepth=False):
         """
@@ -1454,7 +1558,7 @@ class TestVisitor(unittest.TestCase):
         '''Error: Wrong 1st parameter for @Visitor.when_type.'''
         class FooClass(Visitor): #IGNORE:W0612
             @Visitor.when_type([])
-            def visitList(self, _inObject):
+            def visitList(self, _inObject): 
                 return 'list'
     def raise__decorator_error_3(self):
         '''Error: Wrong 2nd parameter for @Visitor.when_type.'''

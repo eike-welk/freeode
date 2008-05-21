@@ -159,6 +159,9 @@ class ParseStage(object):
         '''The parser for expressions'''
         self.progFileName = None
         '''Name of SIML program file, that will be parsed'''
+        #name, that will be given to the root node of a module
+        #usually part of the filename
+        self.moduleName = None
         self.inputString = None
         '''String that will be parsed'''
         #Create parser objects
@@ -759,7 +762,8 @@ class ParseStage(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeModule()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        #create children - each child is a class
+        nCurr.name = self.moduleName
+        #create children - each child is a Node
         for tok in tokList:
             nCurr.kids.append(tok)
         return nCurr
@@ -1053,7 +1057,7 @@ class ParseStage(object):
         return self._expressionParser.parseString(inString).asList()[0]
 
 
-    def parseModuleStr(self, inProgram, fileName=None):
+    def parseModuleStr(self, inProgram, fileName=None, moduleName=None):
         '''
         Parse a whole program. The program is entered as a string.
         
@@ -1072,6 +1076,8 @@ class ParseStage(object):
         self.inputString = inProgram
         if fileName is not None:
             self.progFileName = fileName
+        if moduleName is not None:
+            self.moduleName = moduleName
         #parse the program
         try:
             astTree = self._parser.parseString(inProgram).asList()[0]
@@ -1083,9 +1089,11 @@ class ParseStage(object):
         return astTree
 
 
-    def parseModuleFile(self, fileName):
+    def parseModuleFile(self, fileName, moduleName=None):
         '''Parse a whole program. The program's file name is supplied.'''
         self.progFileName = os.path.abspath(fileName)
+        #TODO: deduce from file name?
+        self.moduleName = moduleName
         #open and read the file
         try:
             inputFile = open(self.progFileName, 'r')
