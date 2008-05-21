@@ -348,11 +348,11 @@ class ProcessGenerator(object):
         self.processPyName = ''
         '''Python name of the process'''
         self.parameters = {}
-        '''The parameters: dict: {('a','b'):NodeAttrDef]'''
+        '''The parameters: dict: {('a','b'):NodeDataDef]'''
         self.algebraicVariables = {}
-        '''The algebraic variables: dict: {('a','b'):NodeAttrDef]'''
+        '''The algebraic variables: dict: {('a','b'):NodeDataDef]'''
         self.stateVariables = {}
-        '''The state variables: dict: {('a','b'):NodeAttrDef]'''
+        '''The state variables: dict: {('a','b'):NodeDataDef]'''
 
 
     def findAttributes(self):
@@ -364,7 +364,7 @@ class ProcessGenerator(object):
         '''
         #create dicts to find and classify attributes fast
         for attrDef in self.iltProcess:
-            if not isinstance(attrDef, NodeAttrDef):
+            if not isinstance(attrDef, NodeDataDef):
                 continue
             if attrDef.role == RoleParameter:
                 self.parameters[attrDef.attrName] = attrDef
@@ -380,7 +380,7 @@ class ProcessGenerator(object):
         '''
         Create python names for all attributes
         The python names are stored in the data attribute:
-        self.targetName of NodeAttrDef and NodeAttrAccess
+        self.targetName of NodeDataDef and NodeAttrAccess
         '''
         paramPrefix = 'self.p'
         varPrefix = 'v'
@@ -389,7 +389,7 @@ class ProcessGenerator(object):
         #loop over all attribute definitions and create an unique python name
         #for each attribute
         for attrDef in self.iltProcess:
-            if not isinstance(attrDef, NodeAttrDef):
+            if not isinstance(attrDef, NodeDataDef):
                 continue
             #create underline separated name string
             pyName1 = ''
@@ -413,7 +413,7 @@ class ProcessGenerator(object):
         #and put python name there
         timeDerivSuffix = '_dt'
         for node in self.iltProcess.iterDepthFirst():
-            if isinstance(node, NodeAttrDef):
+            if isinstance(node, NodeDataDef):
                 namePy = pyNames[node.attrName]
                 node.targetName = {tuple():namePy}
                 #variables with derivatives have multiple target names

@@ -521,12 +521,12 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionAttrDefinition(self, s, loc, toks): #IGNORE:W0613
+    def _actionDataDef(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for defining parameter, variable or submodel:
             'data foo, bar: baz.boo parameter;
         One such statement can define multiple parmeters; and an individual
-        NodeAttrDef is created for each. They are returned together inside a
+        NodeDataDef is created for each. They are returned together inside a
         list node of type NodeStmtList.
         BNF:
         newAttrList = Group( identifier +
@@ -540,7 +540,7 @@ class ParseStage(object):
                                   + Optional('=' + ES(expression     .setResultsName('value')
                                                       )              .setErrMsgStart('default value: ') )
                                   + stmtEnd)                         .setErrMsgStart('data definition: ')
-                             )                                       .setParseAction(self._actionAttrDefinition)\
+                             )                                       .setParseAction(self._actionDataDef)\
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
@@ -548,7 +548,7 @@ class ParseStage(object):
         toks = toks[0]             #an extra pair of brackets
         #multiple attributes can be defined in a single statement
         #Create a node for each of them and put them into a statement list
-        attrDefList = NodeAttrDefList(loc=self.createTextLocation(loc))
+        attrDefList = NodeDataDefList(loc=self.createTextLocation(loc))
         nameList = toks.attrNameList.asList()
         for name in nameList:
             if name in ParseStage.keywords:
@@ -557,7 +557,7 @@ class ParseStage(object):
                 else:
                     errMsg = 'Keyword can not be used as an identifier: ' + name
                 raise ParseFatalException(str, loc, errMsg)
-            attrDef = NodeAttrDef(loc=self.createTextLocation(loc))
+            attrDef = NodeDataDef(loc=self.createTextLocation(loc))
             attrDef.attrName = DotName(name) #store attribute name
             attrDef.className = DotName(toks.className.asList())  #store class name
             #map role string to role object, and store the role
@@ -648,8 +648,8 @@ class ParseStage(object):
     def _actionFuncArgDef(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for one function argument of a function definition. 
-        A NodeAttrDef is created; therefore this method is quite similar 
-        to _actionAttrDefinition.
+        A NodeDataDef is created; therefore this method is quite similar 
+        to _actionDataDef.
         BNF:
         funcArgDefault = Group(identifier                            .setResultsName('attrName')
                                + Optional(':' + ES(dotIdentifier     .setResultsName('className')
@@ -662,7 +662,7 @@ class ParseStage(object):
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeAttrDef()
+        nCurr = NodeDataDef()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store argument name
         nCurr.attrName = DotName(toks.attrName)
@@ -999,7 +999,7 @@ class ParseStage(object):
         #define parameters, variables, constants and submodels
         #commaSup = Literal(',').suppress()
         #parse: 'foo, bar, baz
-        #Identifiers must not be keywords, check is done in _actionAttrDefinition
+        #Identifiers must not be keywords, check is done in _actionDataDef
         newAttrList = Group(identifier
                             + ZeroOrMore(commaSup + identifier))     .setName('attrNameList')
         #The roles of data (maybe call it storage class?):
@@ -1018,7 +1018,7 @@ class ParseStage(object):
                                   + Optional('=' + ES(expression     .setResultsName('defaultValue')
                                                       )              .setErrMsgStart('default value: ') )
                                   + stmtEnd)                         .setErrMsgStart('data definition: ')
-                             )                                       .setParseAction(self._actionAttrDefinition)\
+                             )                                       .setParseAction(self._actionDataDef)\
 
         #definition of a class (process, model, type?)
         classBodyStmts = pragmaStmt | attributeDef | funcDef | assignment

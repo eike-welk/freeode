@@ -71,7 +71,7 @@ class NameSpace(object):
         
         
     #TODO: other function signature: (newName, newAttr) ????
-    def setAttr(self, newAttr):
+    def setAttr(self, name, newAttr):
         '''
         Add new attribute to the name space.
         
@@ -79,46 +79,39 @@ class NameSpace(object):
         
         Parameters
         ----------
-        newAttr: NodeAttrDef, NodeClassDef, NodeFuncDef
+        name: str
+            Name of the new attribute
+        newAttr: NodeDataDef, NodeClassDef, NodeFuncDef, NodeModule
             The new attribute, which is added to the name space.
         '''
-        #get necessary data from the new attribute
-        #TODO: should the different attribute types 
-        #      (NodeAttrDef, NodeClassDef, NodeFuncDef, NodeModule) be unified?
-        #TODO: is this necessary at all!
-        if isinstance(newAttr, NodeAttrDef):
-            attrName = newAttr.attrName
-        elif isinstance(newAttr, NodeClassDef):
-            attrName = newAttr.className
-        elif isinstance(newAttr, NodeFuncDef):
-            attrName = newAttr.name
-        elif isinstance(newAttr, NodeModule):
-            attrName = newAttr.name
-        else:
-            raise Exception('Attributes must have type: '
-                            'NodeAttrDef, NodeClassDef, NodeFuncDef, '
-                            'NodeModule.')
+        #TODO: make compatible with DotName
+        if isinstance(name, DotName):
+            name = str(name)
+        elif not isinstance(name, str):
+            raise Exception('Argument name must be of type str or dotname! type(name): ' 
+                            + str(type(name)) + ' str(name): ' + str(name))
         #add attribute to name space
-        if attrName in self.attributes:
+        if name in self.attributes:
             #attributes with this name already exist
-            oldAttr = self.attributes[attrName]
+            oldAttr = self.attributes[name]
             if isinstance(oldAttr, list):
                 #There is already a list of attrs, append this attr to it.
                 oldAttr.append(newAttr) 
             else:
                 #until now only 1 attr; create list to hold multiple attrs
-                self.attributes[attrName] = [oldAttr, newAttr]
+                self.attributes[name] = [oldAttr, newAttr]
         else: 
-            self.attributes[attrName] = newAttr #This is a new attribute
+            self.attributes[name] = newAttr #This is a new attribute
+        return
             
             
-    def hasAttr(self, attrName):
+    def hasAttr(self, name):
         '''
         Test if attribute exists in this name space.
         
         Parameter
         ---------
-        attrName: str
+        name: str
             Attribute name to be tested.
             
         Returns
@@ -127,7 +120,48 @@ class NameSpace(object):
             True if a attribute of this name exists in this name space, 
             False otherwise.
         '''
-        return attrName in self.attributes
+        #TODO make compatible with DotName
+        return name in self.attributes
+    
+    def getAttr(self, name, default=None):
+        '''Return attribute with that name from this name space'''
+        #TODO: Error: AttributeError ?
+        #TODO: make compatible with DotName
+        return self.attributes.get(name, default)
+        
+        
+    def findDotName(self, dotName, default=None):
+        '''
+        Find a dot name starting from this name space.
+        
+        Takes scope rules into account, and the lookup is maybe recursive.
+        '''
+        #TODO: Error: AttributeError?
+        #TODO: make compatible with str too
+        firstPart = self.attributes.get(dotName[0], None)
+        if firstPart is not None:
+            #leftmost part of name exists in this name space
+            if len(dotName) == 1:
+                #only one part in dot name, the user wnts this attribute
+                return firstPart 
+            elif isinstance(firstPart, NameSpace):
+                #attribute is namespace, try to resolve rest of name
+                return firstPart.findDotName(dotName[1:], default)
+            else:
+                #TODO: maybe raise error
+                return default
+        else:
+            #leftmost part of name does not exist in this name space
+            if self.enclosingScope is not None:
+                #try to find name in higher level of scope hierarchy:
+                # function --> class --> module 
+                return self.enclosingScope.findDotName(dotName, default)
+            else:
+                return default
+    
+    def setEnclosingScope(self, uplevelScope):
+        '''Change the upper level scope of this namespace.'''
+        self.enclosingScope = uplevelScope
 
 
 
@@ -603,13 +637,11 @@ class NodeImportStmt(Node):
             if fromStmt == False, this list is ignored.
     '''
     def __init__(self, kids=None, loc=None, dat=None, 
-                 moduleName=None, fromStmt=False, attrsToImport=None, 
-                 moduleTree=None):
+                 moduleName=None, fromStmt=False, attrsToImport=None):
         super(NodeImportStmt, self).__init__(kids, loc, dat)
         self.moduleName = moduleName
         self.fromStmt = fromStmt
         self.attrsToImport = [] if attrsToImport is None else attrsToImport
-        self.moduleTree = moduleTree
         
 
 class NodeStmtList(Node):
@@ -621,7 +653,7 @@ class NodeStmtList(Node):
         super(NodeStmtList, self).__init__(kids, loc, dat)
 
 
-class NodeAttrDefList(NodeStmtList):
+class NodeDataDefList(NodeStmtList):
     '''
     AST Node for list of atribute definitions.
     Each child is an attribute definition statement.
@@ -629,7 +661,7 @@ class NodeAttrDefList(NodeStmtList):
     simple algogithm.
     '''
     def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeAttrDefList, self).__init__(kids, loc, dat)
+        super(NodeDataDefList, self).__init__(kids, loc, dat)
 
 
 class AttributeRole(object):
@@ -688,7 +720,7 @@ class RoleAlgebraicVariable(RoleVariable):
     pass
 
 
-class NodeAttrDef(Node, NameSpace):
+class NodeDataDef(Node, NameSpace):
     '''
     AST node for definition of a variable, parameter or submodel.
     Data attributes:
@@ -706,12 +738,12 @@ class NodeAttrDef(Node, NameSpace):
                           Example:
                           {():'v_foo', ('time',):'v_foo_dt'}
                           TODO: replace by accessor functions to create more robust interface
-                          TODO: Derivatives should be separate variables. These variable should 
+                          TODO: Derivatives should be separate variables. These variables should 
                                 be created in the intermediate language logic.
    '''
     def __init__(self, kids=None, loc=None, dat=None,
                         attrName=None, className=None, role=RoleAny, targetName=None):
-        super(NodeAttrDef, self).__init__(kids, loc, dat)
+        super(NodeDataDef, self).__init__(kids, loc, dat)
         self.attrName = attrName
         self.className = className
         self.role = role
@@ -768,7 +800,8 @@ class NodeFuncDef(Node, NameSpace):
         returnType : class name of return value; tuple of strings: ('Real',)
     """
     def __init__(self, kids=None, loc=None, dat=None, name=None, returnType=None):
-        super(NodeFuncDef, self).__init__(kids, loc, dat)
+        Node.__init__(self, kids, loc, dat)
+        NameSpace.__init__(self)
         self.name = name
         if not self.kids:
             self.kids = [NodeStmtList(), NodeStmtList()]
@@ -800,7 +833,8 @@ class NodeClassDef(Node, NameSpace):
                     usually "Process", "Model"
     """
     def __init__(self, kids=None, loc=None, dat=None, className=None, superName=None):
-        super(NodeClassDef, self).__init__(kids, loc, dat)
+        Node.__init__(self, kids, loc, dat)
+        NameSpace.__init__(self)
         self.className = className
         self.superName = superName
 
@@ -816,7 +850,8 @@ class NodeModule(Node, NameSpace):
         name      : Name of the module
     '''
     def __init__(self, kids=None, loc=None, dat=None, name=None):
-        super(NodeModule, self).__init__(kids, loc, dat)
+        Node.__init__(self, kids, loc, dat)
+        NameSpace.__init__(self)
         self.name = name
 
 
@@ -955,6 +990,8 @@ class TreePrinter(object):
             for name1 in attrNames:
                 if name1 == 'kids':
                     continue # the children are printed through the outer loop
+                #TODO:more robustness when other attributes are Nodes too
+                #TODO:more robustness against circular dependencies
                 string1 = name1 + ': ' + str(node.__dict__[name1]) + ' '
                 #Do the line wrapping
                 if len(line) + len(string1) > wrapLineAt:
@@ -1114,16 +1151,70 @@ class TextLocation(object):
 class Visitor(object):
     '''
     Visitor for the AST
-
-    TODO: better documentation with usage
-
+    
+    This class is useful when there are decisions necessary based on the type 
+    of an object. The class is an alternative to big if statements that
+    look like this:
+    
+    if isinstance(node, NodeClassDef):
+        .....
+    elif isinstance(node, NodeFuncDef):
+        ....
+    elif isinstance(node, NodeDataDef):
+        ....
+    .....
+    .....
+    
     - Single dispatch
-    - Switching which memberfuncion is used is done based on type
-      and inheritance.
-    - The algorithm for matching is 'issubclass'
+    - Switching which memberfuncion is used is done based on type and 
+      inheritance
+    - Ambigous situations can be avoided with a priority value. Functions with 
+      high priority values are considered before functions with low priority 
+      values. 
+    - The algorithm for matching is 'issubclass'.
     - Association between type and memberfunction is done with decorators.
 
-    Inspiration came from:
+    USAGE:
+    ------
+        - Define class that inherits from visitor
+        - Use @Visitor.when_type(classObject, priority) to define a handler 
+          function for a speciffic type. 
+        - Use @Visitor.default for the default function, which is called when 
+          no handler functions matches.
+        - In the main loop use self.dispatch(theObject) to call the handler 
+          functions.
+        
+    >>> class NodeVisitor(Visitor):
+    ...     def __init__(self):
+    ...         Visitor.__init__(self)
+    ...     @Visitor.when_type(NodeClassDef)
+    ...     def visitClassDef(self, classDef):
+    ...         print 'seen class def: ', classDef.className    
+    ...     @Visitor.when_type(NodeFuncDef)
+    ...     def visitFuncDef(self, funcDef):
+    ...         print 'seen func def: ', funcDef.name
+    ...     def mainLoop(self, tree):
+    ...         for node in tree:
+    ...             self.dispatch(node)
+    
+    >>> tr=Node()
+    >>> tr.appendChild(NodeClassDef(className='c1'))
+    >>> tr.appendChild(NodeClassDef(className='c2'))
+     >>> tr.appendChild(NodeFuncDef(name='f1'))
+    >>> tr.appendChild(NodeFuncDef(name='f2'))
+    >>> nv = NodeVisitor()
+    >>> nv.mainLoop(tr)    
+    seen class def:  c1
+    seen class def:  c2
+    seen func def:  f1
+    seen func def:  f2
+
+    An example with priorities is part of the unit tests:
+    TestVisitor.test_priority_2
+    
+    CREDITS
+    -------
+    Ideas were taken from:
     Phillip J. Eby's 'simplegeneric' library and his very good online articles:
     http://cheeseshop.python.org/pypi/simplegeneric/0.6
     http://peak.telecommunity.com/DevCenter/VisitorRevisited
@@ -1513,7 +1604,54 @@ class TestVisitor(unittest.TestCase):
         self.assertEqual(visitor.dispatch(derived2Inst), 'Base')
         self.assertEqual(visitor.dispatch(intInst), 'int')
 
+ 
+    def test_priority_2(self):
+        '''Visitor: Test priority 2.'''
+       
+        class NodeVisitor(Visitor):
+            def __init__(self):
+                Visitor.__init__(self)
+                
+            #Handlers for derived classes - specialized 
+            #- should have high priority    
+            @Visitor.when_type(NodeClassDef, 2)
+            def visitClassDef(self, classDef): #IGNORE:W0613
+#                print 'seen class def: ' + classDef.className
+                return ['NodeClassDef']
+            @Visitor.when_type(NodeFuncDef, 2)
+            def visitFuncDef(self, funcDef): #IGNORE:W0613
+#                print 'seen func def: ' + funcDef.name
+                return ['NodeFuncDef']
 
+            #handler for a base class - general 
+            #- should have low priority    
+            @Visitor.when_type(Node, 1)
+            def visitNode(self, node): #IGNORE:W0613
+#                print 'seen Node: ' + str(node.dat)
+                return ['Node']
+                
+            def mainLoop(self, tree):
+                retList = []
+                for node in tree:
+                    retList += self.dispatch(node)
+                return retList
+    
+        #create a syntax tree
+        tr=Node()
+        tr.appendChild(NodeClassDef(className='c1'))
+        tr.appendChild(NodeClassDef(className='c2'))
+        tr.appendChild(Node(dat='n1'))
+        tr.appendChild(NodeFuncDef(name='f1'))
+        tr.appendChild(NodeFuncDef(name='f2'))
+        #visit all nodes
+        nv = NodeVisitor()
+        testList = nv.mainLoop(tr)   
+#        print testList
+     
+        expectedList = ['NodeClassDef', 'NodeClassDef', 'Node', 'NodeFuncDef', 'NodeFuncDef']        
+        self.assertEqual(testList, expectedList)
+        
+        
     def test__built_in_default_func(self):
         '''Visitor: Test the built in default function.'''
         #define visitor class

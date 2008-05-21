@@ -70,13 +70,13 @@ class ILTProcessGenerator(object):
         self.astProcess = NodeClassDef() #dummy for pydev's completion
         '''the original process that is now instantiated'''
         self.astProcessAttributes = {}
-        '''Atributes of the original process. Dict: {('mod1', 'var1'):NodeAttrDef}'''
+        '''Atributes of the original process. Dict: {('mod1', 'var1'):NodeDataDef}'''
         self.process = NodeClassDef() #dummy for pydev's completion
         '''The new process which is currently assembled'''
         self.processAttributes = {}
-        '''Attributes of the new process: {('mod1', 'var1'):NodeAttrDef}'''
+        '''Attributes of the new process: {('mod1', 'var1'):NodeDataDef}'''
         self.stateVariables = {}
-        '''State variables of the new process; {('mod1', 'var1'):NodeAttrDef}'''
+        '''State variables of the new process; {('mod1', 'var1'):NodeDataDef}'''
         self.atomicClasses = set([('Real',),('Distribution',),('DistributionDomain',)])
         '''Classes that have no internal structure'''
 
@@ -107,7 +107,7 @@ class ILTProcessGenerator(object):
          built-in values, like pi.
         '''
         #Put solutionparameters as first attribute into the process
-        solParAttr = NodeAttrDef(loc=0, attrName=DotName('solutionParameters'),
+        solParAttr = NodeDataDef(loc=0, attrName=DotName('solutionParameters'),
                                  className=DotName('solutionParametersClass'))
         self.astProcess.insertChild(0, solParAttr)
 
@@ -122,11 +122,11 @@ class ILTProcessGenerator(object):
 
         Arguments:
             astClass   : class definition from the AST (NodeClassDef),
-                         or NodeAttrDefMulti, NodeStmtList
+                         or NodeDataDefMulti, NodeStmtList
             namePrefix : tuple of strings. Prefix for the dotted name of the
                          class' attributes.
         Output:
-            self.astProcessAttributes : dict: {('mod1', 'var1'):NodeAttrDef}
+            self.astProcessAttributes : dict: {('mod1', 'var1'):NodeDataDef}
         '''
         #check recursion depth
         maxRecursionDepth = 100
@@ -142,7 +142,7 @@ class ILTProcessGenerator(object):
                                              recursionDepth+1)
                 continue #do not create an attribute for the list Node
             #definition of data attribute or submodel: get name, store attribute
-            elif isinstance(attrDef, NodeAttrDef):
+            elif isinstance(attrDef, NodeDataDef):
                 attrName = attrDef.attrName
             #definition of method (function): get name, store attribute
             elif isinstance(attrDef, NodeFuncDef):
@@ -161,7 +161,7 @@ class ILTProcessGenerator(object):
             self.astProcessAttributes[longAttrName] = attrDef
 
             #recurse into submodel, if definition of submodel
-            if isinstance(attrDef, NodeAttrDef) and \
+            if isinstance(attrDef, NodeDataDef) and \
               (not attrDef.className in self.atomicClasses):
                 #User visible error if class does not exist
                 if not attrDef.className in self.astClasses:
@@ -182,7 +182,7 @@ class ILTProcessGenerator(object):
         #Iterate over the (variable, parameter, submodel, function) definitions
         for longName, defStmt in self.astProcessAttributes.iteritems():
             #we only want atomic data! No user defined classes, no methods
-            if (not isinstance(defStmt, NodeAttrDef)) or \
+            if (not isinstance(defStmt, NodeDataDef)) or \
                (not defStmt.className in self.atomicClasses):
                 continue
             newAttr = defStmt.copy() #copy definition,
@@ -273,7 +273,7 @@ class ILTProcessGenerator(object):
             dynamicMethod : method definition that is searched (always the
                             dynamic/run method)
         output:
-            self.stateVariables    : dict: {('a','b'):NodeAttrDef(...)}
+            self.stateVariables    : dict: {('a','b'):NodeDataDef(...)}
             definition of variable : role = RoleStateVariable if variable is
                                      state variable;
                                      role = RoleAlgebraicVariable otherwise.
@@ -305,7 +305,7 @@ class ILTProcessGenerator(object):
 
     def findParameters(self):
         '''Search for parameters (in the new procress) and return a dict'''
-        #attrDef = NodeAttrDef()
+        #attrDef = NodeDataDef()
         paramDict = {}
         #iterate over all nodes in the syntax tree and search for variable accesses
         for name, attrDef in self.processAttributes.iteritems():
@@ -428,7 +428,7 @@ class ILTProcessGenerator(object):
         #delete replaced parameters
         for i in range(len(self.process)-1, -1, -1): #iterate backwards
             defPar = self.process[i]
-            if not isinstance(defPar, NodeAttrDef):
+            if not isinstance(defPar, NodeDataDef):
                 continue
             parName = defPar.attrName
             if not parName in paramReplaceDict:
@@ -593,11 +593,11 @@ class ILTGenerator(object):
         solPars = NodeClassDef(loc=0,
                                className=DotName('solutionParametersClass'),
                                superName=DotName('Model'))
-        solPars.appendChild(NodeAttrDef(loc=0,
+        solPars.appendChild(NodeDataDef(loc=0,
                                         attrName=DotName('simulationTime'),
                                         className=DotName('Real'),
                                         role=RoleParameter))
-        solPars.appendChild(NodeAttrDef(loc=0,
+        solPars.appendChild(NodeDataDef(loc=0,
                                         attrName=DotName('reportingInterval'),
                                         className=DotName('Real'),
                                         role=RoleParameter))
@@ -634,16 +634,17 @@ class ILTGenerator(object):
 
 
 #--------------- new intermediate tree creation ----------------------------------
-class ProgramTreeCreator(object):
+class ProgramTreeCreator(Visitor):
     '''Create the AST for the whole program,'''
     
     def __init__(self):
+        Visitor.__init__(self)
         #cache for imported modules
         self.moduleCache = {}
         #the standard library (treated specially)
         self.stdLib = None
         stdLib = simlstdlib.createParseTree()
-        self.stdLib = self.importModuleTree(stdLib)
+        self.stdLib = self.interpretModuleTree(stdLib)
 
         
     @staticmethod
@@ -667,7 +668,7 @@ class ProgramTreeCreator(object):
         i = 0
         while i < len(tree):
             node = tree[i]
-            if isinstance(node, NodeAttrDefList):
+            if isinstance(node, NodeDataDefList):
                 #this is a multiple definition
                 #copy data statements, delete list, correct index
                 tree.insertChildren(i+1, node)
@@ -711,15 +712,75 @@ class ProgramTreeCreator(object):
             defaultRole = RoleLocalVariable
         else:
             raise Exception('Unexpected node type: ' + str(type(tree)))
-        #go throught children, set role or recurse
+        #go through children, set role or recurse
         for child in tree:
-            if isinstance(child, NodeAttrDef) and child.role is None:
+            if isinstance(child, NodeDataDef) and child.role is None:
                 child.role = defaultRole
             elif isinstance(child, (NodeModule, NodeClassDef, NodeFuncDef)):
                 ProgramTreeCreator.setDataRoleDefault(child)
                 
         
-    def importModuleTree(self, parseTree):
+    @Visitor.when_type(NodeClassDef)
+    def visitClassDef(self, classDef, namespace):
+        '''Interpret class definition statement.'''
+        className = classDef.className
+        superName = classDef.superName
+        print 'visiting class def: ', className
+        #Error: class names must be unique
+        if namespace.hasAttr(className):
+            raise UserException('Redefinition of class: ' + str(className), 
+                                classDef.loc)
+        #Error: parent class must exist
+        if (superName is not None) and \
+           (namespace.findDotName(superName, None) is None):
+            raise UserException('Parent class does not exist: ' + 
+                                str(superName), classDef.loc)
+        #add the class definition to the namespace
+        namespace.setAttr(className, classDef)
+        #tell class that this module is its enclosing scope
+        classDef.setEnclosingScope(namespace)
+        #TODO: Add method names to class namespace
+        return 
+    
+        
+    @Visitor.when_type(NodeFuncDef)
+    def visitFuncDef(self, funcDef, namespace):
+        '''Interpret function definition statement.'''
+        print 'seen func def: ', funcDef.name
+        
+    @Visitor.when_type(NodeDataDef)
+    def visitDataDef(self, dataDef, namespace):
+        '''Interpret data definition statement.'''
+        print 'seen data def: ', dataDef.attrName
+        
+    @Visitor.when_type(NodeAssignment)
+    def visitAssignment(self, assignment, namespace):
+        '''Interpret assignment statement.'''
+        print 'seen assignment: ', assignment.lhs
+        
+    @Visitor.when_type(NodeImportStmt)
+    def visitImportStmt(self, importStmt, namespace):
+        '''Interpret import statement.'''
+        moduleName = importStmt.moduleName
+        moduleTree = importStmt.kids[0]
+        print 'visiting import: ', moduleName
+        #if statent necessary for simlstdlib
+        if moduleTree is None:
+            #read module from file
+            modNameStr = str(moduleName)
+            moduleTree = self.importModuleFile(modNameStr + '.siml', modNameStr)
+        #put the imported attributes into our namespace
+        if importStmt.fromStmt == True:
+            #behave like Python from statement
+            namespace.attributes.update(moduleTree.attributes)
+        else:
+            #behave like Python import statement
+            if namespace.hasattr(moduleName):
+                raise UserException('Duplicate attribute definition: ' + 
+                                    str(moduleName), importStmt.loc)
+            namespace.setAttr(moduleName, moduleTree)
+        
+    def interpretModuleTree(self, moduleTree):
         '''
         Import a module given as a parse tree.
         
@@ -730,7 +791,7 @@ class ProgramTreeCreator(object):
         
         Parameters
         ----------
-        parseTree : ast.Node
+        moduleTree : ast.Node
             The module's parse tree, the output of 
             simlparser.ParseStage.parseModuleStr(...).
     
@@ -740,26 +801,32 @@ class ProgramTreeCreator(object):
             AST of a module. Will be assembled into a complete program tree.
         '''
         #flatten data a,b,c: Real; into tree separate definitions.
-        self.flattenMultiDataDefs(parseTree)
+        self.flattenMultiDataDefs(moduleTree)
         #Give default data roles to definitions where role==None
-        self.setDataRoleDefault(parseTree)
+        #TODO: Do this in the interpreter?
+        self.setDataRoleDefault(moduleTree)
         #If the standard library exists prepend it to the module.
         # This way the standard library can be processed by this method too.
         if self.stdLib is not None:
-            stdImportStmt = NodeImportStmt(moduleName='simlstdlib', fromStmt=True, 
+            importStmt = NodeImportStmt(moduleName='simlstdlib', fromStmt=True, 
                                            attrsToImport=["*"], kids=[self.stdLib])
-            parseTree.insertChild(0, stdImportStmt)
+            moduleTree.insertChild(0, importStmt)
         #TODO: Build symbol tables
         #TODO: Create inheritance pointers?
         #TODO: Create pointers to class definitions?
-        return parseTree
+        #interpret module nodes
+        for node in moduleTree:
+            self.dispatch(node, moduleTree)
+            
+        return moduleTree
+        
         
         
     def importModuleFile(self, fileName, moduleName=None):
         '''
         Import a module (program file).
         
-        Semantic analysis is performed by self.importModuleTree(...).
+        Semantic analysis is performed by self.interpretModuleTree(...).
         Modules are cached, and their AST is constucted only once, 
         even when they are imported multiple times.
         The function is recursively executed for each import statement.
@@ -790,7 +857,7 @@ class ProgramTreeCreator(object):
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(inputFileContents, fileName, moduleName) 
         #do semantic analysis and decorate tree
-        ast = self.importModuleTree(parseTree)
+        ast = self.interpretModuleTree(parseTree)
         #put tree in cache
         self.moduleCache[absFileName] = ast
         return ast
@@ -815,7 +882,7 @@ class ProgramTreeCreator(object):
         '''
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(moduleStr, fileName, moduleName) 
-        return self.importModuleTree(parseTree)
+        return self.interpretModuleTree(parseTree)
         
 
 def doTests():
