@@ -683,7 +683,6 @@ class ProgramTreeCreator(Visitor):
             i += 1
 
 
-    #TODO: put into interpreter.
     @staticmethod
     def setDataRoleDefault(tree):
         '''
@@ -703,6 +702,7 @@ class ProgramTreeCreator(Visitor):
             A piece of a parse tree. It must be a program or a class definiton
             to be useful. The argument is modified.
         '''
+        #TODO: put functionality into interpreter.
         #determine the default role for the current subtree
         if isinstance(tree, NodeModule):
             defaultRole = RoleConstant
@@ -746,17 +746,23 @@ class ProgramTreeCreator(Visitor):
     @Visitor.when_type(NodeFuncDef)
     def visitFuncDef(self, funcDef, namespace):
         '''Interpret function definition statement.'''
-        print 'seen func def: ', funcDef.name
-        
+        print 'interpreting func def: ', funcDef.name
+        #TODO: Functions get a function resolution object, (a list at first)
+
     @Visitor.when_type(NodeDataDef)
     def visitDataDef(self, dataDef, namespace):
         '''Interpret data definition statement.'''
-        print 'seen data def: ', dataDef.attrName
+        print 'interpreting data def: ', dataDef.attrName
+        #TODO: Create instance object
+        #TODO: set default data type
         
     @Visitor.when_type(NodeAssignment)
     def visitAssignment(self, assignment, namespace):
         '''Interpret assignment statement.'''
-        print 'seen assignment: ', assignment.lhs
+        print 'interpreting assignment: ', assignment.lhs
+        #TODO: compute the constant expression, and replace the contents of the instance object?
+        #TODO: constant computations are collected and put into a special method: __initConstants__?
+        #TODO: test type, constness and unit compatibility of operands.
         
     @Visitor.when_type(NodeImportStmt)
     def visitImportStmt(self, importStmt, namespace):
@@ -767,14 +773,20 @@ class ProgramTreeCreator(Visitor):
         #if statent necessary for simlstdlib
         if moduleTree is None:
             #read module from file
+            #TODO: implement packages
+            #TODO: implement list of directories for searching files
             modNameStr = str(moduleName)
             moduleTree = self.importModuleFile(modNameStr + '.siml', modNameStr)
         #put the imported attributes into our namespace
         if importStmt.fromStmt == True:
             #behave like Python from statement
-            namespace.attributes.update(moduleTree.attributes)
+            #TODO implement selecting individual attributes from the package
+            #TODO implement 'as' keyword
+            #currently from moduleTree import * behavior
+            namespace.nameSpaceAttrs.update(moduleTree.nameSpaceAttrs)
         else:
             #behave like Python import statement
+            #TODO implement 'as' keyword
             if namespace.hasattr(moduleName):
                 raise UserException('Duplicate attribute definition: ' + 
                                     str(moduleName), importStmt.loc)
@@ -958,15 +970,15 @@ class Test(Model):
     #flagTestILTGenerator = True
     if flagTestILTGenerator:
         parser = simlparser.ParseStage()
-        iltGen = ILTGenerator()
+        #iltGen = ILTGenerator()
 
-        astTree = parser.parseModuleStr(testProg1)
+        astTree = parser.parseModuleStr(testProg2)
         print 'AST tree:'
         print astTree
 
-        iltTree = iltGen.createIntermediateTree(astTree)
-        print 'ILT tree:'
-        print iltTree
+#        iltTree = iltGen.createIntermediateTree(astTree)
+#        print 'ILT tree:'
+#        print iltTree
 
     #test program 2 ------------------------------------------------------------------
     flagTestProg2 = False

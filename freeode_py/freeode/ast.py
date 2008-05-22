@@ -64,13 +64,12 @@ class NameSpace(object):
     Namespace for modules, classes and functions. 
     '''
     def __init__(self):
-        #the attributes of the namespace
-        self.attributes = {}
-        #the next upper level scope
+        #the attributes of this name space
+        self.nameSpaceAttrs = {}
+        #the next upper level name space
         self.enclosingScope = None
         
         
-    #TODO: other function signature: (newName, newAttr) ????
     def setAttr(self, name, newAttr):
         '''
         Add new attribute to the name space.
@@ -79,29 +78,35 @@ class NameSpace(object):
         
         Parameters
         ----------
-        name: str
+        name: str, DotName
             Name of the new attribute
         newAttr: NodeDataDef, NodeClassDef, NodeFuncDef, NodeModule
             The new attribute, which is added to the name space.
         '''
-        #TODO: make compatible with DotName
+        #Argument type checking and compatibility with DotName
         if isinstance(name, DotName):
+            if len(name) > 1:
+                raise Exception('DotName must have only one component!' 
+                                + ' str(name): ' + str(name))
             name = str(name)
         elif not isinstance(name, str):
-            raise Exception('Argument name must be of type str or dotname! type(name): ' 
+            raise Exception('Argument name must be of type str or DotName! type(name): ' 
                             + str(type(name)) + ' str(name): ' + str(name))
         #add attribute to name space
-        if name in self.attributes:
-            #attributes with this name already exist
-            oldAttr = self.attributes[name]
+        #TODO: all attributes have to be unique. Throw exception when duplicate.
+        #TODO: raise DuplicateAttributeError, that carries the name of the duplicate attribute
+        #TODO: Functions get a function resolution object, (a list at first)
+        if name in self.nameSpaceAttrs:
+            #nameSpaceAttrs with this name already exist
+            oldAttr = self.nameSpaceAttrs[name]
             if isinstance(oldAttr, list):
                 #There is already a list of attrs, append this attr to it.
                 oldAttr.append(newAttr) 
             else:
                 #until now only 1 attr; create list to hold multiple attrs
-                self.attributes[name] = [oldAttr, newAttr]
+                self.nameSpaceAttrs[name] = [oldAttr, newAttr]
         else: 
-            self.attributes[name] = newAttr #This is a new attribute
+            self.nameSpaceAttrs[name] = newAttr #This is a new attribute
         return
             
             
@@ -111,7 +116,7 @@ class NameSpace(object):
         
         Parameter
         ---------
-        name: str
+        name: str, (DotName with one element)
             Attribute name to be tested.
             
         Returns
@@ -120,14 +125,12 @@ class NameSpace(object):
             True if a attribute of this name exists in this name space, 
             False otherwise.
         '''
-        #TODO make compatible with DotName
-        return name in self.attributes
+        return str(name) in self.nameSpaceAttrs
     
     def getAttr(self, name, default=None):
         '''Return attribute with that name from this name space'''
         #TODO: Error: AttributeError ?
-        #TODO: make compatible with DotName
-        return self.attributes.get(name, default)
+        return self.nameSpaceAttrs.get(str(name), default)
         
         
     def findDotName(self, dotName, default=None):
@@ -138,7 +141,7 @@ class NameSpace(object):
         '''
         #TODO: Error: AttributeError?
         #TODO: make compatible with str too
-        firstPart = self.attributes.get(dotName[0], None)
+        firstPart = self.nameSpaceAttrs.get(dotName[0], None)
         if firstPart is not None:
             #leftmost part of name exists in this name space
             if len(dotName) == 1:
@@ -163,6 +166,9 @@ class NameSpace(object):
         '''Change the upper level scope of this namespace.'''
         self.enclosingScope = uplevelScope
 
+    #TODO: update(inNameSpace), that raises exceptions
+    #TODO: a set attribute function that raises exceptions depending on attribute type:
+    #      classes and instances must be unique functions don't
 
 
 class Node(object):
@@ -237,7 +243,7 @@ class Node(object):
             datStr =''
         else:
             datStr = ', ' + repr(self.dat)
-        #treat all other attributes as named attributes
+        #treat all other nameSpaceAttrs as named nameSpaceAttrs
         standardAttributes = set(['kids', 'loc', 'dat'])
         extraAttrStr=''
         for key, attr in self.__dict__.iteritems():
@@ -252,7 +258,7 @@ class Node(object):
 
     def __str__(self):
         '''Create pretty printed string represntation.'''
-        return TreePrinter(self).toStringTree()
+        return TreePrinter(self).makeTreeStr()
 
     def __iter__(self):
         '''let for loop iterate over children'''
@@ -378,7 +384,7 @@ class NodeNum(Node):
     '''
     Represent a real number in the AST.
     Example: 123.5
-    Data attributes:
+    Data nameSpaceAttrs:
         kids    : []
         loc     : location in input string
         dat     : the number as a string
@@ -391,7 +397,7 @@ class NodeString(Node):
     '''
     Represent a string in the AST.
     Example: 'hello world'
-    Data attributes:
+    Data nameSpaceAttrs:
         kids    : []
         loc     : location in input string
         dat     : the string
@@ -404,7 +410,7 @@ class NodeParentheses(Node):
     '''
     Represent a pair of parentheses that enclose an expression, in the AST.
     Example: ( ... )
-    Data attributes:
+    Data nameSpaceAttrs:
         kids[0] : the mathematical expression between the parentheses
         loc     : location in input string
         dat     : None
@@ -416,7 +422,7 @@ class NodeParentheses(Node):
 class NodeOpInfix2(Node):
     '''
     AST node for a (binary) infix operator: + - * / ^ and or
-    Data attributes:
+    Data nameSpaceAttrs:
         kids    : [LHS, RHS] both sides of the operator
         loc     : location in input string
         dat     : None
@@ -463,7 +469,7 @@ class NodeOpPrefix1(Node):
 class NodeIfStmt(Node):
     '''
     AST Node for an if ... the ... else statement
-    Data attributes:
+    Data nameSpaceAttrs:
         kids    : [<condition>, <then statements>, <else statements>]
         loc     : location in input string
         dat     : None
@@ -517,7 +523,7 @@ class NodeFuncExecute(Node):
     This will be usually done by inserting the code of the function's body
     into the top level function.
     Similar to an inline function in C++.
-    Data attributes:
+    Data nameSpaceAttrs:
         kids        : []
         loc         : location in input string
         dat         : None
@@ -533,7 +539,7 @@ class NodeFuncExecute(Node):
 class NodePrintStmt(Node):
     '''
     AST Node for printing something to stdout.
-    Data attributes:
+    Data nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -549,7 +555,7 @@ class NodePrintStmt(Node):
 class NodeGraphStmt(Node):
     '''
     AST Node for creating a graph.
-    Data attributes:
+    Data nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -561,7 +567,7 @@ class NodeGraphStmt(Node):
 class NodeStoreStmt(Node):
     '''
     AST Node for storing variables
-    Data attributes:
+    Data nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -573,7 +579,7 @@ class NodeStoreStmt(Node):
 class NodeReturnStmt(Node):
     '''
     AST Node for the return statement
-    Data attributes:
+    Data nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : The return value (expression)
@@ -585,7 +591,7 @@ class NodeReturnStmt(Node):
 class NodePragmaStmt(Node):
     '''
     AST Node for the pragma statement
-    Data attributes:
+    Data nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -601,7 +607,7 @@ class NodePragmaStmt(Node):
 class NodeForeignCodeStmt(Node):
     '''
     AST Node for the foreign_code statement
-    Data attributes:
+    Data nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -620,7 +626,7 @@ class NodeForeignCodeStmt(Node):
 class NodeImportStmt(Node):
     '''
     AST Node for the pragma statement
-    Data attributes:
+    Data nameSpaceAttrs:
         kids        : The modulse's AST
         loc         : location in input string
         dat         : None
@@ -628,12 +634,12 @@ class NodeImportStmt(Node):
         moduleName : str
             Name of the module that should be imported
         fromStmt : bool
-            Put the module's attributes directly into the namespace of the 
+            Put the module's nameSpaceAttrs directly into the namespace of the 
             module that executes this statement. Behave as Python's "from" 
             statement.
         attrsToImport : list of string
-            List of attributes that should be imported. Special symbol "*" 
-            means all attributes in the module. 
+            List of nameSpaceAttrs that should be imported. Special symbol "*" 
+            means all nameSpaceAttrs in the module. 
             if fromStmt == False, this list is ignored.
     '''
     def __init__(self, kids=None, loc=None, dat=None, 
@@ -720,10 +726,10 @@ class RoleAlgebraicVariable(RoleVariable):
     pass
 
 
-class NodeDataDef(Node, NameSpace):
+class NodeDataDef(Node):
     '''
     AST node for definition of a variable, parameter or submodel.
-    Data attributes:
+    Data nameSpaceAttrs:
         kids        : default value (expression), or []
         loc         : location in input string
         dat         : None
@@ -763,7 +769,7 @@ class NodeDataDef(Node, NameSpace):
 class NodeAttrAccess(Node):
     '''
     AST node for access to a variable or parameter.
-    Data attributes:
+    Data nameSpaceAttrs:
         kids    :  ? slice object if attribute is an array?
         loc     : location in input string
         dat     : None
@@ -786,12 +792,12 @@ class NodeFuncDef(Node, NameSpace):
     """
     AST node for block (method, function?) definition.
 
-    A block can be seen as a method that only modifies the class' attributes.
+    A block can be seen as a method that only modifies the class' nameSpaceAttrs.
     It has neither arguments nor return values. It is treated as an C++ inline
     function or template.
 
     The block's childern are the statements.
-    Data attributes:
+    Data nameSpaceAttrs:
         kids : [<argument list>, <function body>]
         loc  : location in input string
         dat  : None
@@ -823,7 +829,7 @@ class NodeFuncDef(Node, NameSpace):
 class NodeClassDef(Node, NameSpace):
     """
     AST node for class definition.
-    Data attributes:
+    Data nameSpaceAttrs:
         kids      : The statements, the block's code.
         loc       : location in input string
         dat       : None
@@ -842,7 +848,7 @@ class NodeClassDef(Node, NameSpace):
 class NodeModule(Node, NameSpace):
     '''
     Root node of a module (or of the program)
-    Data attributes:
+    Data nameSpaceAttrs:
         kids      : Definitions, the program's code.
         loc       : location in input string (~0)
         dat       : None
@@ -944,67 +950,97 @@ class TreePrinter(object):
 
     indentWidth = 4
     '''Number of chars used for indentation. Must be >= 1'''
-    wrapLineAt = 100
+    wrapLineAt = 150
     '''Length of line. Longer lines will be wrapped'''
     showID = False
     '''Also print the node's id()'''
 
-    def __init__(self, root):
+    def __init__(self, root=None):
         '''
         Argument:
-            root : the root of the tree, which will be printed
+        root : Node
+            the root of the tree, which will be printed
         '''
+        #tree's root node.
         self.root = root
-        '''tree's root node.'''
+        #buffer for the textual reprentation
+        self.treeStr = ''
+        #partially completed line for line wrapping
+        self.line = ''
 
+    #TODO: def setIndentStr(self, indentStr): ??
+    #          newIndentLevel(self, nLevel) ???
+    def putStr(self, indentStr, contentStr):
+        '''Put string into buffer and apply line wrapping'''
+        #is there enough room to write?
+        if len(indentStr) + 20 > self.wrapLineAt:
+            wrapLineAt = len(indentStr)+60 #no: extend right margin
+        else:
+            wrapLineAt = self.wrapLineAt #yes: normal wrap
+        #empty line has special meaning: new node is started
+        if self.line == '':
+            self.line = indentStr
+        #Do the line wrapping
+        if len(self.line) + len(contentStr) > wrapLineAt:
+            #print self.line
+            self.treeStr += self.line + '\n'
+            self.line = indentStr + ': '
+        #add content to buffer
+        self.line += contentStr
 
-    def printTree(self):
-        print self.toStringTree()
-
-
-    def toStringTree(self):
-        treeStr = '' #buffer for whole tree
+    def endLine(self):
+        '''End a partially completed line unconditionally'''
+        self.treeStr += self.line + '\n'
+        self.line = ''
+        
+    #TODO: implement makeSimpleStr(...) function that prints Node subclasses in one line
+    def makeTreeStr(self, root=None):
+        ''''Create string representation of Node tree.'''
+        self.treeStr = '' 
+        self.line = ''
+        if root is not None:
+            self.root = root
+        #string to symbolize one indent level
         indentStepStr = '|' + ' '*int(self.indentWidth - 1)
         for node, depth in self.root.iterDepthFirst(True):
-            #set up indentation and wrapping
-            indentStr = indentStepStr * depth #string for indentation
-            if len(indentStr) + 20 > self.wrapLineAt:#enough room to write?
-                wrapLineAt = len(indentStr)+60 #no: extend right margin
-            else:
-                wrapLineAt = self.wrapLineAt #yes: normal wrap
-
+            #string for indentation
+            indentStr = indentStepStr * depth 
             #First print class name and if desired node's ID
-            line = indentStr + node.__class__.__name__ + ':: ' #buffer one line
+            self.putStr(indentStr, node.__class__.__name__ + ':: ') 
             if self.showID:
-                line += ' ID: ' + str(id(node))
+                self.putStr(indentStr, ' ID: ' + str(id(node)))
             #special case for foreign objects
             if not isinstance(node, Node):
-                treeStr += line + str(node) + '\n'
-                print treeStr
+                self.putStr(indentStr, str(node)); self.endLine()
+                print self.treeStr
                 raise Exception('All children must inherit from ast.Node!')
-                #continue
-            #the node's attributes are printed in sorted order
-            attrNames = node.__dict__.keys()
+                #TODO enhance the iterator to work with none Node classes as leafs.
+            #special handling for some important attributes
+            self.putStr(indentStr, 'loc: ' + str(node.loc) + ' ')
+            if isinstance(node, NameSpace):
+                #print the name space speciffic attributes in short form
+                #they are causing infinite recursion otherwise
+                self.putStr(indentStr, 'nameSpaceAttrs.keys(): ' + 
+                            str(node.nameSpaceAttrs.keys()) + ' ')
+                #TODO: how do I characterize enclosingNamespace?
+                self.putStr(indentStr, 'enclosingScope: ????? ')
+            #the node's nameSpaceAttrs are printed in sorted order, 
+            #but the special attributes are excluded
+            specialAttrs = set(['loc', 'kids', 'nameSpaceAttrs', 'enclosingScope'])
+            attrNameSet = set(node.__dict__.keys())
+            attrNames= list(attrNameSet - specialAttrs)
             attrNames.sort()
-            #get attributes out node.__dict__; print them (except kids)
+            #get nameSpaceAttrs out node.__dict__
             for name1 in attrNames:
-                if name1 == 'kids':
-                    continue # the children are printed through the outer loop
-                #TODO:more robustness when other attributes are Nodes too
+                #TODO:more robustness when other nameSpaceAttrs are Nodes too
                 #TODO:more robustness against circular dependencies
-                string1 = name1 + ': ' + str(node.__dict__[name1]) + ' '
-                #Do the line wrapping
-                if len(line) + len(string1) > wrapLineAt:
-                    treeStr += line + '\n'
-                    line = indentStr + ': '
-                line += string1
-            treeStr += line + '\n'
-
-        return treeStr
+                self.putStr(indentStr, name1 + ': ' + str(node.__dict__[name1]) + ' ')
+            #put newline after complete node 
+            self.endLine()
+        return self.treeStr
 
 
 
-#TODO: Add indexing operations
 class DotName(tuple):
     '''
     Class that represents a dotted name ('pr1.m1.a').
@@ -1054,6 +1090,7 @@ class DotName(tuple):
     def __radd__(self, other):
         '''Concatenate with tuple or DotName. Return: other + self.'''
         return DotName(tuple.__add__(other, self))
+    #TODO: add indexing operations. Currently dn[1:] returns a tuple.
 
 
 
@@ -1288,7 +1325,7 @@ class Visitor(object):
         '''
         Create the rule table.
         Look at all methods of the class, if they have
-        _dispatchIfType and _dispatchPriority data attributes
+        _dispatchIfType and _dispatchPriority data nameSpaceAttrs
         put them into the rule table.
 
         - The rule table is sorted according to _dispatchPriority.
@@ -1298,7 +1335,7 @@ class Visitor(object):
         ruleTable = []
         defaultFunc = Visitor._simpleDefaultFunc #IGNORE:W0212
         #TODO: look into methods of parent classes too
-        #loop over the class' attributes and put them into the table if appropriate
+        #loop over the class' nameSpaceAttrs and put them into the table if appropriate
         for func in cls.__dict__.itervalues():
             if not isinstance(func, FunctionType):
                 continue
@@ -1415,7 +1452,7 @@ class TestAST(unittest.TestCase):
 
     def test__str__(self):
         #test printing and line wraping (it must not crash)
-        #create additional node with many big attributes
+        #create additional node with many big nameSpaceAttrs
         nBig = Node([])
         nBig.test1 = 'qworieoqwiruuqrw'
         nBig.test2 = 'qworieoqwiruuqrw'
