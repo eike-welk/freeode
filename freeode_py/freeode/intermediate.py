@@ -95,7 +95,7 @@ class ILTProcessGenerator(object):
                 raise UserException('Redefinition of class: %s'
                                     % str(classDef.className),
                                     classDef.loc)
-            self.astClasses[classDef.className] = classDef
+            self.astClasses[classDef.className] = classDef 
 
 
     def addBuiltInParameters(self):
@@ -143,7 +143,7 @@ class ILTProcessGenerator(object):
                 continue #do not create an attribute for the list Node
             #definition of data attribute or submodel: get name, store attribute
             elif isinstance(attrDef, NodeDataDef):
-                attrName = attrDef.attrName
+                attrName = attrDef.name
             #definition of method (function): get name, store attribute
             elif isinstance(attrDef, NodeFuncDef):
                 attrName = attrDef.name
@@ -186,7 +186,7 @@ class ILTProcessGenerator(object):
                (not defStmt.className in self.atomicClasses):
                 continue
             newAttr = defStmt.copy() #copy definition,
-            newAttr.attrName = longName #exchange name with long name (a.b.c)
+            newAttr.name = longName #exchange name with long name (a.b.c)
             self.process.appendChild(newAttr) #put new attribute into ILT process
             self.processAttributes[longName] = newAttr #and into quick access dict
         return
@@ -241,8 +241,8 @@ class ILTProcessGenerator(object):
                 for var in newStmt.iterDepthFirst():
                     if not isinstance(var, NodeAttrAccess):
                         continue
-                    newAttrName = namePrefix + var.attrName
-                    var.attrName = newAttrName
+                    newAttrName = namePrefix + var.name
+                    var.name = newAttrName
                 #put new statement into new block
                 newBlock.appendChild(newStmt)
 
@@ -256,9 +256,9 @@ class ILTProcessGenerator(object):
         for node in tree.iterDepthFirst():
             if not isinstance(node, NodeAttrAccess):
                 continue
-            if not (node.attrName) in self.processAttributes:
+            if not (node.name) in self.processAttributes:
                 raise UserException('Undefined reference: ' +
-                                    str(node.attrName), node.loc)
+                                    str(node.name), node.loc)
 
 
 
@@ -292,14 +292,14 @@ class ILTProcessGenerator(object):
                 continue
             #OK, there is a '$' operator; the thing is a state variable
             #get definition of variable
-            stateVarDef = self.processAttributes[node.attrName]
+            stateVarDef = self.processAttributes[node.name]
             #Check conceptual constraint: no $parameter allowed
             if stateVarDef.role == RoleParameter:
                 raise UserException('Parameters can not be state variables: ' +
-                              str(node.attrName), node.loc)
+                              str(node.name), node.loc)
             #remember: this is a state variable; in definition and in dict
             stateVarDef.role = RoleStateVariable
-            self.stateVariables[node.attrName] = stateVarDef
+            self.stateVariables[node.name] = stateVarDef
 
 
 
@@ -379,10 +379,10 @@ class ILTProcessGenerator(object):
                 continue
             #those assignments must assign values to parameters
             accPar = assignStmt.lhs
-            if not accPar.attrName in parameters:
+            if not accPar.name in parameters:
                 continue
             #OK, this parameter is initialized, remember it
-            initedParams.add(accPar.attrName)
+            initedParams.add(accPar.name)
         notInitedParams = set(parameters.keys()) - initedParams
 
         #for each initialized parametr: search for not initialized Parameter
@@ -411,7 +411,7 @@ class ILTProcessGenerator(object):
             errList = [(msg, loc)]
             #mention all uninited params
             for nPar in notInitedParams:
-                msg = 'Uninitialized prameter: %s' % str(parameters[nPar].attrName)
+                msg = 'Uninitialized prameter: %s' % str(parameters[nPar].name)
                 loc = parameters[nPar].loc
                 errList.append((msg, loc))
             raise MultiErrorException(errList)
@@ -420,17 +420,17 @@ class ILTProcessGenerator(object):
         for accPar in self.process.iterDepthFirst():
             if not isinstance(accPar, NodeAttrAccess):
                 continue
-            oldParamName = accPar.attrName
+            oldParamName = accPar.name
             if not oldParamName in paramReplaceDict:
                 continue
-            accPar.attrName = paramReplaceDict[oldParamName]
+            accPar.name = paramReplaceDict[oldParamName]
 
         #delete replaced parameters
         for i in range(len(self.process)-1, -1, -1): #iterate backwards
             defPar = self.process[i]
             if not isinstance(defPar, NodeDataDef):
                 continue
-            parName = defPar.attrName
+            parName = defPar.name
             if not parName in paramReplaceDict:
                 continue
             del self.process[i]
@@ -444,17 +444,17 @@ class ILTProcessGenerator(object):
             if not isinstance(node, NodeAssignment):
                 continue
             lVal = node.lhs #must be NodeValAccess
-            lValDef = self.processAttributes[lVal.attrName]
+            lValDef = self.processAttributes[lVal.name]
             #No assignment to parameters
             if lValDef.role == RoleParameter:
                 raise UserException('Illegal assignment to parameter: ' +
-                                    str(lVal.attrName), lVal.loc)
+                                    str(lVal.name), lVal.loc)
             #No assignment to state variables - only to their time derivatives
             if lValDef.role == RoleStateVariable and (lVal.deriv != ('time',)):
                 raise UserException('Illegal assignment to state variable: ' +
-                                    str(lVal.attrName) +
+                                    str(lVal.name) +
                                     '. You must however assign to its time derivative. ($' +
-                                    str(lVal.attrName) +')', lVal.loc)
+                                    str(lVal.name) +')', lVal.loc)
 
 
     def checkInitMethodConstraints(self, block):
@@ -466,7 +466,7 @@ class ILTProcessGenerator(object):
             #$ operators are illegal in init method
             if node.deriv == ('time',):
                 raise UserException('Time derivation illegal in init: ' +
-                                    str(node.attrName), node.loc)
+                                    str(node.name), node.loc)
 
 
     def modifyInitMethod(self, method):
@@ -487,7 +487,7 @@ class ILTProcessGenerator(object):
             if not isinstance(assign, NodeAssignment):
                 continue
             #the assignment must be to a parameter
-            paramName = assign.lhs.attrName
+            paramName = assign.lhs.name
             if not paramName in parameters:
                 continue
             #OK: this is an assignment to a parameter
@@ -508,8 +508,8 @@ class ILTProcessGenerator(object):
         self.astProcess = inAstProc.copy()
         #init new process
         self.process = NodeClassDef()
-        self.process.className = self.astProcess.className
-        self.process.superName = self.astProcess.superName
+        self.process.name = self.astProcess.name
+        self.process.baseName = self.astProcess.baseName
         self.process.loc = self.astProcess.loc
         #init quick reference dicts
         self.processAttributes = {}
@@ -702,7 +702,7 @@ class ProgramTreeCreator(Visitor):
             A piece of a parse tree. It must be a program or a class definiton
             to be useful. The argument is modified.
         '''
-        #TODO: put functionality into interpreter.
+        #TODO: put functionality into interpreter?
         #determine the default role for the current subtree
         if isinstance(tree, NodeModule):
             defaultRole = RoleConstant
@@ -716,30 +716,32 @@ class ProgramTreeCreator(Visitor):
         for child in tree:
             if isinstance(child, NodeDataDef) and child.role is None:
                 child.role = defaultRole
+            #recurse into subtrees, where data can be defined
             elif isinstance(child, (NodeModule, NodeClassDef, NodeFuncDef)):
                 ProgramTreeCreator.setDataRoleDefault(child)
-                
+             
         
     @Visitor.when_type(NodeClassDef)
     def visitClassDef(self, classDef, namespace):
         '''Interpret class definition statement.'''
-        className = classDef.className
-        superName = classDef.superName
+        className = classDef.name
+        baseName = classDef.baseName
         print 'visiting class def: ', className
         #Error: class names must be unique
         if namespace.hasAttr(className):
             raise UserException('Redefinition of class: ' + str(className), 
                                 classDef.loc)
         #Error: parent class must exist
-        if (superName is not None) and \
-           (namespace.findDotName(superName, None) is None):
-            raise UserException('Parent class does not exist: ' + 
-                                str(superName), classDef.loc)
+        if (baseName is not None) and \
+           (namespace.findDotName(baseName, None) is None):
+            raise UserException('Unknown base class: ' + 
+                                str(baseName), classDef.loc)
         #add the class definition to the namespace
         namespace.setAttr(className, classDef)
         #tell class that this module is its enclosing scope
         classDef.setEnclosingScope(namespace)
-        #TODO: Add method names to class namespace
+        #TODO: Add method names to class namespace.
+        #TODO: Parse pragmas.
         return 
     
         
@@ -747,15 +749,54 @@ class ProgramTreeCreator(Visitor):
     def visitFuncDef(self, funcDef, namespace):
         '''Interpret function definition statement.'''
         print 'interpreting func def: ', funcDef.name
+        #TODO: put function into namespace
         #TODO: Functions get a function resolution object, (a list at first)
-
+        #TODO: Parse pragmas.
+        #TODO: set default data types
+        
+        
     @Visitor.when_type(NodeDataDef)
     def visitDataDef(self, dataDef, namespace):
         '''Interpret data definition statement.'''
-        print 'interpreting data def: ', dataDef.attrName
-        #TODO: Create instance object
-        #TODO: set default data type
+        print 'interpreting data def: ', dataDef.name
+        #put symbol into namespace, and establish enclosing scope 
+        try:
+            namespace.setAttr(dataDef.name, dataDef)
+            dataDef.setEnclosingScope(namespace)
+        except DuplicateAttributeError, theErr:
+            raise UserException('Duplicate attribute definition: "%s".'
+                                % str(theErr.duplicateAttribute), dataDef.loc)
+        #special handling of data statements in modules 
+        if isinstance(namespace, NodeModule):
+            #Error if role is not const
+            if dataDef.role != RoleConstant:
+                raise UserException('Module data must be constant!',dataDef.loc)
+
+        #TODO: Create recursive definitions that contain only base types
+        #      Copy all definitions from the classes.
+        classDef = namespace.findDotName(dataDef.className)
+        if classDef is None:
+            raise UserException('Unknown class: ' +str(dataDef.className), classDef.loc)
+        self.copyAndInterpretClassDef(dataDef, classDef)
         
+        #TODO: if data root is const all recursive attributes must be const?
+        #TODO: if data root is parameter all recursive attributes must be parameter?
+            
+        return
+            
+    def copyAndInterpretClassDef(self, dataDef, classDef):
+        '''Create recursive data definitions that contain only base types.'''
+        #Find base class object and copy its statements too.
+        if classDef.baseName is not None:
+            baseClassDef = classDef.enclosingScope.findDotName(classDef.baseName)
+            self.copyAndInterpretClassDef(dataDef, baseClassDef)
+        
+        #Copy all statements out of the class
+        
+        #interpret each statement
+        return
+            
+
     @Visitor.when_type(NodeAssignment)
     def visitAssignment(self, assignment, namespace):
         '''Interpret assignment statement.'''
@@ -778,19 +819,26 @@ class ProgramTreeCreator(Visitor):
             modNameStr = str(moduleName)
             moduleTree = self.importModuleFile(modNameStr + '.siml', modNameStr)
         #put the imported attributes into our namespace
-        if importStmt.fromStmt == True:
-            #behave like Python from statement
-            #TODO implement selecting individual attributes from the package
-            #TODO implement 'as' keyword
-            #currently from moduleTree import * behavior
-            namespace.nameSpaceAttrs.update(moduleTree.nameSpaceAttrs)
-        else:
-            #behave like Python import statement
-            #TODO implement 'as' keyword
-            if namespace.hasattr(moduleName):
-                raise UserException('Duplicate attribute definition: ' + 
-                                    str(moduleName), importStmt.loc)
-            namespace.setAttr(moduleName, moduleTree)
+        try:
+            if importStmt.fromStmt == True:
+                #behave like Python from statement
+                #TODO implement selecting individual attributes from the package
+                #TODO implement 'as' keyword
+                #currently 'from moduleTree import *' behavior
+                namespace.update(moduleTree)
+            else:
+                #behave like Python import statement
+                #TODO implement 'as' keyword
+                namespace.setAttr(moduleName, moduleTree)
+        except DuplicateAttributeError, theErr:
+            raise UserException('Duplicate attribute definition while '
+                                'importing module "%s". ' 
+                                'Duplicate Attribute: "%s".'
+                                % (str(moduleName), 
+                                   str(theErr.duplicateAttribute)), 
+                                importStmt.loc)
+        return
+            
         
     def interpretModuleTree(self, moduleTree):
         '''
@@ -820,12 +868,15 @@ class ProgramTreeCreator(Visitor):
         #If the standard library exists prepend it to the module.
         # This way the standard library can be processed by this method too.
         if self.stdLib is not None:
+            #TODO: add import statement only to "__main__" module
+            #TODO: Update a new modules's namespace to put built in 
+            #      symbols into the new module's namspace.
             importStmt = NodeImportStmt(moduleName='simlstdlib', fromStmt=True, 
-                                           attrsToImport=["*"], kids=[self.stdLib])
+                                        attrsToImport=["*"], loc = moduleTree.loc, 
+                                        kids=[self.stdLib])
             moduleTree.insertChild(0, importStmt)
-        #TODO: Build symbol tables
         #TODO: Create inheritance pointers?
-        #TODO: Create pointers to class definitions?
+        #TODO: Create pointers to class definitions? 
         #interpret module nodes
         for node in moduleTree:
             self.dispatch(node, moduleTree)
@@ -984,7 +1035,6 @@ class Test(Model):
     flagTestProg2 = False
     flagTestProg2 = True
     if flagTestProg2:
-        
         tc = ProgramTreeCreator()
         astTree = tc.importModuleStr(testProg2)
         

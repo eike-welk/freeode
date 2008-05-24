@@ -333,7 +333,7 @@ class ParseStage(object):
             nCurr.deriv = ('time',)
             del tokList[0]
         #The remaining tokens are the dot separated name
-        nCurr.attrName = DotName(tokList)
+        nCurr.name = DotName(tokList)
         return nCurr
 
 
@@ -558,7 +558,7 @@ class ParseStage(object):
                     errMsg = 'Keyword can not be used as an identifier: ' + name
                 raise ParseFatalException(str, loc, errMsg)
             attrDef = NodeDataDef(loc=self.createTextLocation(loc))
-            attrDef.attrName = DotName(name) #store attribute name
+            attrDef.name = DotName(name) #store attribute name
             attrDef.className = DotName(toks.className.asList())  #store class name
             #map role string to role object, and store the role
             #If role is not specified RoleVariable is assumed. 
@@ -603,7 +603,7 @@ class ParseStage(object):
 #            nCurr = NodeAssignment()
 #            nCurr.loc = self.createTextLocation(loc) #Store position
 #            nArgName = NodeAttrAccess()
-#            nArgName.attrName = DotName(toks.namedArg.argName)
+#            nArgName.name = DotName(toks.namedArg.argName)
 #            nCurr.lhs = nArgName
 #            nCurr.rhs = toks.namedArg.value
         #positional argument: 2.5
@@ -651,7 +651,7 @@ class ParseStage(object):
         A NodeDataDef is created; therefore this method is quite similar 
         to _actionDataDef.
         BNF:
-        funcArgDefault = Group(identifier                            .setResultsName('attrName')
+        funcArgDefault = Group(identifier                            .setResultsName('name')
                                + Optional(':' + ES(dotIdentifier     .setResultsName('className')
                                                    )                 .setErrMsgStart('type specifier: '))
                                + Optional('=' + ES(expression        .setResultsName('defaultValue')
@@ -665,7 +665,7 @@ class ParseStage(object):
         nCurr = NodeDataDef()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store argument name
-        nCurr.attrName = DotName(toks.attrName)
+        nCurr.name = DotName(toks.name)
         #store optional type of argument
         if toks.className:
             nCurr.className = DotName(toks.className.asList())
@@ -742,8 +742,8 @@ class ParseStage(object):
         nCurr = NodeClassDef()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store class name and name of super class
-        nCurr.className = DotName(toks.className)
-        nCurr.superName = DotName(toks.superName)
+        nCurr.name = DotName(toks.className)
+        nCurr.baseName = DotName(toks.superName)
         #create children (may or may not be present):  data, functions
         if len(toks.classBodyStmts) > 0:
             for stmt in toks.classBodyStmts:
@@ -974,7 +974,7 @@ class ParseStage(object):
 
         #Function definition (class method or global function)
         #one argument of the definition: inX:Real=2.5
-        funcArgDef = Group(identifier                                .setResultsName('attrName')
+        funcArgDef = Group(identifier                                .setResultsName('name')
                            + Optional(':' + ES(dotIdentifier         .setResultsName('className')
                                                )                     .setErrMsgStart('type specifier: '))
                            + Optional('=' + ES(expression            .setResultsName('defaultValue')

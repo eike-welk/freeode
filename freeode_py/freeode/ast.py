@@ -29,17 +29,17 @@ Abstract syntax tree and tools for tree handling.
 - Printer to convert tree to pretty printed string.
 - Visitor to invoke different code depending on node type.
 
-Additionaly this module contains some common infrastructure used by other
-modules of freeode:
+Additionally this module contains some common infrastructure used by other
+modules of Freeode:
 - Class to store text locations together with file names.
-- Excepions to carry user visible errors.
+- Exceptions to carry user visible errors.
 - Handling for dotted attribute names.
 - The program's version string.
 '''
 
 
-#TODO: Propperties are currently undocumented in AST classes!
-#TODO: Unit tests for the more complex Nodes would be usefull.
+#TODO: Properties are currently undocumented in AST classes!
+#TODO: Unit tests for the more complex Nodes would be useful.
 
 
 from __future__ import division
@@ -59,15 +59,27 @@ progVersion = '0.3.2-dev-1'
 
 
 
+class DuplicateAttributeError(Exception):
+    '''
+    Exception raised by NameSpace 
+    when the user tries to redefine an attribute.
+    '''
+    def __init__(self, msg=None, duplicateAttribute=None):
+        Exception.__init__(self, msg)
+        self.duplicateAttribute = duplicateAttribute
+        
+        
 class NameSpace(object):
     '''
-    Namespace for modules, classes and functions. 
+    Name space for modules, classes and functions. 
     '''
     def __init__(self):
         #the attributes of this name space
         self.nameSpaceAttrs = {}
         #the next upper level name space
         self.enclosingScope = None
+        #This object's name in the enclosing scope
+        self.name = None
         
         
     def setAttr(self, name, newAttr):
@@ -93,22 +105,12 @@ class NameSpace(object):
             raise Exception('Argument name must be of type str or DotName! type(name): ' 
                             + str(type(name)) + ' str(name): ' + str(name))
         #add attribute to name space
-        #TODO: all attributes have to be unique. Throw exception when duplicate.
-        #TODO: raise DuplicateAttributeError, that carries the name of the duplicate attribute
         #TODO: Functions get a function resolution object, (a list at first)
         if name in self.nameSpaceAttrs:
-            #nameSpaceAttrs with this name already exist
-            oldAttr = self.nameSpaceAttrs[name]
-            if isinstance(oldAttr, list):
-                #There is already a list of attrs, append this attr to it.
-                oldAttr.append(newAttr) 
-            else:
-                #until now only 1 attr; create list to hold multiple attrs
-                self.nameSpaceAttrs[name] = [oldAttr, newAttr]
-        else: 
-            self.nameSpaceAttrs[name] = newAttr #This is a new attribute
+            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
+            #TODO: special handling for functions: add function to function resolution object
+        self.nameSpaceAttrs[name] = newAttr #This is a new attribute
         return
-            
             
     def hasAttr(self, name):
         '''
@@ -129,9 +131,7 @@ class NameSpace(object):
     
     def getAttr(self, name, default=None):
         '''Return attribute with that name from this name space'''
-        #TODO: Error: AttributeError ?
         return self.nameSpaceAttrs.get(str(name), default)
-        
         
     def findDotName(self, dotName, default=None):
         '''
@@ -139,19 +139,17 @@ class NameSpace(object):
         
         Takes scope rules into account, and the lookup is maybe recursive.
         '''
-        #TODO: Error: AttributeError?
         #TODO: make compatible with str too
         firstPart = self.nameSpaceAttrs.get(dotName[0], None)
         if firstPart is not None:
             #leftmost part of name exists in this name space
             if len(dotName) == 1:
-                #only one part in dot name, the user wnts this attribute
+                #only one part in dot name, the user wants this attribute
                 return firstPart 
             elif isinstance(firstPart, NameSpace):
-                #attribute is namespace, try to resolve rest of name
+                #attribute is name space, try to resolve rest of name
                 return firstPart.findDotName(dotName[1:], default)
             else:
-                #TODO: maybe raise error
                 return default
         else:
             #leftmost part of name does not exist in this name space
@@ -163,12 +161,21 @@ class NameSpace(object):
                 return default
     
     def setEnclosingScope(self, uplevelScope):
-        '''Change the upper level scope of this namespace.'''
+        '''
+        Change the upper level name space, 
+        that is searched when a DotName is not found this name space.
+        
+        Used by self.findDotName(...), but not by self.getAttr(...).
+        '''
         self.enclosingScope = uplevelScope
 
-    #TODO: update(inNameSpace), that raises exceptions
-    #TODO: a set attribute function that raises exceptions depending on attribute type:
-    #      classes and instances must be unique functions don't
+    def update(self, otherNameSpace):
+        '''
+        Put attributes of otherNameSpace into this name space.
+        Raises exceptions when attributes are redefined.
+        '''
+        for name, node in otherNameSpace.nameSpaceAttrs.iteritems():
+            self.setAttr(name, node)
 
 
 class Node(object):
@@ -366,7 +373,14 @@ class Node(object):
         return copy.deepcopy(self)
 
 
-
+class NodeNoneClass(Node):
+    '''Node that takes the function of None.'''
+    def __init__(self):
+        super(NodeNoneClass, self).__init__(None, None, None)
+#The single instance of NodeNoneClass. Should be used like None
+nodeNone = NodeNoneClass()
+    
+    
 #class NodeBuiltInVal(Node):
 #    '''
 #    Represent a built in value in the AST.
@@ -476,32 +490,33 @@ class NodeIfStmt(Node):
     '''
     def __init__(self, kids=None, loc=None, dat=None):
         super(NodeIfStmt, self).__init__(kids, loc, dat)
-
-    #Condition proppery
-    def getCondition(self): return self.kids[0]
-    def setCondition(self, inCondtion): self.kids[0] = inCondtion
-    condition = property(getCondition, setCondition, None,
-        'Condition of if:...else:...end statement.')
-
-    #ifTruePart proppery
-    def getIfTruePart(self): return self.kids[1]
-    def setIfTruePart(self, inStatements): self.kids[1] = inStatements
-    ifTruePart = property(getIfTruePart, setIfTruePart, None,
-        'Statements executed when condition is true.')
-
-    #ifFalsePart proppery
-    def getElsePart(self):
-        if len(self.kids) == 3:
-            return self.kids[2]
-        else:
-            return NodeStmtList()
-    def setElsePart(self, inStatements):
-        if len(self.kids) == 3:
-            self.kids[2] = inStatements
-        else:
-            raise KeyError('NodeIfStmt has no "else" clause.')
-    elsePart = property(getElsePart, setElsePart, None,
-        'Statements executed when condition is false.')
+    #TODO: make compatible with multiple elif clauses:
+    #      if ...: ... elif ...: ... elif...: ... else: ...
+    #Condition property
+#    def getCondition(self): return self.kids[0]
+#    def setCondition(self, inCondtion): self.kids[0] = inCondtion
+#    condition = property(getCondition, setCondition, None,
+#        'Condition of if:...else:...end statement.')
+#
+#    #ifTruePart property
+#    def getIfTruePart(self): return self.kids[1]
+#    def setIfTruePart(self, inStatements): self.kids[1] = inStatements
+#    ifTruePart = property(getIfTruePart, setIfTruePart, None,
+#        'Statements executed when condition is true.')
+#
+#    #ifFalsePart property
+#    def getElsePart(self):
+#        if len(self.kids) == 3:
+#            return self.kids[2]
+#        else:
+#            return NodeStmtList()
+#    def setElsePart(self, inStatements):
+#        if len(self.kids) == 3:
+#            self.kids[2] = inStatements
+#        else:
+#            raise KeyError('NodeIfStmt has no "else" clause.')
+#    elsePart = property(getElsePart, setElsePart, None,
+#        'Statements executed when condition is false.')
 
 
 class NodeAssignment(NodeOpInfix2):
@@ -726,15 +741,15 @@ class RoleAlgebraicVariable(RoleVariable):
     pass
 
 
-class NodeDataDef(Node):
+class NodeDataDef(Node, NameSpace):
     '''
     AST node for definition of a variable, parameter or submodel.
     Data nameSpaceAttrs:
-        kids        : default value (expression), or []
+        kids        : [<default value>, <instance attributes>]
         loc         : location in input string
         dat         : None
 
-        attrName        : name of the attribute. can be dotted name which is stored
+        name            : name of the attribute. can be dotted name which is stored
                           as a tuple of strings: ('aa', 'bb')
         className       : type of the attribute; possibly dotted name: ('aa', 'bb')
         role            : Is this attribute a state or algebraic variable, a constant
@@ -746,24 +761,32 @@ class NodeDataDef(Node):
                           TODO: replace by accessor functions to create more robust interface
                           TODO: Derivatives should be separate variables. These variables should 
                                 be created in the intermediate language logic.
-   '''
+    '''
     def __init__(self, kids=None, loc=None, dat=None,
-                        attrName=None, className=None, role=RoleAny, targetName=None):
-        super(NodeDataDef, self).__init__(kids, loc, dat)
-        self.attrName = attrName
+                        name=None, className=None, role=RoleAny, targetName=None):
+        Node.__init__(self, kids, loc, dat)
+        NameSpace.__init__(self)
+        if not self.kids:
+            self.kids = [nodeNone, NodeStmtList()]
+        self.name = name
         self.className = className
         self.role = role
         self.targetName = targetName
         
     #Get or set the default value
     def getDefaultValue(self): 
-        if len(self.kids) > 0: return self.kids[0]
-        else: return None
+        return self.kids[0]
     def setDefaultValue(self, defaultValue): 
-        if len(self.kids) > 0: self.kids[0] = defaultValue
-        else: self.kids.append(defaultValue)
+        self.kids[0] = defaultValue
     defaultValue = property(getDefaultValue, setDefaultValue, None,
-                   'Default value or initial value of the defined data (proppery).')
+                   'Default value or initial value of the defined data (propperty).')
+    #Get or set the recursive definitions
+    def getStatements(self): 
+        return self.kids[1]
+    def setStatements(self, inDefs): 
+        self.kids[1] = inDefs
+    statements = property(getStatements, setStatements, None,
+                   'Attribute definitions. Copied from class definition. (propperty).')
 
 
 class NodeAttrAccess(Node):
@@ -777,14 +800,14 @@ class NodeAttrAccess(Node):
         deriv      : Denote if a derivation operator acted on the attribute.
                      Empty tuple means no derivation took place. can be:
                      (,),('time',) or tuple of distibution domains
-        attrName   : DotName('proc.model1.a'), the dot separated name (basically tuple of strings).
+        name   : DotName('proc.model1.a'), the dot separated name (basically tuple of strings).
         targetName : name in the target language (string)
     '''
     def __init__(self, kids=None, loc=None, dat=None, deriv=None,
                  attrName=None, targetName=None):
         super(NodeAttrAccess, self).__init__(kids, loc, dat)
         self.deriv = deriv
-        self.attrName = DotName(attrName)
+        self.name = DotName(attrName)
         self.targetName = targetName
 
 
@@ -834,15 +857,23 @@ class NodeClassDef(Node, NameSpace):
         loc       : location in input string
         dat       : None
 
-        className : name of the class defined here.
-        superName : name of the class, from which this class inherits;
+        name : name of the class defined here.
+        baseName : name of the class, from which this class inherits;
                     usually "Process", "Model"
     """
-    def __init__(self, kids=None, loc=None, dat=None, className=None, superName=None):
+    def __init__(self, kids=None, loc=None, dat=None, name=None, baseName=None):
         Node.__init__(self, kids, loc, dat)
         NameSpace.__init__(self)
-        self.className = className
-        self.superName = superName
+        self.name = name
+        self.baseName = baseName
+        
+#    #Get or set the class body through a unified name
+#    def getStatements(self): 
+#        return self.kids
+#    def setStatements(self, inDefs): 
+#        self.kids = inDefs
+#    statements = property(getStatements, setStatements, None,
+#            'Attribute definitions and operations on constants. (propperty).')
 
 
 class NodeModule(Node, NameSpace):
@@ -1022,8 +1053,11 @@ class TreePrinter(object):
                 #they are causing infinite recursion otherwise
                 self.putStr(indentStr, 'nameSpaceAttrs.keys(): ' + 
                             str(node.nameSpaceAttrs.keys()) + ' ')
-                #TODO: how do I characterize enclosingNamespace?
-                self.putStr(indentStr, 'enclosingScope: ????? ')
+                if node.enclosingScope is None: 
+                    self.putStr(indentStr, 'enclosingScope: ' + str(None) + ' ')
+                else: 
+                    self.putStr(indentStr, 'enclosingScope.name: ' + 
+                                str(node.enclosingScope.name) + ' ')
             #the node's nameSpaceAttrs are printed in sorted order, 
             #but the special attributes are excluded
             specialAttrs = set(['loc', 'kids', 'nameSpaceAttrs', 'enclosingScope'])
@@ -1226,7 +1260,7 @@ class Visitor(object):
     ...         Visitor.__init__(self)
     ...     @Visitor.when_type(NodeClassDef)
     ...     def visitClassDef(self, classDef):
-    ...         print 'seen class def: ', classDef.className    
+    ...         print 'seen class def: ', classDef.name    
     ...     @Visitor.when_type(NodeFuncDef)
     ...     def visitFuncDef(self, funcDef):
     ...         print 'seen func def: ', funcDef.name
@@ -1235,8 +1269,8 @@ class Visitor(object):
     ...             self.dispatch(node)
     
     >>> tr=Node()
-    >>> tr.appendChild(NodeClassDef(className='c1'))
-    >>> tr.appendChild(NodeClassDef(className='c2'))
+    >>> tr.appendChild(NodeClassDef(name='c1'))
+    >>> tr.appendChild(NodeClassDef(name='c2'))
      >>> tr.appendChild(NodeFuncDef(name='f1'))
     >>> tr.appendChild(NodeFuncDef(name='f2'))
     >>> nv = NodeVisitor()
@@ -1653,7 +1687,7 @@ class TestVisitor(unittest.TestCase):
             #- should have high priority    
             @Visitor.when_type(NodeClassDef, 2)
             def visitClassDef(self, classDef): #IGNORE:W0613
-#                print 'seen class def: ' + classDef.className
+#                print 'seen class def: ' + classDef.name
                 return ['NodeClassDef']
             @Visitor.when_type(NodeFuncDef, 2)
             def visitFuncDef(self, funcDef): #IGNORE:W0613
@@ -1675,8 +1709,8 @@ class TestVisitor(unittest.TestCase):
     
         #create a syntax tree
         tr=Node()
-        tr.appendChild(NodeClassDef(className='c1'))
-        tr.appendChild(NodeClassDef(className='c2'))
+        tr.appendChild(NodeClassDef(name='c1'))
+        tr.appendChild(NodeClassDef(name='c2'))
         tr.appendChild(Node(dat='n1'))
         tr.appendChild(NodeFuncDef(name='f1'))
         tr.appendChild(NodeFuncDef(name='f2'))

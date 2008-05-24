@@ -61,6 +61,7 @@ class Numeric(Object):{pragma no_flatten;}
 class Real(Numeric):
 {
     pragma no_flatten;
+    pragma built_in_type;
     #TODO: Add special functions for the mathematical operators (__add__) to
     #      define the resulting types of mathematical expressions.        
 }
@@ -122,7 +123,7 @@ def createParseTree():
     parser = simlparser.ParseStage()
     parseTree = parser.parseModuleStr(stdLibExt, fileName, 'simlstdlib')
     #Create the 'object' class, the parent class of all classes
-    objectClass = ast.NodeClassDef(className='Object', superName=None) 
+    objectClass = ast.NodeClassDef(name='Object', baseName=None) 
     parseTree.insertChild(0, objectClass)
     return parseTree
 
