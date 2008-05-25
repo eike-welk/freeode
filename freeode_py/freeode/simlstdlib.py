@@ -56,7 +56,7 @@ standardLibraryStr = \
 #------------- base objects -----------------------------------------
 #class Object():{}
 
-class Numeric(Object):{pragma no_flatten;}
+class Numeric(Object):{}
 
 class Real(Numeric):
 {

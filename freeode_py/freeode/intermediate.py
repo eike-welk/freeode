@@ -721,6 +721,11 @@ class ProgramTreeCreator(Visitor):
                 ProgramTreeCreator.setDataRoleDefault(child)
              
         
+    @Visitor.when_type(NodePragmaStmt)
+    def visitPragmaStmt(self, pragmaStmt, namespace):
+        '''Interpret pragma statement.'''
+        print 'visiting pragma: ', pragmaStmt
+        
     @Visitor.when_type(NodeClassDef)
     def visitClassDef(self, classDef, namespace):
         '''Interpret class definition statement.'''
@@ -760,40 +765,59 @@ class ProgramTreeCreator(Visitor):
         '''Interpret data definition statement.'''
         print 'interpreting data def: ', dataDef.name
         #put symbol into namespace, and establish enclosing scope 
-        try:
-            namespace.setAttr(dataDef.name, dataDef)
-            dataDef.setEnclosingScope(namespace)
-        except DuplicateAttributeError, theErr:
+        if namespace.hasAttr(dataDef.name):
             raise UserException('Duplicate attribute definition: "%s".'
-                                % str(theErr.duplicateAttribute), dataDef.loc)
-        #special handling of data statements in modules 
+                                % str(dataDef.name), dataDef.loc)
+        namespace.setAttr(dataDef.name, dataDef)
+        #No setting of enclosing scope necessary. 
+        #The class definitions are interpreted in the scope where they were written.
+        #dataDef.setEnclosingScope(namespace) 
+        
+        #Data that is defined directly in a module must be constant.
         if isinstance(namespace, NodeModule):
-            #Error if role is not const
             if dataDef.role != RoleConstant:
-                raise UserException('Module data must be constant!',dataDef.loc)
+                raise UserException('Module data must have role "const"!',dataDef.loc)
 
         #TODO: Create recursive definitions that contain only base types
         #      Copy all definitions from the classes.
         classDef = namespace.findDotName(dataDef.className)
         if classDef is None:
-            raise UserException('Unknown class: ' +str(dataDef.className), classDef.loc)
-        self.copyAndInterpretClassDef(dataDef, classDef)
+            raise UserException('Unknown class: ' +str(dataDef.className), dataDef.loc)
+        self.createDataDefTreeRecursive(dataDef, classDef)
         
         #TODO: if data root is const all recursive attributes must be const?
         #TODO: if data root is parameter all recursive attributes must be parameter?
             
         return
             
-    def copyAndInterpretClassDef(self, dataDef, classDef):
+    def createDataDefTreeRecursive(self, ioDataDef, classDef):
         '''Create recursive data definitions that contain only base types.'''
-        #Find base class object and copy its statements too.
+        #Find base class object and copy its statements recursively.
         if classDef.baseName is not None:
             baseClassDef = classDef.enclosingScope.findDotName(classDef.baseName)
-            self.copyAndInterpretClassDef(dataDef, baseClassDef)
+            self.createDataDefTreeRecursive(ioDataDef, baseClassDef)
         
-        #Copy all statements out of the class
+        #Copy all definitions out of the class definition
+        #The assignments and functions are only referenced.
+        classBodyStmts = NodeStmtList()
+        for stmt in classDef:
+            if isinstance(stmt, NodeDataDef):
+                classBodyStmts.appendChild(stmt.copy())
+            else:
+                classBodyStmts.appendChild(stmt)
         
-        #interpret each statement
+        #Check if class is built in type. Built in classes are not further expanded
+        if not classDef.isBuiltinType:
+            #use the global scope where the class was defined
+            ioDataDef.enclosingScope = classDef.enclosingScope
+            #interpret each statement, the definitions are worked out recursively
+            for stmt in classBodyStmts:
+                self.dispatch(stmt, ioDataDef)
+            
+        #put the interpreted statements into the root definition
+        ioDataDef.statements.insertChildren(len(ioDataDef.statements), 
+                                            classBodyStmts)
+        ioDataDef.enclosingScope = None
         return
             
 
@@ -1002,18 +1026,24 @@ class RunTest(Process):
 #------------ testProg2 -----------------------
     testProg2 = (
 '''
-data a, b, c: Real;
-
-class Test(Model):
+class Foo(Model):
 {
-    data a, b, c: Real;
-    data d: Real;
-    
-    func test(a,b,c): 
-    {
-        
-    }
+    data r, s: Real;
 }
+
+class Test1(Model):
+{
+    data a, b: Real;
+}
+class Test2(Test1):
+{
+    data c, d: Real;
+    data f1, f2: Foo;
+    
+    #func test(a,b,c): {}
+}
+
+data t:Test2;
 ''' )
 
     #test the intermedite tree generator ------------------------------------------------------------------

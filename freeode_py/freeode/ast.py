@@ -861,11 +861,14 @@ class NodeClassDef(Node, NameSpace):
         baseName : name of the class, from which this class inherits;
                     usually "Process", "Model"
     """
-    def __init__(self, kids=None, loc=None, dat=None, name=None, baseName=None):
+    def __init__(self, kids=None, loc=None, dat=None, name=None, baseName=None, 
+                  isBuiltinType=False, noFlatten=False):
         Node.__init__(self, kids, loc, dat)
         NameSpace.__init__(self)
         self.name = name
         self.baseName = baseName
+        self.isBuiltinType = isBuiltinType
+        self.noFlatten = noFlatten
         
 #    #Get or set the class body through a unified name
 #    def getStatements(self): 
