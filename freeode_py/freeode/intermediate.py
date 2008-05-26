@@ -725,6 +725,12 @@ class ProgramTreeCreator(Visitor):
     def visitPragmaStmt(self, pragmaStmt, namespace):
         '''Interpret pragma statement.'''
         print 'visiting pragma: ', pragmaStmt
+        #the pragma statements that are known for class definitions
+        if isinstance(namespace, NodeClassDef):
+            if pragmaStmt.options[0] == 'built_in_type':
+                namespace.isBuiltinType == True
+            elif pragmaStmt.options[0] == 'no_flatten':
+                namespace.noFlatten == True
         
     @Visitor.when_type(NodeClassDef)
     def visitClassDef(self, classDef, namespace):
@@ -791,8 +797,22 @@ class ProgramTreeCreator(Visitor):
         return
             
     def createDataDefTreeRecursive(self, ioDataDef, classDef):
-        '''Create recursive data definitions that contain only base types.'''
-        #Find base class object and copy its statements recursively.
+        '''
+        Create recursive data definitions that contain only base types.
+        
+        Arguments
+        ---------
+        ioDataDef : NodeDataDef
+            The data statement that is expanded to a tree. The function's 
+            result is in ioDataDef.
+        classDef : NodeClassDef
+            The type of the data. All statements from the class definition
+            are copied into ioDataDef and the data statemnts are themselfs
+            expanded.
+        '''
+        #Find base class object, copy and interpret its statements recursively.
+        #The inherited statements are accumulating in ioDataDef.statements.
+        #The attribute names are accumulating in ioDataDef's namespace as well
         if classDef.baseName is not None:
             baseClassDef = classDef.enclosingScope.findDotName(classDef.baseName)
             self.createDataDefTreeRecursive(ioDataDef, baseClassDef)
@@ -806,6 +826,7 @@ class ProgramTreeCreator(Visitor):
             else:
                 classBodyStmts.appendChild(stmt)
         
+        #Interpret the copied statements ----------------------------
         #Check if class is built in type. Built in classes are not further expanded
         if not classDef.isBuiltinType:
             #use the global scope where the class was defined
@@ -813,11 +834,11 @@ class ProgramTreeCreator(Visitor):
             #interpret each statement, the definitions are worked out recursively
             for stmt in classBodyStmts:
                 self.dispatch(stmt, ioDataDef)
-            
-        #put the interpreted statements into the root definition
+            ioDataDef.enclosingScope = None
+           
+        #put the interpreted (and expanded) statements into the root definition
         ioDataDef.statements.insertChildren(len(ioDataDef.statements), 
                                             classBodyStmts)
-        ioDataDef.enclosingScope = None
         return
             
 
@@ -1036,7 +1057,7 @@ class Test1(Model):
     data a, b: Real;
 }
 class Test2(Test1):
-{
+{   pragma built_in_type;
     data c, d: Real;
     data f1, f2: Foo;
     
