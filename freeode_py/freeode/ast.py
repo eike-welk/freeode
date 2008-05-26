@@ -46,6 +46,8 @@ from __future__ import division
 
 from types import ClassType, FunctionType, NoneType #, TupleType, StringType
 import copy
+import weakref
+
 import pyparsing
 
 
@@ -75,9 +77,12 @@ class NameSpace(object):
     '''
     def __init__(self):
         #the attributes of this name space
-        self.nameSpaceAttrs = {}
+        self._nameSpaceAttrs = weakref.WeakValueDictionary()
         #the next upper level name space
-        self.enclosingScope = None
+        #Name space for global variables. Module where the code was written.
+        self._globalScope = None
+        #Name space of the this pointer in a method. None outside methods.
+        self._thisScope = None
         #This object's name in the enclosing scope
         self.name = None
         
@@ -106,12 +111,20 @@ class NameSpace(object):
                             + str(type(name)) + ' str(name): ' + str(name))
         #add attribute to name space
         #TODO: Functions get a function resolution object, (a list at first)
-        if name in self.nameSpaceAttrs:
+        if name in self._nameSpaceAttrs:
             raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
             #TODO: special handling for functions: add function to function resolution object
-        self.nameSpaceAttrs[name] = newAttr #This is a new attribute
+        self._nameSpaceAttrs[name] = newAttr #This is a new attribute
         return
             
+    def update(self, otherNameSpace):
+        '''
+        Put attributes of otherNameSpace into this name space.
+        Raises exceptions when attributes are redefined.
+        '''
+        for name, node in otherNameSpace._nameSpaceAttrs.iteritems():
+            self.setAttr(name, node)
+
     def hasAttr(self, name):
         '''
         Test if attribute exists in this name space.
@@ -127,11 +140,11 @@ class NameSpace(object):
             True if a attribute of this name exists in this name space, 
             False otherwise.
         '''
-        return str(name) in self.nameSpaceAttrs
+        return str(name) in self._nameSpaceAttrs
     
     def getAttr(self, name, default=None):
         '''Return attribute with that name from this name space'''
-        return self.nameSpaceAttrs.get(str(name), default)
+        return self._nameSpaceAttrs.get(str(name), default)
         
     def findDotName(self, dotName, default=None):
         '''
@@ -140,7 +153,7 @@ class NameSpace(object):
         Takes scope rules into account, and the lookup is maybe recursive.
         '''
         #TODO: make compatible with str too
-        firstPart = self.nameSpaceAttrs.get(dotName[0], None)
+        firstPart = self._nameSpaceAttrs.get(dotName[0], None)
         if firstPart is not None:
             #leftmost part of name exists in this name space
             if len(dotName) == 1:
@@ -153,29 +166,98 @@ class NameSpace(object):
                 return default
         else:
             #leftmost part of name does not exist in this name space
-            if self.enclosingScope is not None:
-                #try to find name in higher level of scope hierarchy:
-                # function --> class --> module 
-                return self.enclosingScope.findDotName(dotName, default)
+            #try to find name in higher level of scope hierarchy:
+            # function --> class --> module 
+            if self._thisScope is not None and \
+               self._thisScope.hasAttr(dotName):
+                return self._thisScope.findDotName(dotName, default)
+            elif self._globalScope is not None and \
+                 self._globalScope.hasAttr(dotName):
+                return self._globalScope.findDotName(dotName, default)
             else:
                 return default
     
-    def setEnclosingScope(self, uplevelScope):
+    def setGlobalScope(self, inNameSpace):
         '''
-        Change the upper level name space, 
-        that is searched when a DotName is not found this name space.
+        Change the global name space.
+        The global name space is finally searched when the DotName is neither
+        found locally (self._nameSpaceAttrs) nor in the scope of the "this"
+        pointer (self.thisScop).
         
         Used by self.findDotName(...), but not by self.getAttr(...).
         '''
-        self.enclosingScope = uplevelScope
+        if inNameSpace is None:
+            self._globalScope = None
+        elif isinstance(inNameSpace, weakref.ProxyTypes):
+            self._globalScope = inNameSpace
+        else:
+            self._globalScope = weakref.proxy(inNameSpace)
+            
+    def getGlobalScope(self):
+        '''Return the global name space.'''
+        return self._globalScope
+    
+    globalScope = property(getGlobalScope, setGlobalScope, None,
+                           'Global (module) name space.')
+    
+    def setThisScope(self, inNameSpace):
+        '''
+        Change the name space of the "this" pointer. 
+        The "this" name space is searched second, when the DotName is not 
+        found locally. When the DotName is not fount in the "this" name space
+        the global name space is searched.
+        
+        Used by self.findDotName(...), but not by self.getAttr(...).
+        '''
+        if inNameSpace is None:
+            self._thisScope = None
+        elif isinstance(inNameSpace, weakref.ProxyTypes):
+            self._thisScope = inNameSpace
+        else:
+            self._thisScope = weakref.proxy(inNameSpace)
+            
+    def getThisScope(self):
+        '''Return the "this" name space.'''
+        return self._thisScope
+    
+    thisScope = property(getGlobalScope, setGlobalScope, None,
+                           'Name space of the this pointer, class name space.')
 
-    def update(self, otherNameSpace):
+
+
+#TODO: inherit FromNodeFuncDef ?
+class FunctionOverloadingResolver(object):
+    '''
+    Store multiple functions with the same name. 
+    Find the correct overloaded function, that matches a function call best. 
+    '''
+    
+    def __init__(self, inFuncDef=None):
         '''
-        Put attributes of otherNameSpace into this name space.
-        Raises exceptions when attributes are redefined.
+        ARGUMENT
+        --------
+        inFuncDef : NodeFuncDef
+            The first function stored in the container. Optional.
         '''
-        for name, node in otherNameSpace.nameSpaceAttrs.iteritems():
-            self.setAttr(name, node)
+        self.name = None
+        self._functions = [] #weakref.WeakValueDictionary()
+        if inFuncDef is not None:
+            self.append(inFuncDef)
+        
+    def append(self, inFuncDef):
+        '''Append a function to the list'''
+        if self.name is None:
+            self.name = inFuncDef.name
+        self._functions.append(weakref.proxy(inFuncDef))
+        return
+    
+    def resolve(self, inFuncCall):
+        '''
+        Return a function that matches the function call's signature. 
+        (currently always the last function in the list)
+        '''
+        return self._functions[-1]
+
 
 
 class Node(object):
@@ -250,7 +332,7 @@ class Node(object):
             datStr =''
         else:
             datStr = ', ' + repr(self.dat)
-        #treat all other nameSpaceAttrs as named nameSpaceAttrs
+        #treat all other _nameSpaceAttrs as named _nameSpaceAttrs
         standardAttributes = set(['kids', 'loc', 'dat'])
         extraAttrStr=''
         for key, attr in self.__dict__.iteritems():
@@ -398,7 +480,7 @@ class NodeNum(Node):
     '''
     Represent a real number in the AST.
     Example: 123.5
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids    : []
         loc     : location in input string
         dat     : the number as a string
@@ -411,7 +493,7 @@ class NodeString(Node):
     '''
     Represent a string in the AST.
     Example: 'hello world'
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids    : []
         loc     : location in input string
         dat     : the string
@@ -424,7 +506,7 @@ class NodeParentheses(Node):
     '''
     Represent a pair of parentheses that enclose an expression, in the AST.
     Example: ( ... )
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids[0] : the mathematical expression between the parentheses
         loc     : location in input string
         dat     : None
@@ -436,7 +518,7 @@ class NodeParentheses(Node):
 class NodeOpInfix2(Node):
     '''
     AST node for a (binary) infix operator: + - * / ^ and or
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids    : [LHS, RHS] both sides of the operator
         loc     : location in input string
         dat     : None
@@ -483,7 +565,7 @@ class NodeOpPrefix1(Node):
 class NodeIfStmt(Node):
     '''
     AST Node for an if ... the ... else statement
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids    : [<condition>, <then statements>, <else statements>]
         loc     : location in input string
         dat     : None
@@ -538,7 +620,7 @@ class NodeFuncExecute(Node):
     This will be usually done by inserting the code of the function's body
     into the top level function.
     Similar to an inline function in C++.
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids        : []
         loc         : location in input string
         dat         : None
@@ -554,7 +636,7 @@ class NodeFuncExecute(Node):
 class NodePrintStmt(Node):
     '''
     AST Node for printing something to stdout.
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -570,7 +652,7 @@ class NodePrintStmt(Node):
 class NodeGraphStmt(Node):
     '''
     AST Node for creating a graph.
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -582,7 +664,7 @@ class NodeGraphStmt(Node):
 class NodeStoreStmt(Node):
     '''
     AST Node for storing variables
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -594,7 +676,7 @@ class NodeStoreStmt(Node):
 class NodeReturnStmt(Node):
     '''
     AST Node for the return statement
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : The return value (expression)
@@ -606,7 +688,7 @@ class NodeReturnStmt(Node):
 class NodePragmaStmt(Node):
     '''
     AST Node for the pragma statement
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -622,7 +704,7 @@ class NodePragmaStmt(Node):
 class NodeForeignCodeStmt(Node):
     '''
     AST Node for the foreign_code statement
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -641,7 +723,7 @@ class NodeForeignCodeStmt(Node):
 class NodeImportStmt(Node):
     '''
     AST Node for the pragma statement
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids        : The modulse's AST
         loc         : location in input string
         dat         : None
@@ -649,12 +731,12 @@ class NodeImportStmt(Node):
         moduleName : str
             Name of the module that should be imported
         fromStmt : bool
-            Put the module's nameSpaceAttrs directly into the namespace of the 
+            Put the module's _nameSpaceAttrs directly into the namespace of the 
             module that executes this statement. Behave as Python's "from" 
             statement.
         attrsToImport : list of string
-            List of nameSpaceAttrs that should be imported. Special symbol "*" 
-            means all nameSpaceAttrs in the module. 
+            List of _nameSpaceAttrs that should be imported. Special symbol "*" 
+            means all _nameSpaceAttrs in the module. 
             if fromStmt == False, this list is ignored.
     '''
     def __init__(self, kids=None, loc=None, dat=None, 
@@ -744,7 +826,7 @@ class RoleAlgebraicVariable(RoleVariable):
 class NodeDataDef(Node, NameSpace):
     '''
     AST node for definition of a variable, parameter or submodel.
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids        : [<default value>, <instance attributes>]
         loc         : location in input string
         dat         : None
@@ -763,15 +845,18 @@ class NodeDataDef(Node, NameSpace):
                                 be created in the intermediate language logic.
     '''
     def __init__(self, kids=None, loc=None, dat=None,
-                        name=None, className=None, role=RoleAny, targetName=None):
+                        name=None, className=None, targetName=None, 
+                        role=None):
         Node.__init__(self, kids, loc, dat)
         NameSpace.__init__(self)
         if not self.kids:
             self.kids = [nodeNone, NodeStmtList()]
         self.name = name
         self.className = className
-        self.role = role
         self.targetName = targetName
+        self.role = role
+        self.isBuiltinType = False
+        self.noFlatten = False
         
     #Get or set the default value
     def getDefaultValue(self): 
@@ -792,7 +877,7 @@ class NodeDataDef(Node, NameSpace):
 class NodeAttrAccess(Node):
     '''
     AST node for access to a variable or parameter.
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids    :  ? slice object if attribute is an array?
         loc     : location in input string
         dat     : None
@@ -815,12 +900,12 @@ class NodeFuncDef(Node, NameSpace):
     """
     AST node for block (method, function?) definition.
 
-    A block can be seen as a method that only modifies the class' nameSpaceAttrs.
+    A block can be seen as a method that only modifies the class' _nameSpaceAttrs.
     It has neither arguments nor return values. It is treated as an C++ inline
     function or template.
 
     The block's childern are the statements.
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids : [<argument list>, <function body>]
         loc  : location in input string
         dat  : None
@@ -842,9 +927,10 @@ class NodeFuncDef(Node, NameSpace):
     argList = property(getArgList, setArgList, None,
                    'The argument list (proppery).')
 
+    #TODO: rename to "statements"? Rationale: same name like in NodeDataDef
     #Get and set the function body
     def getFuncBody(self): return self.kids[1]
-    def setFuncBody(self, inBody): self.kids[1] = inBody; inBody.dat = 'function body'
+    def setFuncBody(self, inBody): self.kids[1] = inBody; inBody.dat = 'function body';
     funcBody = property(getFuncBody, setFuncBody, None,
                    'The function body (proppery).')
 
@@ -852,7 +938,7 @@ class NodeFuncDef(Node, NameSpace):
 class NodeClassDef(Node, NameSpace):
     """
     AST node for class definition.
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids      : The statements, the block's code.
         loc       : location in input string
         dat       : None
@@ -861,20 +947,20 @@ class NodeClassDef(Node, NameSpace):
         baseName : name of the class, from which this class inherits;
                     usually "Process", "Model"
     """
-    def __init__(self, kids=None, loc=None, dat=None, name=None, baseName=None, 
-                  isBuiltinType=False, noFlatten=False):
+    def __init__(self, kids=None, loc=None, dat=None, name=None, baseName=None):
         Node.__init__(self, kids, loc, dat)
         NameSpace.__init__(self)
         self.name = name
         self.baseName = baseName
-        self.isBuiltinType = isBuiltinType
-        self.noFlatten = noFlatten
+        self.isBuiltinType = False
+        self.noFlatten = False
         
+#TODO: introduce? Rationale: same name like in NodeDataDef
 #    #Get or set the class body through a unified name
 #    def getStatements(self): 
-#        return self.kids
+#        return self
 #    def setStatements(self, inDefs): 
-#        self.kids = inDefs
+#        self.kids = inDefs.kids
 #    statements = property(getStatements, setStatements, None,
 #            'Attribute definitions and operations on constants. (propperty).')
 
@@ -882,7 +968,7 @@ class NodeClassDef(Node, NameSpace):
 class NodeModule(Node, NameSpace):
     '''
     Root node of a module (or of the program)
-    Data nameSpaceAttrs:
+    Data _nameSpaceAttrs:
         kids      : Definitions, the program's code.
         loc       : location in input string (~0)
         dat       : None
@@ -894,6 +980,14 @@ class NodeModule(Node, NameSpace):
         NameSpace.__init__(self)
         self.name = name
 
+#TODO: introduce? Rationale: same name like in NodeDataDef
+#    #Get or set the class body through a unified name
+#    def getStatements(self): 
+#        return self
+#    def setStatements(self, inDefs): 
+#        self.kids = inDefs.kids
+#    statements = property(getStatements, setStatements, None,
+#            'Attribute definitions and operations on constants. (propperty).')
 
 class DepthFirstIterator(object):
     """
@@ -1054,22 +1148,27 @@ class TreePrinter(object):
             if isinstance(node, NameSpace):
                 #print the name space speciffic attributes in short form
                 #they are causing infinite recursion otherwise
-                self.putStr(indentStr, 'nameSpaceAttrs.keys(): ' + 
-                            str(node.nameSpaceAttrs.keys()) + ' ')
-                if node.enclosingScope is None: 
-                    self.putStr(indentStr, 'enclosingScope: ' + str(None) + ' ')
+                self.putStr(indentStr, '_nameSpaceAttrs.keys(): ' + 
+                            str(node._nameSpaceAttrs.keys()) + ' ')
+                if node._globalScope is None: 
+                    self.putStr(indentStr, '_globalScope: None ')
                 else: 
-                    self.putStr(indentStr, 'enclosingScope.name: ' + 
-                                str(node.enclosingScope.name) + ' ')
-            #the node's nameSpaceAttrs are printed in sorted order, 
+                    self.putStr(indentStr, '_globalScope.name: ' + 
+                                str(node._globalScope.name) + ' ')
+                if node._thisScope is None: 
+                    self.putStr(indentStr, '_thisScope: None ')
+                else: 
+                    self.putStr(indentStr, '_thisScope.name: ' + 
+                                str(node._thisScope.name) + ' ')
+            #the node's _nameSpaceAttrs are printed in sorted order, 
             #but the special attributes are excluded
-            specialAttrs = set(['loc', 'kids', 'nameSpaceAttrs', 'enclosingScope'])
+            specialAttrs = set(['loc', 'kids', '_nameSpaceAttrs', '_globalScope', '_thisScope'])
             attrNameSet = set(node.__dict__.keys())
             attrNames= list(attrNameSet - specialAttrs)
             attrNames.sort()
-            #get nameSpaceAttrs out node.__dict__
+            #get _nameSpaceAttrs out node.__dict__
             for name1 in attrNames:
-                #TODO:more robustness when other nameSpaceAttrs are Nodes too
+                #TODO:more robustness when other _nameSpaceAttrs are Nodes too
                 #TODO:more robustness against circular dependencies
                 self.putStr(indentStr, name1 + ': ' + str(node.__dict__[name1]) + ' ')
             #put newline after complete node 
@@ -1362,7 +1461,7 @@ class Visitor(object):
         '''
         Create the rule table.
         Look at all methods of the class, if they have
-        _dispatchIfType and _dispatchPriority data nameSpaceAttrs
+        _dispatchIfType and _dispatchPriority data _nameSpaceAttrs
         put them into the rule table.
 
         - The rule table is sorted according to _dispatchPriority.
@@ -1372,7 +1471,7 @@ class Visitor(object):
         ruleTable = []
         defaultFunc = Visitor._simpleDefaultFunc #IGNORE:W0212
         #TODO: look into methods of parent classes too
-        #loop over the class' nameSpaceAttrs and put them into the table if appropriate
+        #loop over the class' _nameSpaceAttrs and put them into the table if appropriate
         for func in cls.__dict__.itervalues():
             if not isinstance(func, FunctionType):
                 continue
@@ -1489,7 +1588,7 @@ class TestAST(unittest.TestCase):
 
     def test__str__(self):
         #test printing and line wraping (it must not crash)
-        #create additional node with many big nameSpaceAttrs
+        #create additional node with many big _nameSpaceAttrs
         nBig = Node([])
         nBig.test1 = 'qworieoqwiruuqrw'
         nBig.test2 = 'qworieoqwiruuqrw'

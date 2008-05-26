@@ -725,12 +725,14 @@ class ProgramTreeCreator(Visitor):
     def visitPragmaStmt(self, pragmaStmt, namespace):
         '''Interpret pragma statement.'''
         print 'visiting pragma: ', pragmaStmt
-        #the pragma statements that are known for class definitions
-        if isinstance(namespace, NodeClassDef):
-            if pragmaStmt.options[0] == 'built_in_type':
-                namespace.isBuiltinType == True
-            elif pragmaStmt.options[0] == 'no_flatten':
-                namespace.noFlatten == True
+#        #these pragma statements are written in class definitions. They are
+#        #however interpreted when a data definition is expanded to a tree of 
+#        #definitions.
+#        if isinstance(namespace, NodeDataDef):
+#            if pragmaStmt.options[0] == 'built_in_type':
+#                namespace.isBuiltinType = True
+#            elif pragmaStmt.options[0] == 'no_flatten':
+#                namespace.noFlatten = True
         
     @Visitor.when_type(NodeClassDef)
     def visitClassDef(self, classDef, namespace):
@@ -750,9 +752,20 @@ class ProgramTreeCreator(Visitor):
         #add the class definition to the namespace
         namespace.setAttr(className, classDef)
         #tell class that this module is its enclosing scope
-        classDef.setEnclosingScope(namespace)
+        classDef.setGlobalScope(namespace)
+        #Look at the class body statements - do minor stuff
         #TODO: Add method names to class namespace.
-        #TODO: Parse pragmas.
+        #TODO: add this pointer to function definitions
+        for stmt in classDef:
+            #Parse pragmas.
+            if isinstance(stmt, NodePragmaStmt):
+                if stmt.options[0] == 'built_in_type':
+                    classDef.isBuiltinType = True
+                elif stmt.options[0] == 'no_flatten':
+                    classDef.noFlatten = True
+            #TODO: Add method names to class namespace.
+            elif isinstance(stmt, NodeFuncDef):
+                pass
         return 
     
         
@@ -777,19 +790,24 @@ class ProgramTreeCreator(Visitor):
         namespace.setAttr(dataDef.name, dataDef)
         #No setting of enclosing scope necessary. 
         #The class definitions are interpreted in the scope where they were written.
-        #dataDef.setEnclosingScope(namespace) 
+        ###dataDef.setEnclosingScope(namespace) 
         
         #Data that is defined directly in a module must be constant.
         if isinstance(namespace, NodeModule):
             if dataDef.role != RoleConstant:
                 raise UserException('Module data must have role "const"!',dataDef.loc)
 
-        #TODO: Create recursive definitions that contain only base types
-        #      Copy all definitions from the classes.
+        #Create recursive definitions that contain only base types: --------------
+        #Find the class definition - the template for creating the data definition
         classDef = namespace.findDotName(dataDef.className)
         if classDef is None:
             raise UserException('Unknown class: ' +str(dataDef.className), dataDef.loc)
-        self.createDataDefTreeRecursive(dataDef, classDef)
+        #Copy flags
+        dataDef.isBuiltinType = classDef.isBuiltinType
+        dataDef.noFlatten = classDef.noFlatten
+        #Built in types are not expanded (one can not see into them).
+        if not classDef.isBuiltinType:
+            self.createDataDefTreeRecursive(dataDef, classDef)
         
         #TODO: if data root is const all recursive attributes must be const?
         #TODO: if data root is parameter all recursive attributes must be parameter?
@@ -814,7 +832,7 @@ class ProgramTreeCreator(Visitor):
         #The inherited statements are accumulating in ioDataDef.statements.
         #The attribute names are accumulating in ioDataDef's namespace as well
         if classDef.baseName is not None:
-            baseClassDef = classDef.enclosingScope.findDotName(classDef.baseName)
+            baseClassDef = classDef.globalScope.findDotName(classDef.baseName)
             self.createDataDefTreeRecursive(ioDataDef, baseClassDef)
         
         #Copy all definitions out of the class definition
@@ -827,14 +845,12 @@ class ProgramTreeCreator(Visitor):
                 classBodyStmts.appendChild(stmt)
         
         #Interpret the copied statements ----------------------------
-        #Check if class is built in type. Built in classes are not further expanded
-        if not classDef.isBuiltinType:
-            #use the global scope where the class was defined
-            ioDataDef.enclosingScope = classDef.enclosingScope
-            #interpret each statement, the definitions are worked out recursively
-            for stmt in classBodyStmts:
-                self.dispatch(stmt, ioDataDef)
-            ioDataDef.enclosingScope = None
+        #use the global scope where the class was defined
+        ioDataDef.globalScope = classDef.globalScope
+        #interpret each statement, the definitions are expanded recursively
+        for stmt in classBodyStmts:
+            self.dispatch(stmt, ioDataDef)
+        ioDataDef.globalScope = None
            
         #put the interpreted (and expanded) statements into the root definition
         ioDataDef.statements.insertChildren(len(ioDataDef.statements), 
@@ -1048,20 +1064,23 @@ class RunTest(Process):
     testProg2 = (
 '''
 class Foo(Model):
-{
-    data r, s: Real;
+{   
+    #data r, s: Real;
+    func foo1(): {}
 }
 
 class Test1(Model):
-{
-    data a, b: Real;
+{   
+    #data a, b: Real;
+    func test1(): {}
 }
 class Test2(Test1):
-{   pragma built_in_type;
-    data c, d: Real;
+{   
+    #data c, d: Real;
     data f1, f2: Foo;
     
-    #func test(a,b,c): {}
+    func test1(): {}
+    func test2(): {}
 }
 
 data t:Test2;
