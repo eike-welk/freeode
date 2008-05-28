@@ -644,7 +644,7 @@ class ProgramTreeCreator(Visitor):
         #the standard library (treated specially)
         self.stdLib = None
         stdLib = simlstdlib.createParseTree()
-        self.stdLib = self.interpretModuleTree(stdLib)
+        self.stdLib = self.interpretModuleStatements(stdLib)
 
         
     @staticmethod
@@ -901,7 +901,7 @@ class ProgramTreeCreator(Visitor):
         return
             
         
-    def interpretModuleTree(self, moduleTree):
+    def interpretModuleStatements(self, moduleTree):
         '''
         Import a module given as a parse tree.
         
@@ -950,7 +950,7 @@ class ProgramTreeCreator(Visitor):
         '''
         Import a module (program file).
         
-        Semantic analysis is performed by self.interpretModuleTree(...).
+        Semantic analysis is performed by self.interpretModuleStatements(...).
         Modules are cached, and their AST is constucted only once, 
         even when they are imported multiple times.
         The function is recursively executed for each import statement.
@@ -981,7 +981,7 @@ class ProgramTreeCreator(Visitor):
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(inputFileContents, fileName, moduleName) 
         #do semantic analysis and decorate tree
-        ast = self.interpretModuleTree(parseTree)
+        ast = self.interpretModuleStatements(parseTree)
         #put tree in cache
         self.moduleCache[absFileName] = ast
         return ast
@@ -1006,7 +1006,7 @@ class ProgramTreeCreator(Visitor):
         '''
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(moduleStr, fileName, moduleName) 
-        return self.interpretModuleTree(parseTree)
+        return self.interpretModuleStatements(parseTree)
         
 
 def doTests():

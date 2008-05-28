@@ -46,7 +46,7 @@ from __future__ import division
 
 from types import ClassType, FunctionType, NoneType #, TupleType, StringType
 import copy
-import weakref
+#import weakref
 
 import pyparsing
 
@@ -73,11 +73,11 @@ class DuplicateAttributeError(Exception):
         
 class NameSpace(object):
     '''
-    Name space for modules, classes and functions. 
+    Name space for modules, classes and functions.
     '''
     def __init__(self):
         #the attributes of this name space
-        self._nameSpaceAttrs = weakref.WeakValueDictionary()
+        self._nameSpaceAttrs = {} #weakref.WeakValueDictionary()
         #the next upper level name space
         #Name space for global variables. Module where the code was written.
         self._globalScope = None
@@ -186,12 +186,13 @@ class NameSpace(object):
         
         Used by self.findDotName(...), but not by self.getAttr(...).
         '''
-        if inNameSpace is None:
-            self._globalScope = None
-        elif isinstance(inNameSpace, weakref.ProxyTypes):
-            self._globalScope = inNameSpace
-        else:
-            self._globalScope = weakref.proxy(inNameSpace)
+        self._globalScope = inNameSpace
+#        if inNameSpace is None:
+#            self._globalScope = None
+#        elif isinstance(inNameSpace, weakref.ProxyTypes):
+#            self._globalScope = inNameSpace
+#        else:
+#            self._globalScope = weakref.proxy(inNameSpace)
             
     def getGlobalScope(self):
         '''Return the global name space.'''
@@ -209,12 +210,13 @@ class NameSpace(object):
         
         Used by self.findDotName(...), but not by self.getAttr(...).
         '''
-        if inNameSpace is None:
-            self._thisScope = None
-        elif isinstance(inNameSpace, weakref.ProxyTypes):
-            self._thisScope = inNameSpace
-        else:
-            self._thisScope = weakref.proxy(inNameSpace)
+        self._thisScope = inNameSpace
+#        if inNameSpace is None:
+#            self._thisScope = None
+#        elif isinstance(inNameSpace, weakref.ProxyTypes):
+#            self._thisScope = inNameSpace
+#        else:
+#            self._thisScope = weakref.proxy(inNameSpace)
             
     def getThisScope(self):
         '''Return the "this" name space.'''
@@ -239,16 +241,13 @@ class FunctionOverloadingResolver(object):
         inFuncDef : NodeFuncDef
             The first function stored in the container. Optional.
         '''
-        self.name = None
-        self._functions = [] #weakref.WeakValueDictionary()
+        self._functions = [] 
         if inFuncDef is not None:
             self.append(inFuncDef)
         
     def append(self, inFuncDef):
         '''Append a function to the list'''
-        if self.name is None:
-            self.name = inFuncDef.name
-        self._functions.append(weakref.proxy(inFuncDef))
+        self._functions.append(inFuncDef)
         return
     
     def resolve(self, inFuncCall):
