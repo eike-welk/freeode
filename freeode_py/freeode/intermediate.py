@@ -211,7 +211,7 @@ class ILTProcessGenerator(object):
         for statement in block:
             #Block execution statement: insert the block's code
             if isinstance(statement, NodeFuncExecute):
-                subBlockName = namePrefix + statement.funcName #dotted block name
+                subBlockName = namePrefix + statement.name #dotted block name
                 subModelName = subBlockName[:-1] #name of model, where block is defined
 #                #Error if submodel or method does not exist
 #                if not subModelName in self.astProcessAttributes:
@@ -221,9 +221,9 @@ class ILTProcessGenerator(object):
                     raise UserException('Undefined method: ' +
                                         str(subBlockName), statement.loc)
                 #Check if executing (inlining) this block is allowed
-                if statement.funcName in illegalBlocks:
+                if statement.name in illegalBlocks:
                     raise UserException('Function can not be called here: ' +
-                                        str(statement.funcName), statement.loc)
+                                        str(statement.name), statement.loc)
                 #Find definition of function
                 subBlockDef = self.astProcessAttributes[subBlockName]
                 #Check if subBlockDef is really a function definition
@@ -721,6 +721,11 @@ class ProgramTreeCreator(Visitor):
                 ProgramTreeCreator.setDataRoleDefault(child)
              
         
+    @Visitor.when_type(NodeForeignCodeStmt)
+    def visitForeignCodeStmt(self, foreignCodeStmt, namespace):
+        '''Interpret NodeForeignCodeStmt.'''
+        print 'visiting NodeForeignCodeStmt: '
+        
     @Visitor.when_type(NodePragmaStmt)
     def visitPragmaStmt(self, pragmaStmt, namespace):
         '''Interpret pragma statement.'''
@@ -751,11 +756,9 @@ class ProgramTreeCreator(Visitor):
                                 str(baseName), classDef.loc)
         #add the class definition to the namespace
         namespace.setAttr(className, classDef)
-        #tell class that this module is its enclosing scope
+        #tell class that this module is its global scope
         classDef.setGlobalScope(namespace)
         #Look at the class body statements - do minor stuff
-        #TODO: Add method names to class namespace.
-        #TODO: add this pointer to function definitions
         for stmt in classDef:
             #Parse pragmas.
             if isinstance(stmt, NodePragmaStmt):
@@ -763,9 +766,14 @@ class ProgramTreeCreator(Visitor):
                     classDef.isBuiltinType = True
                 elif stmt.options[0] == 'no_flatten':
                     classDef.noFlatten = True
-            #TODO: Add method names to class namespace.
             elif isinstance(stmt, NodeFuncDef):
-                pass
+                #add this pointer to method definitions
+                thisArgument = NodeDataDef(name='this', className=className, 
+                                           role=RoleFuncArgument)
+                stmt.argList.insertChild(0, thisArgument)
+                #Add method names to class namespace. 
+                classDef.setAttr(stmt.name, stmt)
+                #tell function which module is its global scope ?
         return 
     
         
@@ -773,10 +781,31 @@ class ProgramTreeCreator(Visitor):
     def visitFuncDef(self, funcDef, namespace):
         '''Interpret function definition statement.'''
         print 'interpreting func def: ', funcDef.name
-        #TODO: put function into namespace
-        #TODO: Functions get a function resolution object, (a list at first)
+        #put function into namespace (may be module or class)
+        namespace.setAttr(funcDef.name, funcDef)
+        #Set namespaces: functions at module level have only gobal namespace
+        if isinstance(namespace, NodeModule):
+            funcDef.setGlobalScope(namespace)
+        #Set namespaces: class methods have: 'this' namespace, gobal namespace
+        elif isinstance(namespace, NodeDataDef):
+            funcDef.setGlobalScope(namespace.globalScope)
+            funcDef.setThisScope(namespace)
+            funcDef.argList[0].update(namespace) #set value to 'this' pointer
+        else:
+            raise Exception('Wrong node type!')
+        #put function arguments into namespace
+        for argDef in funcDef.argList:
+            if namespace.hasAttr(argDef.name):
+                raise UserException('Duplicate function argument: ' +
+                                    str(argDef.name), funcDef.loc)
+            funcDef.setAttr(argDef.name, argDef)
         #TODO: Parse pragmas.
-        #TODO: set default data types
+        #TODO: Check Attribute access
+        #TODO: interpret all statements in function body
+        #TODO: a function is no namespace, it contains a namespace. 
+        #      The stement: func.x = 5; is nonsense. 
+        for stmt in funcDef.funcBody:
+            self.dispatch(stmt, funcDef)
         
         
     @Visitor.when_type(NodeDataDef)
@@ -788,7 +817,7 @@ class ProgramTreeCreator(Visitor):
             raise UserException('Duplicate attribute definition: "%s".'
                                 % str(dataDef.name), dataDef.loc)
         namespace.setAttr(dataDef.name, dataDef)
-        #No setting of enclosing scope necessary. 
+        #No setting of global scope necessary. 
         #The class definitions are interpreted in the scope where they were written.
         ###dataDef.setEnclosingScope(namespace) 
         
@@ -797,7 +826,6 @@ class ProgramTreeCreator(Visitor):
             if dataDef.role != RoleConstant:
                 raise UserException('Module data must have role "const"!',dataDef.loc)
 
-        #Create recursive definitions that contain only base types: --------------
         #Find the class definition - the template for creating the data definition
         classDef = namespace.findDotName(dataDef.className)
         if classDef is None:
@@ -805,7 +833,8 @@ class ProgramTreeCreator(Visitor):
         #Copy flags
         dataDef.isBuiltinType = classDef.isBuiltinType
         dataDef.noFlatten = classDef.noFlatten
-        #Built in types are not expanded (one can not see into them).
+        #Create recursive definitions that contain only base types.
+        #Built in types however are not expanded (one can not see into them).
         if not classDef.isBuiltinType:
             self.createDataDefTreeRecursive(dataDef, classDef)
         
@@ -862,9 +891,65 @@ class ProgramTreeCreator(Visitor):
     def visitAssignment(self, assignment, namespace):
         '''Interpret assignment statement.'''
         print 'interpreting assignment: ', assignment.lhs
+        #Check LHS --------------------
+        lhsData = namespace.findDotName(assignment.lhs.name)
+        if lhsData is None:
+            raise UserException('Undefined data: ' + 
+                                str(assignment.lhs.name), assignment.loc)
+        if not isinstance(lhsData, NodeDataDef):
+            raise UserException('Only data can be assigned: ' +
+                                str(assignment.lhs.name), assignment.loc)
+#        if lhsData.isAssigned:
+#            raise UserException('Data can only be assigned once: ' +
+#                                str(assignment.lhs.name), assignment.loc)
+#        lhsData.isAssigned = True        
+        lhsRole = lhsData.role
+        if lhsRole == RoleFuncArgument:
+            raise UserException('Function arguments are read only: ' +
+                                str(assignment.lhs.name), assignment.loc)            
+        if lhsRole == RoleConstant:
+            rhsLegalRoles = (RoleConstant,)
+        elif lhsRole == RoleParameter:
+            rhsLegalRoles = (RoleConstant, RoleParameter)
+        else:
+            rhsLegalRoles = (RoleConstant, RoleParameter, RoleDataCanVaryDuringSimulation)
+        #No Checking of class since function arguments have no class yet.
+        #lhsClass = namespace.findDotName(lhsData.className)
+        
+        #Check RHS -------------------------
+        #Check existence of attributes, correct roles of data
+        for node in assignment.rhs.iterDepthFirst():
+            if not isinstance(node, NodeAttrAccess):
+                continue
+            rhsData = namespace.findDotName(node.name)
+            if rhsData is None:
+                raise UserException('Undefined data: ' + 
+                                str(node.name), assignment.loc)
+            if not issubclass(rhsData.role, rhsLegalRoles):
+                raise UserException('Illegal role! role: %s, data: %s' % 
+                                   (rhsData.role.userStr, str(node.name)), 
+                                    assignment.loc)
+        #Check existence of functions, check correct function arguments
+        for node in assignment.rhs.iterDepthFirst():
+            if not isinstance(node, NodeFuncExecute):
+                continue
+            #TODO: call visitFuncExecute(...) instead
+            rhsfunc = namespace.findDotName(node.name)
+            if rhsfunc is None:
+                raise UserException('Undefined function: ' + 
+                                    str(node.name), assignment.loc)
         #TODO: compute the constant expression, and replace the contents of the instance object?
         #TODO: constant computations are collected and put into a special method: __initConstants__?
-        #TODO: test type, constness and unit compatibility of operands.
+        #TODO: test type compatibility of operands.
+        #TODO: test unit compatibility of operands.
+        #TODO: Store the current global scope in the assignment. Reason: 
+        #      Class definitions are interpreted in the global scope where they are written.
+        #      This information must be stored somewhere if assignments in the class body 
+        #      are interpreted later.
+        #TODO: Other alternative: store pointer to attribute definition in each attribute access.
+        #TODO: perform the assignment for trivial cases (a=42)
+        #      Important for pointers; dependencies between grids and distributions
+       
         
     @Visitor.when_type(NodeImportStmt)
     def visitImportStmt(self, importStmt, namespace):
@@ -1058,6 +1143,8 @@ class RunTest(Process):
         print 'Simulation finished successfully.';
     }
 }
+
+data r: RunTest;
 ''' )
 
 #------------ testProg2 -----------------------
@@ -1065,25 +1152,29 @@ class RunTest(Process):
 '''
 class Foo(Model):
 {   
-    #data r, s: Real;
-    func foo1(): {}
+    data r, s: Real;
+    #func foo1(): {}
 }
 
 class Test1(Model):
 {   
-    #data a, b: Real;
-    func test1(): {}
+    data a: Real;
+    #func function1(): {}
 }
 class Test2(Test1):
 {   
-    #data c, d: Real;
-    data f1, f2: Foo;
+    data b: Real;
+    #data f1, f2: Foo;
     
-    func test1(): {}
-    func test2(): {}
+    func function1(arg1): 
+    {
+        a = 2 + arg1;
+        b = a * pi;
+    }
+    func function2(): 
+    {}
 }
-
-data t:Test2;
+data test2: Test2;
 ''' )
 
     #test the intermedite tree generator ------------------------------------------------------------------
@@ -1106,7 +1197,7 @@ data t:Test2;
     flagTestProg2 = True
     if flagTestProg2:
         tc = ProgramTreeCreator()
-        astTree = tc.importModuleStr(testProg2)
+        astTree = tc.importModuleStr(testProg1, moduleName='__main__')
         
         print 'AST tree:'
         print astTree

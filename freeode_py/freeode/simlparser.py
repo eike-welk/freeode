@@ -569,7 +569,7 @@ class ParseStage(object):
             attrDef.role = roleDict.get(toks.attrRole, None)
             #store the default value
             if isinstance(toks.defaultValue, Node):
-                attrDef.setDefaultValue(toks.defaultValue)
+                attrDef.setValue(toks.defaultValue)
             #store the attribute definition in the statement list
             attrDefList.appendChild(attrDef)
         #Special case: only one attribute defined
@@ -631,7 +631,7 @@ class ParseStage(object):
         nCurr = NodeFuncExecute()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store function name
-        nCurr.funcName = DotName(toks.funcName)
+        nCurr.name = DotName(toks.funcName)
         #store function arguments: 
         thereWasNamedArgument = False
         for arg in toks.argList:
@@ -671,7 +671,7 @@ class ParseStage(object):
             nCurr.className = DotName(toks.className.asList())
         #store optional default value
         if isinstance(toks.defaultValue, Node):
-            nCurr.setDefaultValue(toks.defaultValue)
+            nCurr.setValue(toks.defaultValue)
         #store role
         nCurr.role = RoleFuncArgument
         return nCurr
@@ -707,7 +707,7 @@ class ParseStage(object):
         #check argument list - arguments without default values must come first!
         thereWasDefaultArgument = False
         for arg in nCurr.argList:
-            if arg.defaultValue is not None:
+            if arg.value is not None:
                 thereWasDefaultArgument = True
             elif thereWasDefaultArgument:
                 raise UserException('Arguments without defaut values must come first!',

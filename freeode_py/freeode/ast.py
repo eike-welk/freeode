@@ -110,11 +110,18 @@ class NameSpace(object):
             raise Exception('Argument name must be of type str or DotName! type(name): ' 
                             + str(type(name)) + ' str(name): ' + str(name))
         #add attribute to name space
-        #TODO: Functions get a function resolution object, (a list at first)
-        if name in self._nameSpaceAttrs:
-            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
-            #TODO: special handling for functions: add function to function resolution object
-        self._nameSpaceAttrs[name] = newAttr #This is a new attribute
+        if isinstance(newAttr, NodeFuncDef):
+            #Function attributes need no unique name
+            #Functions are stored in a function resolution object, (roughly a list)
+            if name in self._nameSpaceAttrs:
+                self._nameSpaceAttrs[name].append(newAttr)
+            else:
+                self._nameSpaceAttrs[name] = FunctionOverloadingResolver(newAttr)
+        else:
+            #Data attributes must be unique
+            if name in self._nameSpaceAttrs:
+                raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
+            self._nameSpaceAttrs[name] = newAttr #This is a new attribute
         return
             
     def update(self, otherNameSpace):
@@ -247,6 +254,9 @@ class FunctionOverloadingResolver(object):
         
     def append(self, inFuncDef):
         '''Append a function to the list'''
+        if not isinstance(inFuncDef, NodeFuncDef):
+            raise Exception('Argument must be a NodeFuncDef! type(inFuncDef):'
+                            + str(type(inFuncDef)))
         self._functions.append(inFuncDef)
         return
     
@@ -612,24 +622,23 @@ class NodeAssignment(NodeOpInfix2):
         super(NodeAssignment, self).__init__(kids, loc, dat, operator='=')
 
 
-#TODO: rename to NodeFuncCall
 class NodeFuncExecute(Node):
     '''
-    AST Node for calling a function.  
+    AST Node for calling a function or method.  
     This will be usually done by inserting the code of the function's body
     into the top level function.
     Similar to an inline function in C++.
     Data _nameSpaceAttrs:
-        kids        : []
+        kids        : [<function arguments (any mathematical expression)>]
         loc         : location in input string
         dat         : None
 
-        funcName   : Dotted name of the block. Tuple of strings:
+        name        : Dotted name of the function. Tuple of strings:
                       ('model1','init')
     '''
-    def __init__(self, kids=None, loc=None, dat=None, funcName=None):
+    def __init__(self, kids=None, loc=None, dat=None, name=None):
         super(NodeFuncExecute, self).__init__(kids, loc, dat)
-        self.funcName = funcName
+        self.name = name
 
 
 class NodePrintStmt(Node):
@@ -781,13 +790,14 @@ class RoleAny(AttributeRole):
     pass
 class RoleConstant(AttributeRole):
     '''The attribute is a constant'''
-    pass
+    userStr = 'const'
 class RoleParameter(AttributeRole):
     '''
     Attribute is a parameter of the simulation:
     - is constant during the simulation, but can vary between simulations.
     - is stored.
     '''
+    userStr = 'param'
 class RoleDataCanVaryDuringSimulation(AttributeRole):
     '''Data that can vary during the simulation. (Base class.)'''
     pass
@@ -798,7 +808,7 @@ class RoleFuncArgument(RoleDataCanVaryDuringSimulation):
     - should be optmized away 
     - is not stored.
     '''
-    pass
+    userStr = 'function argument'
 class RoleLocalVariable(RoleDataCanVaryDuringSimulation):
     '''
     The attribute is a local variable:
@@ -806,20 +816,20 @@ class RoleLocalVariable(RoleDataCanVaryDuringSimulation):
     - should be optmized away 
     - is not stored.
     '''
-    pass
+    userStr = 'local variable'
 class RoleVariable(RoleDataCanVaryDuringSimulation):
     '''
     The attribute is a state or algebraic variable:
     - can vary during the simulation
     - is stored.
     '''
-    pass
+    userStr = 'variable'
 class RoleStateVariable(RoleVariable):
     '''The attribute is a state variable'''
-    pass
+    userStr = 'state_variable'
 class RoleAlgebraicVariable(RoleVariable):
     '''The attribute is an algebraic variable'''
-    pass
+    userStr = 'algebraic_variable'
 
 
 class NodeDataDef(Node, NameSpace):
@@ -842,6 +852,10 @@ class NodeDataDef(Node, NameSpace):
                           TODO: replace by accessor functions to create more robust interface
                           TODO: Derivatives should be separate variables. These variables should 
                                 be created in the intermediate language logic.
+        isBuiltinType   : If True: the data is a built in class. The inner 
+                          structure of these objects is invisible.
+        noFlatten       : If True: Do not flatten this data tree. The class is 
+                          handled specially in a later step.
     '''
     def __init__(self, kids=None, loc=None, dat=None,
                         name=None, className=None, targetName=None, 
@@ -856,13 +870,15 @@ class NodeDataDef(Node, NameSpace):
         self.role = role
         self.isBuiltinType = False
         self.noFlatten = False
+        #self.isAssigned = False #can not be done this easy because variables 
+        #                        #are assigned in initialize() and in dynamic()
         
     #Get or set the default value
-    def getDefaultValue(self): 
+    def getValue(self): 
         return self.kids[0]
-    def setDefaultValue(self, defaultValue): 
-        self.kids[0] = defaultValue
-    defaultValue = property(getDefaultValue, setDefaultValue, None,
+    def setValue(self, inValue): 
+        self.kids[0] = inValue
+    value = property(getValue, setValue, None,
                    'Default value or initial value of the defined data (propperty).')
     #Get or set the recursive definitions
     def getStatements(self): 
@@ -919,6 +935,8 @@ class NodeFuncDef(Node, NameSpace):
         if not self.kids:
             self.kids = [NodeStmtList(), NodeStmtList()]
         self.returnType = returnType
+        #TODO: a function is no namespace, it contains a namespace. 
+        #      The stement: func.x = 5; is nonsense. 
 
     #Get and set the argument list
     def getArgList(self): return self.kids[0]
@@ -1026,6 +1044,8 @@ class DepthFirstIterator(object):
         return self
 
 
+    #TODO: enhance DepthFirstIterator: remember already seen nodes in set.
+    #TODO: make possible child[i] == None
     def next(self):
         '''Go to the next node, return current node.'''
         #After tree has been traversed throw exception, don't start again
