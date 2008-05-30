@@ -857,6 +857,8 @@ class ParseStage(object):
         kw('time'); kw('this')
         ParseStage.builtInVars = set(['time', 'this'])   
         #identifiers   
+        #TODO: change to: identifier = Word(alphas, alphanums+'_') for code that the user writes
+        #      internal symbols could then be written like: "__init_constants__"
         identifier = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
         #Use this when defining new objects. The new identifier is checked if it is not a keyword
         newIdentifier = identifier.copy()                       .setParseAction(self._actionCheckIdentifier)
@@ -899,7 +901,6 @@ class ParseStage(object):
         #usually inserts the function bodie's code into the current method. 
         #This code insertion (inlinig) is done recursively and leaves only 
         #a few big top level methods
-        #function arguments are currently missing
         funcCallStmt = funcCall + ES(stmtEnd)                        .setErrMsgStart('Call statement: ')
 
         #Return values from a function
@@ -950,7 +951,8 @@ class ParseStage(object):
                                     + stmtEnd)                       .setErrMsgStart('Save statement: ')
                           )                                          .setParseAction(self._actionStoreStmt)\
                                                                      .setName('storeStmt')#.setDebug(True)
-
+        #TODO: compile statement
+        
         statement << (storeStmt | graphStmt | printStmt |                                   #IGNORE:W0104
                       returnStmt | pragmaStmt | foreignCodeStmt |
                       ifStatement | assignment | funcCallStmt)       .setName('statement')

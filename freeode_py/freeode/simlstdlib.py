@@ -76,6 +76,9 @@ class SolutionParameterClass(Object):
 
 class Process(Model):
 {
+    pragma compile_main_function init;
+    pragma compile_main_function dynamic;
+    pragma compile_main_function final;
     data solutionParameters: SolutionParameterClass;
 }
 

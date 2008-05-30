@@ -109,21 +109,31 @@ class NameSpace(object):
         elif not isinstance(name, str):
             raise Exception('Argument name must be of type str or DotName! type(name): ' 
                             + str(type(name)) + ' str(name): ' + str(name))
-        #add attribute to name space
-        if isinstance(newAttr, NodeFuncDef):
-            #Function attributes need no unique name
-            #Functions are stored in a function resolution object, (roughly a list)
-            if name in self._nameSpaceAttrs:
-                self._nameSpaceAttrs[name].append(newAttr)
-            else:
-                self._nameSpaceAttrs[name] = FunctionOverloadingResolver(newAttr)
-        else:
-            #Data attributes must be unique
-            if name in self._nameSpaceAttrs:
-                raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
-            self._nameSpaceAttrs[name] = newAttr #This is a new attribute
+        #add attribute to name space - attributes must be unique
+        if name in self._nameSpaceAttrs:
+            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
+        self._nameSpaceAttrs[name] = newAttr #This is a new attribute
         return
-            
+    
+    def setFuncAttr(self, name, newFunc):
+        '''
+        Special method to enter NodeFuncDef into namespace.
+        
+        Functions don't need to be unique. Therefore they are stored 
+        in special containers: "FunctionOverloadingResolver".
+        '''
+        if not isinstance(newFunc, NodeFuncDef):
+            raise Exception('Argument 2 must be NodeFuncDef')
+        
+        oldAttr = self._nameSpaceAttrs.get(name, None)
+        if oldAttr is None:
+            self.setAttr(name, FunctionOverloadingResolver(newFunc))
+        elif isinstance(oldAttr, FunctionOverloadingResolver):
+            oldAttr.append(newFunc)
+        else:
+            raise UserException('Function can not have same name like data: ' 
+                                + str(name), newFunc.loc)
+ 
     def update(self, otherNameSpace):
         '''
         Put attributes of otherNameSpace into this name space.

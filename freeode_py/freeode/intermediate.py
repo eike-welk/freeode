@@ -747,33 +747,28 @@ class ProgramTreeCreator(Visitor):
         print 'visiting class def: ', className
         #Error: class names must be unique
         if namespace.hasAttr(className):
-            raise UserException('Redefinition of class: ' + str(className), 
-                                classDef.loc)
+            raise UserException('Class name already defined: ' 
+                                + str(className), classDef.loc)
         #Error: parent class must exist
         if (baseName is not None) and \
            (namespace.findDotName(baseName, None) is None):
-            raise UserException('Unknown base class: ' + 
-                                str(baseName), classDef.loc)
+            raise UserException('Unknown base class: ' 
+                                + str(baseName), classDef.loc)
         #add the class definition to the namespace
         namespace.setAttr(className, classDef)
         #tell class that this module is its global scope
         classDef.setGlobalScope(namespace)
-        #Look at the class body statements - do minor stuff
+        #Look at the class body statements - only recognize pragmas and functions
         for stmt in classDef:
-            #Parse pragmas.
             if isinstance(stmt, NodePragmaStmt):
+                #interpret pragmas.
                 if stmt.options[0] == 'built_in_type':
                     classDef.isBuiltinType = True
                 elif stmt.options[0] == 'no_flatten':
                     classDef.noFlatten = True
             elif isinstance(stmt, NodeFuncDef):
-                #add this pointer to method definitions
-                thisArgument = NodeDataDef(name='this', className=className, 
-                                           role=RoleFuncArgument)
-                stmt.argList.insertChild(0, thisArgument)
-                #Add method names to class namespace. 
-                classDef.setAttr(stmt.name, stmt)
-                #tell function which module is its global scope ?
+                #interpret function definitions
+                self.visitFuncDef(stmt, classDef)
         return 
     
         
@@ -781,18 +776,29 @@ class ProgramTreeCreator(Visitor):
     def visitFuncDef(self, funcDef, namespace):
         '''Interpret function definition statement.'''
         print 'interpreting func def: ', funcDef.name
+        #TODO: NodeFuncDef should only be processed in class definition 
+        #      processing it in data tree expansion will process it multiple times.
+        #      The individual function objects for flattening must be created 
+        #      when NodeFuncExecute is processed.
         #put function into namespace (may be module or class)
-        namespace.setAttr(funcDef.name, funcDef)
-        #Set namespaces: functions at module level have only gobal namespace
+        namespace.setFuncAttr(funcDef.name, funcDef)
         if isinstance(namespace, NodeModule):
+            #function at module level: set gobal namespace
             funcDef.setGlobalScope(namespace)
-        #Set namespaces: class methods have: 'this' namespace, gobal namespace
-        elif isinstance(namespace, NodeDataDef):
+        elif isinstance(namespace, NodeClassDef):
+            #class method: set gobal namespace
             funcDef.setGlobalScope(namespace.globalScope)
-            funcDef.setThisScope(namespace)
-            funcDef.argList[0].update(namespace) #set value to 'this' pointer
+            #create "this" pointer and put into argument list
+            if len(funcDef.argList) == 0 or \
+               funcDef.argList[0].name != 'this':
+                thisArgument = NodeDataDef(name='this', loc=funcDef.loc,
+                                           role=RoleFuncArgument)
+                funcDef.argList.insertChild(0, thisArgument)
+            #give correct ype to "this"
+            #TODO: a refference or pointer type is necessary
+            funcDef.argList[0].className = namespace.name
         else:
-            raise Exception('Wrong node type!')
+            raise Exception('Wrong namespace type!')
         #put function arguments into namespace
         for argDef in funcDef.argList:
             if namespace.hasAttr(argDef.name):
@@ -800,13 +806,15 @@ class ProgramTreeCreator(Visitor):
                                     str(argDef.name), funcDef.loc)
             funcDef.setAttr(argDef.name, argDef)
         #TODO: Parse pragmas.
-        #TODO: Check Attribute access
-        #TODO: interpret all statements in function body
-        #TODO: a function is no namespace, it contains a namespace. 
-        #      The stement: func.x = 5; is nonsense. 
-        for stmt in funcDef.funcBody:
-            self.dispatch(stmt, funcDef)
-        
+# TODO: to be done when NodeFuncExecute is processed.
+#        #TODO: Parse pragmas.
+#        #TODO: Check Attribute access
+#        #TODO: a function is no namespace, it contains a namespace. 
+#        #      The statement: func.x = 5; is nonsense. 
+#        #interpret all statements in function body
+#        for stmt in funcDef.funcBody:
+#            self.dispatch(stmt, funcDef)
+        return
         
     @Visitor.when_type(NodeDataDef)
     def visitDataDef(self, dataDef, namespace):
@@ -864,12 +872,22 @@ class ProgramTreeCreator(Visitor):
             baseClassDef = classDef.globalScope.findDotName(classDef.baseName)
             self.createDataDefTreeRecursive(ioDataDef, baseClassDef)
         
+        #TODO: NodeFuncDef should only be processed in class definition;
+        #      processing it in data tree expansion will process it multiple times.
+        #      The individual function objects for flattening must be created 
+        #      when NodeFuncExecute is processed.
+        #TODO: How is the global scope remembered where the assignments are executed?
+        #      The definitions of base classes might be in other modules, and have 
+        #      therefore an other global scope.
         #Copy all definitions out of the class definition
         #The assignments and functions are only referenced.
         classBodyStmts = NodeStmtList()
         for stmt in classDef:
             if isinstance(stmt, NodeDataDef):
                 classBodyStmts.appendChild(stmt.copy())
+            elif isinstance(stmt, NodeFuncDef):
+                #TODO: put functions into name space
+                continue
             else:
                 classBodyStmts.appendChild(stmt)
         
@@ -893,16 +911,14 @@ class ProgramTreeCreator(Visitor):
         print 'interpreting assignment: ', assignment.lhs
         #Check LHS --------------------
         lhsData = namespace.findDotName(assignment.lhs.name)
+        #TODO: automatic creation of local variables in functions
         if lhsData is None:
             raise UserException('Undefined data: ' + 
                                 str(assignment.lhs.name), assignment.loc)
         if not isinstance(lhsData, NodeDataDef):
             raise UserException('Only data can be assigned: ' +
                                 str(assignment.lhs.name), assignment.loc)
-#        if lhsData.isAssigned:
-#            raise UserException('Data can only be assigned once: ' +
-#                                str(assignment.lhs.name), assignment.loc)
-#        lhsData.isAssigned = True        
+        #Roles describe when the data is computed
         lhsRole = lhsData.role
         if lhsRole == RoleFuncArgument:
             raise UserException('Function arguments are read only: ' +
@@ -1102,8 +1118,8 @@ def doTests():
 '''
 class Test(Model):
 {
-    data V, h: Real;
-    data A_bott, A_o, mu, q, g: Real param;
+    data V, h, q: Real;
+    data A_bott, A_o, mu, g: Real param;
 
     func dynamic():
     {
@@ -1116,7 +1132,6 @@ class Test(Model):
     {
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
-        q = 0.05;
     }
 }
 
@@ -1127,6 +1142,10 @@ class RunTest(Process):
 
     func dynamic():
     {
+        if time < 10:{
+            test.q = 0.01;}
+        else:{
+            test.q = 0.03;}
         test.dynamic();
     }
     func init():
@@ -1138,7 +1157,7 @@ class RunTest(Process):
     }
     func final():
     {
-        #store;
+        save 'test1';
         graph test.V, test.h;
         print 'Simulation finished successfully.';
     }
