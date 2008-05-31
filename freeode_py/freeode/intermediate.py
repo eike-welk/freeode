@@ -776,12 +776,14 @@ class ProgramTreeCreator(Visitor):
     def visitFuncDef(self, funcDef, namespace):
         '''Interpret function definition statement.'''
         print 'interpreting func def: ', funcDef.name
-        #TODO: NodeFuncDef should only be processed in class definition 
-        #      processing it in data tree expansion will process it multiple times.
-        #      The individual function objects for flattening must be created 
-        #      when NodeFuncExecute is processed.
+        # NodeFuncDef should only be processed in class definition 
+        # processing it in data tree expansion will process it multiple times.
+        # The individual function objects for flattening must be created 
+        # when NodeFuncExecute is processed.
+        
         #put function into namespace (may be module or class)
         namespace.setFuncAttr(funcDef.name, funcDef)
+        
         if isinstance(namespace, NodeModule):
             #function at module level: set gobal namespace
             funcDef.setGlobalScope(namespace)
@@ -799,13 +801,19 @@ class ProgramTreeCreator(Visitor):
             funcDef.argList[0].className = namespace.name
         else:
             raise Exception('Wrong namespace type!')
-        #put function arguments into namespace
+        #put function arguments into function's local namespace
         for argDef in funcDef.argList:
             if namespace.hasAttr(argDef.name):
                 raise UserException('Duplicate function argument: ' +
                                     str(argDef.name), funcDef.loc)
             funcDef.setAttr(argDef.name, argDef)
         #TODO: Parse pragmas.
+        
+        
+    @Visitor.when_type(NodeFuncExecute)
+    def visitFuncExecute(self, funcCall, namespace):
+        '''Interpret data definition statement.'''
+        print 'interpreting function call'
 # TODO: to be done when NodeFuncExecute is processed.
 #        #TODO: Parse pragmas.
 #        #TODO: Check Attribute access
@@ -815,6 +823,7 @@ class ProgramTreeCreator(Visitor):
 #        for stmt in funcDef.funcBody:
 #            self.dispatch(stmt, funcDef)
         return
+        
         
     @Visitor.when_type(NodeDataDef)
     def visitDataDef(self, dataDef, namespace):
@@ -872,22 +881,19 @@ class ProgramTreeCreator(Visitor):
             baseClassDef = classDef.globalScope.findDotName(classDef.baseName)
             self.createDataDefTreeRecursive(ioDataDef, baseClassDef)
         
-        #TODO: NodeFuncDef should only be processed in class definition;
-        #      processing it in data tree expansion will process it multiple times.
-        #      The individual function objects for flattening must be created 
-        #      when NodeFuncExecute is processed.
         #TODO: How is the global scope remembered where the assignments are executed?
         #      The definitions of base classes might be in other modules, and have 
         #      therefore an other global scope.
         #Copy all definitions out of the class definition
-        #The assignments and functions are only referenced.
+        #Assignments are only referenced, functions are omitted 
+        #they only get into namespace
         classBodyStmts = NodeStmtList()
         for stmt in classDef:
             if isinstance(stmt, NodeDataDef):
                 classBodyStmts.appendChild(stmt.copy())
             elif isinstance(stmt, NodeFuncDef):
-                #TODO: put functions into name space
-                continue
+                #put functions into name space, but do not copy and interpret 
+                ioDataDef.setFuncAttr(stmt.name, stmt)
             else:
                 classBodyStmts.appendChild(stmt)
         
