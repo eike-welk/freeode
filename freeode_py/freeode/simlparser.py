@@ -503,7 +503,32 @@ class ParseStage(object):
         nCurr.code = toks.code
         return nCurr
 
-
+    
+    def _actionCompileStmt(self, s, loc, toks): #IGNORE:W0613
+        '''
+        Create node for foreign_code statement:
+            foreign_code python replace_call ::{{ sin(x) }}:: ;
+        BNF:
+        compileStmt = (kw('compile') + ES(
+                          (dotIdentifier                             .setResultsName('className')
+                           + stmtEnd
+                           ) |
+                          (identifier                                .setResultsName('name')
+                           + ':' + dotIdentifier                     .setResultsName('className')
+                           + stmtEnd) 
+                          )                                          .setErrMsgStart('compile statement: ')
+                       )                                             .setParseAction(self._actionCompileStmt)\
+         '''
+        if ParseStage.noTreeModification:
+            return None #No parse result modifications for debugging
+        nCurr = NodeCompileStmt()
+        nCurr.loc = self.createTextLocation(loc) #Store position
+        nCurr.className = DotName(toks.className)
+        if nCurr.name:
+            nCurr.name = toks.name
+        return nCurr
+    
+    
     def _actionStatementList(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for list of statements: a=1; b=2; ...
@@ -951,7 +976,16 @@ class ParseStage(object):
                                     + stmtEnd)                       .setErrMsgStart('Save statement: ')
                           )                                          .setParseAction(self._actionStoreStmt)\
                                                                      .setName('storeStmt')#.setDebug(True)
-        #TODO: compile statement
+        #compile a class
+        compileStmt = (kw('compile') + ES(
+                          (dotIdentifier                             .setResultsName('className')
+                           + stmtEnd
+                           ) |
+                          (identifier                                .setResultsName('name')
+                           + ':' + dotIdentifier                     .setResultsName('className')
+                           + stmtEnd) 
+                          )                                          .setErrMsgStart('compile statement: ')
+                       )                                             .setParseAction(self._actionCompileStmt)\
         
         statement << (storeStmt | graphStmt | printStmt |                                   #IGNORE:W0104
                       returnStmt | pragmaStmt | foreignCodeStmt |
@@ -1033,7 +1067,8 @@ class ParseStage(object):
                               + blockEnd)                            .setErrMsgStart('class definition: ')
                          )                                           .setParseAction(self._actionClassDef)\
 
-        topLevelStms = classDef | funcDef | attributeDef | assignment
+        topLevelStms = classDef | funcDef | attributeDef | \
+                       compileStmt | assignment
         module = (Group(ZeroOrMore(topLevelStms)) + StringEnd())    .setParseAction(self._actionModule)\
                                                                      .setName('module')#.setDebug(True)
 
@@ -1163,6 +1198,9 @@ class RunTest(Process):
         print 'Simulation finished successfully.';
     }
 }
+
+compile RunTest;
+compile run1: RunTest;
 ''' )
 
 #------------ testProg2 -----------------------
@@ -1192,8 +1230,8 @@ class RunTest(Process):
         parser = ParseStage()
         #ParseStage.noTreeModification = 1
 
-        #print parser.parseModuleStr(testProg1)
-        print parser.parseModuleStr(testProg2)
+        print parser.parseModuleStr(testProg1)
+        #print parser.parseModuleStr(testProg2)
         
         #print parser.parseProgram('if a==0 then b=-1; else b=2+3+4; a=1; end')
         #print parser.parseExpression('0*1*2*3*4').asList()[0]

@@ -69,8 +69,13 @@ class DuplicateAttributeError(Exception):
     def __init__(self, msg=None, duplicateAttribute=None):
         Exception.__init__(self, msg)
         self.duplicateAttribute = duplicateAttribute
+ 
         
-        
+#TODO: Namespace and scope should be decoupled
+#      There should be different classes for scope and namespace
+#      A NodeDataDef is a namespace but it has no scopes
+#      A function has up to three scopes but it is no namespace
+#      Modules and classes are both.
 class NameSpace(object):
     '''
     Name space for modules, classes and functions.
@@ -795,8 +800,8 @@ class AttributeRole(object):
     shaped relationship between the roles.
     '''
     pass
-class RoleAny(AttributeRole):
-    '''The attribute's role is undecided'''
+class RoleCompiledObject(AttributeRole):
+    '''Mark objects that are compiled. TODO: seems to be no good solution.'''
     pass
 class RoleConstant(AttributeRole):
     '''The attribute is a constant'''
@@ -845,10 +850,16 @@ class RoleAlgebraicVariable(RoleVariable):
 class NodeDataDef(Node, NameSpace):
     '''
     AST node for definition of a variable, parameter or submodel.
-    Data _nameSpaceAttrs:
-        kids        : [<default value>, <instance attributes>]
-        loc         : location in input string
-        dat         : None
+    Data Attributes:
+        kids            : [<default value>, <instance attributes>]
+        loc             : location in input string
+        dat             : None
+
+        value           : Default value, initial value, value of a constant; interpreted
+                          according to context. (mathematical expression) 
+                          (propperty stored in kids[0])
+        statements      : statements of a recursive data definition. The statements of a class
+                          definition. (propperty stored in kids[0])
 
         name            : name of the attribute. can be dotted name which is stored
                           as a tuple of strings: ('aa', 'bb')
@@ -899,6 +910,18 @@ class NodeDataDef(Node, NameSpace):
                    'Attribute definitions. Copied from class definition. (propperty).')
 
 
+class NodeCompileStmt(NodeDataDef):
+    '''
+    AST node for compile statement.
+    A data statement where the the functions are instantiated for flattening 
+    and code generation.
+    '''
+    def __init__(self, kids=None, loc=None, dat=None,
+                        name=None, className=None, targetName=None):
+        NodeDataDef.__init__(self, kids, loc, dat, 
+                             name, className, targetName, role=RoleCompiledObject)
+    
+    
 class NodeAttrAccess(Node):
     '''
     AST node for access to a variable or parameter.
@@ -914,10 +937,10 @@ class NodeAttrAccess(Node):
         targetName : name in the target language (string)
     '''
     def __init__(self, kids=None, loc=None, dat=None, deriv=None,
-                 attrName=None, targetName=None):
+                 name=None, targetName=None):
         super(NodeAttrAccess, self).__init__(kids, loc, dat)
         self.deriv = deriv
-        self.name = DotName(attrName)
+        self.name = DotName(name)
         self.targetName = targetName
 
 

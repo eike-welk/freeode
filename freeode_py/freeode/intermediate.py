@@ -812,33 +812,116 @@ class ProgramTreeCreator(Visitor):
         
     @Visitor.when_type(NodeFuncExecute)
     def visitFuncExecute(self, funcCall, namespace):
-        '''Interpret data definition statement.'''
+        '''Interpret function call.'''
         print 'interpreting function call'
+        #Find the function definition - the template for creating the function
+        multiFunc = namespace.findDotName(funcCall.name)
+        if multiFunc is None:
+            #TODO: Raise "unknown attribute" error in the namespace, 
+            #      catch it in a central place, and raise a user exception there.
+            raise UserException('Unknown function: ' + str(funcCall.name), 
+                                funcCall.loc)
+        elif not isinstance(multiFunc, FunctionOverloadingResolver):
+            raise UserException('Object is not callable: ' + str(funcCall.name), 
+                                funcCall.loc)
+        #Prepend "this" pointer if it is call to member function
+        #TODO: better solution necessary! This solution does not work with funcions called 
+        #      implicitly through the "this" pointer
+        parentNamespace = namespace
+        thisNamespace = None
+        if len(funcCall.name) >= 2:
+            parentNamespace = namespace.findDotName(funcCall.name[:-1])
+            if isinstance(parentNamespace, NodeDataDef):
+                #Yes it is a member function (instance method)
+                thisNamespace = parentNamespace
+                thisPointer = NodeAttrAccess(name=funcCall.name[:-1], 
+                                             loc=funcCall.loc)
+                funcCall.insertChild(0, thisPointer)
+        #get the correct overloaded function
+        funcDef = multiFunc.resolve(funcCall)
+        
+        #Create new function object 
+        newFunc = NodeFuncDef(name=funcDef.name, loc=funcDef.loc, 
+                              returnType=funcDef.returnType)
+        newFunc.argList = funcDef.argList.copy()
+        newFunc.funcBody = funcDef.funcBody.copy()
+        newFunc.globalScope = funcDef.globalScope
+        newFunc.thisScope = thisNamespace
+        #put new function into correct namespace 
+        parentNamespace.appendChild(newFunc)
+        #parentNamespace.setFuncAttr(newFunc.name, newFunc) ????
+        
+        #TODO: pass the function's arguments
+
+        #visit the function's code
+        for stmt in newFunc.funcBody:
+            self.dispatch(stmt, newFunc)
+        
+        
 # TODO: to be done when NodeFuncExecute is processed.
 #        #TODO: Parse pragmas.
 #        #TODO: Check Attribute access
 #        #TODO: a function is no namespace, it contains a namespace. 
 #        #      The statement: func.x = 5; is nonsense. 
 #        #interpret all statements in function body
-#        for stmt in funcDef.funcBody:
-#            self.dispatch(stmt, funcDef)
+#        for stmt in multiFunc.funcBody:
+#            self.dispatch(stmt, multiFunc)
         return
         
         
+    @Visitor.when_type(NodeCompileStmt, 2)
+    def visitCompileStmt(self, compileStmt, namespace):
+        '''Interpret compile statement.'''
+        print 'interpreting compile statement'
+        #create name if none given
+        if compileStmt.name is None:
+            compileStmt.name = 'simulation' + '_'.join(compileStmt.className)
+            print ('Creating name for compiled object because none given: ' 
+                   + compileStmt.name)
+        #put symbol into namespace, 
+        if namespace.hasAttr(compileStmt.name):
+            #TODO: raise "duplicate attribute" error in a central location
+            #      catch it in a central place, and raise a user exception there.
+            raise UserException('Duplicate compiled object: "%s".'
+                                % str(compileStmt.name), compileStmt.loc)
+        namespace.setAttr(compileStmt.name, compileStmt)
+        #Find the class definition - the template for creating the compiled object
+        classDef = namespace.findDotName(compileStmt.className)
+        if classDef is None:
+            raise UserException('Unknown class: ' +str(compileStmt.className), 
+                                compileStmt.loc)
+        #Create recursive definitions that contain only base types. 
+        #Same like "data" statement
+        self.createDataDefTreeRecursive(compileStmt, classDef)
+        #search for pragmas that declare the main functions
+        mainFunctions = []
+        for pragma in compileStmt.statements:
+            if isinstance(pragma, NodePragmaStmt) and \
+               pragma.options[0] == 'compile_main_function':
+                mainFunctions.append(pragma.options[1])
+        #call the main functions from the global namespace
+        #this will create the main functions and will recursively 
+        #create all functions called by each main function.
+        for funcName in mainFunctions:
+            funcDotName = DotName((compileStmt.name, funcName))
+            funcCAll = NodeFuncExecute(name=funcDotName)
+            #pretend the function would be called from the global namespace
+            self.visitFuncExecute(funcCAll, namespace) 
+        return
+
+    
     @Visitor.when_type(NodeDataDef)
     def visitDataDef(self, dataDef, namespace):
         '''Interpret data definition statement.'''
         print 'interpreting data def: ', dataDef.name
-        #put symbol into namespace, and establish enclosing scope 
+        #put symbol into namespace, 
         if namespace.hasAttr(dataDef.name):
             raise UserException('Duplicate attribute definition: "%s".'
                                 % str(dataDef.name), dataDef.loc)
         namespace.setAttr(dataDef.name, dataDef)
-        #No setting of global scope necessary. 
-        #The class definitions are interpreted in the scope where they were written.
-        ###dataDef.setEnclosingScope(namespace) 
+        #No setting of global scope necessary. A data definition contains no scope
         
-        #Data that is defined directly in a module must be constant.
+        #Data at the top level of a module must be constant.
         if isinstance(namespace, NodeModule):
             if dataDef.role != RoleConstant:
                 raise UserException('Module data must have role "const"!',dataDef.loc)
@@ -1169,7 +1252,7 @@ class RunTest(Process):
     }
 }
 
-data r: RunTest;
+compile RunTest;
 ''' )
 
 #------------ testProg2 -----------------------
@@ -1181,25 +1264,23 @@ class Foo(Model):
     #func foo1(): {}
 }
 
-class Test1(Model):
+class Bar(Process):
 {   
-    data a: Real;
-    #func function1(): {}
-}
-class Test2(Test1):
-{   
-    data b: Real;
+    data a, b: Real;
     #data f1, f2: Foo;
     
-    func function1(arg1): 
+    func init(): 
     {
-        a = 2 + arg1;
-        b = a * pi;
+        a = 2;
+        b = a;
     }
-    func function2(): 
-    {}
+    
+    func dynamic(): {}
+    
+    func final(): {}
 }
-data test2: Test2;
+
+compile bar1: Bar;
 ''' )
 
     #test the intermedite tree generator ------------------------------------------------------------------
@@ -1222,7 +1303,7 @@ data test2: Test2;
     flagTestProg2 = True
     if flagTestProg2:
         tc = ProgramTreeCreator()
-        astTree = tc.importModuleStr(testProg1, moduleName='__main__')
+        astTree = tc.importModuleStr(testProg2, moduleName='__main__')
         
         print 'AST tree:'
         print astTree
