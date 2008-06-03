@@ -643,8 +643,11 @@ class ProgramTreeCreator(Visitor):
         self.moduleCache = {}
         #the standard library (treated specially)
         self.builtInLib = None
-        stdLib = simlstdlib.createParseTree()
-        self.builtInLib = self.visitModuleStatements(stdLib)
+        bLib = simlstdlib.createParseTree()
+        self.visitModuleStatements(bLib)
+        self.builtInLib = bLib
+        #trees for flattening
+        self.compileObjects = []
 
         
     @staticmethod
@@ -812,41 +815,52 @@ class ProgramTreeCreator(Visitor):
     def visitFuncExecute(self, funcCall, stmtContainer, environment):
         '''Interpret function call.'''
         print 'interpreting function call'
+        funcName = funcCall.name
         #Find the function definition - the template for creating the function
-        multiFunc = environment.findDotName(funcCall.name)
+        multiFunc = environment.findDotName(funcName)
         if multiFunc is None:
-            #TODO: Raise "unknown attribute" error in the namespace, 
-            #      catch it in a central place, and raise a user exception there.
-            raise UserException('Unknown function: ' + str(funcCall.name), 
+            raise UserException('Unknown function: ' + str(funcName), 
                                 funcCall.loc)
         elif not isinstance(multiFunc, FunctionOverloadingResolver):
-            raise UserException('Object is not callable: ' + str(funcCall.name), 
+            raise UserException('Object is not callable: ' + str(funcName), 
                                 funcCall.loc)
+        #Distinguish: function <-> instance method
+        #Get the object that contains the function/method
+        if len(funcName) >= 2:
+            #name with dots - take part left of last dot
+            funcParent = environment.findDotName(funcName[0:-1])
+        elif environment.localScope.findDotName(funcName) is not None:
+            #local (nested) function - future extension
+            funcParent = environment.localScope
+        elif environment.thisScope.findDotName(funcName) is not None:
+            #member function of same class
+            funcParent = environment.thisScope 
+        elif environment.globalScope.findDotName(funcName) is not None:
+            funcParent = environment.globalScope            
         #Prepend "this" pointer if it is call to member function
-        #TODO: better solution necessary! This solution does not work with funcions called 
-        #      implicitly through the "this" pointer
-        parentNamespace = namespace
-        thisNamespace = None
-        if len(funcCall.name) >= 2:
-            parentNamespace = namespace.findDotName(funcCall.name[:-1])
-            if isinstance(parentNamespace, NodeDataDef):
-                #Yes it is a member function (instance method)
-                thisNamespace = parentNamespace
-                thisPointer = NodeAttrAccess(name=funcCall.name[:-1], 
-                                             loc=funcCall.loc)
-                funcCall.insertChild(0, thisPointer)
+        if isinstance(funcParent, NodeDataDef):
+            #Yes it is a member function (instance method)
+            thisScope = funcParent
+            #TODO: put useful reference to 'this' into 'this'-pointer
+            thisPointer = NodeAttrAccess(name=funcCall.name[:-1], 
+                                         loc=funcCall.loc)
+            funcCall.insertChild(0, thisPointer)
+        else:
+            thisScope = None
         #get the correct overloaded function
-        funcDef = multiFunc.resolve(funcCall)
+        funcDef = multiFunc.resolve(funcCall)        
         
         #Create new function object 
         newFunc = NodeFuncDef(name=funcDef.name, loc=funcDef.loc, 
                               returnType=funcDef.returnType)
         newFunc.argList = funcDef.argList.copy()
         newFunc.funcBody = funcDef.funcBody.copy()
-        newFunc.globalScope = funcDef.globalScope
-        newFunc.thisScope = thisNamespace
-        #put new function into correct namespace 
-        parentNamespace.appendChild(newFunc)
+        newFunc.environment.globalScope = funcDef.environment.globalScope
+        newFunc.environment.thisScope = thisScope
+        #put copied function into "this" namespace or into module
+        funcParent.appendChild(newFunc)
+        #TODO: put pointer to function into NodeFuncCall (to easily find it for flattening)
+        
         #parentNamespace.setFuncAttr(newFunc.name, newFunc) ????
         
 #        #put function arguments into function's local namespace
@@ -858,9 +872,9 @@ class ProgramTreeCreator(Visitor):
 
         #TODO: pass the function's arguments
 
-        #visit the function's code
-        for stmt in newFunc.funcBody:
-            self.dispatch(stmt, newFunc)
+#        #visit the function's code
+#        for stmt in newFunc.funcBody:
+#            self.dispatch(stmt, newFunc)
            
 # TODO: to be done when NodeFuncExecute is processed.
 #        #TODO: Parse pragmas.
@@ -884,8 +898,6 @@ class ProgramTreeCreator(Visitor):
                    + compileStmt.name)
         #put symbol into namespace, 
         if stmtContainer.hasAttr(compileStmt.name):
-            #TODO: raise "duplicate attribute" error in a central location
-            #      catch it in a central place, and raise a user exception there.
             raise UserException('Duplicate compiled object: "%s".'
                                 % str(compileStmt.name), compileStmt.loc)
         stmtContainer.setAttr(compileStmt.name, compileStmt)
@@ -909,8 +921,9 @@ class ProgramTreeCreator(Visitor):
         for funcName in mainFunctions:
             funcDotName = DotName((compileStmt.name, funcName))
             funcCAll = NodeFuncExecute(name=funcDotName)
-            #pretend the function would be called from the global namespace
             self.visitFuncExecute(funcCAll, stmtContainer, environment) 
+        #put the expanded object into the results list
+        self.compileObjects.append(compileStmt)
         return
 
     
@@ -940,7 +953,7 @@ class ProgramTreeCreator(Visitor):
         dataDef.noFlatten = classDef.noFlatten
         #Create recursive definitions that contain only base types.
         #Built in types however are not expanded (one can not see into them).
-        if not classDef.isBuiltinType:
+        if not classDef.isBuiltinType: # and not classDef.isReference
             self.createDataDefTreeRecursive(dataDef, classDef)
         
         #TODO: if data root is const all recursive attributes must be const?
@@ -1110,11 +1123,13 @@ class ProgramTreeCreator(Visitor):
         moduleTree : ast.Node
             The module's parse tree, the output of 
             simlparser.ParseStage.parseModuleStr(...).
+            This tree will be modified in place to become the program tree.
     
         Returns
         -------
         moduleTree : ast.Node
-            AST of a module. Will be assembled into a complete program tree.
+            The modifed input tree; AST of a module. 
+            Will be assembled into a complete program tree.
         '''
         #flatten data a,b,c: Real; into tree separate definitions.
         self.flattenMultiDataDefs(moduleTree)
@@ -1127,7 +1142,7 @@ class ProgramTreeCreator(Visitor):
             #TODO: add import statement only to "__main__" module
             #TODO: Update a new modules's namespace to put built in 
             #      symbols into the new module's namespace.
-            importStmt = NodeImportStmt(moduleName='simlbuiltinlib', fromStmt=True, 
+            importStmt = NodeImportStmt(moduleName='builtinlib', fromStmt=True, 
                                         attrsToImport=["*"], loc = moduleTree.loc, 
                                         kids=[self.builtInLib])
             moduleTree.insertChild(0, importStmt)
@@ -1177,10 +1192,10 @@ class ProgramTreeCreator(Visitor):
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(inputFileContents, fileName, moduleName) 
         #do semantic analysis and decorate tree
-        ast = self.visitModuleStatements(parseTree)
+        self.visitModuleStatements(parseTree)
         #put tree in cache
-        self.moduleCache[absFileName] = ast
-        return ast
+        self.moduleCache[absFileName] = parseTree
+        return parseTree
         
         
     def importModuleStr(self, moduleStr, fileName=None, moduleName=None):
@@ -1202,7 +1217,8 @@ class ProgramTreeCreator(Visitor):
         '''
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(moduleStr, fileName, moduleName) 
-        return self.visitModuleStatements(parseTree)
+        self.visitModuleStatements(parseTree)
+        return parseTree
         
 
 def doTests():
@@ -1286,7 +1302,7 @@ class Bar(Process):
     func final(): {}
 }
 
-data bar1: Bar;
+compile bar1: Bar;
 ''' )
 
     #test the intermedite tree generator ------------------------------------------------------------------
