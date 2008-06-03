@@ -31,7 +31,7 @@ generator of the output language (currently only Python).
 
 #TODO: Implement namespaces. Usefull would be:
 #       - Global namespace for: classes, global functions.
-#       - Class namespace for class attributes
+#       - Class namespace for class attributes 
 #       - Function local namespace for: data attributes, function attributes
 
 
@@ -642,9 +642,9 @@ class ProgramTreeCreator(Visitor):
         #cache for imported modules
         self.moduleCache = {}
         #the standard library (treated specially)
-        self.stdLib = None
+        self.builtInLib = None
         stdLib = simlstdlib.createParseTree()
-        self.stdLib = self.interpretModuleStatements(stdLib)
+        self.builtInLib = self.visitModuleStatements(stdLib)
 
         
     @staticmethod
@@ -722,12 +722,12 @@ class ProgramTreeCreator(Visitor):
              
         
     @Visitor.when_type(NodeForeignCodeStmt)
-    def visitForeignCodeStmt(self, foreignCodeStmt, namespace):
+    def visitForeignCodeStmt(self, foreignCodeStmt, stmtContainer, environment):
         '''Interpret NodeForeignCodeStmt.'''
         print 'visiting NodeForeignCodeStmt: '
         
     @Visitor.when_type(NodePragmaStmt)
-    def visitPragmaStmt(self, pragmaStmt, namespace):
+    def visitPragmaStmt(self, pragmaStmt, stmtContainer, environment):
         '''Interpret pragma statement.'''
         print 'visiting pragma: ', pragmaStmt
 #        #these pragma statements are written in class definitions. They are
@@ -740,24 +740,32 @@ class ProgramTreeCreator(Visitor):
 #                namespace.noFlatten = True
         
     @Visitor.when_type(NodeClassDef)
-    def visitClassDef(self, classDef, namespace):
+    def visitClassDef(self, classDef, stmtContainer, environment):
         '''Interpret class definition statement.'''
         className = classDef.name
         baseName = classDef.baseName
         print 'visiting class def: ', className
-        #Error: class names must be unique
-        if namespace.hasAttr(className):
+        #TODO: the pattern in the following 6 lines should be put in a function, that  
+        #      raises user errors; it should hav an argument errMsg="Name already defined: " 
+        #Class names must be unique
+        if stmtContainer.hasAttr(className):
             raise UserException('Class name already defined: ' 
                                 + str(className), classDef.loc)
-        #Error: parent class must exist
-        if (baseName is not None) and \
-           (namespace.findDotName(baseName, None) is None):
-            raise UserException('Unknown base class: ' 
-                                + str(baseName), classDef.loc)
         #add the class definition to the namespace
-        namespace.setAttr(className, classDef)
-        #tell class that this module is its global scope
-        classDef.setGlobalScope(namespace)
+        stmtContainer.setAttr(className, classDef)
+
+        if baseName is not None: #only False for class "Object"
+            #TODO: the pattern in the following 6 lines should be put in a function, that  
+            #      raises user errors; it should hav an argument errMsg="Undefined name: " 
+            #Store pointer to parent class
+            classDef.base = environment.findDotName(baseName, None)
+            #Parent class must exist
+            if classDef.base is None:
+                raise UserException('Unknown base class: ' 
+                                    + str(baseName), classDef.loc)
+        
+        #store the environment - will de used by data statements
+        classDef.defEnvironment = environment
         #Look at the class body statements - only recognize pragmas and functions
         for stmt in classDef:
             if isinstance(stmt, NodePragmaStmt):
@@ -768,12 +776,12 @@ class ProgramTreeCreator(Visitor):
                     classDef.noFlatten = True
             elif isinstance(stmt, NodeFuncDef):
                 #interpret function definitions
-                self.visitFuncDef(stmt, classDef)
+                self.visitFuncDef(stmt, classDef, environment)
         return 
     
         
     @Visitor.when_type(NodeFuncDef)
-    def visitFuncDef(self, funcDef, namespace):
+    def visitFuncDef(self, funcDef, stmtContainer, environment):
         '''Interpret function definition statement.'''
         print 'interpreting func def: ', funcDef.name
         # NodeFuncDef should only be processed in class definition 
@@ -781,15 +789,11 @@ class ProgramTreeCreator(Visitor):
         # The individual function objects for flattening must be created 
         # when NodeFuncExecute is processed.
         
-        #put function into namespace (may be module or class)
-        namespace.setFuncAttr(funcDef.name, funcDef)
-        
-        if isinstance(namespace, NodeModule):
-            #function at module level: set gobal namespace
-            funcDef.setGlobalScope(namespace)
-        elif isinstance(namespace, NodeClassDef):
-            #class method: set gobal namespace
-            funcDef.setGlobalScope(namespace.globalScope)
+        #put function into module or class, store global scope
+        stmtContainer.setFuncAttr(funcDef.name, funcDef)        
+        funcDef.environment.globalScope = environment.globalScope
+
+        if isinstance(stmtContainer, NodeClassDef):
             #create "this" pointer and put into argument list
             if len(funcDef.argList) == 0 or \
                funcDef.argList[0].name != 'this':
@@ -798,24 +802,18 @@ class ProgramTreeCreator(Visitor):
                 funcDef.argList.insertChild(0, thisArgument)
             #give correct ype to "this"
             #TODO: a refference or pointer type is necessary
-            funcDef.argList[0].className = namespace.name
-        else:
-            raise Exception('Wrong namespace type!')
-        #put function arguments into function's local namespace
-        for argDef in funcDef.argList:
-            if namespace.hasAttr(argDef.name):
-                raise UserException('Duplicate function argument: ' +
-                                    str(argDef.name), funcDef.loc)
-            funcDef.setAttr(argDef.name, argDef)
+            funcDef.argList[0].className = stmtContainer.name
+
+
         #TODO: Parse pragmas.
         
         
     @Visitor.when_type(NodeFuncExecute)
-    def visitFuncExecute(self, funcCall, namespace):
+    def visitFuncExecute(self, funcCall, stmtContainer, environment):
         '''Interpret function call.'''
         print 'interpreting function call'
         #Find the function definition - the template for creating the function
-        multiFunc = namespace.findDotName(funcCall.name)
+        multiFunc = environment.findDotName(funcCall.name)
         if multiFunc is None:
             #TODO: Raise "unknown attribute" error in the namespace, 
             #      catch it in a central place, and raise a user exception there.
@@ -851,13 +849,19 @@ class ProgramTreeCreator(Visitor):
         parentNamespace.appendChild(newFunc)
         #parentNamespace.setFuncAttr(newFunc.name, newFunc) ????
         
+#        #put function arguments into function's local namespace
+#        for argDef in funcDef.argList:
+#            if namespace.hasAttr(argDef.name):
+#                raise UserException('Duplicate function argument: ' +
+#                                    str(argDef.name), funcDef.loc)
+#            funcDef.setAttr(argDef.name, argDef)
+
         #TODO: pass the function's arguments
 
         #visit the function's code
         for stmt in newFunc.funcBody:
             self.dispatch(stmt, newFunc)
-        
-        
+           
 # TODO: to be done when NodeFuncExecute is processed.
 #        #TODO: Parse pragmas.
 #        #TODO: Check Attribute access
@@ -870,7 +874,7 @@ class ProgramTreeCreator(Visitor):
         
         
     @Visitor.when_type(NodeCompileStmt, 2)
-    def visitCompileStmt(self, compileStmt, namespace):
+    def visitCompileStmt(self, compileStmt, stmtContainer, environment):
         '''Interpret compile statement.'''
         print 'interpreting compile statement'
         #create name if none given
@@ -879,14 +883,14 @@ class ProgramTreeCreator(Visitor):
             print ('Creating name for compiled object because none given: ' 
                    + compileStmt.name)
         #put symbol into namespace, 
-        if namespace.hasAttr(compileStmt.name):
+        if stmtContainer.hasAttr(compileStmt.name):
             #TODO: raise "duplicate attribute" error in a central location
             #      catch it in a central place, and raise a user exception there.
             raise UserException('Duplicate compiled object: "%s".'
                                 % str(compileStmt.name), compileStmt.loc)
-        namespace.setAttr(compileStmt.name, compileStmt)
+        stmtContainer.setAttr(compileStmt.name, compileStmt)
         #Find the class definition - the template for creating the compiled object
-        classDef = namespace.findDotName(compileStmt.className)
+        classDef = environment.findDotName(compileStmt.className)
         if classDef is None:
             raise UserException('Unknown class: ' +str(compileStmt.className), 
                                 compileStmt.loc)
@@ -906,28 +910,29 @@ class ProgramTreeCreator(Visitor):
             funcDotName = DotName((compileStmt.name, funcName))
             funcCAll = NodeFuncExecute(name=funcDotName)
             #pretend the function would be called from the global namespace
-            self.visitFuncExecute(funcCAll, namespace) 
+            self.visitFuncExecute(funcCAll, stmtContainer, environment) 
         return
 
     
     @Visitor.when_type(NodeDataDef)
-    def visitDataDef(self, dataDef, namespace):
+    def visitDataDef(self, dataDef, stmtContainer, environment):
         '''Interpret data definition statement.'''
         print 'interpreting data def: ', dataDef.name
         #put symbol into namespace, 
-        if namespace.hasAttr(dataDef.name):
+        if stmtContainer.hasAttr(dataDef.name):
             raise UserException('Duplicate attribute definition: "%s".'
                                 % str(dataDef.name), dataDef.loc)
-        namespace.setAttr(dataDef.name, dataDef)
+        stmtContainer.setAttr(dataDef.name, dataDef)
         #No setting of global scope necessary. A data definition contains no scope
         
         #Data at the top level of a module must be constant.
-        if isinstance(namespace, NodeModule):
+        if isinstance(stmtContainer, NodeModule):
             if dataDef.role != RoleConstant:
                 raise UserException('Module data must have role "const"!',dataDef.loc)
 
+        #TODO: Create pointers to class definitions? (unnecessary data is expanded.)
         #Find the class definition - the template for creating the data definition
-        classDef = namespace.findDotName(dataDef.className)
+        classDef = environment.findDotName(dataDef.className)
         if classDef is None:
             raise UserException('Unknown class: ' +str(dataDef.className), dataDef.loc)
         #Copy flags
@@ -940,8 +945,8 @@ class ProgramTreeCreator(Visitor):
         
         #TODO: if data root is const all recursive attributes must be const?
         #TODO: if data root is parameter all recursive attributes must be parameter?
-            
         return
+            
             
     def createDataDefTreeRecursive(self, ioDataDef, classDef):
         '''
@@ -960,9 +965,8 @@ class ProgramTreeCreator(Visitor):
         #Find base class object, copy and interpret its statements recursively.
         #The inherited statements are accumulating in ioDataDef.statements.
         #The attribute names are accumulating in ioDataDef's namespace as well
-        if classDef.baseName is not None:
-            baseClassDef = classDef.globalScope.findDotName(classDef.baseName)
-            self.createDataDefTreeRecursive(ioDataDef, baseClassDef)
+        if classDef.base is not None:
+            self.createDataDefTreeRecursive(ioDataDef, classDef.base)
         
         #TODO: How is the global scope remembered where the assignments are executed?
         #      The definitions of base classes might be in other modules, and have 
@@ -976,17 +980,18 @@ class ProgramTreeCreator(Visitor):
                 classBodyStmts.appendChild(stmt.copy())
             elif isinstance(stmt, NodeFuncDef):
                 #put functions into name space, but do not copy and interpret 
+                #TODO: needs better (Python like?) design. 
+                #TODO: wrap in method object with stored this pointer here?
                 ioDataDef.setFuncAttr(stmt.name, stmt)
             else:
                 classBodyStmts.appendChild(stmt)
         
         #Interpret the copied statements ----------------------------
         #use the global scope where the class was defined
-        ioDataDef.globalScope = classDef.globalScope
+        environment = classDef.defEnvironment
         #interpret each statement, the definitions are expanded recursively
         for stmt in classBodyStmts:
-            self.dispatch(stmt, ioDataDef)
-        ioDataDef.globalScope = None
+            self.dispatch(stmt, ioDataDef, environment)
            
         #put the interpreted (and expanded) statements into the root definition
         ioDataDef.statements.insertChildren(len(ioDataDef.statements), 
@@ -995,7 +1000,7 @@ class ProgramTreeCreator(Visitor):
             
 
     @Visitor.when_type(NodeAssignment)
-    def visitAssignment(self, assignment, namespace):
+    def visitAssignment(self, assignment, stmtContainer, environment):
         '''Interpret assignment statement.'''
         print 'interpreting assignment: ', assignment.lhs
         #Check LHS --------------------
@@ -1057,7 +1062,7 @@ class ProgramTreeCreator(Visitor):
        
         
     @Visitor.when_type(NodeImportStmt)
-    def visitImportStmt(self, importStmt, namespace):
+    def visitImportStmt(self, importStmt, stmtContainer, environment):
         '''Interpret import statement.'''
         moduleName = importStmt.moduleName
         moduleTree = importStmt.kids[0]
@@ -1076,11 +1081,11 @@ class ProgramTreeCreator(Visitor):
                 #TODO implement selecting individual attributes from the package
                 #TODO implement 'as' keyword
                 #currently 'from moduleTree import *' behavior
-                namespace.update(moduleTree)
+                stmtContainer.update(moduleTree)
             else:
                 #behave like Python import statement
                 #TODO implement 'as' keyword
-                namespace.setAttr(moduleName, moduleTree)
+                stmtContainer.setAttr(moduleName, moduleTree)
         except DuplicateAttributeError, theErr:
             raise UserException('Duplicate attribute definition while '
                                 'importing module "%s". ' 
@@ -1091,7 +1096,7 @@ class ProgramTreeCreator(Visitor):
         return
             
         
-    def interpretModuleStatements(self, moduleTree):
+    def visitModuleStatements(self, moduleTree):
         '''
         Import a module given as a parse tree.
         
@@ -1116,21 +1121,22 @@ class ProgramTreeCreator(Visitor):
         #Give default data roles to definitions where role==None
         #TODO: Do this in the interpreter?
         self.setDataRoleDefault(moduleTree)
-        #If the standard library exists prepend it to the module.
-        # This way the standard library can be processed by this method too.
-        if self.stdLib is not None:
+        #If the built in library exists prepend it to the module.
+        #This way the built in library can be processed by this method too.
+        if self.builtInLib is not None:
             #TODO: add import statement only to "__main__" module
             #TODO: Update a new modules's namespace to put built in 
-            #      symbols into the new module's namspace.
-            importStmt = NodeImportStmt(moduleName='simlstdlib', fromStmt=True, 
+            #      symbols into the new module's namespace.
+            importStmt = NodeImportStmt(moduleName='simlbuiltinlib', fromStmt=True, 
                                         attrsToImport=["*"], loc = moduleTree.loc, 
-                                        kids=[self.stdLib])
+                                        kids=[self.builtInLib])
             moduleTree.insertChild(0, importStmt)
-        #TODO: Create inheritance pointers?
-        #TODO: Create pointers to class definitions? 
+        #create global namespace
+        environment = ExecutionEnvironment()
+        environment.globalScope = moduleTree
         #interpret module nodes
         for node in moduleTree:
-            self.dispatch(node, moduleTree)
+            self.dispatch(node, moduleTree, environment)
             
         return moduleTree
         
@@ -1140,7 +1146,7 @@ class ProgramTreeCreator(Visitor):
         '''
         Import a module (program file).
         
-        Semantic analysis is performed by self.interpretModuleStatements(...).
+        Semantic analysis is performed by self.visitModuleStatements(...).
         Modules are cached, and their AST is constucted only once, 
         even when they are imported multiple times.
         The function is recursively executed for each import statement.
@@ -1171,7 +1177,7 @@ class ProgramTreeCreator(Visitor):
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(inputFileContents, fileName, moduleName) 
         #do semantic analysis and decorate tree
-        ast = self.interpretModuleStatements(parseTree)
+        ast = self.visitModuleStatements(parseTree)
         #put tree in cache
         self.moduleCache[absFileName] = ast
         return ast
@@ -1196,7 +1202,7 @@ class ProgramTreeCreator(Visitor):
         '''
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(moduleStr, fileName, moduleName) 
-        return self.interpretModuleStatements(parseTree)
+        return self.visitModuleStatements(parseTree)
         
 
 def doTests():
@@ -1267,7 +1273,7 @@ class Foo(Model):
 class Bar(Process):
 {   
     data a, b: Real;
-    #data f1, f2: Foo;
+    data f1, f2: Foo;
     
     func init(): 
     {
@@ -1280,7 +1286,7 @@ class Bar(Process):
     func final(): {}
 }
 
-compile bar1: Bar;
+data bar1: Bar;
 ''' )
 
     #test the intermedite tree generator ------------------------------------------------------------------

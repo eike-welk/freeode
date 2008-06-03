@@ -71,7 +71,7 @@ class DuplicateAttributeError(Exception):
         self.duplicateAttribute = duplicateAttribute
  
         
-#TODO: Namespace and scope should be decoupled
+#TODO: Namespace and execution environment - scope should be decoupled
 #      There should be different classes for scope and namespace
 #      A NodeDataDef is a namespace but it has no scopes
 #      A function has up to three scopes but it is no namespace
@@ -83,14 +83,8 @@ class NameSpace(object):
     def __init__(self):
         #the attributes of this name space
         self._nameSpaceAttrs = {} #weakref.WeakValueDictionary()
-        #the next upper level name space
-        #Name space for global variables. Module where the code was written.
-        self._globalScope = None
-        #Name space of the this pointer in a method. None outside methods.
-        self._thisScope = None
         #This object's name in the enclosing scope
         self.name = None
-        
         
     def setAttr(self, name, newAttr):
         '''
@@ -170,11 +164,9 @@ class NameSpace(object):
         
     def findDotName(self, dotName, default=None):
         '''
-        Find a dot name starting from this name space.
-        
-        Takes scope rules into account, and the lookup is maybe recursive.
+        Find dot name recursively and return attribute with this name.
         '''
-        #TODO: make compatible with str too
+        dotName = DotName(dotName) #make compatible with str too
         firstPart = self._nameSpaceAttrs.get(dotName[0], None)
         if firstPart is not None:
             #leftmost part of name exists in this name space
@@ -188,64 +180,85 @@ class NameSpace(object):
                 return default
         else:
             #leftmost part of name does not exist in this name space
-            #try to find name in higher level of scope hierarchy:
-            # function --> class --> module 
-            if self._thisScope is not None and \
-               self._thisScope.hasAttr(dotName):
-                return self._thisScope.findDotName(dotName, default)
-            elif self._globalScope is not None and \
-                 self._globalScope.hasAttr(dotName):
-                return self._globalScope.findDotName(dotName, default)
-            else:
-                return default
+            return default
     
-    def setGlobalScope(self, inNameSpace):
+    
+    
+class ExecutionEnvironment(object):
+    def __init__(self):
+        #Name space for global variables. Module where the code was written.
+        self.globalScope = None
+        #Name space of the this pointer in a method. None outside methods.
+        self.thisScope = None
+        #scope for the local variables of a function
+        self.localScope = None
+
+    def findDotName(self, dotName, default=None):
         '''
-        Change the global name space.
-        The global name space is finally searched when the DotName is neither
-        found locally (self._nameSpaceAttrs) nor in the scope of the "this"
-        pointer (self.thisScop).
+        Find a dot name in this environment.
         
-        Used by self.findDotName(...), but not by self.getAttr(...).
+        Tries local name space, this name space, global name space
         '''
-        self._globalScope = inNameSpace
-#        if inNameSpace is None:
-#            self._globalScope = None
-#        elif isinstance(inNameSpace, weakref.ProxyTypes):
-#            self._globalScope = inNameSpace
-#        else:
-#            self._globalScope = weakref.proxy(inNameSpace)
-            
-    def getGlobalScope(self):
-        '''Return the global name space.'''
-        return self._globalScope
-    
-    globalScope = property(getGlobalScope, setGlobalScope, None,
-                           'Global (module) name space.')
-    
-    def setThisScope(self, inNameSpace):
-        '''
-        Change the name space of the "this" pointer. 
-        The "this" name space is searched second, when the DotName is not 
-        found locally. When the DotName is not fount in the "this" name space
-        the global name space is searched.
-        
-        Used by self.findDotName(...), but not by self.getAttr(...).
-        '''
-        self._thisScope = inNameSpace
-#        if inNameSpace is None:
-#            self._thisScope = None
-#        elif isinstance(inNameSpace, weakref.ProxyTypes):
-#            self._thisScope = inNameSpace
-#        else:
-#            self._thisScope = weakref.proxy(inNameSpace)
-            
-    def getThisScope(self):
-        '''Return the "this" name space.'''
-        return self._thisScope
-    
-    thisScope = property(getGlobalScope, setGlobalScope, None,
-                           'Name space of the this pointer, class name space.')
+        #leftmost part of name does not exist in this name space
+        #try to find name in higher level of scope hierarchy:
+        # function --> class --> module 
+        if self.localScope is not None:
+            return self.localScope.findDotName(dotName, default) #IGNORE:E1101
+        elif self.thisScope is not None:
+            return self.thisScope.findDotName(dotName, default) #IGNORE:E1101
+        elif self.globalScope is not None:
+            return self.globalScope.findDotName(dotName, default) #IGNORE:E1101
+        else:
+            return default
+
+
+#    def setGlobalScope(self, inNameSpace):
+#        '''
+#        Change the global name space.
+#        The global name space is finally searched when the DotName is neither
+#        found locally (self._nameSpaceAttrs) nor in the scope of the "this"
+#        pointer (self.thisScop).
+#        
+#        Used by self.findDotName(...), but not by self.getAttr(...).
+#        '''
+#        self._globalScope = inNameSpace
+##        if inNameSpace is None:
+##            self._globalScope = None
+##        elif isinstance(inNameSpace, weakref.ProxyTypes):
+##            self._globalScope = inNameSpace
+##        else:
+##            self._globalScope = weakref.proxy(inNameSpace)
+#            
+#    def getGlobalScope(self):
+#        '''Return the global name space.'''
+#        return self._globalScope
+#    
+#    globalScope = property(getGlobalScope, setGlobalScope, None,
+#                           'Global (module) name space.')
+#    
+#    def setThisScope(self, inNameSpace):
+#        '''
+#        Change the name space of the "this" pointer. 
+#        The "this" name space is searched second, when the DotName is not 
+#        found locally. When the DotName is not fount in the "this" name space
+#        the global name space is searched.
+#        
+#        Used by self.findDotName(...), but not by self.getAttr(...).
+#        '''
+#        self._thisScope = inNameSpace
+##        if inNameSpace is None:
+##            self._thisScope = None
+##        elif isinstance(inNameSpace, weakref.ProxyTypes):
+##            self._thisScope = inNameSpace
+##        else:
+##            self._thisScope = weakref.proxy(inNameSpace)
+#            
+#    def getThisScope(self):
+#        '''Return the "this" name space.'''
+#        return self._thisScope
+#    
+#    thisScope = property(getGlobalScope, setGlobalScope, None,
+#                           'Name space of the this pointer, class name space.')
 
 
 
@@ -281,6 +294,8 @@ class FunctionOverloadingResolver(object):
         (currently always the last function in the list)
         '''
         return self._functions[-1]
+
+#TODO: create MethodOverloadingResolver(OverloadingResolver):
 
 
 
@@ -944,7 +959,7 @@ class NodeAttrAccess(Node):
         self.targetName = targetName
 
 
-class NodeFuncDef(Node, NameSpace):
+class NodeFuncDef(Node):
     """
     AST node for block (method, function?) definition.
 
@@ -960,16 +975,17 @@ class NodeFuncDef(Node, NameSpace):
 
         name       : name of the function; tuple of strings: ('init',)
         returnType : class name of return value; tuple of strings: ('Real',)
+        environment: container for namespaces. Functions store the global name space
+                     where they were defined.
     """
     def __init__(self, kids=None, loc=None, dat=None, name=None, returnType=None):
         Node.__init__(self, kids, loc, dat)
-        NameSpace.__init__(self)
+#        NameSpace.__init__(self)
         self.name = name
         if not self.kids:
             self.kids = [NodeStmtList(), NodeStmtList()]
         self.returnType = returnType
-        #TODO: a function is no namespace, it contains a namespace. 
-        #      The stement: func.x = 5; is nonsense. 
+        self.environment = ExecutionEnvironment()
 
     #Get and set the argument list
     def getArgList(self): return self.kids[0]
@@ -988,22 +1004,34 @@ class NodeFuncDef(Node, NameSpace):
 class NodeClassDef(Node, NameSpace):
     """
     AST node for class definition.
-    Data _nameSpaceAttrs:
-        kids      : The statements, the block's code.
-        loc       : location in input string
-        dat       : None
+    Data Attributes:
+    ----------------
+    kids     : The statements, the block's code.
+    loc      : location in input string
+    dat      : None
 
-        name : name of the class defined here.
-        baseName : name of the class, from which this class inherits;
-                    usually "Process", "Model"
+    name     : name of the class defined here.
+    baseName : name of the class, from which this class inherits.
+    base     : refference to base class definition
+    
+    isBuiltinType : 
+        True if this class is built into the compiler
+    noFlatten : 
+        True if the compiler should not flatten the class  
+    defEnvironment : 
+        Execution environment at time of definition. The data statements (and 
+        the assignments to constants) are executed in this environment.
     """
     def __init__(self, kids=None, loc=None, dat=None, name=None, baseName=None):
         Node.__init__(self, kids, loc, dat)
         NameSpace.__init__(self)
         self.name = name
         self.baseName = baseName
+        self.base = None 
         self.isBuiltinType = False
         self.noFlatten = False
+        self.defEnvironment = None #TODO: put data statements into a function?
+        
         
 #TODO: introduce? Rationale: same name like in NodeDataDef
 #    #Get or set the class body through a unified name
@@ -1202,16 +1230,6 @@ class TreePrinter(object):
                 #they are causing infinite recursion otherwise
                 self.putStr(indentStr, '_nameSpaceAttrs.keys(): ' + 
                             str(node._nameSpaceAttrs.keys()) + ' ')
-                if node._globalScope is None: 
-                    self.putStr(indentStr, '_globalScope: None ')
-                else: 
-                    self.putStr(indentStr, '_globalScope.name: ' + 
-                                str(node._globalScope.name) + ' ')
-                if node._thisScope is None: 
-                    self.putStr(indentStr, '_thisScope: None ')
-                else: 
-                    self.putStr(indentStr, '_thisScope.name: ' + 
-                                str(node._thisScope.name) + ' ')
             #the node's _nameSpaceAttrs are printed in sorted order, 
             #but the special attributes are excluded
             specialAttrs = set(['loc', 'kids', '_nameSpaceAttrs', '_globalScope', '_thisScope'])
