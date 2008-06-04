@@ -853,7 +853,7 @@ class ParseStage(object):
         factor << (factor2 | factor1)                   .setName('factor')  #IGNORE:W0104
 
         #multiplicative operations: a*b; a/b
-        multop = L('*') | L('/') | L('and')
+        multop = L('*') | L('/') | L('and')  
         term =  Forward()
         term1 = factor                                  .setName('term1')#.setDebug(True)
         term2 = Group(factor + multop + term)           .setParseAction(self._actionInfixOp) \
@@ -868,6 +868,8 @@ class ParseStage(object):
                                                         .setName('expression2')#.setDebug(True)
         algExpr << (algExpr2 | algExpr1)                .setName('algExpr')  #IGNORE:W0104
 
+        #TODO: 'and', 'or' should have less precedence than comparison operators
+        #       otherwise one has to always write: (a < b) and (b < c)
         #Relational operators : <, >, ==, ...
         relop = L('<') | L('>') | L('<=') | L('>=') | L('==') | L('!=')
         expression1 = algExpr

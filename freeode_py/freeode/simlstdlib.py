@@ -85,7 +85,9 @@ class Process(Model):
 
 #------------- mathematical functions -------------------------------
 func sin(x):{
-    foreign_code python replace_call ::{{ sin(x) }}:: ;
+    #TODO: how should the built in functions be handled?
+    pragma built_in_func;
+    #foreign_code python replace_call ::{{ sin(x) }}:: ;
 }
 func cos(x):{
     foreign_code python replace_call ::{{ cos(x) }}:: ;

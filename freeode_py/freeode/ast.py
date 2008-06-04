@@ -203,18 +203,21 @@ class ExecutionEnvironment(object):
         
         Tries local name space, this name space, global name space
         '''
-        #leftmost part of name does not exist in this name space
-        #try to find name in higher level of scope hierarchy:
+        #TODO: Add ability to raise UserException?
+        #try to find name in scope hierarchy:
         # function --> class --> module 
-        #FIXME: Broken!!! must try one namespace after each other.
-        if self.localScope is not None:
-            return self.localScope.findDotName(dotName, default) #IGNORE:E1101
-        elif self.thisScope is not None:
-            return self.thisScope.findDotName(dotName, default) #IGNORE:E1101
-        elif self.globalScope is not None:
-            return self.globalScope.findDotName(dotName, default) #IGNORE:E1101
-        else:
+        scopeList = [self.localScope, self.thisScope, self.globalScope]
+        attr = None
+        for scope in scopeList:
+            if scope is None:
+                continue
+            attr = scope.findDotName(dotName, None)
+            if attr is not None:
+                break
+        if attr is None:
             return default
+        else:
+            return attr
 
 
 #    def setGlobalScope(self, inNameSpace):
@@ -668,13 +671,18 @@ class NodeFuncExecute(Node):
         loc         : location in input string
         dat         : None
 
-        name        : Dotted name of the function. Tuple of strings:
-                      ('model1','init')
-                      TODO: name should become NodeAttrAccess
+        name        : Dotted name of the function: DotName.
+        attrRef     : Reference to the function (definition) which is accessed.
+                      Name choosen to ease unification with NodeAttrAccess.
+                      
+    TODO: some unification with NodeAttrAccess required. Possibilities:
+          1: composition: call contains attr access. 
+          2: Inheritance: call is attr access
     '''
     def __init__(self, kids=None, loc=None, dat=None, name=None):
         super(NodeFuncExecute, self).__init__(kids, loc, dat)
         self.name = name
+        self.attrRef = None
 
 
 class NodePrintStmt(Node):
@@ -936,11 +944,14 @@ class NodeCompileStmt(NodeDataDef):
     AST node for compile statement.
     A data statement where the the functions are instantiated for flattening 
     and code generation.
+    
+    mainFuncs : List of (generated) main functions: [NodeFuncDef]
     '''
     def __init__(self, kids=None, loc=None, dat=None,
                         name=None, className=None, targetName=None):
         NodeDataDef.__init__(self, kids, loc, dat, 
                              name, className, targetName, role=RoleCompiledObject)
+        self.mainFuncs = []
     
     
 class NodeAttrAccess(Node):
@@ -954,8 +965,9 @@ class NodeAttrAccess(Node):
         deriv      : Denote if a derivation operator acted on the attribute.
                      Empty tuple means no derivation took place. can be:
                      (,),('time',) or tuple of distibution domains
-        name   : DotName('proc.model1.a'), the dot separated name (basically tuple of strings).
-        targetName : name in the target language (string)
+        name       : DotName('proc.model1.a'), the dot separated name.
+        targetName : name in the target language (string, DotName)
+        attrRef    : Reference to the attribute (definition) which is accessed.
     '''
     def __init__(self, kids=None, loc=None, dat=None, deriv=None,
                  name=None, targetName=None):
@@ -963,6 +975,7 @@ class NodeAttrAccess(Node):
         self.deriv = deriv
         self.name = DotName(name)
         self.targetName = targetName
+        self.attrRef = None
 
 
 class NodeFuncDef(Node):
@@ -1256,7 +1269,7 @@ class TreePrinter(object):
             
             #the node's attributes are printed in sorted order, 
             #but the special attributes are excluded
-            specialAttrs = set(['loc', 'kids', '_nameSpaceAttrs', 'name'])
+            specialAttrs = set(['loc', 'kids', '_nameSpaceAttrs', 'name', 'mainFuncs'])
             attrNameSet = set(node.__dict__.keys())
             attrNames= list(attrNameSet - specialAttrs)
             attrNames.sort()

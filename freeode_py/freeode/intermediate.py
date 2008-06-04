@@ -732,16 +732,29 @@ class ProgramTreeCreator(Visitor):
     @Visitor.when_type(NodePragmaStmt)
     def visitPragmaStmt(self, pragmaStmt, stmtContainer, environment):
         '''Interpret pragma statement.'''
-        print 'visiting pragma: ', pragmaStmt
-#        #these pragma statements are written in class definitions. They are
-#        #however interpreted when a data definition is expanded to a tree of 
-#        #definitions.
-#        if isinstance(namespace, NodeDataDef):
-#            if pragmaStmt.options[0] == 'built_in_type':
-#                namespace.isBuiltinType = True
-#            elif pragmaStmt.options[0] == 'no_flatten':
-#                namespace.noFlatten = True
+        print 'visiting pragma: ', pragmaStmt      
         
+    @Visitor.when_type(NodeGraphStmt)
+    def visitGraphStmt(self, graphStmt, stmtContainer, environment):
+        '''Interpret graph statement.'''
+        print 'interpreting graph statement: '
+    
+    @Visitor.when_type(NodeStoreStmt)
+    def visitStoreStmt(self, storeStmt, stmtContainer, environment):
+        '''Interpret store statement.'''
+        print 'interpreting store statement: '
+    
+    @Visitor.when_type(NodePrintStmt)
+    def visitPrintStmt(self, printStmt, stmtContainer, environment):
+        '''Interpret print statement.'''
+        print 'interpreting print statement: '
+    
+    @Visitor.when_type(NodeIfStmt)
+    def visitIfStmt(self, ifStmt, stmtContainer, environment):
+        '''Interpret if ... elif ... else ... statement.'''
+        print 'interpreting if statement: '
+
+    
     @Visitor.when_type(NodeClassDef)
     def visitClassDef(self, classDef, stmtContainer, environment):
         '''Interpret class definition statement.'''
@@ -806,6 +819,7 @@ class ProgramTreeCreator(Visitor):
             #TODO: give correct type to "this"
             #TODO: a reference or pointer type is necessary
             funcDef.argList[0].className = stmtContainer.name
+        #TODO: Parse pragmas. (For built in functions)
         return
 
 
@@ -836,7 +850,7 @@ class ProgramTreeCreator(Visitor):
         elif environment.globalScope.findDotName(funcName) is not None:
             funcParent = environment.globalScope            
         #Prepend "this" pointer if it is call to member function
-        #store "this" namespace
+        #and remember "this" namespace
         if isinstance(funcParent, NodeDataDef):
             #Yes it is a member function (instance method)
             thisScope = funcParent
@@ -856,15 +870,16 @@ class ProgramTreeCreator(Visitor):
         newFunc.funcBody = funcDef.funcBody.copy()
         #put copied function into "this" namespace or into module
         funcParent.appendChild(newFunc)
-        #TODO: put pointer to function into NodeFuncCall (to easily find it for flattening)
+        #Put pointer to function into NodeFuncCall (to easily find it for flattening)
+        funcCall.attrRef = newFunc
  
         #Set up execution environment for the function
         newFunc.environment.globalScope = funcDef.environment.globalScope
         newFunc.environment.thisScope = thisScope
-        newFunc.environment.thisScope = NameSpace()
+        newFunc.environment.localScope = NameSpace()
         #parentNamespace.setFuncAttr(newFunc.name, newFunc) ????
         
-#        #put function arguments into function's local namespace
+#        #TODO: put function arguments into function's local namespace
 #        for argDef in funcDef.argList:
 #            if namespace.hasAttr(argDef.name):
 #                raise UserException('Duplicate function argument: ' +
@@ -876,15 +891,6 @@ class ProgramTreeCreator(Visitor):
         #visit the function's code
         for stmt in newFunc.funcBody:
             self.dispatch(stmt, newFunc, newFunc.environment)
-           
-# TODO: to be done when NodeFuncExecute is processed.
-#        #TODO: Parse pragmas.
-#        #TODO: Check Attribute access
-#        #TODO: a function is no namespace, it contains a namespace. 
-#        #      The statement: func.x = 5; is nonsense. 
-#        #interpret all statements in function body
-#        for stmt in multiFunc.funcBody:
-#            self.dispatch(stmt, multiFunc)
         return
         
         
@@ -911,18 +917,20 @@ class ProgramTreeCreator(Visitor):
         #Same like "data" statement
         self.createDataDefTreeRecursive(compileStmt, classDef)
         #search for pragmas that declare the main functions
-        mainFunctions = []
+        mainFuncNames = []
         for pragma in compileStmt.statements:
             if isinstance(pragma, NodePragmaStmt) and \
                pragma.options[0] == 'compile_main_function':
-                mainFunctions.append(pragma.options[1])
+                mainFuncNames.append(pragma.options[1])
         #call the main functions from the global namespace
         #this will create the main functions and will recursively 
         #create all functions called by each main function.
-        for funcName in mainFunctions:
+        for funcName in mainFuncNames:
             funcDotName = DotName((compileStmt.name, funcName))
-            funcCAll = NodeFuncExecute(name=funcDotName)
-            self.visitFuncExecute(funcCAll, stmtContainer, environment) 
+            funcCall = NodeFuncExecute(name=funcDotName)
+            self.visitFuncExecute(funcCall, stmtContainer, environment) 
+            #remember generated main function in separate list
+            compileStmt.mainFuncs.append(funcCall.attrRef)
         #put the expanded object into the results list
         self.compileObjects.append(compileStmt)
         return
@@ -1013,20 +1021,59 @@ class ProgramTreeCreator(Visitor):
                                             classBodyStmts)
         return
             
+    
+    def doAttrAccess(self, attrAccess, environment):
+        '''
+        Retrieve the accessed NodeDataDef. 
+        
+        Throw user errors if necessary. Store pointer to NodeDataDef.
+        '''
+        attrDef = environment.findDotName(attrAccess.name)
+        if attrDef is None:
+            raise UserException('Undefined data: ' + 
+                                str(attrAccess.name), attrAccess.loc)
+        if not isinstance(attrDef, NodeDataDef):
+            raise UserException('Only data can be assigned: ' +
+                                str(attrAccess.name), attrAccess.loc)
+        #store pointer to attribute in NodeAttrAccess
+        attrAccess.attrRef = attrDef
+        return attrDef
 
+    
+    def checkExpression(self, expression, legalRoles, stmtContainer, environment):   
+        '''
+        Check an expression and store some annotations.
+        
+        As a side effect called functions are emitted.
+        TODO: this ad hoc function should be replace by an object, 
+              that does in a detailed analysis of the expression.
+        ''' 
+        #TODO: test type compatibility of operands.
+        #TODO: test unit compatibility of operands.
+        #Check existence of attributes, correct roles of attributes
+        for node in expression.iterDepthFirst():
+            if not isinstance(node, NodeAttrAccess):
+                continue
+            rhsData = self.doAttrAccess(node, environment)
+            if not issubclass(rhsData.role, legalRoles):
+                raise UserException('Illegal role! role: %s, data: %s' % 
+                                   (rhsData.role.userStr, str(node.name)), 
+                                    expression.loc)
+        #Check existence of functions, check correct function arguments
+        for node in expression.iterDepthFirst():
+            if not isinstance(node, NodeFuncExecute):
+                continue
+            self.visitFuncExecute(node, stmtContainer, environment)
+        
+        
     @Visitor.when_type(NodeAssignment)
     def visitAssignment(self, assignment, stmtContainer, environment):
         '''Interpret assignment statement.'''
         print 'interpreting assignment: ', assignment.lhs
         #Check LHS --------------------
-        lhsData = environment.findDotName(assignment.lhs.name)
         #TODO: automatic creation of local variables in functions
-        if lhsData is None:
-            raise UserException('Undefined data: ' + 
-                                str(assignment.lhs.name), assignment.loc)
-        if not isinstance(lhsData, NodeDataDef):
-            raise UserException('Only data can be assigned: ' +
-                                str(assignment.lhs.name), assignment.loc)
+        #TODO: put into function checkAttrAccess
+        lhsData = self.doAttrAccess(assignment.lhs, environment)
         #Roles describe when the data is computed
         lhsRole = lhsData.role
         if lhsRole == RoleFuncArgument:
@@ -1038,45 +1085,18 @@ class ProgramTreeCreator(Visitor):
             rhsLegalRoles = (RoleConstant, RoleParameter)
         else:
             rhsLegalRoles = (RoleConstant, RoleParameter, RoleDataCanVaryDuringSimulation)
-        #No Checking of class since function arguments have no class yet.
+        #TODO:Check type compatibility
         #lhsClass = namespace.findDotName(lhsData.className)
         
         #Check RHS -------------------------
         #Check existence of attributes, correct roles of data
-        for node in assignment.rhs.iterDepthFirst():
-            if not isinstance(node, NodeAttrAccess):
-                continue
-            rhsData = environment.findDotName(node.name)
-            if rhsData is None:
-                raise UserException('Undefined data: ' + 
-                                str(node.name), assignment.loc)
-            if not issubclass(rhsData.role, rhsLegalRoles):
-                raise UserException('Illegal role! role: %s, data: %s' % 
-                                   (rhsData.role.userStr, str(node.name)), 
-                                    assignment.loc)
-            #TODO: store pointer to definition in data
-        #Check existence of functions, check correct function arguments
-        for node in assignment.rhs.iterDepthFirst():
-            if not isinstance(node, NodeFuncExecute):
-                continue
-            #TODO: call visitFuncExecute(...) instead
-            self.visitFuncExecute(node, stmtContainer, environment)
-#            rhsfunc = environment.findDotName(node.name)
-#            if rhsfunc is None:
-#                raise UserException('Undefined function: ' + 
-#                                    str(node.name), assignment.loc)
+        self.checkExpression(assignment.rhs, rhsLegalRoles, stmtContainer, environment)
         #TODO: compute the constant expression, and replace the contents of the instance object?
         #TODO: constant computations are collected and put into a special method: __initConstants__?
-        #TODO: test type compatibility of operands.
-        #TODO: test unit compatibility of operands.
-        #TODO: Store the current global scope in the assignment. Reason: 
-        #      Class definitions are interpreted in the global scope where they are written.
-        #      This information must be stored somewhere if assignments in the class body 
-        #      are interpreted later.
-        #TODO: Other alternative: store pointer to attribute definition in each attribute access.
         #TODO: perform the assignment for trivial cases (a=42)
         #      Important for pointers; dependencies between grids and distributions
-       
+        return
+    
         
     @Visitor.when_type(NodeImportStmt)
     def visitImportStmt(self, importStmt, stmtContainer, environment):
@@ -1278,6 +1298,7 @@ class RunTest(Process):
     }
 }
 
+#data r: RunTest;
 compile RunTest;
 ''' )
 
@@ -1296,17 +1317,17 @@ class Foo(Model):
 class Bar(Process):
 {   
     data a, b: Real;
-    data f1, f2: Foo;
+    #data f1, f2: Foo;
     
     func init(): 
     {
-        a = 2;
+        a = sqrt(2);
         b = a;
     }
     
     func dynamic(): 
     {
-        f1.foo1();
+        #f1.foo1();
     }
     
     func final(): {}
