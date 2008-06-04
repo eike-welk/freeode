@@ -524,7 +524,7 @@ class ParseStage(object):
         nCurr = NodeCompileStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.className = DotName(toks.className)
-        if nCurr.name:
+        if toks.name:
             nCurr.name = toks.name
         return nCurr
     

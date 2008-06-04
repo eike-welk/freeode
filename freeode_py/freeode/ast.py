@@ -206,6 +206,7 @@ class ExecutionEnvironment(object):
         #leftmost part of name does not exist in this name space
         #try to find name in higher level of scope hierarchy:
         # function --> class --> module 
+        #FIXME: Broken!!! must try one namespace after each other.
         if self.localScope is not None:
             return self.localScope.findDotName(dotName, default) #IGNORE:E1101
         elif self.thisScope is not None:

@@ -555,7 +555,7 @@ class ILTProcessGenerator(object):
             self.copyFuncRecursive(self.astProcessAttributes[DotName('final')],
                                    DotName(), finalFunc, illegalFuncs)
 
-        self.checkUndefindedReferences(self.process) #Check undefined refference
+        self.checkUndefindedReferences(self.process) #Check undefined reference
         self.findStateVariables(dynamicFunc) #Mark state variables
         self.propagateParameters(initFunc) #rename some parameters
         self.checkDynamicMethodConstraints(dynamicFunc)
@@ -803,14 +803,12 @@ class ProgramTreeCreator(Visitor):
                 thisArgument = NodeDataDef(name='this', loc=funcDef.loc,
                                            role=RoleFuncArgument)
                 funcDef.argList.insertChild(0, thisArgument)
-            #give correct ype to "this"
-            #TODO: a refference or pointer type is necessary
+            #TODO: give correct type to "this"
+            #TODO: a reference or pointer type is necessary
             funcDef.argList[0].className = stmtContainer.name
+        return
 
 
-        #TODO: Parse pragmas.
-        
-        
     @Visitor.when_type(NodeFuncExecute)
     def visitFuncExecute(self, funcCall, stmtContainer, environment):
         '''Interpret function call.'''
@@ -838,6 +836,7 @@ class ProgramTreeCreator(Visitor):
         elif environment.globalScope.findDotName(funcName) is not None:
             funcParent = environment.globalScope            
         #Prepend "this" pointer if it is call to member function
+        #store "this" namespace
         if isinstance(funcParent, NodeDataDef):
             #Yes it is a member function (instance method)
             thisScope = funcParent
@@ -855,12 +854,14 @@ class ProgramTreeCreator(Visitor):
                               returnType=funcDef.returnType)
         newFunc.argList = funcDef.argList.copy()
         newFunc.funcBody = funcDef.funcBody.copy()
-        newFunc.environment.globalScope = funcDef.environment.globalScope
-        newFunc.environment.thisScope = thisScope
         #put copied function into "this" namespace or into module
         funcParent.appendChild(newFunc)
         #TODO: put pointer to function into NodeFuncCall (to easily find it for flattening)
-        
+ 
+        #Set up execution environment for the function
+        newFunc.environment.globalScope = funcDef.environment.globalScope
+        newFunc.environment.thisScope = thisScope
+        newFunc.environment.thisScope = NameSpace()
         #parentNamespace.setFuncAttr(newFunc.name, newFunc) ????
         
 #        #put function arguments into function's local namespace
@@ -872,9 +873,9 @@ class ProgramTreeCreator(Visitor):
 
         #TODO: pass the function's arguments
 
-#        #visit the function's code
-#        for stmt in newFunc.funcBody:
-#            self.dispatch(stmt, newFunc)
+        #visit the function's code
+        for stmt in newFunc.funcBody:
+            self.dispatch(stmt, newFunc, newFunc.environment)
            
 # TODO: to be done when NodeFuncExecute is processed.
 #        #TODO: Parse pragmas.
@@ -931,6 +932,7 @@ class ProgramTreeCreator(Visitor):
     def visitDataDef(self, dataDef, stmtContainer, environment):
         '''Interpret data definition statement.'''
         print 'interpreting data def: ', dataDef.name
+        #TODO: New design necessary for local variables in functions.
         #put symbol into namespace, 
         if stmtContainer.hasAttr(dataDef.name):
             raise UserException('Duplicate attribute definition: "%s".'
@@ -1017,7 +1019,7 @@ class ProgramTreeCreator(Visitor):
         '''Interpret assignment statement.'''
         print 'interpreting assignment: ', assignment.lhs
         #Check LHS --------------------
-        lhsData = namespace.findDotName(assignment.lhs.name)
+        lhsData = environment.findDotName(assignment.lhs.name)
         #TODO: automatic creation of local variables in functions
         if lhsData is None:
             raise UserException('Undefined data: ' + 
@@ -1044,7 +1046,7 @@ class ProgramTreeCreator(Visitor):
         for node in assignment.rhs.iterDepthFirst():
             if not isinstance(node, NodeAttrAccess):
                 continue
-            rhsData = namespace.findDotName(node.name)
+            rhsData = environment.findDotName(node.name)
             if rhsData is None:
                 raise UserException('Undefined data: ' + 
                                 str(node.name), assignment.loc)
@@ -1052,15 +1054,17 @@ class ProgramTreeCreator(Visitor):
                 raise UserException('Illegal role! role: %s, data: %s' % 
                                    (rhsData.role.userStr, str(node.name)), 
                                     assignment.loc)
+            #TODO: store pointer to definition in data
         #Check existence of functions, check correct function arguments
         for node in assignment.rhs.iterDepthFirst():
             if not isinstance(node, NodeFuncExecute):
                 continue
             #TODO: call visitFuncExecute(...) instead
-            rhsfunc = namespace.findDotName(node.name)
-            if rhsfunc is None:
-                raise UserException('Undefined function: ' + 
-                                    str(node.name), assignment.loc)
+            self.visitFuncExecute(node, stmtContainer, environment)
+#            rhsfunc = environment.findDotName(node.name)
+#            if rhsfunc is None:
+#                raise UserException('Undefined function: ' + 
+#                                    str(node.name), assignment.loc)
         #TODO: compute the constant expression, and replace the contents of the instance object?
         #TODO: constant computations are collected and put into a special method: __initConstants__?
         #TODO: test type compatibility of operands.
@@ -1283,7 +1287,10 @@ compile RunTest;
 class Foo(Model):
 {   
     data r, s: Real;
-    #func foo1(): {}
+    func foo1(): 
+    { 
+        r = 1;
+    }
 }
 
 class Bar(Process):
@@ -1297,7 +1304,10 @@ class Bar(Process):
         b = a;
     }
     
-    func dynamic(): {}
+    func dynamic(): 
+    {
+        f1.foo1();
+    }
     
     func final(): {}
 }
