@@ -641,13 +641,15 @@ class ProgramTreeCreator(Visitor):
         Visitor.__init__(self)
         #cache for imported modules
         self.moduleCache = {}
-        #the standard library (treated specially)
+        #main module - the root of program tree
+        self.mainModule = None
+        #trees for flattening - the output
+        self.compileObjects = []
+        #the built in library (treated specially)
         self.builtInLib = None
         bLib = simlstdlib.createParseTree()
-        self.visitModuleStatements(bLib)
+        self.visitModule(bLib)
         self.builtInLib = bLib
-        #trees for flattening
-        self.compileObjects = []
 
         
     @staticmethod
@@ -796,6 +798,11 @@ class ProgramTreeCreator(Visitor):
         return 
     
         
+    @Visitor.when_type(NodeGenFunc, 2)
+    def visitGenFunc(self, _funcGen, _stmtContainer, _environment):
+        '''Do nothing. These nodes are generated during the compilation.'''
+        print 'visiting generated code: ', _funcGen.name
+        
     @Visitor.when_type(NodeFuncDef)
     def visitFuncDef(self, funcDef, stmtContainer, environment):
         '''Interpret function definition statement.'''
@@ -819,7 +826,13 @@ class ProgramTreeCreator(Visitor):
             #TODO: give correct type to "this"
             #TODO: a reference or pointer type is necessary
             funcDef.argList[0].className = stmtContainer.name
-        #TODO: Parse pragmas. (For built in functions)
+            
+        #Parse pragmas. (For built in functions)
+        for stmt in funcDef.funcBody:
+            if not isinstance(stmt, NodePragmaStmt):
+                continue
+            if stmt.options[0] == 'built_in_func':
+                funcDef.isBuiltIn = True
         return
 
 
@@ -862,14 +875,18 @@ class ProgramTreeCreator(Visitor):
             thisScope = None
         #get the correct overloaded function
         funcDef = multiFunc.resolve(funcCall)        
+        #stop processing for built in functions.
+        if funcDef.isBuiltIn:
+            return
         
         #Create new function object 
-        newFunc = NodeFuncDef(name=funcDef.name, loc=funcDef.loc, 
+        newFunc = NodeGenFunc(name=funcDef.name, loc=funcDef.loc, 
                               returnType=funcDef.returnType)
         newFunc.argList = funcDef.argList.copy()
         newFunc.funcBody = funcDef.funcBody.copy()
-        #put copied function into "this" namespace or into module
+        #put copied function into "this" object or into module
         funcParent.appendChild(newFunc)
+        #funcParent.setFuncAttr(newFunc.name, newFunc) ????
         #Put pointer to function into NodeFuncCall (to easily find it for flattening)
         funcCall.attrRef = newFunc
  
@@ -877,8 +894,8 @@ class ProgramTreeCreator(Visitor):
         newFunc.environment.globalScope = funcDef.environment.globalScope
         newFunc.environment.thisScope = thisScope
         newFunc.environment.localScope = NameSpace()
-        #parentNamespace.setFuncAttr(newFunc.name, newFunc) ????
         
+        #TODO create a NodeDataDef for each function argument
 #        #TODO: put function arguments into function's local namespace
 #        for argDef in funcDef.argList:
 #            if namespace.hasAttr(argDef.name):
@@ -886,7 +903,7 @@ class ProgramTreeCreator(Visitor):
 #                                    str(argDef.name), funcDef.loc)
 #            funcDef.setAttr(argDef.name, argDef)
 
-        #TODO: pass the function's arguments
+        #TODO: pass the function's arguments: Create an assignment for each argument
 
         #visit the function's code
         for stmt in newFunc.funcBody:
@@ -985,15 +1002,12 @@ class ProgramTreeCreator(Visitor):
             are copied into ioDataDef and the data statemnts are themselfs
             expanded.
         '''
-        #Find base class object, copy and interpret its statements recursively.
+        #Copy and interpret the base class' statements recursively.
         #The inherited statements are accumulating in ioDataDef.statements.
         #The attribute names are accumulating in ioDataDef's namespace as well
         if classDef.base is not None:
             self.createDataDefTreeRecursive(ioDataDef, classDef.base)
         
-        #TODO: How is the global scope remembered where the assignments are executed?
-        #      The definitions of base classes might be in other modules, and have 
-        #      therefore an other global scope.
         #Copy all definitions out of the class definition
         #Assignments are only referenced, functions are omitted 
         #they only get into namespace
@@ -1003,20 +1017,22 @@ class ProgramTreeCreator(Visitor):
                 classBodyStmts.appendChild(stmt.copy())
             elif isinstance(stmt, NodeFuncDef):
                 #put functions into name space, but do not copy and interpret 
-                #TODO: needs better (Python like?) design. 
-                #TODO: wrap in method object with stored this pointer here?
                 ioDataDef.setFuncAttr(stmt.name, stmt)
             else:
                 classBodyStmts.appendChild(stmt)
         
         #Interpret the copied statements ----------------------------
-        #use the global scope where the class was defined
-        environment = classDef.defEnvironment
+        # Use the global scope where the class was defined.
+        # The definition of a (base) class might be in an other module than
+        # the data statement, and might therefore have an other global scope.
+        environment = ExecutionEnvironment()
+        environment.globalScope = classDef.defEnvironment.globalScope
+        environment.localScope = ioDataDef
         #interpret each statement, the definitions are expanded recursively
         for stmt in classBodyStmts:
             self.dispatch(stmt, ioDataDef, environment)
            
-        #put the interpreted (and expanded) statements into the root definition
+        #put the interpreted (and expanded) statements into the data definition
         ioDataDef.statements.insertChildren(len(ioDataDef.statements), 
                                             classBodyStmts)
         return
@@ -1133,7 +1149,7 @@ class ProgramTreeCreator(Visitor):
         return
             
         
-    def visitModuleStatements(self, moduleTree):
+    def visitModule(self, moduleTree):
         '''
         Import a module given as a parse tree.
         
@@ -1158,26 +1174,31 @@ class ProgramTreeCreator(Visitor):
         #flatten data a,b,c: Real; into tree separate definitions.
         self.flattenMultiDataDefs(moduleTree)
         #Give default data roles to definitions where role==None
-        #TODO: Do this in the interpreter?
         self.setDataRoleDefault(moduleTree)
-        #If the built in library exists prepend it to the module.
+        #Put built in symbols into each module's namespace as if the 
+        #first statement was: from builtinlib import *  
         #This way the built in library can be processed by this method too.
         if self.builtInLib is not None:
-            #TODO: add import statement only to "__main__" module
-            #TODO: Update a new modules's namespace to put built in 
-            #      symbols into the new module's namespace.
-            importStmt = NodeImportStmt(moduleName='builtinlib', fromStmt=True, 
-                                        attrsToImport=["*"], loc = moduleTree.loc, 
-                                        kids=[self.builtInLib])
-            moduleTree.insertChild(0, importStmt)
-        #create global namespace
+            moduleTree.update(self.builtInLib)
+        #the first module is the '__main__' module (exception: builtinlib)
+        if self.mainModule is None and self.builtInLib is not None:
+            self.mainModule = moduleTree
+            moduleTree.name = '__main__'
+        #create module (global) namespace
         environment = ExecutionEnvironment()
         environment.globalScope = moduleTree
         #interpret module nodes
         for node in moduleTree:
             self.dispatch(node, moduleTree, environment)
             
-        return moduleTree
+        #put import statement for 'builtinlib' module into '__main__' module.
+        #Only cosmetic, so that it appears in the tree output for debugging
+        if moduleTree.name == '__main__':
+            importStmt = NodeImportStmt(moduleName='builtinlib', fromStmt=True, 
+                                        attrsToImport=["*"], loc = moduleTree.loc, 
+                                        kids=[self.builtInLib])
+            moduleTree.insertChild(0, importStmt)
+        return
         
         
         
@@ -1185,7 +1206,7 @@ class ProgramTreeCreator(Visitor):
         '''
         Import a module (program file).
         
-        Semantic analysis is performed by self.visitModuleStatements(...).
+        Semantic analysis is performed by self.visitModule(...).
         Modules are cached, and their AST is constucted only once, 
         even when they are imported multiple times.
         The function is recursively executed for each import statement.
@@ -1216,7 +1237,7 @@ class ProgramTreeCreator(Visitor):
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(inputFileContents, fileName, moduleName) 
         #do semantic analysis and decorate tree
-        self.visitModuleStatements(parseTree)
+        self.visitModule(parseTree)
         #put tree in cache
         self.moduleCache[absFileName] = parseTree
         return parseTree
@@ -1241,7 +1262,7 @@ class ProgramTreeCreator(Visitor):
         '''
         parser = simlparser.ParseStage()
         parseTree = parser.parseModuleStr(moduleStr, fileName, moduleName) 
-        self.visitModuleStatements(parseTree)
+        self.visitModule(parseTree)
         return parseTree
         
 
@@ -1356,7 +1377,7 @@ compile bar1: Bar;
     flagTestProg2 = True
     if flagTestProg2:
         tc = ProgramTreeCreator()
-        astTree = tc.importModuleStr(testProg2, moduleName='__main__')
+        astTree = tc.importModuleStr(testProg2)
         
         print 'AST tree:'
         print astTree

@@ -86,30 +86,22 @@ class Process(Model):
 #------------- mathematical functions -------------------------------
 func sin(x):{
     #TODO: how should the built in functions be handled?
-    pragma built_in_func;
     #foreign_code python replace_call ::{{ sin(x) }}:: ;
+    pragma built_in_func;
 }
-func cos(x):{
-    foreign_code python replace_call ::{{ cos(x) }}:: ;
-}
-func tan(x):{
-    foreign_code python replace_call ::{{ tan(x) }}:: ;
-}
-func sqrt(x):{
-    foreign_code python replace_call ::{{ sqrt(x) }}:: ;
-}
-func exp(x):{
-    foreign_code python replace_call ::{{ exp(x) }}:: ;
-}
-func log(x):{
-    foreign_code python replace_call ::{{ log(x) }}:: ;
-}
-func min(a, b):{
-    foreign_code python replace_call ::{{ min(a, b) }}:: ;
-}
-func max(a, b):{
-    foreign_code python replace_call ::{{ max(a, b) }}:: ;
-}
+func cos(x):{ pragma built_in_func; }
+
+func tan(x):{ pragma built_in_func; }
+
+func sqrt(x):{ pragma built_in_func; }
+
+func exp(x):{ pragma built_in_func; }
+
+func log(x):{ pragma built_in_func; }
+
+func min(a, b):{ pragma built_in_func; }
+
+func max(a, b):{ pragma built_in_func; }
 
 
 #------------- constants --------------------------------------------
@@ -122,8 +114,11 @@ def createParseTree():
     '''Create a complete parse ast of the standard library'''
     #Add newline chars to the library, so that the line numbers of error  
     #messages match the line numbers in this file. Use filename of this file.
-    stdLibExt = '\n'*50 + standardLibraryStr
+    stdLibExt = '\n'*54 + standardLibraryStr
     fileName = os.path.abspath(__file__)
+    #remove 'c' from 'pyc'
+    if fileName[-3:] == 'pyc':
+        fileName = fileName[0:-1]
     #parse the library
     parser = simlparser.ParseStage()
     parseTree = parser.parseModuleStr(stdLibExt, fileName, 'simlstdlib')

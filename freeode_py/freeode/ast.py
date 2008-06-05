@@ -112,7 +112,7 @@ class NameSpace(object):
         if name in self._nameSpaceAttrs:
             #TODO: raise UserException? Error message as named argument?
             raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
-        self._nameSpaceAttrs[name] = newAttr #This is a new attribute
+        self._nameSpaceAttrs[name] = newAttr 
         return
     
     def setFuncAttr(self, name, newFunc):
@@ -125,7 +125,7 @@ class NameSpace(object):
         if not isinstance(newFunc, NodeFuncDef):
             raise Exception('Argument 2 must be NodeFuncDef')
         
-        oldAttr = self._nameSpaceAttrs.get(name, None)
+        oldAttr = self.getAttr(name, None)
         if oldAttr is None:
             self.setAttr(name, FunctionOverloadingResolver(newFunc))
         elif isinstance(oldAttr, FunctionOverloadingResolver):
@@ -980,22 +980,22 @@ class NodeAttrAccess(Node):
 
 class NodeFuncDef(Node):
     """
-    AST node for block (method, function?) definition.
+    AST node for method/function definition.
 
-    A block can be seen as a method that only modifies the class' attributre.
-    It has neither arguments nor return values. It is treated as an C++ inline
-    function or template.
+    A function/method is comparable to an inline function or a template 
+    function in C++.
 
-    The block's childern are the statements.
-    Data attributre:
-        kids : [<argument list>, <function body>]
-        loc  : location in input string
-        dat  : None
+    The childern are the statements.
+    Attributes:
+    -----------
+    kids : [<argument list>, <function body>]
+    loc  : location in input string
+    dat  : None
 
-        name       : name of the function; DotName
-        returnType : class name of return value; tuple of strings: ('Real',)
-        environment: container for namespaces. Functions store the global name space
-                     where they were defined.
+    name       : name of the function; DotName
+    returnType : class name of return value; tuple of strings: ('Real',)
+    environment: container for namespaces. Functions store the global name space
+                 where they were defined.
     """
     def __init__(self, kids=None, loc=None, dat=None, name=None, returnType=None):
         Node.__init__(self, kids, loc, dat)
@@ -1005,21 +1005,42 @@ class NodeFuncDef(Node):
             self.kids = [NodeStmtList(), NodeStmtList()]
         self.returnType = returnType
         self.environment = ExecutionEnvironment()
+        self.isBuiltIn = False
 
     #Get and set the argument list
     def getArgList(self): return self.kids[0]
     def setArgList(self, inArgs): self.kids[0] = inArgs; inArgs.dat = 'argument list'
     argList = property(getArgList, setArgList, None,
-                   'The argument list (proppery).')
+                       'The argument list (proppery).')
 
     #TODO: rename to "statements"? Rationale: same name like in NodeDataDef
     #Get and set the function body
     def getFuncBody(self): return self.kids[1]
-    def setFuncBody(self, inBody): self.kids[1] = inBody; inBody.dat = 'function body';
+    def setFuncBody(self, inBody): self.kids[1] = inBody; inBody.dat = 'function body'
     funcBody = property(getFuncBody, setFuncBody, None,
-                   'The function body (proppery).')
+                        'The function body (proppery).')
 
 
+class NodeGenFunc(NodeFuncDef):
+    '''
+    Generated function, expanded template; ready for flattening.
+    
+    The missing information of the NodeFuncDef is filled in. These "functions"
+    exist once for each time a function is called. To distinguish them from 
+    functions writen by the user, this Node type is necessary.
+    
+    Attributes:
+    -----------
+    targetName : 
+            Individual name for each generated instance. Used in flattening 
+            process to give individual names to the local variables. 
+    '''
+    def __init__(self, kids=None, loc=None, dat=None, name=None, 
+                  returnType=None):
+        NodeFuncDef.__init__(self, kids, loc, dat, name, returnType)
+        self.targetName = None
+        
+    
 class NodeClassDef(Node, NameSpace):
     """
     AST node for class definition.
