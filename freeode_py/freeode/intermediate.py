@@ -634,8 +634,31 @@ class ILTGenerator(object):
 
 
 #--------------- new intermediate tree creation ----------------------------------
+#TODO: better and shorter handling of common errors 
+#class UserDuplicateAttributeError(UserException):
+#    '''User visible duplicate attribute error.'''
+#    def __init__(self, msg='Duplicate attribute: ', attrName=None, loc=None):
+#        msgComplete = msg + str(attrName) if attrName is not None else msg
+#        UserException.__init__(self, msgComplete, loc)
+#
+#class UserUndefinedAttributeError(UserException):
+#    '''User visible undefined attribute error.'''
+#    def __init__(self, msg='Undefined attribute: ', attrName=None, loc=None):
+#        msgComplete = msg + str(attrName) if attrName is not None else msg
+#        UserException.__init__(self, msgComplete, loc)
+        
+        
+
 class ProgramTreeCreator(Visitor):
-    '''Create the AST for the whole program,'''
+    '''
+    Create the AST for the whole program.
+    
+    Calls the parser; no separate calls to parser necessary.
+    
+    Usage:
+        ptc = ProgramTreeCreator()
+        ptc.importMainModule('myfile.siml')
+    '''
     
     def __init__(self):
         Visitor.__init__(self)
@@ -650,7 +673,7 @@ class ProgramTreeCreator(Visitor):
         bLib = simlstdlib.createParseTree()
         self.visitModule(bLib)
         self.builtInLib = bLib
-
+        
         
     @staticmethod
     def flattenMultiDataDefs(tree):
@@ -684,7 +707,7 @@ class ProgramTreeCreator(Visitor):
                 ProgramTreeCreator.flattenMultiDataDefs(node)
             elif isinstance(node, NodeFuncDef):
                 #this is a function definition: recurse
-                ProgramTreeCreator.flattenMultiDataDefs(node.funcBody)
+                ProgramTreeCreator.flattenMultiDataDefs(node.body)
             i += 1
 
 
@@ -740,21 +763,43 @@ class ProgramTreeCreator(Visitor):
     def visitGraphStmt(self, graphStmt, stmtContainer, environment):
         '''Interpret graph statement.'''
         print 'interpreting graph statement: '
-    
+        for expr in graphStmt:
+            self.checkExpression(expr, (AttributeRole,), stmtContainer, environment)
+           
     @Visitor.when_type(NodeStoreStmt)
     def visitStoreStmt(self, storeStmt, stmtContainer, environment):
         '''Interpret store statement.'''
         print 'interpreting store statement: '
+        for expr in storeStmt:
+            self.checkExpression(expr, (AttributeRole,), stmtContainer, environment)
     
     @Visitor.when_type(NodePrintStmt)
     def visitPrintStmt(self, printStmt, stmtContainer, environment):
         '''Interpret print statement.'''
         print 'interpreting print statement: '
+        for expr in printStmt:
+            self.checkExpression(expr, (AttributeRole,), stmtContainer, environment)
+    
+    @Visitor.when_type(NodeReturnStmt)
+    def visitReturnStmt(self, printStmt, stmtContainer, environment):
+        '''Interpret return statement.'''
+        print 'interpreting return statement: '
+        raise Exception('Implementation missing!')
     
     @Visitor.when_type(NodeIfStmt)
     def visitIfStmt(self, ifStmt, stmtContainer, environment):
         '''Interpret if ... elif ... else ... statement.'''
         print 'interpreting if statement: '
+        for i in range(0, len(ifStmt), 2):
+            condition = ifStmt[i]
+            statements = ifStmt[i+1]
+            #TODO: better design to constrain arrtibute access with different 
+            #      attribute roles necessary: 
+            #      When computing constants (on module level) an 'if' statement
+            #      must not use variables anywhere.
+            self.checkExpression(condition, (AttributeRole,), stmtContainer, environment)
+            for stmt in statements:
+                self.dispatch(stmt, stmtContainer, environment)
 
     
     @Visitor.when_type(NodeClassDef)
@@ -797,7 +842,6 @@ class ProgramTreeCreator(Visitor):
                 self.visitFuncDef(stmt, classDef, environment)
         return 
     
-        
     @Visitor.when_type(NodeGenFunc, 2)
     def visitGenFunc(self, _funcGen, _stmtContainer, _environment):
         '''Do nothing. These nodes are generated during the compilation.'''
@@ -828,7 +872,7 @@ class ProgramTreeCreator(Visitor):
             funcDef.argList[0].className = stmtContainer.name
             
         #Parse pragmas. (For built in functions)
-        for stmt in funcDef.funcBody:
+        for stmt in funcDef.body:
             if not isinstance(stmt, NodePragmaStmt):
                 continue
             if stmt.options[0] == 'built_in_func':
@@ -868,9 +912,15 @@ class ProgramTreeCreator(Visitor):
             #Yes it is a member function (instance method)
             thisScope = funcParent
             #TODO: put useful reference to 'this' into 'this'-pointer
+            #      needs pointer/reference implementation 
             thisPointer = NodeAttrAccess(name=funcCall.name[:-1], 
                                          loc=funcCall.loc)
             funcCall.insertChild(0, thisPointer)
+        elif isinstance(funcParent, NodeClassDef):
+            #TODO: this pointer is taken from function arguments
+            #      needs pointer/reference implementation 
+            thisPointer = funcCall[0].value
+            raise Exception('Pointer/Reference implementation missing!')
         else:
             thisScope = None
         #get the correct overloaded function
@@ -883,9 +933,9 @@ class ProgramTreeCreator(Visitor):
         newFunc = NodeGenFunc(name=funcDef.name, loc=funcDef.loc, 
                               returnType=funcDef.returnType)
         newFunc.argList = funcDef.argList.copy()
-        newFunc.funcBody = funcDef.funcBody.copy()
+        newFunc.body = funcDef.body.copy()
         #put copied function into "this" object or into module
-        funcParent.appendChild(newFunc)
+        funcParent.body.appendChild(newFunc)
         #funcParent.setFuncAttr(newFunc.name, newFunc) ????
         #Put pointer to function into NodeFuncCall (to easily find it for flattening)
         funcCall.attrRef = newFunc
@@ -906,7 +956,7 @@ class ProgramTreeCreator(Visitor):
         #TODO: pass the function's arguments: Create an assignment for each argument
 
         #visit the function's code
-        for stmt in newFunc.funcBody:
+        for stmt in newFunc.body:
             self.dispatch(stmt, newFunc, newFunc.environment)
         return
         
@@ -933,12 +983,19 @@ class ProgramTreeCreator(Visitor):
         #Create recursive definitions that contain only base types. 
         #Same like "data" statement
         self.createDataDefTreeRecursive(compileStmt, classDef)
+
         #search for pragmas that declare the main functions
+        #Pragmas were copied from class definition (createDataDefTreeRecursive)
         mainFuncNames = []
-        for pragma in compileStmt.statements:
+        for pragma in compileStmt.body:
             if isinstance(pragma, NodePragmaStmt) and \
                pragma.options[0] == 'compile_main_function':
                 mainFuncNames.append(pragma.options[1])
+        #TODO: automatically call/generate the main functions in all
+        #      suitable objects (models).
+        #TODO: How can the flattening algorithm find the automatically
+        #      generated code? How can this code be put into the right 
+        #      flattened main function?
         #call the main functions from the global namespace
         #this will create the main functions and will recursively 
         #create all functions called by each main function.
@@ -958,6 +1015,7 @@ class ProgramTreeCreator(Visitor):
         '''Interpret data definition statement.'''
         print 'interpreting data def: ', dataDef.name
         #TODO: New design necessary for local variables in functions.
+        #      setAttr(...) should be called in top namespace of environment?
         #put symbol into namespace, 
         if stmtContainer.hasAttr(dataDef.name):
             raise UserException('Duplicate attribute definition: "%s".'
@@ -970,7 +1028,9 @@ class ProgramTreeCreator(Visitor):
             if dataDef.role != RoleConstant:
                 raise UserException('Module data must have role "const"!',dataDef.loc)
 
-        #TODO: Create pointers to class definitions? (unnecessary data is expanded.)
+        #TODO: Create pointers to class definitions? 
+        #      - unnecessary data is expanded.
+        #      - usefull for type checking (implementation of isinstance())
         #Find the class definition - the template for creating the data definition
         classDef = environment.findDotName(dataDef.className)
         if classDef is None:
@@ -1033,7 +1093,7 @@ class ProgramTreeCreator(Visitor):
             self.dispatch(stmt, ioDataDef, environment)
            
         #put the interpreted (and expanded) statements into the data definition
-        ioDataDef.statements.insertChildren(len(ioDataDef.statements), 
+        ioDataDef.body.insertChildren(len(ioDataDef.body), 
                                             classBodyStmts)
         return
             
@@ -1073,7 +1133,7 @@ class ProgramTreeCreator(Visitor):
             rhsData = self.doAttrAccess(node, environment)
             if not issubclass(rhsData.role, legalRoles):
                 raise UserException('Illegal role! role: %s, data: %s' % 
-                                   (rhsData.role.userStr, str(node.name)), 
+                                    (rhsData.role.userStr, str(node.name)), 
                                     expression.loc)
         #Check existence of functions, check correct function arguments
         for node in expression.iterDepthFirst():
@@ -1090,6 +1150,9 @@ class ProgramTreeCreator(Visitor):
         #TODO: automatic creation of local variables in functions
         #TODO: put into function checkAttrAccess
         lhsData = self.doAttrAccess(assignment.lhs, environment)
+        #TODO: better design to constrain arrtibute access with different 
+        #      attribute roles necessary: maybe introduce:
+        #      self.lhsRoles, self.rhsRoles ,  (self.environmentStack)?
         #Roles describe when the data is computed
         lhsRole = lhsData.role
         if lhsRole == RoleFuncArgument:
@@ -1180,10 +1243,6 @@ class ProgramTreeCreator(Visitor):
         #This way the built in library can be processed by this method too.
         if self.builtInLib is not None:
             moduleTree.update(self.builtInLib)
-        #the first module is the '__main__' module (exception: builtinlib)
-        if self.mainModule is None and self.builtInLib is not None:
-            self.mainModule = moduleTree
-            moduleTree.name = '__main__'
         #create module (global) namespace
         environment = ExecutionEnvironment()
         environment.globalScope = moduleTree
@@ -1192,9 +1251,9 @@ class ProgramTreeCreator(Visitor):
             self.dispatch(node, moduleTree, environment)
             
         #put import statement for 'builtinlib' module into '__main__' module.
-        #Only cosmetic, so that it appears in the tree output for debugging
+        #Needed to give long names to built in symbols for flattening
         if moduleTree.name == '__main__':
-            importStmt = NodeImportStmt(moduleName='builtinlib', fromStmt=True, 
+            importStmt = NodeImportStmt(moduleName='builtin', fromStmt=True, 
                                         attrsToImport=["*"], loc = moduleTree.loc, 
                                         kids=[self.builtInLib])
             moduleTree.insertChild(0, importStmt)
@@ -1215,6 +1274,8 @@ class ProgramTreeCreator(Visitor):
         ----------
         fileName : str
             The module's file name. The module's text is read from this file.
+        moduleName : str
+            Name of module, will be put into NodeModule().name attribute.
     
         Returns
         -------
@@ -1243,29 +1304,136 @@ class ProgramTreeCreator(Visitor):
         return parseTree
         
         
-    def importModuleStr(self, moduleStr, fileName=None, moduleName=None):
+#    def importModuleStr(self, moduleStr, fileName=None, moduleName=None):
+#        '''
+#        Import a module (program file) as a string.
+#        Convenience function for development. (See self.importModuleFile)
+#               
+#        Parameters
+#        ----------
+#        moduleStr : str
+#            The module's (program's) text.
+#        fileName : str
+#            The module's file name, used for generating error messages.
+#        moduleName : str
+#            Name of module, will be put into NodeModule().name attribute.
+#    
+#        Returns
+#        -------
+#        moduleTree : ast.Node
+#            AST of a module. Will be assembled into a complete program tree.
+#        '''
+#        parser = simlparser.ParseStage()
+#        parseTree = parser.parseModuleStr(moduleStr, fileName, moduleName) 
+#        self.visitModule(parseTree)
+#        return parseTree
+
+
+    def importMainModule(self, fileName=None, moduleContentStr=None):
         '''
-        Import a module (program file) as a string.
-        Convenience function for development. (See self.importModuleFile)
-               
+        Compile the SIML program's main module. 
+        
+        Main entry point to generate the program tree. When the function returns 
+        this parse stage is finished. The compilation result is stored in 
+        self.mainModule and self.compileObjects .
+        
+        Programs can be entered as files on the local disks, or as strings that
+        contain the program text.
+        
         Parameters
         ----------
-        moduleStr : str
-            The module's (program's) text.
         fileName : str
-            The module's file name, used for generating error messages.
-    
+            The module's file name. The module's text is read from this file.
+        moduleContentStr : str
+            The module's (program's) text. Alternative method to enter the 
+            program text (for debuging).
+        
         Returns
         -------
         moduleTree : ast.Node
-            AST of a module. Will be assembled into a complete program tree.
+            The program tree, result of this parse stage. Same as self.mainModule
         '''
-        parser = simlparser.ParseStage()
-        parseTree = parser.parseModuleStr(moduleStr, fileName, moduleName) 
-        self.visitModule(parseTree)
-        return parseTree
-        
+        moduleName = '__main__'
+        if moduleContentStr is not None:
+            #The program text is given as a string.
+            parser = simlparser.ParseStage()
+            programTree = parser.parseModuleStr(moduleContentStr, fileName, moduleName) 
+            self.visitModule(programTree)
+        else:
+            #Read the program text from a file.
+            programTree = self.importModuleFile(fileName, moduleName)
 
+        self.mainModule = programTree
+        return
+            
+
+class ProgramTreeFlattener(object):
+    '''Class to flatten the program tree'''
+    
+    def __init__(self):
+        #program tree which is translated
+        self.mainModule = None
+        #count generated code objects with same (function) name
+        #to give the generated objects unique names
+        self.funcCount = {}
+#        self.deepTree = None
+#        self.flatTree = None
+    
+    def importProgramTree(self, mainModule):
+        '''
+        Store program tree and prepare it for flattening.
+        Creates long names, that are used in the flat namespace.
+        Alters program tree.
+        '''
+        self.mainModule = mainModule
+        self.funcCount.clear()
+        self.createLongNames(mainModule)
+
+    def createLongNames(self, dataContainer, prefix=DotName()):
+        '''
+        Create the long attribute names that will be used after flattening.
+        The long names are stored in the targetName attribute.
+        '''
+        for node in dataContainer:
+            if isinstance(node, NodeImportStmt):
+                module = node[0]
+                module.targetName = prefix + module.name
+                self.createLongNames(module, module.targetName)
+            elif isinstance(node, NodeDataDef):
+                node.targetName = prefix + node.name
+                self.createLongNames(node.body, node.targetName)
+            elif isinstance(node, NodeGenFunc):
+                #Each function expansion/invocation needs a unique name
+                #count functions with the same name
+                targetNameGeneral = prefix + node.name
+                num = self.funcCount.get(targetNameGeneral, 0)
+                self.funcCount[targetNameGeneral] = num + 1
+                #append '#'+number to make name unique
+                targetNameUnique = prefix + (str(node.name) + '#' + str(num))
+                node.targetName = targetNameUnique
+                #give (unique) long names to local variables
+                self.createLongNames(node.body, node.targetName)
+        return
+    
+    
+    def flattenDataTree(self, dataContainer):
+        for node in dataContainer:
+            if isinstance(node, NodeImportStmt):
+                module = node[0]
+            elif isinstance(node, NodeDataDef):
+                pass
+            elif isinstance(node, NodeGenFunc):
+                #TODO how should local variables from different compile 
+                #     statements be distinguished.
+                pass
+        return
+    
+    
+    def flattenCodeTree(self):
+        pass
+        
+        
+        
 def doTests():
     '''Perform various tests.'''
 
@@ -1293,12 +1461,16 @@ class Test(Model):
 
 class RunTest(Process):
 {
+    #TODO: the following line creates error in pyparsing:
+    #data time: Real;
+    data time1: Real;
     data g: Real param;
     data test: Test;
 
     func dynamic():
     {
-        if time < 10:{
+        $time1 = 1;
+        if time1 < 10:{
             test.q = 0.01;}
         else:{
             test.q = 0.03;}
@@ -1342,12 +1514,13 @@ class Bar(Process):
     
     func init(): 
     {
-        a = sqrt(2);
+        a = sqrt(2)+sqrt(3);
         b = a;
     }
     
     func dynamic(): 
     {
+        #init();
         #f1.foo1();
     }
     
@@ -1377,10 +1550,13 @@ compile bar1: Bar;
     flagTestProg2 = True
     if flagTestProg2:
         tc = ProgramTreeCreator()
-        astTree = tc.importModuleStr(testProg2)
+        tc.importMainModule(moduleContentStr=testProg1)
+        
+        tf = ProgramTreeFlattener()
+        tf.importProgramTree(tc.mainModule)
         
         print 'AST tree:'
-        print astTree
+        print tc.mainModule
 
 #        iltTree = iltGen.createIntermediateTree(astTree)
 #        print 'ILT tree:'

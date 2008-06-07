@@ -361,7 +361,10 @@ class ParseStage(object):
             condStmts = tokList[i+2]
             nCurr.kids.append(condition)
             nCurr.kids.append(condStmts)
+        #else: last condition is always true
+        elseCond = NodeNum(None, nCurr.loc, '1')
         elseStmts = tokList[-1]
+        nCurr.kids.append(elseCond) 
         nCurr.kids.append(elseStmts)
         return nCurr
 
@@ -587,7 +590,7 @@ class ParseStage(object):
             attrDef.className = DotName(toks.className.asList())  #store class name
             #map role string to role object, and store the role
             #If role is not specified RoleVariable is assumed. 
-            #Submodels will be labled variables even though these categories don't apply to them.
+            #Submodels will be labeled variables even though these categories don't apply to them.
             roleDict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleVariable,
                         'algebraic_variable':RoleAlgebraicVariable, 
                         'state_variable':RoleStateVariable}
@@ -741,7 +744,7 @@ class ParseStage(object):
         if toks.returnType:
             nCurr.returnType = DotName(toks.returnType)
         #store function body: statement list
-        nCurr.funcBody = toks.funcBody[0]
+        nCurr.body = toks.funcBody[0]
         return nCurr
 
 

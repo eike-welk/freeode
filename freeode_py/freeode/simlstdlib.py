@@ -121,7 +121,7 @@ def createParseTree():
         fileName = fileName[0:-1]
     #parse the library
     parser = simlparser.ParseStage()
-    parseTree = parser.parseModuleStr(stdLibExt, fileName, 'simlstdlib')
+    parseTree = parser.parseModuleStr(stdLibExt, fileName, 'builtin')
     #Create the 'object' class, the parent class of all classes
     objectClass = ast.NodeClassDef(name='Object', baseName=None) 
     parseTree.insertChild(0, objectClass)

@@ -70,12 +70,8 @@ class DuplicateAttributeError(Exception):
         Exception.__init__(self, msg)
         self.duplicateAttribute = duplicateAttribute
  
+
         
-#TODO: Namespace and execution environment - scope should be decoupled
-#      There should be different classes for scope and namespace
-#      A NodeDataDef is a namespace but it has no scopes
-#      A function has up to three scopes but it is no namespace
-#      Modules and classes are both.
 class NameSpace(object):
     '''
     Name space for modules, classes and functions.
@@ -188,6 +184,59 @@ class NameSpace(object):
     
     
     
+class FlatNameSpace(NameSpace):
+    '''A name space where attributes can have multiple dots in their name'''
+    def __init__(self):
+        NameSpace.__init__(self)
+
+    def setAttr(self, name, newAttr):
+        '''
+        Add new attribute to the name space.
+        
+        Attributes can exist multiple times.
+        
+        Parameters
+        ----------
+        name: str, DotName
+            Name of the new attribute
+        newAttr: NodeDataDef, NodeClassDef, NodeFuncDef, NodeModule
+            The new attribute, which is added to the name space.
+        '''
+        #Argument type checking and compatibility with DotName
+        if not isinstance(name, (str, DotName)):
+            raise Exception('Argument name must be of type str or DotName! type(name): ' 
+                            + str(type(name)) + ' str(name): ' + str(name))
+        name = str(name)
+        #add attribute to name space - attributes must be unique
+        if name in self._nameSpaceAttrs:
+            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
+        self._nameSpaceAttrs[name] = newAttr 
+        return
+
+    def findDotName(self, dotName, default=None):
+        '''
+        Find dot name recursively and return attribute with this name.
+        '''
+        dotName = DotName(dotName) #make compatible with str too
+        attr = self.getAttr(dotName, None)
+        if attr is not None:
+            return attr
+        #maybe partial name is known here. 
+        #Rest may be stored in child name space
+        nameShort = dotName 
+        nameTail = DotName()
+        while len(nameShort)>1:
+            #remove last element 
+            nameTail += nameShort[-1]
+            nameShort = nameShort[0:-1]
+            #try to find shortened name; look up rest of name recursively
+            attr = self.getAttr(nameShort, None)
+            if attr is not None:
+                return attr.findDotName(nameTail, default)
+        return default
+        
+        
+        
 class ExecutionEnvironment(object):
     def __init__(self):
         #Name space for global variables. Module where the code was written.
@@ -379,7 +428,7 @@ class Node(object):
             datStr =''
         else:
             datStr = ', ' + repr(self.dat)
-        #treat all other attributre as named attributre
+        #treat all other attributes as named attributes
         standardAttributes = set(['kids', 'loc', 'dat'])
         extraAttrStr=''
         for key, attr in self.__dict__.iteritems():
@@ -527,7 +576,7 @@ class NodeNum(Node):
     '''
     Represent a real number in the AST.
     Example: 123.5
-    Data attributre:
+    Data attributes:
         kids    : []
         loc     : location in input string
         dat     : the number as a string
@@ -540,7 +589,7 @@ class NodeString(Node):
     '''
     Represent a string in the AST.
     Example: 'hello world'
-    Data attributre:
+    Data attributes:
         kids    : []
         loc     : location in input string
         dat     : the string
@@ -553,7 +602,7 @@ class NodeParentheses(Node):
     '''
     Represent a pair of parentheses that enclose an expression, in the AST.
     Example: ( ... )
-    Data attributre:
+    Data attributes:
         kids[0] : the mathematical expression between the parentheses
         loc     : location in input string
         dat     : None
@@ -565,7 +614,7 @@ class NodeParentheses(Node):
 class NodeOpInfix2(Node):
     '''
     AST node for a (binary) infix operator: + - * / ^ and or
-    Data attributre:
+    Data attributes:
         kids    : [LHS, RHS] both sides of the operator
         loc     : location in input string
         dat     : None
@@ -612,13 +661,15 @@ class NodeOpPrefix1(Node):
 class NodeIfStmt(Node):
     '''
     AST Node for an if ... the ... else statement
-    Data attributre:
+    Data attributes:
         kids    : [<condition>, <then statements>, <else statements>]
         loc     : location in input string
         dat     : None
     '''
     def __init__(self, kids=None, loc=None, dat=None):
         super(NodeIfStmt, self).__init__(kids, loc, dat)
+    
+    #TODO: design good interface for NodeIfStmt
     #TODO: make compatible with multiple elif clauses:
     #      if ...: ... elif ...: ... elif...: ... else: ...
     #Condition property
@@ -666,7 +717,7 @@ class NodeFuncExecute(Node):
     This will be usually done by inserting the code of the function's body
     into the top level function.
     Similar to an inline function in C++.
-    Data attributre:
+    Data attributes:
         kids        : [<function arguments (any mathematical expression)>]
         loc         : location in input string
         dat         : None
@@ -688,7 +739,7 @@ class NodeFuncExecute(Node):
 class NodePrintStmt(Node):
     '''
     AST Node for printing something to stdout.
-    Data attributre:
+    Data attributes:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -704,7 +755,7 @@ class NodePrintStmt(Node):
 class NodeGraphStmt(Node):
     '''
     AST Node for creating a graph.
-    Data attributre:
+    Data attributes:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -716,7 +767,7 @@ class NodeGraphStmt(Node):
 class NodeStoreStmt(Node):
     '''
     AST Node for storing variables
-    Data attributre:
+    Data attributes:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -728,7 +779,7 @@ class NodeStoreStmt(Node):
 class NodeReturnStmt(Node):
     '''
     AST Node for the return statement
-    Data attributre:
+    Data attributes:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : The return value (expression)
@@ -740,7 +791,7 @@ class NodeReturnStmt(Node):
 class NodePragmaStmt(Node):
     '''
     AST Node for the pragma statement
-    Data attributre:
+    Data attributes:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -756,7 +807,7 @@ class NodePragmaStmt(Node):
 class NodeForeignCodeStmt(Node):
     '''
     AST Node for the foreign_code statement
-    Data attributre:
+    Data attributes:
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
@@ -775,7 +826,7 @@ class NodeForeignCodeStmt(Node):
 class NodeImportStmt(Node):
     '''
     AST Node for the pragma statement
-    Data attributre:
+    Data attributes:
         kids        : The modulse's AST
         loc         : location in input string
         dat         : None
@@ -783,12 +834,12 @@ class NodeImportStmt(Node):
         moduleName : str
             Name of the module that should be imported
         fromStmt : bool
-            Put the module's attributre directly into the namespace of the 
+            Put the module's attributes directly into the namespace of the 
             module that executes this statement. Behave as Python's "from" 
             statement.
         attrsToImport : list of string
-            List of attributre that should be imported. Special symbol "*" 
-            means all attributre in the module. 
+            List of attributes that should be imported. Special symbol "*" 
+            means all attributes in the module. 
             if fromStmt == False, this list is ignored.
     '''
     def __init__(self, kids=None, loc=None, dat=None, 
@@ -887,7 +938,7 @@ class NodeDataDef(Node, NameSpace):
         value           : Default value, initial value, value of a constant; interpreted
                           according to context. (mathematical expression) 
                           (propperty stored in kids[0])
-        statements      : statements of a recursive data definition. The statements of a class
+        body            : statements of a recursive data definition. The statements of a class
                           definition. (propperty stored in kids[0])
 
         name            : name of the attribute. DotName
@@ -935,7 +986,7 @@ class NodeDataDef(Node, NameSpace):
         return self.kids[1]
     def setStatements(self, inDefs): 
         self.kids[1] = inDefs
-    statements = property(getStatements, setStatements, None,
+    body = property(getStatements, setStatements, None,
                    'Attribute definitions. Copied from class definition. (propperty).')
 
 
@@ -957,7 +1008,7 @@ class NodeCompileStmt(NodeDataDef):
 class NodeAttrAccess(Node):
     '''
     AST node for access to a variable or parameter.
-    Data attributre:
+    Data Attributes:
         kids    :  ? slice object if attribute is an array?
         loc     : location in input string
         dat     : None
@@ -1017,7 +1068,7 @@ class NodeFuncDef(Node):
     #Get and set the function body
     def getFuncBody(self): return self.kids[1]
     def setFuncBody(self, inBody): self.kids[1] = inBody; inBody.dat = 'function body'
-    funcBody = property(getFuncBody, setFuncBody, None,
+    body = property(getFuncBody, setFuncBody, None,
                         'The function body (proppery).')
 
 
@@ -1072,40 +1123,40 @@ class NodeClassDef(Node, NameSpace):
         self.noFlatten = False
         self.defEnvironment = None #TODO: put data statements into a function?
         
-        
-#TODO: introduce? Rationale: same name like in NodeDataDef
-#    #Get or set the class body through a unified name
-#    def getStatements(self): 
-#        return self
-#    def setStatements(self, inDefs): 
-#        self.kids = inDefs.kids
-#    statements = property(getStatements, setStatements, None,
-#            'Attribute definitions and operations on constants. (propperty).')
+    #Get or set the class body through a unified name
+    def getStatements(self): 
+        return self
+    def setStatements(self, inDefs): 
+        self.kids = inDefs.kids
+    body = property(getStatements, setStatements, None,
+            'Attribute definitions and operations on constants. (propperty).')
 
 
 class NodeModule(Node, NameSpace):
     '''
     Root node of a module (or of the program)
-    Data attributre:
-        kids      : Definitions, the program's code.
-        loc       : location in input string (~0)
-        dat       : None
-        
-        name      : Name of the module
+    Attributes:
+    -----------
+    kids      : Definitions, the program's code.
+    loc       : location in input string (~0)
+    dat       : None
+    
+    name      : Name of the module
+    targetName: Name useful in the context of flattening or code generation
     '''
     def __init__(self, kids=None, loc=None, dat=None, name=None):
         Node.__init__(self, kids, loc, dat)
         NameSpace.__init__(self)
         self.name = name
+        self.targetName = None
 
-#TODO: introduce? Rationale: same name like in NodeDataDef
-#    #Get or set the class body through a unified name
-#    def getStatements(self): 
-#        return self
-#    def setStatements(self, inDefs): 
-#        self.kids = inDefs.kids
-#    statements = property(getStatements, setStatements, None,
-#            'Attribute definitions and operations on constants. (propperty).')
+    #Get or set the class body through a unified name
+    def getStatements(self): 
+        return self
+    def setStatements(self, inDefs): 
+        self.kids = inDefs.kids
+    body = property(getStatements, setStatements, None,
+            'Attribute definitions and operations on constants. (propperty).')
 
 class DepthFirstIterator(object):
     """
@@ -1294,9 +1345,9 @@ class TreePrinter(object):
             attrNameSet = set(node.__dict__.keys())
             attrNames= list(attrNameSet - specialAttrs)
             attrNames.sort()
-            #get attributre out node.__dict__
+            #get attributes out node.__dict__
             for name1 in attrNames:
-                #TODO:more robustness when other attributre are Nodes too
+                #TODO:more robustness when other attributes are Nodes too
                 #TODO:more robustness against circular dependencies
                 putStr(indentStr, name1 + ': ' + safeStr(node.__dict__[name1]) + ' ')
             #put newline after complete node 
@@ -1349,10 +1400,14 @@ class DotName(tuple):
 
     def __add__(self, other):
         '''Concatenate with tuple or DotName. Return: self + other.'''
+        if isinstance(other, str):
+            other = DotName(other)
         return DotName(tuple.__add__(self, other))
 
     def __radd__(self, other):
         '''Concatenate with tuple or DotName. Return: other + self.'''
+        if isinstance(other, str):
+            other = DotName(other)
         return DotName(tuple.__add__(other, self))
     #TODO: add indexing operations. Currently dn[1:] returns a tuple.
 
@@ -1589,7 +1644,7 @@ class Visitor(object):
         '''
         Create the rule table.
         Look at all methods of the class, if they have
-        _dispatchIfType and _dispatchPriority attributre
+        _dispatchIfType and _dispatchPriority attributes
         put them into the rule table.
 
         - The rule table is sorted according to _dispatchPriority.
@@ -1599,7 +1654,7 @@ class Visitor(object):
         ruleTable = []
         defaultFunc = Visitor._simpleDefaultFunc #IGNORE:W0212
         #TODO: look into methods of parent classes too
-        #loop over the class' attributre and put them into the table if appropriate
+        #loop over the class' attributes and put them into the table if appropriate
         for func in cls.__dict__.itervalues():
             if not isinstance(func, FunctionType):
                 continue
@@ -1716,7 +1771,7 @@ class TestAST(unittest.TestCase):
 
     def test__str__(self):
         #test printing and line wraping (it must not crash)
-        #create additional node with many big attributre
+        #create additional node with many big attributes
         nBig = Node([])
         nBig.test1 = 'qworieoqwiruuqrw'
         nBig.test2 = 'qworieoqwiruuqrw'
