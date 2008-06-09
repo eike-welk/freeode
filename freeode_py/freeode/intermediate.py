@@ -635,17 +635,17 @@ class ILTGenerator(object):
 
 #--------------- new intermediate tree creation ----------------------------------
 #TODO: better and shorter handling of common errors 
-#class UserDuplicateAttributeError(UserException):
-#    '''User visible duplicate attribute error.'''
-#    def __init__(self, msg='Duplicate attribute: ', attrName=None, loc=None):
-#        msgComplete = msg + str(attrName) if attrName is not None else msg
-#        UserException.__init__(self, msgComplete, loc)
-#
-#class UserUndefinedAttributeError(UserException):
-#    '''User visible undefined attribute error.'''
-#    def __init__(self, msg='Undefined attribute: ', attrName=None, loc=None):
-#        msgComplete = msg + str(attrName) if attrName is not None else msg
-#        UserException.__init__(self, msgComplete, loc)
+class UserDuplicateAttributeError(UserException):
+    '''User visible duplicate attribute error.'''
+    def __init__(self, msg='Duplicate attribute: ', attrName=None, loc=None):
+        msgComplete = msg + str(attrName) if attrName is not None else msg
+        UserException.__init__(self, msgComplete, loc)
+
+class UserUndefinedAttributeError(UserException):
+    '''User visible undefined attribute error.'''
+    def __init__(self, msg='Undefined attribute: ', attrName=None, loc=None):
+        msgComplete = msg + str(attrName) if attrName is not None else msg
+        UserException.__init__(self, msgComplete, loc)
         
         
 
@@ -1014,39 +1014,41 @@ class ProgramTreeCreator(Visitor):
     def visitDataDef(self, dataDef, stmtContainer, environment):
         '''Interpret data definition statement.'''
         print 'interpreting data def: ', dataDef.name
-        #TODO: New design necessary for local variables in functions.
-        #      setAttr(...) should be called in top namespace of environment?
-        #put symbol into namespace, 
-        if stmtContainer.hasAttr(dataDef.name):
-            raise UserException('Duplicate attribute definition: "%s".'
-                                % str(dataDef.name), dataDef.loc)
-        stmtContainer.setAttr(dataDef.name, dataDef)
-        #No setting of global scope necessary. A data definition contains no scope
-        
-        #Data at the top level of a module must be constant.
-        if isinstance(stmtContainer, NodeModule):
-            if dataDef.role != RoleConstant:
-                raise UserException('Module data must have role "const"!',dataDef.loc)
-
-        #TODO: Create pointers to class definitions? 
-        #      - unnecessary data is expanded.
-        #      - usefull for type checking (implementation of isinstance())
-        #Find the class definition - the template for creating the data definition
-        classDef = environment.findDotName(dataDef.className)
-        if classDef is None:
-            raise UserException('Unknown class: ' +str(dataDef.className), dataDef.loc)
-        #Copy flags
-        dataDef.isBuiltinType = classDef.isBuiltinType
-        dataDef.noFlatten = classDef.noFlatten
-        #Create recursive definitions that contain only base types.
-        #Built in types however are not expanded (one can not see into them).
-        if not classDef.isBuiltinType: # and not classDef.isReference
-            self.createDataDefTreeRecursive(dataDef, classDef)
-        
-        #TODO: if data root is const all recursive attributes must be const?
-        #TODO: if data root is parameter all recursive attributes must be parameter?
-        return
+        try:
+            #TODO: New design necessary for local variables in functions.
+            #      setAttr(...) should be called in top namespace of environment?
+            #put symbol into namespace, 
+            stmtContainer.setAttr(dataDef.name, dataDef)
+            #No setting of global scope necessary. A data definition contains no scope
             
+            #Data at the top level of a module must be constant.
+            if isinstance(stmtContainer, NodeModule) and \
+               dataDef.role != RoleConstant:
+                raise UserException('Module data must have role "const"!',
+                                     dataDef.loc)
+    
+            #TODO: Create pointers to class definitions? 
+            #      - unnecessary data is expanded.
+            #      - usefull for type checking (implementation of isinstance())
+            #Find the class definition - the template for creating the data definition
+            classDef = environment.findDotName(dataDef.className)
+            #Copy flags
+            dataDef.isBuiltinType = classDef.isBuiltinType
+            dataDef.noFlatten = classDef.noFlatten
+            #Create recursive definitions that contain only base types.
+            #Built in types however are not expanded (one can not see into them).
+            if not classDef.isBuiltinType: # and not classDef.isReference
+                self.createDataDefTreeRecursive(dataDef, classDef)
+            
+            #TODO: if data root is const all recursive attributes must be const?
+            #TODO: if data root is parameter all recursive attributes must be parameter?
+        except DuplicateAttributeError, error:
+            raise UserDuplicateAttributeError(attrName=error.attrName, 
+                                        loc=dataDef.loc)
+        except UndefinedAttributeError, error:
+            raise UserUndefinedAttributeError(attrName=error.attrName, 
+                                        loc=dataDef.loc)
+        
             
     def createDataDefTreeRecursive(self, ioDataDef, classDef):
         '''
@@ -1098,13 +1100,13 @@ class ProgramTreeCreator(Visitor):
         return
             
     
-    def doAttrAccess(self, attrAccess, environment):
+    def checkAttrAccess(self, attrAccess, environment):
         '''
         Retrieve the accessed NodeDataDef. 
         
         Throw user errors if necessary. Store pointer to NodeDataDef.
         '''
-        attrDef = environment.findDotName(attrAccess.name)
+        attrDef = environment.findDotName(attrAccess.name, None)
         if attrDef is None:
             raise UserException('Undefined data: ' + 
                                 str(attrAccess.name), attrAccess.loc)
@@ -1130,7 +1132,7 @@ class ProgramTreeCreator(Visitor):
         for node in expression.iterDepthFirst():
             if not isinstance(node, NodeAttrAccess):
                 continue
-            rhsData = self.doAttrAccess(node, environment)
+            rhsData = self.checkAttrAccess(node, environment)
             if not issubclass(rhsData.role, legalRoles):
                 raise UserException('Illegal role! role: %s, data: %s' % 
                                     (rhsData.role.userStr, str(node.name)), 
@@ -1149,7 +1151,7 @@ class ProgramTreeCreator(Visitor):
         #Check LHS --------------------
         #TODO: automatic creation of local variables in functions
         #TODO: put into function checkAttrAccess
-        lhsData = self.doAttrAccess(assignment.lhs, environment)
+        lhsData = self.checkAttrAccess(assignment.lhs, environment)
         #TODO: better design to constrain arrtibute access with different 
         #      attribute roles necessary: maybe introduce:
         #      self.lhsRoles, self.rhsRoles ,  (self.environmentStack)?
@@ -1181,17 +1183,15 @@ class ProgramTreeCreator(Visitor):
     def visitImportStmt(self, importStmt, stmtContainer, environment):
         '''Interpret import statement.'''
         moduleName = importStmt.moduleName
-        moduleTree = importStmt.kids[0]
+#        moduleTree = importStmt.kids[0]
         print 'visiting import: ', moduleName
-        #if statent necessary for simlstdlib
-        if moduleTree is None:
+        try:
             #read module from file
             #TODO: implement packages
             #TODO: implement list of directories for searching files
             modNameStr = str(moduleName)
             moduleTree = self.importModuleFile(modNameStr + '.siml', modNameStr)
-        #put the imported attributes into our namespace
-        try:
+            #put the imported attributes into our namespace
             if importStmt.fromStmt == True:
                 #behave like Python from statement
                 #TODO implement selecting individual attributes from the package

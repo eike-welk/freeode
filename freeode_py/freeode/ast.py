@@ -66,11 +66,18 @@ class DuplicateAttributeError(Exception):
     Exception raised by NameSpace 
     when the user tries to redefine an attribute.
     '''
-    def __init__(self, msg=None, duplicateAttribute=None):
+    def __init__(self, msg='Duplicate Attribute.', attrName=None):
         Exception.__init__(self, msg)
-        self.duplicateAttribute = duplicateAttribute
- 
+        self.attrName = attrName
 
+class UndefinedAttributeError(Exception):
+    '''
+    Exception: Attribute is unknown in namespace.
+    ''' 
+    def __init__(self, msg='Undefined Attribute.', attrName=None):
+        Exception.__init__(self, msg)
+        self.attrName = attrName
+        
         
 class NameSpace(object):
     '''
@@ -246,12 +253,24 @@ class ExecutionEnvironment(object):
         #scope for the local variables of a function
         self.localScope = None
 
-    def findDotName(self, dotName, default=None):
+    #def findDotName(self, dotName, default=None):
+    def findDotName(self, *posArg):
         '''
         Find a dot name in this environment.
         
         Tries local name space, this name space, global name space
         '''
+        if len(posArg) == 1:
+            dotName = posArg[0]
+            default = None
+            raiseExc = True
+        elif len(posArg) == 2:
+            dotName = posArg[0]
+            default = posArg[1]
+            raiseExc = False
+        else:
+            raise Exception('Required number of arguments 1 or 2. '
+                            'Actual number of arguments: ' + str(len(posArg)))
         #TODO: Add ability to raise UserException?
         #try to find name in scope hierarchy:
         # function --> class --> module 
@@ -263,10 +282,12 @@ class ExecutionEnvironment(object):
             attr = scope.findDotName(dotName, None)
             if attr is not None:
                 break
-        if attr is None:
+        if attr is not None:
+            return attr
+        elif not raiseExc:
             return default
         else:
-            return attr
+            raise UndefinedAttributeError(attrName=str(dotName))
 
 
 #    def setGlobalScope(self, inNameSpace):
