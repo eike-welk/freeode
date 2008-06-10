@@ -568,9 +568,30 @@ class Node(object):
 
 
     def copy(self):
-        '''Return a (recursive) deep copy of the node.'''
+        '''
+        Return a (recursive) deep copy of the node.
+        
+        Only children are copied deeply; 
+        all other attributes are not copied. Only new references are made.
+        '''
         return copy.deepcopy(self)
-
+    
+    
+    def __deepcopy__(self, memoDict):
+        '''Hook that does the copying.
+        Called by the function copy.deepcopy()'''
+        #create empty instance of self.__class__
+        newObj = Node.__new__(self.__class__)
+        for name, attr in self.__dict__.iteritems():
+            if name == 'kids':
+                #kids: make deep copy
+                newObj.kids = copy.deepcopy(self.kids, memoDict)
+            else:
+                #normal attribute: no copy, only reference.
+                setattr(newObj, name, attr)
+        return newObj
+        
+        
 
 class NodeNoneClass(Node):
     '''Node that takes the function of None.'''
@@ -580,19 +601,6 @@ class NodeNoneClass(Node):
 nodeNone = NodeNoneClass()
     
     
-#class NodeBuiltInVal(Node):
-#    '''
-#    Represent a built in value in the AST.
-#    Example: pi
-#
-#    self.dat : string representing the value
-#    '''
-#    #TODO: remove this class. These nodes should be replaced by regular
-#    #global constants (NodeAttrAccess)
-#    def __init__(self, kids=[], loc=None, dat=None):
-#        super(NodeBuiltInVal, self).__init__(kids, loc, dat)
-
-
 class NodeNum(Node):
     '''
     Represent a real number in the AST.

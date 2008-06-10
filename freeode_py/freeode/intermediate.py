@@ -805,42 +805,36 @@ class ProgramTreeCreator(Visitor):
     @Visitor.when_type(NodeClassDef)
     def visitClassDef(self, classDef, stmtContainer, environment):
         '''Interpret class definition statement.'''
-        className = classDef.name
-        baseName = classDef.baseName
-        print 'visiting class def: ', className
-        #TODO: the pattern in the following 6 lines should be put in a function, that  
-        #      raises user errors; it should hav an argument errMsg="Name already defined: " 
-        #Class names must be unique
-        if stmtContainer.hasAttr(className):
-            raise UserException('Class name already defined: ' 
-                                + str(className), classDef.loc)
-        #add the class definition to the namespace
-        stmtContainer.setAttr(className, classDef)
-
-        if baseName is not None: #only False for class "Object"
-            #TODO: the pattern in the following 6 lines should be put in a function, that  
-            #      raises user errors; it should hav an argument errMsg="Undefined name: " 
-            #Store pointer to parent class
-            classDef.base = environment.findDotName(baseName, None)
-            #Parent class must exist
-            if classDef.base is None:
-                raise UserException('Unknown base class: ' 
-                                    + str(baseName), classDef.loc)
-        
-        #store the environment - will de used by data statements
-        classDef.defEnvironment = environment
-        #Look at the class body statements - only recognize pragmas and functions
-        for stmt in classDef:
-            if isinstance(stmt, NodePragmaStmt):
-                #interpret pragmas.
-                if stmt.options[0] == 'built_in_type':
-                    classDef.isBuiltinType = True
-                elif stmt.options[0] == 'no_flatten':
-                    classDef.noFlatten = True
-            elif isinstance(stmt, NodeFuncDef):
-                #interpret function definitions
-                self.visitFuncDef(stmt, classDef, environment)
-        return 
+        print 'visiting class def: ', classDef.name
+        try:
+            #add the class definition to the namespace
+            stmtContainer.setAttr(classDef.name, classDef)
+            #find base class
+            #with special case for class "Object" which has no base class.
+            if classDef.baseName is not None: 
+                classDef.base = environment.findDotName(classDef.baseName)
+            #store the environment - will de used by data statements
+            classDef.defEnvironment = environment
+            
+            #Look at the class body statements 
+            for stmt in classDef:
+                if isinstance(stmt, NodePragmaStmt):
+                    #interpret pragmas.
+                    if stmt.options[0] == 'built_in_type':
+                        classDef.isBuiltinType = True
+                    elif stmt.options[0] == 'no_flatten':
+                        classDef.noFlatten = True
+                elif isinstance(stmt, NodeFuncDef):
+                    #interpret function definitions
+                    self.visitFuncDef(stmt, classDef, environment)
+                    
+        except DuplicateAttributeError, error:
+            raise UserDuplicateAttributeError(attrName=error.attrName, 
+                                              loc=classDef.loc)
+        except UndefinedAttributeError, error:
+            raise UserUndefinedAttributeError(attrName=error.attrName, 
+                                              loc=classDef.loc)
+    
     
     @Visitor.when_type(NodeGenFunc, 2)
     def visitGenFunc(self, _funcGen, _stmtContainer, _environment):
@@ -849,15 +843,18 @@ class ProgramTreeCreator(Visitor):
         
     @Visitor.when_type(NodeFuncDef)
     def visitFuncDef(self, funcDef, stmtContainer, environment):
-        '''Interpret function definition statement.'''
-        print 'interpreting func def: ', funcDef.name
-        # NodeFuncDef should only be processed in class definition 
-        # processing it in data tree expansion will process it multiple times.
-        # The individual function objects for flattening must be created 
-        # when NodeFuncExecute is processed.
+        '''
+        Interpret function definition statement.
         
+        NodeFuncDef should only be processed in class definition; 
+        processing it in data tree expansion will process it multiple times.
+        The individual function objects for flattening must be created 
+        when NodeFuncExecute is processed.
+        '''
+        print 'interpreting func def: ', funcDef.name
         #put function into module or class, store global scope
-        stmtContainer.setFuncAttr(funcDef.name, funcDef)        
+        stmtContainer.setFuncAttr(funcDef.name, funcDef) 
+        #functions are executed in the global scope where they are defined.       
         funcDef.environment.globalScope = environment.globalScope
 
         if isinstance(stmtContainer, NodeClassDef):
@@ -884,130 +881,134 @@ class ProgramTreeCreator(Visitor):
     def visitFuncExecute(self, funcCall, stmtContainer, environment):
         '''Interpret function call.'''
         print 'interpreting function call'
-        funcName = funcCall.name
-        #Find the function definition - the template for creating the function
-        multiFunc = environment.findDotName(funcName)
-        if multiFunc is None:
-            raise UserException('Unknown function: ' + str(funcName), 
-                                funcCall.loc)
-        elif not isinstance(multiFunc, FunctionOverloadingResolver):
-            raise UserException('Object is not callable: ' + str(funcName), 
-                                funcCall.loc)
-        #Distinguish: function <-> instance method
-        #Get the object that contains the function/method
-        if len(funcName) >= 2:
-            #name with dots - take part left of last dot
-            funcParent = environment.findDotName(funcName[0:-1])
-        elif environment.localScope.findDotName(funcName) is not None:
-            #local (nested) function - future extension
-            funcParent = environment.localScope
-        elif environment.thisScope.findDotName(funcName) is not None:
-            #member function of same class
-            funcParent = environment.thisScope 
-        elif environment.globalScope.findDotName(funcName) is not None:
-            funcParent = environment.globalScope            
-        #Prepend "this" pointer if it is call to member function
-        #and remember "this" namespace
-        if isinstance(funcParent, NodeDataDef):
-            #Yes it is a member function (instance method)
-            thisScope = funcParent
-            #TODO: put useful reference to 'this' into 'this'-pointer
-            #      needs pointer/reference implementation 
-            thisPointer = NodeAttrAccess(name=funcCall.name[:-1], 
-                                         loc=funcCall.loc)
-            funcCall.insertChild(0, thisPointer)
-        elif isinstance(funcParent, NodeClassDef):
-            #TODO: this pointer is taken from function arguments
-            #      needs pointer/reference implementation 
-            thisPointer = funcCall[0].value
-            raise Exception('Pointer/Reference implementation missing!')
-        else:
-            thisScope = None
-        #get the correct overloaded function
-        funcDef = multiFunc.resolve(funcCall)        
-        #stop processing for built in functions.
-        if funcDef.isBuiltIn:
+        try:
+            funcName = funcCall.name
+            #Find the function definition - the template for creating the function
+            multiFunc = environment.findDotName(funcName)
+            if not isinstance(multiFunc, FunctionOverloadingResolver):
+                raise UserException('Object is not callable: ' + str(funcName), 
+                                    funcCall.loc)
+            #Distinguish: function <-> instance method
+            #Get the object that contains the function/method
+            if len(funcName) >= 2:
+                #name with dots - take part left of last dot
+                funcParent = environment.findDotName(funcName[0:-1])
+            elif environment.localScope.findDotName(funcName, None) is not None:
+                #local (nested) function - future extension
+                funcParent = environment.localScope
+            elif environment.thisScope.findDotName(funcName, None) is not None:
+                #member function of same class
+                funcParent = environment.thisScope 
+            elif environment.globalScope.findDotName(funcName, None) is not None:
+                funcParent = environment.globalScope            
+            #Prepend "this" pointer if it is call to member function
+            #and remember "this" namespace
+            if isinstance(funcParent, NodeDataDef):
+                #Yes it is a member function (instance method)
+                thisScope = funcParent
+                #TODO: put useful reference to 'this' into 'this'-pointer
+                #      needs pointer/reference implementation 
+                thisPointer = NodeAttrAccess(name=funcCall.name[:-1], 
+                                             loc=funcCall.loc)
+                funcCall.insertChild(0, thisPointer)
+            elif isinstance(funcParent, NodeClassDef):
+                #TODO: this pointer is taken from function arguments
+                #      needs pointer/reference implementation 
+                thisPointer = funcCall[0].value
+                raise Exception('Pointer/Reference implementation missing!')
+            else:
+                thisScope = None
+            #get the correct overloaded function
+            funcDef = multiFunc.resolve(funcCall)        
+            #stop processing for built in functions.
+            if funcDef.isBuiltIn:
+                return
+            
+            #Create new function object 
+            newFunc = NodeGenFunc(name=funcDef.name, loc=funcDef.loc, 
+                                  returnType=funcDef.returnType)
+            newFunc.argList = funcDef.argList.copy()
+            newFunc.body = funcDef.body.copy()
+            #put copied function into "this" object or into module
+            funcParent.body.appendChild(newFunc)
+            #funcParent.setFuncAttr(newFunc.name, newFunc) ????
+            #Put pointer to function into NodeFuncCall (to easily find it for flattening)
+            funcCall.attrRef = newFunc
+     
+            #Set up execution environment for the function
+            newFunc.environment.globalScope = funcDef.environment.globalScope
+            newFunc.environment.thisScope = thisScope
+            newFunc.environment.localScope = NameSpace()
+            
+            #TODO create a NodeDataDef for each function argument
+    #        #TODO: put function arguments into function's local namespace
+    #        for argDef in funcDef.argList:
+    #            if namespace.hasAttr(argDef.name):
+    #                raise UserException('Duplicate function argument: ' +
+    #                                    str(argDef.name), funcDef.loc)
+    #            funcDef.setAttr(argDef.name, argDef)
+    
+            #TODO: pass the function's arguments: Create an assignment for each argument
+    
+            #visit the function's code
+            for stmt in newFunc.body:
+                self.dispatch(stmt, newFunc, newFunc.environment)
             return
-        
-        #Create new function object 
-        newFunc = NodeGenFunc(name=funcDef.name, loc=funcDef.loc, 
-                              returnType=funcDef.returnType)
-        newFunc.argList = funcDef.argList.copy()
-        newFunc.body = funcDef.body.copy()
-        #put copied function into "this" object or into module
-        funcParent.body.appendChild(newFunc)
-        #funcParent.setFuncAttr(newFunc.name, newFunc) ????
-        #Put pointer to function into NodeFuncCall (to easily find it for flattening)
-        funcCall.attrRef = newFunc
- 
-        #Set up execution environment for the function
-        newFunc.environment.globalScope = funcDef.environment.globalScope
-        newFunc.environment.thisScope = thisScope
-        newFunc.environment.localScope = NameSpace()
-        
-        #TODO create a NodeDataDef for each function argument
-#        #TODO: put function arguments into function's local namespace
-#        for argDef in funcDef.argList:
-#            if namespace.hasAttr(argDef.name):
-#                raise UserException('Duplicate function argument: ' +
-#                                    str(argDef.name), funcDef.loc)
-#            funcDef.setAttr(argDef.name, argDef)
-
-        #TODO: pass the function's arguments: Create an assignment for each argument
-
-        #visit the function's code
-        for stmt in newFunc.body:
-            self.dispatch(stmt, newFunc, newFunc.environment)
-        return
+        except UndefinedAttributeError, error:
+            raise UserUndefinedAttributeError(attrName=error.attrName, 
+                                              loc=funcCall.loc)
         
         
     @Visitor.when_type(NodeCompileStmt, 2)
     def visitCompileStmt(self, compileStmt, stmtContainer, environment):
         '''Interpret compile statement.'''
         print 'interpreting compile statement'
-        #create name if none given
-        if compileStmt.name is None:
-            compileStmt.name = 'simulation' + '_'.join(compileStmt.className)
-            print ('Creating name for compiled object because none given: ' 
-                   + compileStmt.name)
-        #put symbol into namespace, 
-        if stmtContainer.hasAttr(compileStmt.name):
-            raise UserException('Duplicate compiled object: "%s".'
-                                % str(compileStmt.name), compileStmt.loc)
-        stmtContainer.setAttr(compileStmt.name, compileStmt)
-        #Find the class definition - the template for creating the compiled object
-        classDef = environment.findDotName(compileStmt.className)
-        if classDef is None:
-            raise UserException('Unknown class: ' +str(compileStmt.className), 
-                                compileStmt.loc)
-        #Create recursive definitions that contain only base types. 
-        #Same like "data" statement
-        self.createDataDefTreeRecursive(compileStmt, classDef)
-
-        #search for pragmas that declare the main functions
-        #Pragmas were copied from class definition (createDataDefTreeRecursive)
-        mainFuncNames = []
-        for pragma in compileStmt.body:
-            if isinstance(pragma, NodePragmaStmt) and \
-               pragma.options[0] == 'compile_main_function':
-                mainFuncNames.append(pragma.options[1])
-        #TODO: automatically call/generate the main functions in all
-        #      suitable objects (models).
-        #TODO: How can the flattening algorithm find the automatically
-        #      generated code? How can this code be put into the right 
-        #      flattened main function?
-        #call the main functions from the global namespace
-        #this will create the main functions and will recursively 
-        #create all functions called by each main function.
-        for funcName in mainFuncNames:
-            funcDotName = DotName((compileStmt.name, funcName))
-            funcCall = NodeFuncExecute(name=funcDotName)
-            self.visitFuncExecute(funcCall, stmtContainer, environment) 
-            #remember generated main function in separate list
-            compileStmt.mainFuncs.append(funcCall.attrRef)
-        #put the expanded object into the results list
-        self.compileObjects.append(compileStmt)
-        return
+        try:
+            #create name if none given
+            if compileStmt.name is None:
+                compileStmt.name = 'simulation' + '_'.join(compileStmt.className)
+                print ('Creating name for compiled object because none given: ' 
+                       + compileStmt.name)
+            #put compiled object into global namespace
+            #TODO: better solution to make names of compiled objects unique
+            #TODO: better solution look up attributes of compiled object
+            stmtContainer.setAttr(compileStmt.name, compileStmt)
+            #Find the class definition - the template for creating the compiled object
+            classDef = environment.findDotName(compileStmt.className)
+    
+            #Create recursive data definitions that contain only base types. 
+            #Same like "data" statement
+            self.createDataDefTreeRecursive(compileStmt, classDef)
+    
+            #search for pragmas that declare the main functions
+            #Pragmas were copied from class definition (createDataDefTreeRecursive)
+            mainFuncNames = []
+            for pragma in compileStmt.body:
+                if isinstance(pragma, NodePragmaStmt) and \
+                   pragma.options[0] == 'compile_main_function':
+                    mainFuncNames.append(pragma.options[1])
+            #TODO: automatically call/generate the main functions in all
+            #      suitable objects (models).
+            #TODO: How can the flattening algorithm find the automatically
+            #      generated code? How can this code be put into the right 
+            #      flattened main function?
+            #call the main functions from the global namespace
+            #this will create the main functions and will recursively 
+            #create all functions called by each main function.
+            for funcName in mainFuncNames:
+                funcDotName = DotName((compileStmt.name, funcName))
+                funcCall = NodeFuncExecute(name=funcDotName)
+                self.visitFuncExecute(funcCall, stmtContainer, environment) 
+                #remember generated main function in separate list
+                compileStmt.mainFuncs.append(funcCall.attrRef)
+            #put the expanded object into the results list
+            self.compileObjects.append(compileStmt)
+        except DuplicateAttributeError, error:
+            raise UserDuplicateAttributeError(attrName=error.attrName, 
+                                              loc=compileStmt.loc)
+        except UndefinedAttributeError, error:
+            raise UserUndefinedAttributeError(attrName=error.attrName, 
+                                              loc=compileStmt.loc)
 
     
     @Visitor.when_type(NodeDataDef)
@@ -1019,19 +1020,17 @@ class ProgramTreeCreator(Visitor):
             #      setAttr(...) should be called in top namespace of environment?
             #put symbol into namespace, 
             stmtContainer.setAttr(dataDef.name, dataDef)
-            #No setting of global scope necessary. A data definition contains no scope
+            #Find the class definition - the template for creating the data definition
+            classDef = environment.findDotName(dataDef.className)
+            #TODO: Create pointers to class definitions? 
+            #      - unnecessary data is expanded.
+            #      - usefull for type checking (implementation of isinstance())
             
             #Data at the top level of a module must be constant.
             if isinstance(stmtContainer, NodeModule) and \
                dataDef.role != RoleConstant:
                 raise UserException('Module data must have role "const"!',
                                      dataDef.loc)
-    
-            #TODO: Create pointers to class definitions? 
-            #      - unnecessary data is expanded.
-            #      - usefull for type checking (implementation of isinstance())
-            #Find the class definition - the template for creating the data definition
-            classDef = environment.findDotName(dataDef.className)
             #Copy flags
             dataDef.isBuiltinType = classDef.isBuiltinType
             dataDef.noFlatten = classDef.noFlatten
@@ -1249,16 +1248,7 @@ class ProgramTreeCreator(Visitor):
         #interpret module nodes
         for node in moduleTree:
             self.dispatch(node, moduleTree, environment)
-            
-        #put import statement for 'builtinlib' module into '__main__' module.
-        #Needed to give long names to built in symbols for flattening
-        if moduleTree.name == '__main__':
-            importStmt = NodeImportStmt(moduleName='builtin', fromStmt=True, 
-                                        attrsToImport=["*"], loc = moduleTree.loc, 
-                                        kids=[self.builtInLib])
-            moduleTree.insertChild(0, importStmt)
         return
-        
         
         
     def importModuleFile(self, fileName, moduleName=None):
@@ -1362,7 +1352,13 @@ class ProgramTreeCreator(Visitor):
         else:
             #Read the program text from a file.
             programTree = self.importModuleFile(fileName, moduleName)
-
+        #put import statement for 'builtinlib' module into '__main__' module.
+        #Needed to give long names to built in symbols for flattening
+        importStmt = NodeImportStmt(moduleName='builtin', fromStmt=True, 
+                                    attrsToImport=["*"], loc=programTree.loc, 
+                                    kids=[self.builtInLib])
+        programTree.insertChild(0, importStmt)
+        #store main module
         self.mainModule = programTree
         return
             
