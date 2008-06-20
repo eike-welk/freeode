@@ -245,6 +245,12 @@ class FlatNameSpace(NameSpace):
         
         
 class ExecutionEnvironment(object):
+    '''
+    Container for name spaces where symbols are looked up.
+    Function findDotName searches the symbol in all name spaces.
+    
+    TODO: put into module intermediate?
+    '''
     def __init__(self):
         #Name space for global variables. Module where the code was written.
         self.globalScope = None
@@ -258,20 +264,30 @@ class ExecutionEnvironment(object):
         '''
         Find a dot name in this environment.
         
-        Tries local name space, this name space, global name space
+        When the name is not found an exception is raised, or a default
+        value is returned.
+        Tries local name space, 'this' name space, global name space.
+        
+        Arguments
+        ---------
+        dotName : DotName
+            Dotted name that is looked up in the different name spaces.
+        default : object
+            Object which is returned when dotName could not be found.
+            If argument is omitted, a UndefinedAttributeError is raised.
         '''
+        #get arguments from vector 
         if len(posArg) == 1:
             dotName = posArg[0]
             default = None
-            raiseExc = True
+            raiseErr = True
         elif len(posArg) == 2:
             dotName = posArg[0]
             default = posArg[1]
-            raiseExc = False
+            raiseErr = False
         else:
             raise Exception('Required number of arguments 1 or 2. '
                             'Actual number of arguments: ' + str(len(posArg)))
-        #TODO: Add ability to raise UserException?
         #try to find name in scope hierarchy:
         # function --> class --> module 
         scopeList = [self.localScope, self.thisScope, self.globalScope]
@@ -284,7 +300,7 @@ class ExecutionEnvironment(object):
                 break
         if attr is not None:
             return attr
-        elif not raiseExc:
+        elif not raiseErr:
             return default
         else:
             raise UndefinedAttributeError(attrName=str(dotName))
@@ -1186,6 +1202,37 @@ class NodeModule(Node, NameSpace):
         self.kids = inDefs.kids
     body = property(getStatements, setStatements, None,
             'Attribute definitions and operations on constants. (propperty).')
+
+
+class NodeFlatModule(Node, FlatNameSpace):
+    '''
+    Module where all attributes have long, dotted names, and where all 
+    attributes are defined on the top (module) level.
+    Data defs are only built in types.
+    
+    Attributes:
+    -----------
+    kids      : Definitions, the program's code.
+    loc       : location in input string (~0)
+    dat       : None
+    
+    name      : Name of the module
+    targetName: Name useful in the context of flattening or code generation
+    '''
+    def __init__(self, kids=None, loc=None, dat=None, name=None):
+        Node.__init__(self, kids, loc, dat)
+        FlatNameSpace.__init__(self)
+        self.name = name
+        self.targetName = None
+
+    #Get or set the class body through a unified name
+    def getStatements(self): 
+        return self
+    def setStatements(self, inDefs): 
+        self.kids = inDefs.kids
+    body = property(getStatements, setStatements, None,
+            'Attribute definitions and operations on constants. (propperty).')
+
 
 class DepthFirstIterator(object):
     """

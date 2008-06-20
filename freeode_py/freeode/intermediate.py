@@ -1206,9 +1206,8 @@ class ProgramTreeCreator(Visitor):
                                 'importing module "%s". ' 
                                 'Duplicate Attribute: "%s".'
                                 % (str(moduleName), 
-                                   str(theErr.duplicateAttribute)), 
+                                   str(theErr.attrName)), 
                                 importStmt.loc)
-        return
             
         
     def visitModule(self, moduleTree):
@@ -1300,7 +1299,6 @@ class ProgramTreeCreator(Visitor):
 #        Convenience function for development. (See self.importModuleFile)
 #               
 #        Parameters
-#        ----------
 #        moduleStr : str
 #            The module's (program's) text.
 #        fileName : str
@@ -1309,7 +1307,6 @@ class ProgramTreeCreator(Visitor):
 #            Name of module, will be put into NodeModule().name attribute.
 #    
 #        Returns
-#        -------
 #        moduleTree : ast.Node
 #            AST of a module. Will be assembled into a complete program tree.
 #        '''
@@ -1372,8 +1369,9 @@ class ProgramTreeFlattener(object):
         #count generated code objects with same (function) name
         #to give the generated objects unique names
         self.funcCount = {}
-#        self.deepTree = None
-#        self.flatTree = None
+        self.deepTree = None
+        self.flatTree = None
+
     
     def importProgramTree(self, mainModule):
         '''
@@ -1382,8 +1380,14 @@ class ProgramTreeFlattener(object):
         Alters program tree.
         '''
         self.mainModule = mainModule
+        
         self.funcCount.clear()
         self.createLongNames(mainModule)
+        self.funcCount.clear()
+        
+        self.flatTree = NodeFlatModule()
+        self.flattenDataTree(self.mainModule)
+        
 
     def createLongNames(self, dataContainer, prefix=DotName()):
         '''
@@ -1411,7 +1415,7 @@ class ProgramTreeFlattener(object):
                 self.createLongNames(node.body, node.targetName)
         return
     
-    
+     
     def flattenDataTree(self, dataContainer):
         for node in dataContainer:
             if isinstance(node, NodeImportStmt):
