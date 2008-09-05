@@ -65,8 +65,8 @@ def action_op_infix_left(s, loc, toks):
     return processedToks
 
 integer = Word(nums).setParseAction(lambda t:int(t[0]))
-variable = Word(alphas,exact=1)
-primary = integer | variable
+#variable = Word(alphas,exact=1)
+primary = integer #| variable
 
 #Power and unary operations are intertwined to get correct binding:
 #   -a**-b == -(a ** (-b))
@@ -83,13 +83,14 @@ expr = operatorPrecedence( u_expr,
     [(oneOf('* /'), 2, opAssoc.LEFT, action_op_infix_left),
      (oneOf('+ -'), 2, opAssoc.LEFT, action_op_infix_left),
      (oneOf('< > <= >= == !='), 2, opAssoc.LEFT, action_op_infix_left),
-     (Literal('not'), 2, opAssoc.LEFT, action_op_infix_left),
-     (oneOf('snd or'), 2, opAssoc.LEFT, action_op_infix_left),
+     (Literal('not'), 1, opAssoc.RIGHT, action_op_infix_left),
+     (oneOf('and or'), 2, opAssoc.LEFT, action_op_infix_left),
      ])
 
 test = [
-        "not a <= c",
-        "a*b+c"
+        "1 and 2",
+        "not 1 <= 2 and 2 > 3",
+        "1*2+3"
 #        "2**3**4**5",
 #        "2** 3",
 #        "9 + 2 - 3 + 4",
