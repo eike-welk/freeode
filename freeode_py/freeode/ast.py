@@ -63,7 +63,7 @@ progVersion = '0.3.2-dev-1'
 
 class DuplicateAttributeError(Exception):
     '''
-    Exception raised by NameSpace 
+    Exception raised by NameSpace
     when the user tries to redefine an attribute.
     '''
     def __init__(self, msg='Duplicate Attribute.', attrName=None):
@@ -73,28 +73,33 @@ class DuplicateAttributeError(Exception):
 class UndefinedAttributeError(Exception):
     '''
     Exception: Attribute is unknown in namespace.
-    ''' 
+    '''
     def __init__(self, msg='Undefined Attribute.', attrName=None):
         Exception.__init__(self, msg)
         self.attrName = attrName
-        
-        
+
+
 class NameSpace(object):
     '''
     Name space for modules, classes and functions.
+
+    TODO: Convert this class to (or incorporate into)
+          basic instance object "object".
+          Instance object does not need to be a 'ast.node' subclass;
+          only the functions need to contain pieces of the AST.
     '''
     def __init__(self):
         #the attributes of this name space
         self._nameSpaceAttrs = {} #weakref.WeakValueDictionary()
         #This object's name in the enclosing scope
         self.name = None
-        
+
     def setAttr(self, name, newAttr):
         '''
         Add new attribute to the name space.
-        
+
         Attributes can exist multiple times.
-        
+
         Parameters
         ----------
         name: str, DotName
@@ -105,38 +110,38 @@ class NameSpace(object):
         #Argument type checking and compatibility with DotName
         if isinstance(name, DotName):
             if len(name) > 1:
-                raise Exception('DotName must have only one component!' 
+                raise Exception('DotName must have only one component!'
                                 + ' str(name): ' + str(name))
             name = str(name)
         elif not isinstance(name, str):
-            raise Exception('Argument name must be of type str or DotName! type(name): ' 
+            raise Exception('Argument name must be of type str or DotName! type(name): '
                             + str(type(name)) + ' str(name): ' + str(name))
         #add attribute to name space - attributes must be unique
         if name in self._nameSpaceAttrs:
             #TODO: raise UserException? Error message as named argument?
             raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
-        self._nameSpaceAttrs[name] = newAttr 
+        self._nameSpaceAttrs[name] = newAttr
         return
-    
+
     def setFuncAttr(self, name, newFunc):
         '''
         Special method to enter NodeFuncDef into namespace.
-        
-        Functions don't need to be unique. Therefore they are stored 
+
+        Functions don't need to be unique. Therefore they are stored
         in special containers: "FunctionOverloadingResolver".
         '''
         if not isinstance(newFunc, NodeFuncDef):
             raise Exception('Argument 2 must be NodeFuncDef')
-        
+
         oldAttr = self.getAttr(name, None)
         if oldAttr is None:
             self.setAttr(name, FunctionOverloadingResolver(newFunc))
         elif isinstance(oldAttr, FunctionOverloadingResolver):
             oldAttr.append(newFunc)
         else:
-            raise UserException('Function can not have same name like data: ' 
+            raise UserException('Function can not have same name like data: '
                                 + str(name), newFunc.loc)
- 
+
     def update(self, otherNameSpace):
         '''
         Put attributes of otherNameSpace into this name space.
@@ -148,29 +153,29 @@ class NameSpace(object):
     def hasAttr(self, name):
         '''
         Test if attribute exists in this name space.
-        
+
         Parameter
         ---------
         name: str, (DotName with one element)
             Attribute name to be tested.
-            
+
         Returns
-        ------- 
+        -------
         bool
-            True if a attribute of this name exists in this name space, 
+            True if a attribute of this name exists in this name space,
             False otherwise.
         '''
         return str(name) in self._nameSpaceAttrs
-    
+
     def getAttr(self, name, default=None):
         '''Return attribute with that name from this name space'''
         return self._nameSpaceAttrs.get(str(name), default)
-        
+
     def findDotName(self, dotName, default=None):
         '''
         Find dot name recursively and return attribute with this name.
-        
-        #TODO: raise UserException when attribute undefined? 
+
+        #TODO: raise UserException when attribute undefined?
         #      Error message could be named attribute."
         '''
         dotName = DotName(dotName) #make compatible with str too
@@ -179,7 +184,7 @@ class NameSpace(object):
             #leftmost part of name exists in this name space
             if len(dotName) == 1:
                 #only one part in dot name, the user wants this attribute
-                return firstPart 
+                return firstPart
             elif isinstance(firstPart, NameSpace):
                 #attribute is name space, try to resolve rest of name
                 return firstPart.findDotName(dotName[1:], default)
@@ -188,9 +193,9 @@ class NameSpace(object):
         else:
             #leftmost part of name does not exist in this name space
             return default
-    
-    
-    
+
+
+
 class FlatNameSpace(NameSpace):
     '''A name space where attributes can have multiple dots in their name'''
     def __init__(self):
@@ -199,9 +204,9 @@ class FlatNameSpace(NameSpace):
     def setAttr(self, name, newAttr):
         '''
         Add new attribute to the name space.
-        
+
         Attributes can exist multiple times.
-        
+
         Parameters
         ----------
         name: str, DotName
@@ -211,13 +216,13 @@ class FlatNameSpace(NameSpace):
         '''
         #Argument type checking and compatibility with DotName
         if not isinstance(name, (str, DotName)):
-            raise Exception('Argument name must be of type str or DotName! type(name): ' 
+            raise Exception('Argument name must be of type str or DotName! type(name): '
                             + str(type(name)) + ' str(name): ' + str(name))
         name = str(name)
         #add attribute to name space - attributes must be unique
         if name in self._nameSpaceAttrs:
             raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
-        self._nameSpaceAttrs[name] = newAttr 
+        self._nameSpaceAttrs[name] = newAttr
         return
 
     def findDotName(self, dotName, default=None):
@@ -228,12 +233,12 @@ class FlatNameSpace(NameSpace):
         attr = self.getAttr(dotName, None)
         if attr is not None:
             return attr
-        #maybe partial name is known here. 
+        #maybe partial name is known here.
         #Rest may be stored in child name space
-        nameShort = dotName 
+        nameShort = dotName
         nameTail = DotName()
         while len(nameShort)>1:
-            #remove last element 
+            #remove last element
             nameTail += nameShort[-1]
             nameShort = nameShort[0:-1]
             #try to find shortened name; look up rest of name recursively
@@ -241,14 +246,14 @@ class FlatNameSpace(NameSpace):
             if attr is not None:
                 return attr.findDotName(nameTail, default)
         return default
-        
-        
-        
+
+
+
 class ExecutionEnvironment(object):
     '''
     Container for name spaces where symbols are looked up.
     Function findDotName searches the symbol in all name spaces.
-    
+
     TODO: put into module intermediate?
     '''
     def __init__(self):
@@ -263,11 +268,11 @@ class ExecutionEnvironment(object):
     def findDotName(self, *posArg):
         '''
         Find a dot name in this environment.
-        
+
         When the name is not found an exception is raised, or a default
         value is returned.
         Tries local name space, 'this' name space, global name space.
-        
+
         Arguments
         ---------
         dotName : DotName
@@ -276,7 +281,7 @@ class ExecutionEnvironment(object):
             Object which is returned when dotName could not be found.
             If argument is omitted, a UndefinedAttributeError is raised.
         '''
-        #get arguments from vector 
+        #get arguments from vector
         if len(posArg) == 1:
             dotName = posArg[0]
             default = None
@@ -289,7 +294,7 @@ class ExecutionEnvironment(object):
             raise Exception('Required number of arguments 1 or 2. '
                             'Actual number of arguments: ' + str(len(posArg)))
         #try to find name in scope hierarchy:
-        # function --> class --> module 
+        # function --> class --> module
         scopeList = [self.localScope, self.thisScope, self.globalScope]
         attr = None
         for scope in scopeList:
@@ -312,7 +317,7 @@ class ExecutionEnvironment(object):
 #        The global name space is finally searched when the DotName is neither
 #        found locally (self._nameSpaceAttrs) nor in the scope of the "this"
 #        pointer (self.thisScop).
-#        
+#
 #        Used by self.findDotName(...), but not by self.getAttr(...).
 #        '''
 #        self._globalScope = inNameSpace
@@ -322,21 +327,21 @@ class ExecutionEnvironment(object):
 ##            self._globalScope = inNameSpace
 ##        else:
 ##            self._globalScope = weakref.proxy(inNameSpace)
-#            
+#
 #    def getGlobalScope(self):
 #        '''Return the global name space.'''
 #        return self._globalScope
-#    
+#
 #    globalScope = property(getGlobalScope, setGlobalScope, None,
 #                           'Global (module) name space.')
-#    
+#
 #    def setThisScope(self, inNameSpace):
 #        '''
-#        Change the name space of the "this" pointer. 
-#        The "this" name space is searched second, when the DotName is not 
+#        Change the name space of the "this" pointer.
+#        The "this" name space is searched second, when the DotName is not
 #        found locally. When the DotName is not fount in the "this" name space
 #        the global name space is searched.
-#        
+#
 #        Used by self.findDotName(...), but not by self.getAttr(...).
 #        '''
 #        self._thisScope = inNameSpace
@@ -346,23 +351,24 @@ class ExecutionEnvironment(object):
 ##            self._thisScope = inNameSpace
 ##        else:
 ##            self._thisScope = weakref.proxy(inNameSpace)
-#            
+#
 #    def getThisScope(self):
 #        '''Return the "this" name space.'''
 #        return self._thisScope
-#    
+#
 #    thisScope = property(getGlobalScope, setGlobalScope, None,
 #                           'Name space of the this pointer, class name space.')
 
 
 
 #TODO: inherit FromNodeFuncDef ?
+#TODO: rename to multimethod
 class FunctionOverloadingResolver(object):
     '''
-    Store multiple functions with the same name. 
-    Find the correct overloaded function, that matches a function call best. 
+    Store multiple functions with the same name.
+    Find the correct overloaded function, that matches a function call best.
     '''
-    
+
     def __init__(self, inFuncDef=None):
         '''
         ARGUMENT
@@ -370,10 +376,10 @@ class FunctionOverloadingResolver(object):
         inFuncDef : NodeFuncDef
             The first function stored in the container. Optional.
         '''
-        self._functions = [] 
+        self._functions = []
         if inFuncDef is not None:
             self.append(inFuncDef)
-        
+
     def append(self, inFuncDef):
         '''Append a function to the list'''
         if not isinstance(inFuncDef, NodeFuncDef):
@@ -381,10 +387,10 @@ class FunctionOverloadingResolver(object):
                             + str(type(inFuncDef)))
         self._functions.append(inFuncDef)
         return
-    
+
     def resolve(self, inFuncCall):
         '''
-        Return a function that matches the function call's signature. 
+        Return a function that matches the function call's signature.
         (currently always the last function in the list)
         '''
         return self._functions[-1]
@@ -431,6 +437,14 @@ class Node(object):
     leaf  depth:  2
     leaf  depth:  2
     leaf  depth:  1
+
+    TODO: New, simpler 'node' implementation, that does not behave like a list
+          (without kids list).
+        Methods:
+        - copy(), __deepcopy__()
+        - __str__()
+        - __repr__() ???
+        - __init__() elegant and matching to repr + usage pattern ???
     '''
 
     def __init__(self, kids=None, loc=None, dat=None):
@@ -510,16 +524,16 @@ class Node(object):
     def insertChildren(self, index, inSequence):
         '''
         Insert a node's children into list of own children.
-        
+
         New childen are inserted before the child at position self[index].
-        
+
         Parameters
         ----------
         index: int
             The children are inserted before the this index.
         inSequence: Node
             Container of the children that will be inserted.
-        
+
         Returns
         -------
         None
@@ -536,37 +550,37 @@ class Node(object):
     def __getitem__(self, i):
         '''
         Retriev children through []
-        
+
         Parameters
         ----------
         i: int, slice
-            Index of element which is retrieved, or slice object describing 
+            Index of element which is retrieved, or slice object describing
             the subsequence which should be retrieved
-            
+
         Returns
         -------
         Node, sequence of Node
             The nodes that should be returned
         '''
         return self.kids[i]
-    
+
 #    def __setitem__(self, i, item):
 #        '''
 #        Change children through []
-#        
+#
 #        Parameters
     #        ----------
 #        i: int, slice
-#            Index of element which is changed, or slice object describing 
+#            Index of element which is changed, or slice object describing
 #            the subsequence which should be changed
 #        item: Node, sequence of Node
-#        
+#
 #        Returns
     #        -------
 #        None
 #        '''
 #        #TODO: type checking
-#        #TODO: How should Nodes be treated in case slices are given? 
+#        #TODO: How should Nodes be treated in case slices are given?
 #        #      As sequences or as single objects?
 #        self.kids[i] = item
 
@@ -586,13 +600,13 @@ class Node(object):
     def copy(self):
         '''
         Return a (recursive) deep copy of the node.
-        
-        Only children are copied deeply; 
+
+        Only children are copied deeply;
         all other attributes are not copied. Only new references are made.
         '''
         return copy.deepcopy(self)
-    
-    
+
+
     def __deepcopy__(self, memoDict):
         '''Hook that does the copying.
         Called by the function copy.deepcopy()'''
@@ -606,8 +620,8 @@ class Node(object):
                 #normal attribute: no copy, only reference.
                 setattr(newObj, name, attr)
         return newObj
-        
-        
+
+
 
 class NodeNoneClass(Node):
     '''Node that takes the function of None.'''
@@ -615,8 +629,8 @@ class NodeNoneClass(Node):
         super(NodeNoneClass, self).__init__(None, None, None)
 #The single instance of NodeNoneClass. Should be used like None
 nodeNone = NodeNoneClass()
-    
-    
+
+
 class NodeNum(Node):
     '''
     Represent a real number in the AST.
@@ -713,7 +727,7 @@ class NodeIfStmt(Node):
     '''
     def __init__(self, kids=None, loc=None, dat=None):
         super(NodeIfStmt, self).__init__(kids, loc, dat)
-    
+
     #TODO: design good interface for NodeIfStmt
     #TODO: make compatible with multiple elif clauses:
     #      if ...: ... elif ...: ... elif...: ... else: ...
@@ -758,7 +772,7 @@ class NodeAssignment(NodeOpInfix2):
 
 class NodeFuncExecute(Node):
     '''
-    AST Node for calling a function or method.  
+    AST Node for calling a function or method.
     This will be usually done by inserting the code of the function's body
     into the top level function.
     Similar to an inline function in C++.
@@ -770,9 +784,9 @@ class NodeFuncExecute(Node):
         name        : Dotted name of the function: DotName.
         attrRef     : Reference to the function (definition) which is accessed.
                       Name choosen to ease unification with NodeAttrAccess.
-                      
+
     TODO: some unification with NodeAttrAccess required. Possibilities:
-          1: composition: call contains attr access. 
+          1: composition: call contains attr access.
           2: Inheritance: call is attr access
     '''
     def __init__(self, kids=None, loc=None, dat=None, name=None):
@@ -840,7 +854,7 @@ class NodePragmaStmt(Node):
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
-        
+
         options     : the arguments of the prgma statements: list of strings
     '''
     def __init__(self, kids=None, loc=None, dat=None, options=None):
@@ -856,10 +870,10 @@ class NodeForeignCodeStmt(Node):
         kids        : the expressions of the argument list
         loc         : location in input string
         dat         : None
-        
+
         language    : the progamming languae of the foreign code: string
         method      : the insertion method - type of the foreign code: string
-        code        : the piece of program code that should be inserted: string  
+        code        : the piece of program code that should be inserted: string
     '''
     def __init__(self, kids=None, loc=None, dat=None, language='', method='', code=''):
         super(NodeForeignCodeStmt, self).__init__(kids, loc, dat)
@@ -875,25 +889,25 @@ class NodeImportStmt(Node):
         kids        : The modulse's AST
         loc         : location in input string
         dat         : None
-        
+
         moduleName : str
             Name of the module that should be imported
         fromStmt : bool
-            Put the module's attributes directly into the namespace of the 
-            module that executes this statement. Behave as Python's "from" 
+            Put the module's attributes directly into the namespace of the
+            module that executes this statement. Behave as Python's "from"
             statement.
         attrsToImport : list of string
-            List of attributes that should be imported. Special symbol "*" 
-            means all attributes in the module. 
+            List of attributes that should be imported. Special symbol "*"
+            means all attributes in the module.
             if fromStmt == False, this list is ignored.
     '''
-    def __init__(self, kids=None, loc=None, dat=None, 
+    def __init__(self, kids=None, loc=None, dat=None,
                  moduleName=None, fromStmt=False, attrsToImport=None):
         super(NodeImportStmt, self).__init__(kids, loc, dat)
         self.moduleName = moduleName
         self.fromStmt = fromStmt
         self.attrsToImport = [] if attrsToImport is None else attrsToImport
-        
+
 
 class NodeStmtList(Node):
     '''
@@ -908,7 +922,7 @@ class NodeDataDefList(NodeStmtList):
     '''
     AST Node for list of atribute definitions.
     Each child is an attribute definition statement.
-    Used to identify these lists so they can be flattened with a pretty 
+    Used to identify these lists so they can be flattened with a pretty
     simple algogithm.
     '''
     def __init__(self, kids=None, loc=None, dat=None):
@@ -945,7 +959,7 @@ class RoleFuncArgument(RoleDataCanVaryDuringSimulation):
     '''
     The attribute is a function/method argument:
     - can vary during the simulation
-    - should be optmized away 
+    - should be optmized away
     - is not stored.
     '''
     userStr = 'function argument'
@@ -953,7 +967,7 @@ class RoleLocalVariable(RoleDataCanVaryDuringSimulation):
     '''
     The attribute is a local variable:
     - can vary during the simulation
-    - should be optmized away 
+    - should be optmized away
     - is not stored.
     '''
     userStr = 'local variable'
@@ -981,7 +995,7 @@ class NodeDataDef(Node, NameSpace):
         dat             : None
 
         value           : Default value, initial value, value of a constant; interpreted
-                          according to context. (mathematical expression) 
+                          according to context. (mathematical expression)
                           (propperty stored in kids[0])
         body            : statements of a recursive data definition. The statements of a class
                           definition. (propperty stored in kids[0])
@@ -995,16 +1009,16 @@ class NodeDataDef(Node, NameSpace):
                           Example:
                           {():'v_foo', ('time',):'v_foo_dt'}
                           TODO: replace by accessor functions to create more robust interface
-                          TODO: Derivatives should be separate variables. These variables should 
+                          TODO: Derivatives should be separate variables. These variables should
                                 be created in the intermediate language logic.
-        isBuiltinType   : If True: the data is a built in class. The inner 
+        isBuiltinType   : If True: the data is a built in class. The inner
                           structure of these objects is invisible.
-        noFlatten       : If True: Do not flatten this data tree. The class is 
+        noFlatten       : If True: Do not flatten this data tree. The class is
                           handled specially in a later step.
-        TODO: isReference : Contains no own data; points to something else. 
+        TODO: isReference : Contains no own data; points to something else.
     '''
     def __init__(self, kids=None, loc=None, dat=None,
-                        name=None, className=None, targetName=None, 
+                        name=None, className=None, targetName=None,
                         role=None):
         Node.__init__(self, kids, loc, dat)
         NameSpace.__init__(self)
@@ -1016,20 +1030,20 @@ class NodeDataDef(Node, NameSpace):
         self.role = role
         self.isBuiltinType = False
         self.noFlatten = False
-        #self.isAssigned = False #can not be done this easy because variables 
+        #self.isAssigned = False #can not be done this easy because variables
         #                        #are assigned in initialize() and in dynamic()
-        
+
     #Get or set the default value
-    def getValue(self): 
+    def getValue(self):
         return self.kids[0]
-    def setValue(self, inValue): 
+    def setValue(self, inValue):
         self.kids[0] = inValue
     value = property(getValue, setValue, None,
                    'Default value or initial value of the defined data (propperty).')
     #Get or set the recursive definitions
-    def getStatements(self): 
+    def getStatements(self):
         return self.kids[1]
-    def setStatements(self, inDefs): 
+    def setStatements(self, inDefs):
         self.kids[1] = inDefs
     body = property(getStatements, setStatements, None,
                    'Attribute definitions. Copied from class definition. (propperty).')
@@ -1038,18 +1052,18 @@ class NodeDataDef(Node, NameSpace):
 class NodeCompileStmt(NodeDataDef):
     '''
     AST node for compile statement.
-    A data statement where the the functions are instantiated for flattening 
+    A data statement where the the functions are instantiated for flattening
     and code generation.
-    
+
     mainFuncs : List of (generated) main functions: [NodeFuncDef]
     '''
     def __init__(self, kids=None, loc=None, dat=None,
                         name=None, className=None, targetName=None):
-        NodeDataDef.__init__(self, kids, loc, dat, 
+        NodeDataDef.__init__(self, kids, loc, dat,
                              name, className, targetName, role=RoleCompiledObject)
         self.mainFuncs = []
-    
-    
+
+
 class NodeAttrAccess(Node):
     '''
     AST node for access to a variable or parameter.
@@ -1078,7 +1092,7 @@ class NodeFuncDef(Node):
     """
     AST node for method/function definition.
 
-    A function/method is comparable to an inline function or a template 
+    A function/method is comparable to an inline function or a template
     function in C++.
 
     The childern are the statements.
@@ -1120,23 +1134,23 @@ class NodeFuncDef(Node):
 class NodeGenFunc(NodeFuncDef):
     '''
     Generated function, expanded template; ready for flattening.
-    
+
     The missing information of the NodeFuncDef is filled in. These "functions"
-    exist once for each time a function is called. To distinguish them from 
+    exist once for each time a function is called. To distinguish them from
     functions writen by the user, this Node type is necessary.
-    
+
     Attributes:
     -----------
-    targetName : 
-            Individual name for each generated instance. Used in flattening 
-            process to give individual names to the local variables. 
+    targetName :
+            Individual name for each generated instance. Used in flattening
+            process to give individual names to the local variables.
     '''
-    def __init__(self, kids=None, loc=None, dat=None, name=None, 
+    def __init__(self, kids=None, loc=None, dat=None, name=None,
                   returnType=None):
         NodeFuncDef.__init__(self, kids, loc, dat, name, returnType)
         self.targetName = None
-        
-    
+
+
 class NodeClassDef(Node, NameSpace):
     """
     AST node for class definition.
@@ -1149,13 +1163,13 @@ class NodeClassDef(Node, NameSpace):
     name     : name of the class defined here.
     baseName : name of the class, from which this class inherits.
     base     : refference to base class definition
-    
-    isBuiltinType : 
+
+    isBuiltinType :
         True if this class is built into the compiler
-    noFlatten : 
-        True if the compiler should not flatten the class  
-    defEnvironment : 
-        Execution environment at time of definition. The data statements (and 
+    noFlatten :
+        True if the compiler should not flatten the class
+    defEnvironment :
+        Execution environment at time of definition. The data statements (and
         the assignments to constants) are executed in this environment.
     """
     def __init__(self, kids=None, loc=None, dat=None, name=None, baseName=None):
@@ -1163,15 +1177,15 @@ class NodeClassDef(Node, NameSpace):
         NameSpace.__init__(self)
         self.name = name
         self.baseName = baseName
-        self.base = None 
+        self.base = None
         self.isBuiltinType = False
         self.noFlatten = False
         self.defEnvironment = None #TODO: put data statements into a function?
-        
+
     #Get or set the class body through a unified name
-    def getStatements(self): 
+    def getStatements(self):
         return self
-    def setStatements(self, inDefs): 
+    def setStatements(self, inDefs):
         self.kids = inDefs.kids
     body = property(getStatements, setStatements, None,
             'Attribute definitions and operations on constants. (propperty).')
@@ -1185,7 +1199,7 @@ class NodeModule(Node, NameSpace):
     kids      : Definitions, the program's code.
     loc       : location in input string (~0)
     dat       : None
-    
+
     name      : Name of the module
     targetName: Name useful in the context of flattening or code generation
     '''
@@ -1196,9 +1210,9 @@ class NodeModule(Node, NameSpace):
         self.targetName = None
 
     #Get or set the class body through a unified name
-    def getStatements(self): 
+    def getStatements(self):
         return self
-    def setStatements(self, inDefs): 
+    def setStatements(self, inDefs):
         self.kids = inDefs.kids
     body = property(getStatements, setStatements, None,
             'Attribute definitions and operations on constants. (propperty).')
@@ -1206,16 +1220,16 @@ class NodeModule(Node, NameSpace):
 
 class NodeFlatModule(Node, FlatNameSpace):
     '''
-    Module where all attributes have long, dotted names, and where all 
+    Module where all attributes have long, dotted names, and where all
     attributes are defined on the top (module) level.
     Data defs are only built in types.
-    
+
     Attributes:
     -----------
     kids      : Definitions, the program's code.
     loc       : location in input string (~0)
     dat       : None
-    
+
     name      : Name of the module
     targetName: Name useful in the context of flattening or code generation
     '''
@@ -1226,9 +1240,9 @@ class NodeFlatModule(Node, FlatNameSpace):
         self.targetName = None
 
     #Get or set the class body through a unified name
-    def getStatements(self): 
+    def getStatements(self):
         return self
-    def setStatements(self, inDefs): 
+    def setStatements(self, inDefs):
         self.kids = inDefs.kids
     body = property(getStatements, setStatements, None,
             'Attribute definitions and operations on constants. (propperty).')
@@ -1301,7 +1315,7 @@ class DepthFirstIterator(object):
         #remember to visit next child when we come here again
         self.stack[-1] = (currNode, currChild+1)
         #TODO: Make iterator work also with objects that are not children of Node;
-        #TODO: or make iterator throw an erception with useful error message when 
+        #TODO: or make iterator throw an erception with useful error message when
         #      non Node object is discovered
         #get node that will be visited next
         nextNode = currNode[currChild]
@@ -1367,24 +1381,24 @@ class TreePrinter(object):
         '''End a partially completed line unconditionally'''
         self.treeStr += self.line + '\n'
         self.line = ''
-        
+
     def safeStr(self, inObj):
         '''
-        Convert inObj to string without infinite recursion 
+        Convert inObj to string without infinite recursion
         into Node objects.
         '''
         if isinstance(inObj, Node):
             return '<%s at %#x>' % (inObj.__class__.__name__, id(inObj))
         else:
             return str(inObj)
-        
+
     def makeTreeStr(self, root=None):
         ''''Create string representation of Node tree.'''
         #for fewer typing
         putStr = self.putStr
         safeStr = self.safeStr
         #initialize
-        self.treeStr = '' 
+        self.treeStr = ''
         self.line = ''
         if root is not None:
             self.root = root
@@ -1392,30 +1406,30 @@ class TreePrinter(object):
         indentStepStr = '|' + ' '*int(self.indentWidth - 1)
         for node, depth in self.root.iterDepthFirst(True):
             #string for indentation
-            indentStr = indentStepStr * depth 
+            indentStr = indentStepStr * depth
             #First print class name and if desired node's ID
-            putStr(indentStr, node.__class__.__name__ + ':: ') 
+            putStr(indentStr, node.__class__.__name__ + ':: ')
             if self.showID:
                 putStr(indentStr, ' ID: ' + str(id(node)))
-                
+
             #special case for non Node objects
             if not isinstance(node, Node):
                 putStr(indentStr, str(node)); self.endLine()
                 print self.treeStr
                 raise Exception('All children must inherit from ast.Node!')
                 #TODO enhance the iterator to work with none Node classes as leafs.
-                
+
             #special handling for some important attributes
             if hasattr(node, 'name'):
                 putStr(indentStr, 'name: ' + safeStr(node.name) + ' ')
             if isinstance(node, NameSpace):
                 #print the name space speciffic attributes in short form
                 #they are causing infinite recursion otherwise
-                putStr(indentStr, '_nameSpaceAttrs.keys(): ' + 
+                putStr(indentStr, '_nameSpaceAttrs.keys(): ' +
                        str(node._nameSpaceAttrs.keys()) + ' ')
             putStr(indentStr, 'loc: ' + safeStr(node.loc) + ' ')
-            
-            #the node's attributes are printed in sorted order, 
+
+            #the node's attributes are printed in sorted order,
             #but the special attributes are excluded
             specialAttrs = set(['loc', 'kids', '_nameSpaceAttrs', 'name', 'mainFuncs'])
             attrNameSet = set(node.__dict__.keys())
@@ -1426,7 +1440,7 @@ class TreePrinter(object):
                 #TODO:more robustness when other attributes are Nodes too
                 #TODO:more robustness against circular dependencies
                 putStr(indentStr, name1 + ': ' + safeStr(node.__dict__[name1]) + ' ')
-            #put newline after complete node 
+            #put newline after complete node
             self.endLine()
         return self.treeStr
 
@@ -1572,10 +1586,10 @@ class TextLocation(object):
 
     def __str__(self):
         '''Return meaningfull string'''
-        #Including the column is not useful because it is often wrong 
+        #Including the column is not useful because it is often wrong
         #for higher level errors. Preserving the text of the original
         #pyparsing error is transporting the column information for parsing
-        #errors. Only parsing errors have useful column information. 
+        #errors. Only parsing errors have useful column information.
         return '  File "' + self.fileName() + '", line ' + str(self.lineNo())
 
 
@@ -1583,11 +1597,11 @@ class TextLocation(object):
 class Visitor(object):
     '''
     Visitor for the AST
-    
-    This class is useful when there are decisions necessary based on the type 
+
+    This class is useful when there are decisions necessary based on the type
     of an object. The class is an alternative to big if statements that
     look like this:
-    
+
     if isinstance(node, NodeClassDef):
         .....
     elif isinstance(node, NodeFuncDef):
@@ -1596,46 +1610,46 @@ class Visitor(object):
         ....
     .....
     .....
-    
+
     - Single dispatch
-    - Switching which memberfuncion is used is done based on type and 
+    - Switching which memberfuncion is used is done based on type and
       inheritance
-    - Ambigous situations can be avoided with a priority value. Functions with 
-      high priority values are considered before functions with low priority 
-      values. 
+    - Ambigous situations can be avoided with a priority value. Functions with
+      high priority values are considered before functions with low priority
+      values.
     - The algorithm for matching is 'issubclass'.
     - Association between type and memberfunction is done with decorators.
 
     USAGE:
     ------
         - Define class that inherits from visitor
-        - Use @Visitor.when_type(classObject, priority) to define a handler 
-          function for a speciffic type. 
-        - Use @Visitor.default for the default function, which is called when 
+        - Use @Visitor.when_type(classObject, priority) to define a handler
+          function for a speciffic type.
+        - Use @Visitor.default for the default function, which is called when
           no handler functions matches.
-        - In the main loop use self.dispatch(theObject) to call the handler 
+        - In the main loop use self.dispatch(theObject) to call the handler
           functions.
-        
+
     >>> class NodeVisitor(Visitor):
     ...     def __init__(self):
     ...         Visitor.__init__(self)
     ...     @Visitor.when_type(NodeClassDef)
     ...     def visitClassDef(self, classDef):
-    ...         print 'seen class def: ', classDef.name    
+    ...         print 'seen class def: ', classDef.name
     ...     @Visitor.when_type(NodeFuncDef)
     ...     def visitFuncDef(self, funcDef):
     ...         print 'seen func def: ', funcDef.name
     ...     def mainLoop(self, tree):
     ...         for node in tree:
     ...             self.dispatch(node)
-    
+
     >>> tr=Node()
     >>> tr.appendChild(NodeClassDef(name='c1'))
     >>> tr.appendChild(NodeClassDef(name='c2'))
      >>> tr.appendChild(NodeFuncDef(name='f1'))
     >>> tr.appendChild(NodeFuncDef(name='f2'))
     >>> nv = NodeVisitor()
-    >>> nv.mainLoop(tr)    
+    >>> nv.mainLoop(tr)
     seen class def:  c1
     seen class def:  c2
     seen func def:  f1
@@ -1643,7 +1657,7 @@ class Visitor(object):
 
     An example with priorities is part of the unit tests:
     TestVisitor.test_priority_2
-    
+
     CREDITS
     -------
     Ideas were taken from:
@@ -2036,16 +2050,16 @@ class TestVisitor(unittest.TestCase):
         self.assertEqual(visitor.dispatch(derived2Inst), 'Base')
         self.assertEqual(visitor.dispatch(intInst), 'int')
 
- 
+
     def test_priority_2(self):
         '''Visitor: Test priority 2.'''
-       
+
         class NodeVisitor(Visitor):
             def __init__(self):
                 Visitor.__init__(self)
-                
-            #Handlers for derived classes - specialized 
-            #- should have high priority    
+
+            #Handlers for derived classes - specialized
+            #- should have high priority
             @Visitor.when_type(NodeClassDef, 2)
             def visitClassDef(self, classDef): #IGNORE:W0613
 #                print 'seen class def: ' + classDef.name
@@ -2055,19 +2069,19 @@ class TestVisitor(unittest.TestCase):
 #                print 'seen func def: ' + funcDef.name
                 return ['NodeFuncDef']
 
-            #handler for a base class - general 
-            #- should have low priority    
+            #handler for a base class - general
+            #- should have low priority
             @Visitor.when_type(Node, 1)
             def visitNode(self, node): #IGNORE:W0613
 #                print 'seen Node: ' + str(node.dat)
                 return ['Node']
-                
+
             def mainLoop(self, tree):
                 retList = []
                 for node in tree:
                     retList += self.dispatch(node)
                 return retList
-    
+
         #create a syntax tree
         tr=Node()
         tr.appendChild(NodeClassDef(name='c1'))
@@ -2077,13 +2091,13 @@ class TestVisitor(unittest.TestCase):
         tr.appendChild(NodeFuncDef(name='f2'))
         #visit all nodes
         nv = NodeVisitor()
-        testList = nv.mainLoop(tr)   
+        testList = nv.mainLoop(tr)
 #        print testList
-     
-        expectedList = ['NodeClassDef', 'NodeClassDef', 'Node', 'NodeFuncDef', 'NodeFuncDef']        
+
+        expectedList = ['NodeClassDef', 'NodeClassDef', 'Node', 'NodeFuncDef', 'NodeFuncDef']
         self.assertEqual(testList, expectedList)
-        
-        
+
+
     def test__built_in_default_func(self):
         '''Visitor: Test the built in default function.'''
         #define visitor class
@@ -2128,7 +2142,7 @@ class TestVisitor(unittest.TestCase):
         '''Error: Wrong 1st parameter for @Visitor.when_type.'''
         class FooClass(Visitor): #IGNORE:W0612
             @Visitor.when_type([])
-            def visitList(self, _inObject): 
+            def visitList(self, _inObject):
                 return 'list'
     def raise__decorator_error_3(self):
         '''Error: Wrong 2nd parameter for @Visitor.when_type.'''

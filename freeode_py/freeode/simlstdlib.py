@@ -50,8 +50,8 @@ import freeode.simlparser as simlparser
 
 
 
-#The standard library as a string
-standardLibraryStr = \
+#The built in library as a string
+builtInLibraryStr = \
 '''
 #------------- base objects -----------------------------------------
 #class Object():{}
@@ -114,7 +114,7 @@ def createParseTree():
     '''Create a complete parse ast of the standard library'''
     #Add newline chars to the library, so that the line numbers of error  
     #messages match the line numbers in this file. Use filename of this file.
-    stdLibExt = '\n'*54 + standardLibraryStr
+    stdLibExt = '\n'*54 + builtInLibraryStr
     fileName = os.path.abspath(__file__)
     #remove 'c' from 'pyc'
     if fileName[-3:] == 'pyc':
@@ -146,9 +146,9 @@ class TestStdLib(unittest.TestCase):
 def doTests():
     '''Perform various tests.'''
     #test the library ------------------------------------------------------------------
-    flagTestStdLib = False
-    flagTestStdLib = True
-    if flagTestStdLib:
+    flagTestTheLib = False
+    flagTestTheLib = True
+    if flagTestTheLib:
         astTree = createParseTree()
         print 'AST tree:'
         print astTree
