@@ -206,11 +206,29 @@ class ParseStage(object):
         tokList is structured like this: ['a1']
         '''
         tokList = toks.asList() #asList() this time ads *no* extra pair of brackets
-        identier = tokList[0]
-        if identier in ParseStage.keywords:
+        identifier = tokList[0]
+        if identifier in ParseStage.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
-            errMsg = 'Keyword can not be used as an identifier: ' + identier
+            errMsg = 'Keyword can not be used as an identifier: ' + identifier
             raise ParseException(s, loc, errMsg)
+
+
+    def _actionCheckIdentifierFatal(self, s, loc, toks):
+        '''
+        Tests wether an identifier is legal.
+        If the identifier is equal to any keyword the parse action raises
+        an user visible exception.
+        Does not change any parse results
+
+        tokList is structured like this: ['a1']
+        '''
+        tokList = toks.asList() #asList() this time ads *no* extra pair of brackets
+        identifier = tokList[0]
+        if identifier in ParseStage.keywords:
+            #print 'found keyword', toks[0], 'at loc: ', loc
+            errMsg = 'Keyword can not be used as an identifier: ' + identifier
+            txtLoc = self.createTextLocation(loc)
+            raise UserException(errMsg, txtLoc)
 
 
 #    def _actionStoreStmtLoc(self, str, loc, toks):
@@ -824,6 +842,7 @@ class ParseStage(object):
         #string
         stringConst = sglQuotedString                               .setParseAction(self._actionString)\
                                                                     .setName('string')#.setDebug(True)
+        literal = uNumber | stringConst
 
 #------------------ Mathematical expression .............................................................
         #Forward declarations for recursive top level rules
@@ -837,7 +856,7 @@ class ParseStage(object):
         #expressions.
         parentheses = Group('(' + expression + ')')                 .setParseAction(self._actionParenthesesPair) \
                                                                     .setName('parentheses')#.setDebug(True)
-        atom = ( uNumber | stringConst |
+        atom = ( literal |
                  funcCall | valAccess | parentheses     )           .setName('atom')#.setDebug(True)
 
         #The basic mathematical operations: -a+b*c^d.
@@ -889,15 +908,22 @@ class ParseStage(object):
         kw('time'); kw('this')
         ParseStage.builtInVars = set(['time', 'this'])
         #identifiers
-        #TODO: change to: identifier = Word(alphas, alphanums+'_') for code that the user writes
+        #TODO: ??? change to: identifier = Word(alphas, alphanums+'_') for code that the user writes
         #      internal symbols could then be written like: "__init_constants__"
-        identifier = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
-        #Use this when defining new objects. The new identifier is checked if it is not a keyword
-        newIdentifier = identifier.copy()                       .setParseAction(self._actionCheckIdentifier)
+        identifierBase = Word(alphas+'_', alphanums+'_')        .setName('identifier')#.setDebug(True)
+        # identifier:    Should be used in expressions. If a keyword is used an ordinary parse error is
+        #                raised. This is needed to parse expressions containing the operators 'and', 'or', 'not'.
+        identifier  = identifierBase.copy()                     .setParseAction(self._actionCheckIdentifier)
+        # newIdentifier: Should be used in definition of new objects (data, class, function).
+        #                If a keyword is used as a identifier a fatal, user visible error is raised.
+        newIdentifier = identifierBase.copy()                   .setParseAction(self._actionCheckIdentifierFatal)
         #Compound identifiers for variables or parameters 'aaa.bbb'.
+        #TODO: change dot into a attribute lookup operator (like in Python).
         dotSup = Literal('.').suppress()
         dotIdentifier = Group(identifier +
                               ZeroOrMore(dotSup + identifier))  .setName('dotIdentifier')#.setDebug(True)
+        #TODO: change '$' into an operator
+        #TODO: change slicing into an operator
         #Method to access a stored value: dotted name ('a.b.c'),
         # with optional differentiation operator ('$a.b.c'),
         # and optional partial access ('a.b.c[2:5]'). (partial access is currently not implemented)

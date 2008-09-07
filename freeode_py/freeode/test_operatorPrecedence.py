@@ -8,34 +8,15 @@
 #
 
 from pyparsing import *
-#ParserElement.enablePackrat()
+ParserElement.enablePackrat()
 
+S = Suppress
+L = Literal
+kw = Keyword
 
-# To use the operatorGrammar helper:
-#   1.  Define the "atom" operand term of the grammar.
-#       For this simple grammar, the smallest operand is either
-#       and integer or a variable.  This will be the first argument
-#       to the operatorGrammar method.
-#   2.  Define a list of tuples for each level of operator
-#       precendence.  Each tuple is of the form
-#       (opExpr, numTerms, rightLeftAssoc, parseAction), where
-#       - opExpr is the pyparsing expression for the operator;
-#          may also be a string, which will be converted to a Literal
-#       - numTerms is the number of terms for this operator (must
-#          be 1 or 2)
-#       - rightLeftAssoc is the indicator whether the operator is
-#          right or left associative, using the pyparsing-defined
-#          constants opAssoc.RIGHT and opAssoc.LEFT.
-#       - parseAction is the parse action to be associated with
-#          expressions matching this operator expression (the
-#          parse action tuple member may be omitted)
-#   3.  Call operatorGrammar passing the operand expression and
-#       the operator precedence list, and save the returned value
-#       as the generated pyparsing expression.  You can then use
-#       this expression to parse input strings, or incorporate it
-#       into a larger, more complex grammar.
-#
-
+#TODO: write parser 2nd parser for expression that implemets
+#      paul's way of dealing with the power operator.
+#      Compare both operators!
 
 # TODO: Enter Pyparsing bug:
 #       Inconsistent behavior of operatorPrecedence
@@ -64,34 +45,59 @@ def action_op_infix_left(s, loc, toks):
         processedToks = action_op_infix(s,  loc,  [processedToks,  toks0[i],  toks0[i+1]])
     return processedToks
 
+def action_call(s, loc, toks):
+    print "call: ",  toks
+    toklist = toks.asList()[0]
+    return [toklist]
+
+#The leaf nodes of the parse tree: integer numbers and variable names
 integer = Word(nums).setParseAction(lambda t:int(t[0]))
-#variable = Word(alphas,exact=1)
-primary = integer #| variable
+literal = integer
+identifier = (NotAny(kw('not') | kw('and') | kw('or')) +
+              Word(alphas,exact=1))
 
-#Power and unary operations are intertwined to get correct binding:
-#   -a**-b == -(a ** (-b))
-power,  u_expr = Forward(), Forward()
-#Exponentiation: a**b;
-#Strongest binding on left side, weaker than unary operations (-a) on right side.
-power1 = Group(primary + '**' + u_expr)             .setParseAction(action_op_infix)
-power << (power1 | primary)
-#Unary arithmetic operations: -a; +a
-u_expr1 = Group(oneOf('- +') + u_expr)              .setParseAction(action_op_prefix)
-u_expr << (u_expr1 | power)
+expression = Forward()
 
-expr = operatorPrecedence( u_expr,
-    [(oneOf('* /'), 2, opAssoc.LEFT, action_op_infix_left),
-     (oneOf('+ -'), 2, opAssoc.LEFT, action_op_infix_left),
-     (oneOf('< > <= >= == !='), 2, opAssoc.LEFT, action_op_infix_left),
-     (Literal('not'), 1, opAssoc.RIGHT, action_op_infix_left),
-     (oneOf('and or'), 2, opAssoc.LEFT, action_op_infix_left),
+#Atoms are the most basic elements of expressions. Brackets or braces are also categorized syntactically as atoms.
+#TODO: enclosures can also create tuples
+#enclosure = S('(') + expression + S(')')
+atom = identifier | literal #| enclosure
+
+#Function/method call - only the argument list and the brackets are parsed here.
+keyword_argument = Group(identifier + S('=') + expression)
+argument_list = (delimitedList(keyword_argument | expression,  delim=',')
+                + Optional(S(',')))
+call = Group(S('(') + Optional(argument_list) + S(')'))
+
+#primary = atom | attributeref | slicing | call
+expression << operatorPrecedence(atom,
+    [(L('.'),       2,  opAssoc.LEFT,               action_op_infix_left), #access to an object's attributes
+     (call,         1,  opAssoc.LEFT,               action_call), #function/method call
+     #TODO: slicing
+     #Power and unary operations are intertwined to get correct operator precedence:
+     #   -a**-b == -(a ** (-b))
+     # TODO: TEST: -a**-b**-c is not parsed correctly???
+     (oneOf('+ -'), 1, opAssoc.RIGHT,               action_op_prefix),
+     (L('**'),      2, opAssoc.RIGHT,               action_op_infix),
+     (oneOf('+ -'), 1, opAssoc.RIGHT,               action_op_prefix),
+     (oneOf('* /'), 2, opAssoc.LEFT,                action_op_infix_left),
+     (oneOf('+ -'), 2, opAssoc.LEFT,                action_op_infix_left),
+     (oneOf('< > <= >= == !='), 2, opAssoc.LEFT,    action_op_infix_left),
+     (kw('not'),    1, opAssoc.RIGHT,               action_op_prefix),
+     (kw('and'),    2, opAssoc.LEFT,                action_op_infix_left),
+     (kw('or'),     2, opAssoc.LEFT,                action_op_infix_left),
      ])
 
 test = [
-        "1 and 2",
-        "not 1 <= 2 and 2 > 3",
-        "1*2+3"
-#        "2**3**4**5",
+        "a.b.c",
+        "1 + a(2, 3*a) + b()",
+        "a(1, b=2,)",
+#        "1 and 2 or not a and b",
+#        "not a <= a and c > d",
+#        "1*2+3",
+        "-2**-3 == -(2**(-3))",
+#        "1*-2**3",
+#        "-1**-2**-3",
 #        "2** 3",
 #        "9 + 2 - 3 + 4",
 #        "9 + 2",
@@ -106,7 +112,9 @@ test = [
 #        "(9 + -2) * 3",
 #        "(9 + -2) * 3**-4**5",
 #        "1**2**3",
-#        "(1**2)**3",       #TODO: parentheses don't work here!
+#        "(1**2)**3",
+#        "1**-2**3",
+#        "1**(-2)**3",
 #        "M*X + B",
 #        "M*(X + B)",
 #        "1+2*-3^4*5+-+-6",
@@ -116,9 +124,11 @@ test = [
 #         *4-2+3*4-2+3*4*2+3*4-2+3*4-2+3*4**-2**+3*4-2+3*4-2+3*4-2+3*4-2+3*4**-2\
 #         **+3*4**-2*+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4+1-2-3------4"
          ]
+
+print
 for t in test:
     print t
-    print expr.parseString(t)
+    print expression.parseString(t)
 #    print power.parseString(t)
     print
 
