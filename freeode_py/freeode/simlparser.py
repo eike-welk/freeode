@@ -3,9 +3,10 @@
 #    Copyright (C) 2006 - 2008 by Eike Welk                                *
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
-#    Inspiration came from:                                                *
-#    'fourFn.py', an example program, by Paul McGuire,                     *
-#    and the 'Spark' library by John Aycock.                               *
+#    Inspiration and little bits of text and code came from:               *
+#     'fourFn.py', 'simpleArith.py' example programs, by Paul McGuire,     *
+#     the 'Spark' library by John Aycock,                                  *
+#     and the Python Reference Manual by Guido van Rossum.                 *
 #    Many thanks for their excellent contributions to publicly available   *
 #    knowledge.                                                            *
 #                                                                          *
@@ -140,14 +141,15 @@ class ParseStage(object):
     '''
     Define how much the parse result is modified, for easier debuging.
     0: normal operation. Compilation does not work otherwise.
-    1: Do not modify parse result (from pyParsing library).
+    1: Do not modify parse result from the Pyparsing library.
 
-    ParseResult objects are printed as nested lists: ['1', '+', ['2', '*', '3']]
+    ParseResult objects (which come from the Pyparsing library) are printed
+    as nested lists: ['1', '+', ['2', '*', '3']]
     '''
 
     keywords = set()
     '''
-    List of all keywords (filled by _defineLanguageSyntax() and defineKeyword(...)).
+    Set of all keywords (filled by _defineLanguageSyntax() and defineKeyword(...)).
     '''
     #Special variables, that are built into the language (filled by _defineLanguageSyntax())
     builtInVars = set()
@@ -155,17 +157,18 @@ class ParseStage(object):
 
     def __init__(self):
         object.__init__(self)
+        #The parser object for the whole program (from pyParsing).
         self._parser = None
-        '''The parser object for the whole program (from pyParsing).'''
+        #The parser for expressions
         self._expressionParser = None
-        '''The parser for expressions'''
+        #Name of SIML program file, that will be parsed
         self.progFileName = None
-        '''Name of SIML program file, that will be parsed'''
         #name, that will be given to the root node of a module
         #usually part of the filename
         self.moduleName = None
+        #String that will be parsed
         self.inputString = None
-        '''String that will be parsed'''
+
         #Create parser objects
         self._defineLanguageSyntax()
 
@@ -179,9 +182,8 @@ class ParseStage(object):
         ParseStage.keywords.add(inString)
         return Keyword(inString)
 
-
     def createTextLocation(self, atChar):
-        '''Create a text location object at the given char'''
+        '''Create a text location object at the given char.'''
         return TextLocation(atChar, self.inputString, self.progFileName)
 
 
@@ -194,7 +196,6 @@ class ParseStage(object):
         print toks
         print '-------------------'
         return None
-
 
     def _actionCheckIdentifier(self, s, loc, toks):
         '''
@@ -212,12 +213,11 @@ class ParseStage(object):
             errMsg = 'Keyword can not be used as an identifier: ' + identifier
             raise ParseException(s, loc, errMsg)
 
-
     def _actionCheckIdentifierFatal(self, s, loc, toks):
         '''
         Tests wether an identifier is legal.
         If the identifier is equal to any keyword the parse action raises
-        an user visible exception.
+        an user visible exception. This will usually stop the compiler.
         Does not change any parse results
 
         tokList is structured like this: ['a1']
@@ -229,15 +229,6 @@ class ParseStage(object):
             errMsg = 'Keyword can not be used as an identifier: ' + identifier
             txtLoc = self.createTextLocation(loc)
             raise UserException(errMsg, txtLoc)
-
-
-#    def _actionStoreStmtLoc(self, str, loc, toks):
-#        '''
-#        Remember location of last parsed statement. Useful for error
-#        error message creation, since the locations of pyparsing's
-#        syntax errors are frequently quite off.
-#        '''
-#        self._locLastStmt = self.createTextLocation(loc)
 
 
 #    def _actionBuiltInValue(self, str, loc, toks):
@@ -270,7 +261,6 @@ class ParseStage(object):
         nCurr.dat = tokList[0] #Store the number
         return nCurr
 
-
     def _actionString(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for a string: 'qwert'
@@ -286,12 +276,14 @@ class ParseStage(object):
         nCurr.dat = tokList[1:-1] #Store the string; remove quotes
         return nCurr
 
-
     def _actionParenthesesPair(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for a pair of parentheses that enclose an expression: (...)
         tokList has the following structure:
         ['(', <expression>, ')']
+
+        The information about parentheses is necessary to be able to output
+        correct Python code, without the need for complicated algorithms.
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
@@ -300,7 +292,6 @@ class ParseStage(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.kids = [tokList[1]] #store child expression
         return nCurr
-
 
     def _actionPrefixOp(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -316,7 +307,6 @@ class ParseStage(object):
         nCurr.operator = tokList[0]  #Store operator
         nCurr.kids=[tokList[1]] #Store child tree
         return nCurr
-
 
     def _actionInfixOp(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -335,7 +325,6 @@ class ParseStage(object):
         rhsTree = tokList[2]   #child rhs
         nCurr.kids=[lhsTree, rhsTree]
         return nCurr
-
 
     def _actionAttributeAccess(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -407,7 +396,6 @@ class ParseStage(object):
         nCurr.kids=[lhsTree, rhsTree]
         return nCurr
 
-
     def _actionPrintStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for print statement:
@@ -428,7 +416,6 @@ class ParseStage(object):
             nCurr.newline = False
         return nCurr
 
-
     def _actionGraphStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for graph statement:
@@ -445,7 +432,6 @@ class ParseStage(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.kids = toks.argList.asList()[0]
         return nCurr
-
 
     def _actionStoreStmt(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -464,7 +450,6 @@ class ParseStage(object):
         nCurr.kids = toks.argList.asList()
         return nCurr
 
-
     def _actionReturnStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for return statement:
@@ -482,7 +467,6 @@ class ParseStage(object):
             nCurr.appendChild(toks.retVal)
         return nCurr
 
-
     def _actionPragmaStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for pragma statement:
@@ -499,7 +483,6 @@ class ParseStage(object):
         for i in range(1, len(toks)):
             nCurr.options.append(toks[i])
         return nCurr
-
 
     def _actionForeignCodeStmt(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -526,7 +509,6 @@ class ParseStage(object):
         nCurr.code = toks.code
         return nCurr
 
-
     def _actionCompileStmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for foreign_code statement:
@@ -550,7 +532,6 @@ class ParseStage(object):
         if toks.name:
             nCurr.name = toks.name
         return nCurr
-
 
     def _actionStatementList(self, s, loc, toks): #IGNORE:W0613
         '''

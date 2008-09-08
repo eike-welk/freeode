@@ -63,18 +63,21 @@ identifier = (NotAny(kw('not') | kw('and') | kw('or')) +
 
 expression = Forward()
 
-#Atoms are the most basic elements of expressions. Brackets or braces are also categorized syntactically as atoms.
+#Atoms are the most basic elements of expressions.
+##Brackets or braces are also categorized syntactically as atoms.
 #TODO: enclosures can also create tuples
 #enclosure = S('(') + expression + S(')')
 atom = identifier | literal #| enclosure
 
-#Function/method call - everything within the round brackets is parsed here;
+#Function/method call: everything within the round brackets is parsed here;
 # the function name is parsed in 'expression'
+#The error message "Keyword arguments must come after positional arguments."
+# will be generated in the parse action.
 keyword_argument = Group(identifier + S('=') + expression)
 argument_list = delimitedList(keyword_argument | expression) + Optional(S(','))
 call = Group(S('(') - Optional(argument_list) + S(')'))
 
-#Slicing - everything within the rectangular brackets is parsed here;
+#Slicing/subscription: everything within the rectangular brackets is parsed here;
 # the variable name is parsed in 'expression'
 proper_slice = Group(Optional(expression) + L(':') + Optional(expression) #Look at Python documentation
                      + Optional(L(':') + Optional(expression))) #for possibly better parser.
@@ -83,7 +86,9 @@ slice_item = ellipsis | proper_slice | expression
 slice_list = delimitedList(slice_item) + Optional(S(','))
 slicing = Group(S('[') - slice_list + S(']'))
 
-#primary = atom | attributeref | slicing | call
+#Expression: mathematical, logtical, and comparison operators;
+# together with attribute access, function call, and slicing.
+# The operators with the strongest binding come first.
 expression << operatorPrecedence(atom,
     [(L('.'),       2,  opAssoc.LEFT,               action_op_infix_left), #access to an object's attributes
      (call,         1,  opAssoc.LEFT,               action_call), #function/method call: f(23)
