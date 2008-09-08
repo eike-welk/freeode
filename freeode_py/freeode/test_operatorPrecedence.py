@@ -50,6 +50,11 @@ def action_call(s, loc, toks):
     toklist = toks.asList()[0]
     return [toklist]
 
+def action_slicing(s, loc, toks):
+    print "slice: ",  toks
+    toklist = toks.asList()[0]
+    return [toklist]
+
 #The leaf nodes of the parse tree: integer numbers and variable names
 integer = Word(nums).setParseAction(lambda t:int(t[0]))
 literal = integer
@@ -63,17 +68,26 @@ expression = Forward()
 #enclosure = S('(') + expression + S(')')
 atom = identifier | literal #| enclosure
 
-#Function/method call - only the argument list and the brackets are parsed here.
+#Function/method call - everything within the round brackets is parsed here;
+# the function name is parsed in 'expression'
 keyword_argument = Group(identifier + S('=') + expression)
-argument_list = (delimitedList(keyword_argument | expression,  delim=',')
-                + Optional(S(',')))
-call = Group(S('(') + Optional(argument_list) + S(')'))
+argument_list = delimitedList(keyword_argument | expression) + Optional(S(','))
+call = Group(S('(') - Optional(argument_list) + S(')'))
+
+#Slicing - everything within the rectangular brackets is parsed here;
+# the variable name is parsed in 'expression'
+proper_slice = Group(Optional(expression) + L(':') + Optional(expression) #Look at Python documentation
+                     + Optional(L(':') + Optional(expression))) #for possibly better parser.
+ellipsis = L('...')
+slice_item = ellipsis | proper_slice | expression
+slice_list = delimitedList(slice_item) + Optional(S(','))
+slicing = Group(S('[') - slice_list + S(']'))
 
 #primary = atom | attributeref | slicing | call
 expression << operatorPrecedence(atom,
     [(L('.'),       2,  opAssoc.LEFT,               action_op_infix_left), #access to an object's attributes
-     (call,         1,  opAssoc.LEFT,               action_call), #function/method call
-     #TODO: slicing
+     (call,         1,  opAssoc.LEFT,               action_call), #function/method call: f(23)
+     (slicing,      1,  opAssoc.LEFT,               action_slicing), #slicing/subscription: a[23]
      #Power and unary operations are intertwined to get correct operator precedence:
      #   -a**-b == -(a ** (-b))
      # TODO: TEST: -a**-b**-c is not parsed correctly???
@@ -92,6 +106,9 @@ test = [
         "a.b.c",
         "1 + a(2, 3*a) + b()",
         "a(1, b=2,)",
+        "a[2] + b[1, 2]",
+        "a[1:2] + b[1:] + c[:] + d[:1]",
+        "a[::] - a[::1] - a[0, 1:1:1, 2]",
 #        "1 and 2 or not a and b",
 #        "not a <= a and c > d",
 #        "1*2+3",

@@ -32,7 +32,6 @@
     <item url="../models/biological/.svn/tmp/prop-base/" uploadstatus="1" />
     <item url="../models/biological/.svn/tmp/props/" uploadstatus="1" />
     <item url="../models/biological/.svn/tmp/text-base/" uploadstatus="1" />
-    <item url="../models/biological/.svn/tmp/wcprops/" uploadstatus="1" />
     <item url="../models/biological/.svn/entries" uploadstatus="1" />
     <item url="../models/biological/.svn/format" uploadstatus="1" />
     <item url="../models/mechanical/" uploadstatus="1" />
@@ -44,7 +43,6 @@
     <item url="../models/mechanical/.svn/tmp/prop-base/" uploadstatus="1" />
     <item url="../models/mechanical/.svn/tmp/props/" uploadstatus="1" />
     <item url="../models/mechanical/.svn/tmp/text-base/" uploadstatus="1" />
-    <item url="../models/mechanical/.svn/tmp/wcprops/" uploadstatus="1" />
     <item url="../models/mechanical/.svn/entries" uploadstatus="1" />
     <item url="../models/mechanical/.svn/format" uploadstatus="1" />
     <item url="../models/.svn/" uploadstatus="1" />
@@ -55,7 +53,6 @@
     <item url="../models/.svn/tmp/prop-base/" uploadstatus="1" />
     <item url="../models/.svn/tmp/props/" uploadstatus="1" />
     <item url="../models/.svn/tmp/text-base/" uploadstatus="1" />
-    <item url="../models/.svn/tmp/wcprops/" uploadstatus="1" />
     <item url="../models/.svn/entries" uploadstatus="1" />
     <item url="../models/.svn/format" uploadstatus="1" />
     <item url="toolbars/.svn/" uploadstatus="1" />
@@ -66,7 +63,6 @@
     <item url="toolbars/.svn/tmp/prop-base/" uploadstatus="1" />
     <item url="toolbars/.svn/tmp/props/" uploadstatus="1" />
     <item url="toolbars/.svn/tmp/text-base/" uploadstatus="1" />
-    <item url="toolbars/.svn/tmp/wcprops/" uploadstatus="1" />
     <item modified_time="1172272712" url="toolbars/.svn/entries" uploadstatus="1" />
     <item modified_time="1169521613" url="toolbars/.svn/format" uploadstatus="1" />
     <item modified_time="1172537135" url="freeode.session" uploadstatus="1" />
