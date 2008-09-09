@@ -1,11 +1,5 @@
-#
-# simpleArith.py
-#
-# Example of defining an arithmetic expression parser using
-# the operatorGrammar helper method in pyparsing.
-#
-# Copyright 2006, by Paul McGuire
-#
+#Test script to develop a nice and extendable parser for expressions,
+# using the latest features from Pyparsing.
 
 from pyparsing import *
 ParserElement.enablePackrat()
@@ -14,11 +8,7 @@ S = Suppress
 L = Literal
 kw = Keyword
 
-#TODO: write parser 2nd parser for expression that implemets
-#      paul's way of dealing with the power operator.
-#      Compare both operators!
-
-# TODO: Enter Pyparsing bug:
+# TODO: Enter Pyparsing whish:
 #       Inconsistent behavior of operatorPrecedence
 #       operators with two terms:
 #       opAssoc.RIGHT: "1**2**3" -> [1 ** [2 ** 3]] (recursive list)
@@ -46,21 +36,33 @@ def action_op_infix_left(s, loc, toks):
     return processedToks
 
 def action_call(s, loc, toks):
-    print "call: ",  toks
+#    print "call: ",  toks
     toklist = toks.asList()[0]
     return [toklist]
 
 def action_slicing(s, loc, toks):
-    print "slice: ",  toks
+#    print "slice: ",  toks
     toklist = toks.asList()[0]
     return [toklist]
 
-#The leaf nodes of the parse tree: integer numbers and variable names
-integer = Word(nums).setParseAction(lambda t:int(t[0]))
-literal = integer
-identifier = (NotAny(kw('not') | kw('and') | kw('or')) +
-              Word(alphas,exact=1))
+print 'syntax definition start'
+#The leaf nodes of the parse tree: numbers and variable names ------------------------
+smartInteger = Word(nums).setParseAction(lambda t:int(t[0]))
+uInteger = Word(nums)
+#Floating point number (unsigned).
+eE = CaselessLiteral( 'E' )
+uFloat = Group( Combine(
+            uInteger +
+            Optional('.' + Optional(uInteger)) +
+            Optional(eE + Word('+-'+nums, nums))))
 
+literal = smartInteger | uFloat | sglQuotedString
+
+identifier = (NotAny(kw('not') | kw('and') | kw('or')) +
+              Word(alphas+'_', alphanums+'_'))
+
+
+#The expression is defined recursively. Therefor it needs a forward declaration ----------
 expression = Forward()
 
 #Atoms are the most basic elements of expressions.
@@ -89,16 +91,18 @@ slicing = Group(S('[') - slice_list + S(']'))
 #Expression: mathematical, logtical, and comparison operators;
 # together with attribute access, function call, and slicing.
 # The operators with the strongest binding come first.
+print 'syntax definition before operatorPrecedence'
 expression << operatorPrecedence(atom,
-    [(L('.'),       2,  opAssoc.LEFT,               action_op_infix_left), #access to an object's attributes
-     (call,         1,  opAssoc.LEFT,               action_call), #function/method call: f(23)
-     (slicing,      1,  opAssoc.LEFT,               action_slicing), #slicing/subscription: a[23]
+    [(L('.'),       2, opAssoc.LEFT,                action_op_infix_left), #access to an object's attributes
+     (L('$'),       1, opAssoc.RIGHT,               action_op_prefix), #time differential
+     (call,         1, opAssoc.LEFT,                action_call), #function/method call: f(23)
+     (slicing,      1, opAssoc.LEFT,                action_slicing), #slicing/subscription: a[23]
      #Power and unary operations are intertwined to get correct operator precedence:
      #   -a**-b == -(a ** (-b))
      # TODO: TEST: -a**-b**-c is not parsed correctly???
-     (oneOf('+ -'), 1, opAssoc.RIGHT,               action_op_prefix),
-     (L('**'),      2, opAssoc.RIGHT,               action_op_infix),
-     (oneOf('+ -'), 1, opAssoc.RIGHT,               action_op_prefix),
+     (oneOf('+ -'), 1, opAssoc.RIGHT,               action_op_prefix), #sign (+, -)
+     (L('**'),      2, opAssoc.RIGHT,               action_op_infix), #power
+     (oneOf('+ -'), 1, opAssoc.RIGHT,               action_op_prefix), #sign (+, -)
      (oneOf('* /'), 2, opAssoc.LEFT,                action_op_infix_left),
      (oneOf('+ -'), 2, opAssoc.LEFT,                action_op_infix_left),
      (oneOf('< > <= >= == !='), 2, opAssoc.LEFT,    action_op_infix_left),
@@ -106,9 +110,20 @@ expression << operatorPrecedence(atom,
      (kw('and'),    2, opAssoc.LEFT,                action_op_infix_left),
      (kw('or'),     2, opAssoc.LEFT,                action_op_infix_left),
      ])
+print 'syntax definition after operatorPrecedence'
+
+#----------    this is the code that takes so long ----------------------------
+print 'syntax definition 1'
+dummy0 = delimitedList(expression) #this statement seems to use 500 MiB
+# this goes much faster
+print 'syntax definition 2'
+dummy1 = expression + ZeroOrMore(Suppress(',') + expression)
+
+print 'syntax definition end'
 
 test = [
-        "a.b.c",
+        "aa.ba.c",
+        "$a.b * $a.c[2] + 3",
         "1 + a(2, 3*a) + b()",
         "a(1, b=2,)",
         "a[2] + b[1, 2]",
@@ -119,9 +134,9 @@ test = [
 #        "1*2+3",
         "-2**-3 == -(2**(-3))",
 #        "1*-2**3",
-#        "-1**-2**-3",
-#        "2** 3",
-#        "9 + 2 - 3 + 4",
+        "1**-2**3",
+        "1**2**3",
+        "1+2+3",
 #        "9 + 2",
 #        "3----++- 2",
 #        "-2**-3**4",
@@ -144,13 +159,12 @@ test = [
 #         -2+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4*2+3*4-2+3*4-2+3*4**-2**+3*4\
 #         -2+3*4-2+3*4-2+3*4-2+3*4**-2**+3*4**-2*+3*4-2+3*4-2+3*4-2+3*4-2+3*4-+3\
 #         *4-2+3*4-2+3*4*2+3*4-2+3*4-2+3*4**-2**+3*4-2+3*4-2+3*4-2+3*4-2+3*4**-2\
-#         **+3*4**-2*+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4+1-2-3------4"
+#         **+3*4**-2*+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4-2+3*4+1-2-3------4",
          ]
 
 print
 for t in test:
     print t
     print expression.parseString(t)
-#    print power.parseString(t)
     print
 
