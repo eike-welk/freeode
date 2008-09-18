@@ -28,9 +28,9 @@
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
 #***************************************************************************
 
-'''
+"""
 Parser for the SIML simulation language.
-'''
+"""
 
 #TODO: write unit tests that exercise every error message of simlparser.py
 
@@ -45,7 +45,7 @@ __version__ = "$Revision: $"
 #import sys
 import os
 #import parser library
-import pyparsing
+#import pyparsing
 from pyparsing import ( _ustr, Literal, CaselessLiteral, Keyword, Word,
     ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,
     oneOf,
@@ -109,6 +109,34 @@ class ErrStop(ParseElementEnhance):
         return self.strRepr
 
 
+
+class ChangeErrMsg(object):
+    '''
+    Change a parser's error message.
+    
+    Attach to parser with setFailAction
+    '''
+    def __init__(self, prepend=None, append=None):
+        object.__init__()
+        self.prepend_str = prepend
+        self.append_str = append
+        
+    def __call__(self, s,loc,expr,err):
+        '''Change error message. Called by parser when it fails.
+        
+        Arguments:
+            
+            - s = string being parsed
+            - loc = location where expression match was attempted and failed
+            - expr = the parse expression that failed
+            - err = the exception thrown
+        Return:
+           The function returns no value.  It may throw ParseFatalException
+           if it is desired to stop parsing immediately.
+        '''
+        #TODO: implement
+        
+        
 
 class ParseActionException(Exception):
     '''Exception raised by the parse actions of the parser'''
@@ -321,26 +349,31 @@ class ParseStage(object):
 
         operatorPrecedence returns such a list for left assocative operaators.
         tokList has the following structure:
-        [<expression_l>, <operator>, <expression_r>]
+        [<expression_1>, <operator_1>, <expression_2>, <operator_2>, ... ]
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
-        toks0 = toks[0]
-        tree = action_op_infix(s,  loc, toks0[0:3])
-        for i in range(3, len(toks0),  2):
-            tree = action_op_infix(s,  loc,  [tree,  toks0[i],  toks0[i+1]])
+        tokList = toks.asList()[0]
+        tree = self._action_op_infix(s,  loc, tokList[0:3])
+        for i in range(3, len(tokList),  2):
+            tree = self._action_op_infix(s,  loc,  [tree,  tokList[i],  tokList[i+1]])
         return tree
-
 
     def _action_op_infix(self, s, loc, toks): #IGNORE:W0613
         '''
-        Create node for math infix operators: + - * / ^
+        Create node for math infix operators: + - * / **
         tokList has the following structure:
         [<expression_l>, <operator>, <expression_r>]
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        if not isinstance(toks,  list):
+            #Convert parse result to list, remove extra pair of brackets
+            tokList = toks.asList()[0] 
+        else:
+            #function was called by _action_op_infix_left(...) toks is already
+            #a list.
+            tokList = toks
         nCurr = NodeOpInfix2()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #create children and store operator
@@ -350,22 +383,22 @@ class ParseStage(object):
         nCurr.kids=[lhsTree, rhsTree]
         return nCurr
 
-    def _actionAttributeAccess(self, s, loc, toks): #IGNORE:W0613
+    def _action_identifier(self, s, loc, toks): #IGNORE:W0613
         '''
-        Create node for access to a variable or parameter: bb.ccc.dd
+        Create node for an identifier. 
+        
+        An identifier always means access to data. Identifiers closely work
+        together with the dot operator. 
         tokList has the following structure:
-        [<part1>, <part2>, <part3>, ...]
+        [<string>]
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeAttrAccess()
+        nCurr = NodeIdentifier()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        #Look if there is a '$' that indicates time derivatives
-        if tokList[0] == '$':
-            nCurr.deriv = ('time',)
-            del tokList[0]
-        #The remaining tokens are the dot separated name
+        #The flattened system will require the use of multicomponent DotNames;
+        # therefore the DotName class is used already here.
         nCurr.name = DotName(tokList)
         return nCurr
 
@@ -642,41 +675,35 @@ class ParseStage(object):
                             self.createTextLocation(loc))
 
 
-    def _actionFuncArgCall(self, s, loc, toks): #IGNORE:W0613
-        '''
-        Create node for one argument of a function call.
-            x=2.5  ,  x*2+sin(a)
-        Node types are: either a mathematical expression, or an assignment.
-        BNF:
-        funcArgCall = (  Group(identifier                            .setResultsName('argName')
-                               + '=' + expression                    .setResultsName('value')
-                               )                                     .setResultsName('namedArg')
-                       | Group(expression)                           .setResultsName('positionalArg')
-                       )                                             .setParseAction(self._actionFuncArgCall)
-        '''
-        if ParseStage.noTreeModification:
-            return None #No parse result modifications for debuging
-        #named argument: x=2.5
-        if toks.namedArg:
-            #TODO:Should a new node NodeNamedArg be introduced? A named argument is
-            # not really an assignment. Making it an assignment may break the
-            # attribute renaming algorithm.
-            raise UserException('Named arguments are currently unsupported!',
-                                self.createTextLocation(loc))
-#            nCurr = NodeAssignment()
-#            nCurr.loc = self.createTextLocation(loc) #Store position
-#            nArgName = NodeAttrAccess()
-#            nArgName.name = DotName(toks.namedArg.argName)
-#            nCurr.lhs = nArgName
-#            nCurr.rhs = toks.namedArg.value
-        #positional argument: 2.5
-        elif toks.positionalArg:
-            nCurr = toks.positionalArg[0]
-        else:
-            raise ParseActionException('Broken function argument. ' +
-                                        str(self.createTextLocation(loc)) + ' ' +
-                                        str(toks))
-        return nCurr
+#    def _action_func_call_arg(self, s, loc, toks): #IGNORE:W0613
+#        '''
+#        Create node for one argument of a function call.
+#            x=2.5  ,  x*2+sin(a)
+#        Node types are: either a mathematical expression, or an assignment.
+#        BNF:
+#        call_argument = ( Group(identifier                         .setResultsName('keyword')
+#                                + '=' + expression                 .setResultsName('value')
+#                                )                                  .setResultsName('keyword_argument')
+#                        | Group(expression)                        .setResultsName('positional_argument')
+#                        )                                          .setParseAction(self._action_func_call_arg)
+#        '''
+#        if ParseStage.noTreeModification:
+#            return None #No parse result modifications for debuging
+#        #named argument: x=2.5
+#        if toks.keyword_argument:
+#            #TODO:Should a new node NodeNamedArg be introduced? A named argument is
+#            # not really an assignment. Making it an assignment may break the
+#            # attribute renaming algorithm.
+#            raise UserException('Keyword arguments are currently unsupported!',
+#                                self.createTextLocation(loc))
+#        #positional argument: 2.5
+#        elif toks.positional_argument:
+#            nCurr = toks.positionalArg[0]
+#        else:
+#            raise ParseActionException('Broken function argument. ' +
+#                                        str(self.createTextLocation(loc)) + ' ' +
+#                                        str(toks))
+#        return nCurr
 
     def _action_func_call(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -689,22 +716,26 @@ class ParseStage(object):
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be
-        toks = toks[0]             #an extra pair of brackets
+        toks = toks[0] #remove extra bracket of group
         nCurr = NodeFuncExecute()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store function name
-        nCurr.name = DotName(toks.funcName)
+        nCurr.name = toks[0].name  
+        #check argument list - positional arguments must come before keyword arguments
+        there_was_keyword_argument = False
         #store function arguments:
-        thereWasNamedArgument = False
-        for arg in toks.argList:
-            nCurr.appendChild(arg)
-            #check argument list - positional arguments must come before named arguments
-            if isinstance(arg, NodeAssignment):
-                thereWasNamedArgument = True
-            elif thereWasNamedArgument:
-                raise UserException('Positional arguments must come before named arguments!',
-                                    nCurr.loc)
+        for arg in toks[1].argument_list:
+            if arg.positional_argument:
+                if there_was_keyword_argument:
+                    raise UserException('Positional arguments must come before keyword arguments!',
+                                        nCurr.loc)
+                nCurr.positional_arguments.append(arg.positional_argument[0][0])
+            elif arg.keyword_argument:
+                there_was_keyword_argument = True
+#                print 'arg.keyword_argument: ', arg.keyword_argument
+                #TODO: store keyword arguments too
+                raise UserException('Keyword arguments are currently unimplemented!',
+                                     nCurr.loc)
         return nCurr
 
 
@@ -832,7 +863,7 @@ class ParseStage(object):
         return nCurr
 
 
-#------------------- BNF --------------------------------------------------------
+#------------------- BNF ------------------------------------------------------------------------*
     def _defineLanguageSyntax(self):
         '''
         Here is Siml's BNF
@@ -867,29 +898,20 @@ class ParseStage(object):
         #kw('time'); kw('this')
         ParseStage.builtInVars = set(['time', 'this'])
         #identifiers
-        identifierBase = Word(alphas+'_', alphanums+'_')        .setName('identifier')#.setDebug(True)
+        identifierBase = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
         # identifier:    Should be used in expressions. If a keyword is used an ordinary parse error is
         #                raised. This is needed to parse expressions containing the operators 'and', 'or', 'not'.
-        identifier  = identifierBase.copy()                     .setParseAction(self._actionCheckIdentifier)
+        identifier  = Group(identifierBase.copy()                   .setParseAction(self._actionCheckIdentifier)
+                            )                                       .setParseAction(self._action_identifier)
         # newIdentifier: Should be used in definition of new objects (data, class, function).
         #                If a keyword is used as a identifier a fatal, user visible error is raised.
-        newIdentifier = identifierBase.copy()                   .setParseAction(self._actionCheckIdentifierFatal)
+        newIdentifier = identifierBase.copy()                       .setParseAction(self._actionCheckIdentifierFatal)
 #        #Compound identifiers for variables or parameters 'aaa.bbb'.
 #        #TODO: change dot into a attribute lookup operator (like in Python).
 #        #TODO: Then remove this parser!
 #        dotSup = Literal('.').suppress()
 #        dotIdentifier = Group(identifier +
 #                              ZeroOrMore(dotSup + identifier))  .setName('dotIdentifier')#.setDebug(True)
-#        #TODO: change '$' into an operator
-#        #TODO: change slicing into an operator
-#        #TODO: Then remove this parser!
-#        #Method to access a stored value: dotted name ('a.b.c'),
-#        # with optional differentiation operator ('$a.b.c'),
-#        # and optional partial access ('a.b.c[2:5]'). (partial access is currently not implemented)
-#        valAccess = Group( Optional('$') +                                            #IGNORE:W0104
-#                            identifier +
-#                            ZeroOrMore(dotSup + identifier) )   .setParseAction(self._actionAttributeAccess) \
-#                                                                .setName('valAccess')
 
 #------------------ Mathematical expression .............................................................
 
@@ -897,17 +919,24 @@ class ParseStage(object):
         expression = Forward()
 
         #Atoms are the most basic elements of expressions.
-        ##Brackets or braces are also categorized syntactically as atoms.
-        #TODO: enclosures can also create tuples
-        #enclosure = S('(') + expression + S(')')
-        atom = identifier | literal #| enclosure
-
+        #Brackets or braces are also categorized syntactically as atoms.
+        #TODO: future extension: enclosures can also create tuples
+        enclosure = S('(') + expression + S(')')                    .setParseAction(self._actionParenthesesPair)
+        atom = identifier | literal | enclosure
+      
         #Function/method call: everything within the round brackets is parsed here;
-        # the function name is parsed in 'expression'. This parser is very general;
-        #syntax checking is done in parse action to generate better error messages.
-        keyword_argument = Group(identifier + S('=') + expression)
-        argument_list = delimitedList(keyword_argument | expression) + Optional(S(','))
-        call = Group(S('(') - Optional(argument_list) + S(')'))
+        # the function name is parsed in 'expression'. This parser is quite general;
+        # more syntax checks are done in parse action to generate better error messages.
+        #
+        #one argument at the call site: x=2.5  ,  x  ,  2.5
+        keyword_argument = Group(identifier                        #.setResultsName('keyword')
+                                 + '=' - expression                #.setResultsName('value')
+                                 )                                 .setResultsName('keyword_argument', listAllMatches=True)
+        positional_argument = Group(expression)                    .setResultsName('positional_argument', listAllMatches=True)
+        call_argument = Group(keyword_argument | positional_argument) #extra group to make setResultsName work
+        argument_list = ( delimitedList(call_argument)             .setResultsName('argument_list')
+                          + Optional(',') )
+        call = Group('(' - Optional(argument_list) + ')')
 
         #Slicing/subscription: everything within the rectangular brackets is parsed here;
         # the variable name is parsed in 'expression'
@@ -924,24 +953,24 @@ class ParseStage(object):
         # The operators with the strongest binding come first.
         expression << operatorPrecedence(atom,
              #TODO: special node and parse action for attribute lookup
-            [(L('.'),       2, opAssoc.LEFT,                self._action_op_infix_left), #access to an object's attributes
+            [(L('.'),       2, opAssoc.LEFT,             self._action_op_infix_left), #access to an object's attributes
              #TODO: special node and parse action for differential operator
-             (L('$'),       1, opAssoc.RIGHT,               self._action_op_prefix), #time differential
-             (call,         1, opAssoc.LEFT,                self._action_func_call), #function/method call: f(23)
-             (slicing,      1, opAssoc.LEFT,                self._action_slicing), #slicing/subscription: a[23]
+             (L('$'),       1, opAssoc.RIGHT,            self._action_op_prefix), #time differential
+             (call,         1, opAssoc.LEFT,             self._action_func_call), #function/method call: f(23)
+             (slicing,      1, opAssoc.LEFT,             self._action_slicing), #slicing/subscription: a[23]
              #Power and unary operations are intertwined to get correct operator precedence:
              #   -a**-b == -(a ** (-b))
-             # TODO: TEST: -a**-b**-c is not parsed correctly???
-             (oneOf('+ -'), 1, opAssoc.RIGHT,               self._action_op_prefix), #sign (+, -)
-             (L('**'),      2, opAssoc.RIGHT,               self._action_op_infix), #power
-             (oneOf('+ -'), 1, opAssoc.RIGHT,               self._action_op_prefix), #sign (+, -)
-             (oneOf('* /'), 2, opAssoc.LEFT,                self._action_op_infix_left),
-             (oneOf('+ -'), 2, opAssoc.LEFT,                self._action_op_infix_left),
-             (oneOf('< > <= >= == !='), 2, opAssoc.LEFT,    self._action_op_infix_left),
-             (kw('not'),    1, opAssoc.RIGHT,               self._action_op_prefix),
-             (kw('and'),    2, opAssoc.LEFT,                self._action_op_infix_left),
-             (kw('or'),     2, opAssoc.LEFT,                self._action_op_infix_left),
-             ])
+             # TODO: -a**-b**-c is not parsed correctly.
+             (oneOf('+ -'), 1, opAssoc.RIGHT,            self._action_op_prefix), #sign (+, -)
+             (L('**'),      2, opAssoc.RIGHT,            self._action_op_infix), #power
+             (oneOf('+ -'), 1, opAssoc.RIGHT,            self._action_op_prefix), #sign (+, -)
+             (oneOf('* /'), 2, opAssoc.LEFT,             self._action_op_infix_left),
+             (oneOf('+ -'), 2, opAssoc.LEFT,             self._action_op_infix_left),
+             (oneOf('< > <= >= == !='), 2, opAssoc.LEFT, self._action_op_infix_left),
+             (kw('not'),    1, opAssoc.RIGHT,            self._action_op_prefix),
+             (kw('and'),    2, opAssoc.LEFT,             self._action_op_infix_left),
+             (kw('or'),     2, opAssoc.LEFT,             self._action_op_infix_left),
+             ])                                                    .setName('expression')
 
 #        #Forward declarations for recursive top level rules
 #        expression = Forward() #mathematical expression (incuding bool logic)
@@ -990,8 +1019,6 @@ class ParseStage(object):
 #                                                        .setName('expression2')#.setDebug(True)
 #        algExpr << (algExpr2 | algExpr1)                .setName('algExpr')  #IGNORE:W0104
 #
-#        #TODO: 'and', 'or' should have less precedence than comparison operators
-#        #       otherwise one has to always write: (a < b) and (b < c)
 #        #Relational operators : <, >, ==, ...
 #        relop = L('<') | L('>') | L('<=') | L('>=') | L('==') | L('!=')
 #        expression1 = algExpr
@@ -999,7 +1026,6 @@ class ParseStage(object):
 #                                                         .setName('boolExpr2')#.setDebug(True)
 #        expression << (expression2 | expression1)        .setName('expression')  #IGNORE:W0104
 
-        #................ End mathematical expression ................................................---
 
 #------------------- Statements ..................................................................
         blockBegin = Literal('{').suppress()
@@ -1095,26 +1121,26 @@ class ParseStage(object):
                       ifStatement | assignment | funcCallStmt)       .setName('statement')
 
 #------------- Function ............................................................................
-        #Function call
-        #one argument at the call site: x=2.5  ,  x  ,  2.5
-        funcArgCall = (  Group(identifier                            .setResultsName('argName')
-                               + '=' + expression                    .setResultsName('value')
-                               )                                     .setResultsName('namedArg')
-                       | Group(expression)                           .setResultsName('positionalArg')
-                       )                                             .setParseAction(self._actionFuncArgCall)
-        funcArgListCall = \
-                Group(Optional(delimitedList(funcArgCall, ',')))     #.setParseAction(self._actionStatementList)
-        #the function call
-        #The funcCall parser is is forward decdlared, because it is used in
-        #the (mathematical) expression and in the function call statement.
-        funcCall << Group(expression                              .setResultsName('funcName')  #IGNORE:W0104
-                         + '(' + ES(funcArgListCall                  .setResultsName('argList')
-                                    + ')' ))                         .setParseAction(self._action_func_call)
+#        #Function call
+#        #one argument at the call site: x=2.5  ,  x  ,  2.5
+#        funcArgCall = (  Group(identifier                            .setResultsName('argName')
+#                               + '=' + expression                    .setResultsName('value')
+#                               )                                     .setResultsName('namedArg')
+#                       | Group(expression)                           .setResultsName('positionalArg')
+#                       )                                             #setParseAction(self._action_func_call_arg)
+#        funcArgListCall = \
+#                Group(Optional(delimitedList(funcArgCall, ',')))     #.setParseAction(self._actionStatementList)
+#        #the function call
+#        #The funcCall parser is is forward decdlared, because it is used in
+#        #the (mathematical) expression and in the function call statement.
+#        funcCall << Group(expression                              .setResultsName('funcName')  #IGNORE:W0104
+#                         + '(' + ES(funcArgListCall                  .setResultsName('argList')
+#                                    + ')' ))                         .setParseAction(self._action_func_call)
 
         #Function definition (class method or global function)
         #one argument of the definition: inX:Real=2.5
         funcArgDef = Group(identifier                                .setResultsName('name')
-                           + Optional(':' + ES(expression         .setResultsName('className')
+                           + Optional(':' + ES(expression            .setResultsName('className')
                                                )                     .setErrMsgStart('type specifier: '))
                            + Optional('=' + ES(expression            .setResultsName('defaultValue')
                                                )                     .setErrMsgStart('default value: '))
@@ -1126,7 +1152,7 @@ class ParseStage(object):
                         newIdentifier                                .setResultsName('funcName')
                         + '(' + ES(Group(funcArgListDef)             .setResultsName('argList')
                                    + ')' )                           .setErrMsgStart('argument List: ')
-                        + Optional('->' + ES(expression           .setResultsName('returnType')
+                        + Optional('->' + ES(expression              .setResultsName('returnType')
                                              )                       .setErrMsgStart('return type: '))
                         + ':'
                         + Group(suite)                               .setResultsName('funcBody')
@@ -1344,25 +1370,32 @@ class RunTest(Process):
 #    flagTestExpression = False
     if flagTestExpression:
         parser = ParseStage()
-        ParseStage.noTreeModification = 1
+        #ParseStage.noTreeModification = 1
 
         print 'keywords:'
         print parser.keywords
 
-        print parser.parseExpressionStr('0*1*2*3*4')
-        #print parser.parseExpression('0^1^2^3^4')
-        #print parser.parseExpression('0+1*2+3+4').asList()[0]
-        #print parser.parseExpression('0*1^2*3*4')
-        #print parser.parseExpression('0+(1+2)+3+4')
-        #print parser.parseExpression('-0+1+--2*-3--4')
-        #print parser.parseExpression('-aa.a+bb.b+--cc.c*-dd.d--ee.e+f').asList()[0]
-        #print parser.parseExpression('time+0+sin(2+3*4)+5').asList()[0]
-        #print parser.parseExpression('0+a1.a2+bb.b1.b2+3+4 #comment')
-        #print parser.parseExpression('0.123+1.2e3')
-        #parser.parseExpression('0+1*2^3^4+5+6*7+8+9')
+#        print parser.parseExpressionStr('qwert99')
+#        print parser.parseExpressionStr('\'qwert99\'')
+#        print parser.parseExpressionStr('99')
+#        print parser.parseExpressionStr('0.123e99')
+#        print parser.parseExpressionStr('0*1*2*3*4*99')
+#        print parser.parseExpressionStr('0**1**2**3**4**99')
+#        print parser.parseExpressionStr('a.b.c')
+#        print parser.parseExpressionStr('0+1*2+3+4-99')
+        #print parser.parseExpressionStr('0*1^2*3*4')
+        #print parser.parseExpressionStr('0+(1+2)+3+4')
+#        print parser.parseExpressionStr('-0+1+--2*-3--4')
+        #print parser.parseExpressionStr('-aa.a+bb.b+--cc.c*-dd.d--ee.e+f').asList()[0]
+        #print parser.parseExpressionStr('time+0+sin(2+3*4)+5').asList()[0]
+#        print parser.parseExpressionStr('0+a1.a2+b1.b2.b3*3+99 #comment')
+        print parser.parseExpressionStr('a(1, 3, )')
+        #print parser.parseExpressionStr('a(a.b.c(1,d)+ e(2) + 99')
+        #print parser.parseExpressionStr('0.123+1.2e3')
 
         #print parser._expressionParser
 
+    print 'tests finished'
 
 
 if __name__ == '__main__':

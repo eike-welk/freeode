@@ -75,8 +75,11 @@ atom = identifier | literal #| enclosure
 # the function name is parsed in 'expression'
 #The error message "Keyword arguments must come after positional arguments."
 # will be generated in the parse action.
-keyword_argument = Group(identifier + S('=') + expression)
-argument_list = delimitedList(keyword_argument | expression) + Optional(S(','))
+keyword_argument = Group(identifier + '=' + expression)
+positional_argument = Group(expression)
+argument = keyword_argument | positional_argument
+argument_list = Group(delimitedList(argument)) + Optional(',')
+#argument_list = delimitedList(keyword_argument | expression) + Optional(S(','))
 call = Group(S('(') - Optional(argument_list) + S(')'))
 
 #Slicing/subscription: everything within the rectangular brackets is parsed here;
@@ -109,7 +112,7 @@ expression << operatorPrecedence(atom,
      (kw('not'),    1, opAssoc.RIGHT,               action_op_prefix),
      (kw('and'),    2, opAssoc.LEFT,                action_op_infix_left),
      (kw('or'),     2, opAssoc.LEFT,                action_op_infix_left),
-     ])
+     ]).setName('expression')
 print 'syntax definition after operatorPrecedence'
 
 #----------    this is the code that takes so long ----------------------------
@@ -133,10 +136,10 @@ test = [
 #        "not a <= a and c > d",
 #        "1*2+3",
         "-2**-3 == -(2**(-3))",
-#        "1*-2**3",
-        "1**-2**3",
-        "1**2**3",
-        "1+2+3",
+        "a(1,b=2)",
+#        "1**-2**3",
+#        "1**2**3",
+#        "1+2+3",
 #        "9 + 2",
 #        "3----++- 2",
 #        "-2**-3**4",

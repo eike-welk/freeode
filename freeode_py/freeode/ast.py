@@ -793,6 +793,7 @@ class NodeFuncExecute(Node):
         super(NodeFuncExecute, self).__init__(kids, loc, dat)
         self.name = name
         self.attrRef = None
+        self.positional_arguments = []
 
 
 class NodePrintStmt(Node):
@@ -1066,25 +1067,35 @@ class NodeCompileStmt(NodeDataDef):
 
 class NodeAttrAccess(Node):
     '''
-    AST node for access to a variable or parameter.
+    AST node for dot operator. 
+    '''
+    def __init__(self, kids=None, loc=None, dat=None):
+         super(NodeAttrAccess, self).__init__(kids, loc, dat)
+        #TODO: Implementation
+        
+class NodeIdentifier(Node):
+    '''
+    AST node for an identifier. 
+    
+    Using an identifier always means some access to data.
+    
+    TODO: the '$' and 'deriv' operators will mean access to special variables 
+          with mangeld names: $foo.bar --> foo.bar$time; deriv(foo, x) --> foo$x
+    
     Data Attributes:
         kids    :  ? slice object if attribute is an array?
         loc     : location in input string
         dat     : None
 
-        deriv      : Denote if a derivation operator acted on the attribute.
-                     Empty tuple means no derivation took place. can be:
-                     (,),('time',) or tuple of distibution domains
         name       : DotName('proc.model1.a'), the dot separated name.
         targetName : name in the target language (string, DotName)
         attrRef    : Reference to the attribute (definition) which is accessed.
     '''
-    def __init__(self, kids=None, loc=None, dat=None, deriv=None,
+    def __init__(self, kids=None, loc=None, dat=None,
                  name=None, targetName=None):
-        super(NodeAttrAccess, self).__init__(kids, loc, dat)
-        self.deriv = deriv
+        super(NodeIdentifier, self).__init__(kids, loc, dat)
         self.name = DotName(name)
-        self.targetName = targetName
+        self.targetName = targetName #TODO: necessary after introduction of node data?
         self.attrRef = None
 
 
