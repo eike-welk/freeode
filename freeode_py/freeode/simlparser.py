@@ -45,10 +45,9 @@ __version__ = "$Revision: $"
 #import sys
 import os
 #import parser library
-#import pyparsing
 from pyparsing import ( _ustr, Literal, CaselessLiteral, Keyword, Word,
     ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,
-    oneOf,
+    oneOf, LineEnd, indentedBlock, ParserElement,
     delimitedList, QuotedString, Suppress, operatorPrecedence, opAssoc,
     StringEnd, sglQuotedString, MatchFirst, Combine, Group, Optional,
     ParseException, ParseFatalException, ParseElementEnhance )
@@ -60,8 +59,6 @@ from freeode.ast import *
 #Enable a fast parsing mode with caching. May not always work.
 pyparsing.ParserElement.enablePackrat()
 
-#TODO: Write error message mutator (exception mutator - RaiseFatal) for use
-#      with the new '-' operator.
 #TODO: Remove this class, and use the new '-' operator instead.
 #Took code from pyparsing.Optional as a template
 class ErrStop(ParseElementEnhance):
@@ -109,8 +106,9 @@ class ErrStop(ParseElementEnhance):
         return self.strRepr
 
 
-
-class ChangeErrMsg(object):
+#TODO: Use '-' operator instead of ErrStop. Then remove ErrStop class.
+#TODO: Use ChMsg to create useful error messages.
+class ChMsg(object):
     '''
     Change a parser's error message.
     
@@ -125,22 +123,30 @@ class ChangeErrMsg(object):
         '''Change error message. Called by parser when it fails.
         
         Arguments:
-            
             - s = string being parsed
             - loc = location where expression match was attempted and failed
             - expr = the parse expression that failed
             - err = the exception thrown
+            
         Return:
            The function returns no value.  It may throw ParseFatalException
            if it is desired to stop parsing immediately.
         '''
-        #TODO: implement
+        #TODO: Does this class need to react to regular ParseExceptions too? (ParseSyntaxException)
+        #Work only with fatal errors from Pyparsing
+        if isinstance(err, ParseFatalException):
+            if self.prepend_str is not None:
+                err.msg = self.prepend_str + err.msg
+            if self.append_str is not None:
+                err.msg = err.msg + self.append_str
+            raise err
         
         
-
-class ParseActionException(Exception):
-    '''Exception raised by the parse actions of the parser'''
-    pass
+#TODO: remove?
+#
+#class ParseActionException(Exception):
+#    '''Exception raised by the parse actions of the parser.'''
+#    pass
 
 
 
@@ -198,6 +204,8 @@ class ParseStage(object):
         self.moduleName = None
         #String that will be parsed
         self.inputString = None
+        #indent stack for indentedBlock helper from Pyparsing
+        self.indentStack = [1]
 
         #Create parser objects
         self._defineLanguageSyntax()
@@ -246,7 +254,7 @@ class ParseStage(object):
 
     def _actionCheckIdentifierFatal(self, s, loc, toks):
         '''
-        Tests wether an identifier is legal.
+        Tests whether an identifier is legal.
         If the identifier is equal to any keyword the parse action raises
         an user visible exception. This will usually stop the compiler.
         Does not change any parse results
@@ -332,7 +340,7 @@ class ParseStage(object):
         '''
         Create node for math prefix operators: -
         tokList has the following structure:
-        [<operator>, <expression_l>]
+        [<operator>, <expression>]
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
@@ -419,7 +427,7 @@ class ParseStage(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         #there must be the correct number of tokens
         if len(tokList) < 7 or (len(tokList)-7) % 4:
-            raise ParseActionException('Broken "if" statement! loc: '
+            raise Exception('Broken "if" statement! loc: '
                                        + str(nCurr.loc))
         #extract the interesting tokens
         for i in range(1, len(tokList)-4, 4):
@@ -541,30 +549,30 @@ class ParseStage(object):
             nCurr.options.append(toks[i])
         return nCurr
 
-    def _actionForeignCodeStmt(self, s, loc, toks): #IGNORE:W0613
-        '''
-        Create node for foreign_code statement:
-            foreign_code python replace_call ::{{ sin(x) }}:: ;
-        BNF:
-        foreignCodeStmt = (kw('foreign_code')
-                           + ES(Word(alphanums+'_')                  .setResultsName('language')
-                                                                     .setName('language specification')
-                                + Word(alphanums+'_')                .setResultsName('method')
-                                                                     .setName('code insertion method')
-                                + QuotedString(quoteChar='::{{',
-                                               endQuoteChar='}}::')  .setResultsName('code')
-                                                                     .setName('code to insert')
-                                + stmtEnd)                           .setErrMsgStart('Foreign code statement: ')
-                           )                                         .setParseAction(self._actionForeignCodeStmt)
-         '''
-        if ParseStage.noTreeModification:
-            return None #No parse result modifications for debugging
-        nCurr = NodeForeignCodeStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.language = toks.language
-        nCurr.method = toks.method
-        nCurr.code = toks.code
-        return nCurr
+#    def _actionForeignCodeStmt(self, s, loc, toks): #IGNORE:W0613
+#        '''
+#        Create node for foreign_code statement:
+#            foreign_code python replace_call ::{{ sin(x) }}:: ;
+#        BNF:
+#        foreignCodeStmt = (kw('foreign_code')
+#                           + ES(Word(alphanums+'_')                  .setResultsName('language')
+#                                                                     .setName('language specification')
+#                                + Word(alphanums+'_')                .setResultsName('method')
+#                                                                     .setName('code insertion method')
+#                                + QuotedString(quoteChar='::{{',
+#                                               endQuoteChar='}}::')  .setResultsName('code')
+#                                                                     .setName('code to insert')
+#                                + stmtEnd)                           .setErrMsgStart('Foreign code statement: ')
+#                           )                                         .setParseAction(self._actionForeignCodeStmt)
+#         '''
+#        if ParseStage.noTreeModification:
+#            return None #No parse result modifications for debugging
+#        nCurr = NodeForeignCodeStmt()
+#        nCurr.loc = self.createTextLocation(loc) #Store position
+#        nCurr.language = toks.language
+#        nCurr.method = toks.method
+#        nCurr.code = toks.code
+#        return nCurr
 
     def _actionCompileStmt(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -720,7 +728,7 @@ class ParseStage(object):
         nCurr = NodeFuncExecute()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store function name
-        nCurr.name = toks[0].name  
+        nCurr.name = toks[0]
         #check argument list - positional arguments must come before keyword arguments
         there_was_keyword_argument = False
         #store function arguments:
@@ -814,34 +822,31 @@ class ParseStage(object):
         return nCurr
 
 
-    def _actionClassDef(self, s, loc, toks): #IGNORE:W0613
+    def _action_class_def(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for definition of a class:
-            class foo(Model):{ }
+            class foo(a):
+                inherit Model
+                data myA: Real = a
+            
         BNF:
         classBodyStmts = pragmaStmt | attributeDef | funcDef | assignment
-        classDef = Group(kw('class')
-                         + ES(newIdentifier                          .setResultsName('className')
-                              + '(' + ES(dotIdentifier               .setResultsName('superName')
-                                         + ')')                      .setErrMsgStart('Definition of base class: ')
-                              + ':' + blockBegin
-                              + ZeroOrMore(classBodyStmts)            .setResultsName('classBodyStmts')
-                              + blockEnd)                            .setErrMsgStart('class definition: ')
-                         )                                           .setParseAction(self._actionClassDef)\
+        classdef = Group(kw('class')
+                         - newIdentifier                           .setResultsName('classname')
+                         + Optional('(' - argument_list+ ')' ) #error msg: 'Arguments for compile time constructor :'
+                         + ':' + suite                             .setResultsName('class_body_stmts')
+                         )                                         .setParseAction(self._action_class_def)
         '''
         if ParseStage.noTreeModification:
             return None #No parse result modifications for debugging
-        #tokList = toks.asList()[0] #there always seems to be
+        #tokList = toks.asList()[0] #the Group creates
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeClassDef()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store class name and name of super class
-        nCurr.name = DotName(toks.className)
-        nCurr.baseName = DotName(toks.superName)
-        #create children (may or may not be present):  data, functions
-        if len(toks.classBodyStmts) > 0:
-            for stmt in toks.classBodyStmts:
-                nCurr.appendChild(stmt)
+        nCurr.name = DotName(toks.classname)
+        #store class body (may or may not be present):  data, functions
+        nCurr.statements = toks.class_body_stmts
         return nCurr
 
 
@@ -876,6 +881,11 @@ class ParseStage(object):
         S = Suppress
         ES = ErrStop
 
+        #end of line terminates statements, so it is not regular whitespace
+        ParserElement.setDefaultWhitespaceChars('\t ')
+        #the matching end of line token 
+        newline = LineEnd().suppress()
+        
 #------------------ Literals .................................................................
 
         #Integer (unsigned).
@@ -936,7 +946,7 @@ class ParseStage(object):
         call_argument = Group(keyword_argument | positional_argument) #extra group to make setResultsName work
         argument_list = ( delimitedList(call_argument)             .setResultsName('argument_list')
                           + Optional(',') )
-        call = Group('(' - Optional(argument_list) + ')')
+        call = Group('(' - Optional(argument_list) + ')') #TODO: Error message 'Function arguments: '
 
         #Slicing/subscription: everything within the rectangular brackets is parsed here;
         # the variable name is parsed in 'expression'
@@ -1026,61 +1036,40 @@ class ParseStage(object):
 #                                                         .setName('boolExpr2')#.setDebug(True)
 #        expression << (expression2 | expression1)        .setName('expression')  #IGNORE:W0104
 
+#------------------- STATEMEMTS -------------------------------------------------------------------------*
+#------------------- Simple statements ..................................................................
 
-#------------------- Statements ..................................................................
-        blockBegin = Literal('{').suppress()
-        blockEnd = Literal('}').suppress()
-        stmtEnd = Literal(';').suppress()
-
-        #Statement and list of statements - for compund statements and function bodies
-        statement = Forward()
-        block = blockBegin + ES(ZeroOrMore(statement) + blockEnd)    .setErrMsgStart('Block: ')
-        suite = Group(block | statement)                             .setParseAction(self._actionStatementList)\
-                                                                     #.setName('statementList')#.setDebug(True)
-        #Flow control - if then else
-        ifStatement = \
-            Group(kw('if') + ES(expression + ':' + suite
-                  + ZeroOrMore(kw('elif') + ES(expression + ':' + suite) .setErrMsgStart('elif: '))
-                  + kw('else') + ES(':' + suite)                         .setErrMsgStart('else: ')
-                  )                                                      .setErrMsgStart('if: ')
-                  )                                                      .setParseAction(self._actionIfStatement)\
-                                                                         .setName('ifStatement')#.setDebug(True)
-        #compute expression and assign to value
-        assignment = Group(expression + '='
-                           + ES(expression + stmtEnd)                .setErrMsgStart('Assignment statement: ')
-                           )                                         .setParseAction(self._actionAssignment)\
-                                                                     .setName('assignment')#.setDebug(True)
-        #execute a class method (or a function) -
-        #usually inserts the function bodie's code into the current method.
-        #This code insertion (inlinig) is done recursively and leaves only
-        #a few big top level methods
-        funcCall = Forward() #TODO: REMOVE!!!
-        funcCallStmt = funcCall + ES(stmtEnd)                        .setErrMsgStart('Call statement: ')
+#        #execute a class method (or a function) -
+#        #usually inserts the function bodie's code into the current method.
+#        #This code insertion (inlinig) is done recursively and leaves only
+#        #a few big top level methods
+#        funcCall = Forward() #TODO: REMOVE!!!
+#        funcCallStmt = funcCall + ES(stmtEnd)                        .setErrMsgStart('Call statement: ')
 
         #Return values from a function
         returnStmt = (kw('return') + ES(Optional(expression          .setResultsName('retVal'))
-                                        + stmtEnd)                   .setErrMsgStart('Return statement: ')
+                                        )                            .setErrMsgStart('Return statement: ')
                       )                                              .setParseAction(self._actionReturnStmt)
 
         #pragma statement: tell any kind of options to the compiler
         pragmaStmt = (kw('pragma')
                       + ES(OneOrMore(Word(alphanums+'_')             .setName('pragma option')
-                                     ) + stmtEnd)                    .setErrMsgStart('Pragma statement: ')
+                                     ) )                             .setErrMsgStart('Pragma statement: ')
                       )                                              .setParseAction(self._actionPragmaStmt)
 
-        #foreign code statement: specify code in the target language that is
-        #inserted into the compiled module
-        #    foreign_code python replace_call ::{{ sin(x) }}:: ;
-        foreignCodeStmt = (kw('foreign_code')
-                           + ES(Word(alphanums+'_')                  .setResultsName('language')
-                                                                     .setName('language specification')
-                                + Word(alphanums+'_')                .setResultsName('method')
-                                                                     .setName('code insertion method')
-                                + QuotedString(quoteChar='::{{',
-                                               endQuoteChar='}}::')  .setResultsName('code')
-                                                                     .setName('code to insert')
-                                + stmtEnd)                           .setErrMsgStart('Foreign code statement: ')
-                           )                                         .setParseAction(self._actionForeignCodeStmt)
+#        #foreign code statement: specify code in the target language that is
+#        #inserted into the compiled module
+#        #    foreign_code python replace_call ::{{ sin(x) }}:: ;
+#        foreignCodeStmt = (kw('foreign_code')
+#                           + ES(Word(alphanums+'_')                  .setResultsName('language')
+#                                                                     .setName('language specification')
+#                                + Word(alphanums+'_')                .setResultsName('method')
+#                                                                     .setName('code insertion method')
+#                                + QuotedString(quoteChar='::{{',
+#                                               endQuoteChar='}}::')  .setResultsName('code')
+#                                                                     .setName('code to insert')
+#                                + stmtEnd)                           .setErrMsgStart('Foreign code statement: ')
+#                           )                                         .setParseAction(self._actionForeignCodeStmt)
 
         #expression list - parse: 2, foo.bar, 3*sin(baz)
         commaSup = Literal(',').suppress()
@@ -1090,53 +1079,80 @@ class ParseStage(object):
         printStmt = Group(kw('print')
                           + ES(expressionList                        .setResultsName('argList')
                                     + Optional(',')                  .setResultsName('trailComma')
-                                    + stmtEnd)                       .setErrMsgStart('Print statement: ')
+                                    )                                .setErrMsgStart('Print statement: ')
                           )                                          .setParseAction(self._actionPrintStmt)\
                                                                      .setName('printStmt')#.setDebug(True)
         #show graphs
         graphStmt = Group(kw('graph')
                           + ES(expressionList                        .setResultsName('argList')
-                                    + stmtEnd)                       .setErrMsgStart('Graph statement: ')
+                                    )                                .setErrMsgStart('Graph statement: ')
                           )                                          .setParseAction(self._actionGraphStmt)\
                                                                      .setName('graphStmt')#.setDebug(True)
         #store to disk
         storeStmt = Group(kw('save')
-                          + ES(Group(Optional(stringLiteral))        .setResultsName('argList')
-                                    + stmtEnd)                       .setErrMsgStart('Save statement: ')
+                          + ES(expressionList                        .setResultsName('argList')
+                                     )                               .setErrMsgStart('Save statement: ')
                           )                                          .setParseAction(self._actionStoreStmt)\
                                                                      .setName('storeStmt')#.setDebug(True)
         #compile a class
         compileStmt = (kw('compile') + ES(
                           (expression                                .setResultsName('className')
-                           + stmtEnd
                            ) |
                           (identifier                                .setResultsName('name')
-                           + ':' + expression                     .setResultsName('className')
-                           + stmtEnd)
+                           + ':' + expression                        .setResultsName('className')
+                           )
                           )                                          .setErrMsgStart('compile statement: ')
                        )                                             .setParseAction(self._actionCompileStmt)\
 
-        statement << (storeStmt | graphStmt | printStmt |                                   #IGNORE:W0104
-                      returnStmt | pragmaStmt | foreignCodeStmt |
-                      ifStatement | assignment | funcCallStmt)       .setName('statement')
+        #compute expression and assign to value
+        assignment = Group(expression + '='
+                           + ES(expression)                          .setErrMsgStart('Assignment statement: ')
+                           )                                         .setParseAction(self._actionAssignment)\
+                                                                     .setName('assignment')#.setDebug(True)
+                                                                     
+        #------------ data statemnt -------------------------------------------------------------------------
+        #define parameters, variables, constants and submodels
+        #commaSup = Literal(',').suppress()
+        #parse: 'foo, bar, baz
+        #Identifiers must not be keywords, check is done in _actionDataDef
+        newAttrList = Group(identifier
+                            + ZeroOrMore(commaSup + identifier))     .setName('attrNameList')
+        #The roles of data (maybe call it storage class?):
+        #variable:    changes during the simulation
+        #parameter:   constant during a (dynamic?) simulation, can change beween simulations,
+        #             can be computed in the init function.
+        #constant:    must be known at compile time, may be optimized away,
+        #             the compiler may generate special code depending on the value.
+        attrRole = kw('state_variable') | kw('algebraic_variable') | \
+                   kw('variable') | kw('param') | kw('const')
+        #parse 'data foo, bar: baz.boo parameter;
+        data_stmt = Group(kw('data')
+                             + ES(newAttrList                        .setResultsName('attrNameList')
+                                  + ':' + expression                 .setResultsName('className')
+                                  + Optional(attrRole)               .setResultsName('attrRole')
+                                  + Optional('=' + ES(expression     .setResultsName('defaultValue')
+                                                      )              .setErrMsgStart('default value: ') )
+                                  )                                  .setErrMsgStart('data definition: ')
+                             )                                       .setParseAction(self._actionDataDef)\
+       
+        simple_stmt = (storeStmt | graphStmt | printStmt |                                   #IGNORE:W0104
+                        returnStmt | pragmaStmt | data_stmt |
+                        compileStmt | assignment )                 .setName('simple statement')
 
-#------------- Function ............................................................................
-#        #Function call
-#        #one argument at the call site: x=2.5  ,  x  ,  2.5
-#        funcArgCall = (  Group(identifier                            .setResultsName('argName')
-#                               + '=' + expression                    .setResultsName('value')
-#                               )                                     .setResultsName('namedArg')
-#                       | Group(expression)                           .setResultsName('positionalArg')
-#                       )                                             #setParseAction(self._action_func_call_arg)
-#        funcArgListCall = \
-#                Group(Optional(delimitedList(funcArgCall, ',')))     #.setParseAction(self._actionStatementList)
-#        #the function call
-#        #The funcCall parser is is forward decdlared, because it is used in
-#        #the (mathematical) expression and in the function call statement.
-#        funcCall << Group(expression                              .setResultsName('funcName')  #IGNORE:W0104
-#                         + '(' + ES(funcArgListCall                  .setResultsName('argList')
-#                                    + ')' ))                         .setParseAction(self._action_func_call)
+#------------- Compound statements ............................................................................
+        #body of compound statements
+        suite = Forward()
+        
+        #Flow control - if then else
+        ifStatement = \
+            Group(kw('if') + ES(expression + ':' + suite
+                  + ZeroOrMore(kw('elif') + ES(expression + ':' + suite) .setErrMsgStart('elif: '))
+                  + Optional(  kw('else') + ES(':' + suite)              .setErrMsgStart('else: '))
+                  )                                                      .setErrMsgStart('if: ')
+                  )                                                      .setParseAction(self._actionIfStatement)\
+                                                                         .setName('ifStatement')#.setDebug(True)
 
+        #------------- Function / Method ............................................................................
         #Function definition (class method or global function)
         #one argument of the definition: inX:Real=2.5
         funcArgDef = Group(identifier                                .setResultsName('name')
@@ -1160,46 +1176,39 @@ class ParseStage(object):
                         )                                            .setParseAction(self._actionFuncDef)\
                                                                      #.setName('memberFuncDef')#.setDebug(True)
 
-#---------- Define new objects ......................................................................
-        #define parameters, variables, constants and submodels
-        #commaSup = Literal(',').suppress()
-        #parse: 'foo, bar, baz
-        #Identifiers must not be keywords, check is done in _actionDataDef
-        newAttrList = Group(identifier
-                            + ZeroOrMore(commaSup + identifier))     .setName('attrNameList')
-        #The roles of data (maybe call it storage class?):
-        #variable:    changes during the simulation
-        #parameter:   constant during a (dynamic?) simulation, can change beween simulations,
-        #             can be computed in the init function.
-        #constant:    must be known at compile time, may be optimized away,
-        #             the compiler may generate special code depending on the value.
-        attrRole = kw('state_variable') | kw('algebraic_variable') | \
-                   kw('variable') | kw('param') | kw('const')
-        #parse 'data foo, bar: baz.boo parameter;
-        attributeDef = Group(kw('data')
-                             + ES(newAttrList                        .setResultsName('attrNameList')
-                                  + ':' + expression              .setResultsName('className')
-                                  + Optional(attrRole)               .setResultsName('attrRole')
-                                  + Optional('=' + ES(expression     .setResultsName('defaultValue')
-                                                      )              .setErrMsgStart('default value: ') )
-                                  + stmtEnd)                         .setErrMsgStart('data definition: ')
-                             )                                       .setParseAction(self._actionDataDef)\
-
+        #---------- class  ......................................................................
         #definition of a class (process, model, type?)
-        classBodyStmts = pragmaStmt | attributeDef | funcDef | assignment
-        classDef = Group(kw('class')
-                         + ES(newIdentifier                          .setResultsName('className')
-                              + '(' + ES(expression               .setResultsName('superName')
-                                         + ')')                      .setErrMsgStart('Definition of base class: ')
-                              + ':' + blockBegin
-                              + ZeroOrMore(classBodyStmts)           .setResultsName('classBodyStmts')
-                              + blockEnd)                            .setErrMsgStart('class definition: ')
-                         )                                           .setParseAction(self._actionClassDef)\
+        #TODO: "inherit" statement
+        classdef = Group(kw('class')
+                         - newIdentifier                           .setResultsName('classname')
+                         + Optional('(' - argument_list + ')' ) #error msg: 'Arguments for compile time constructor :'
+                         + ':' + suite                             .setResultsName('class_body_stmts')
+                         )                                         .setParseAction(self._action_class_def)
+                                                                    #.setErrMsgStart('class definition: ')
+        
+        compound_stmt = (classdef | funcDef | ifStatement)
+        
+        
+        #------ Statement, Suite -------------------------------------------------------------------------
+        # See: http://docs.python.org/ref/compound.html
+        #list of simple statements, separated by semicolon: a=1; b=2; print a, b
+        stmt_list = Group(delimitedList(Group(simple_stmt), ';') 
+                     + Optional(Suppress(";")) )                   .setParseAction(self._actionStatementList)
+        #Statement: one line of code, or a compound (if, class, func) statement
+        statement = (  simple_stmt + newline 
+                     | stmt_list + newline 
+                     | compound_stmt         )
+        #And indented block of statements
+        stmt_block = indentedBlock(statement, self.indentStack)    .setParseAction(self._actionStatementList)
+        #Body of class or function; the dependent code of 'if'
+        # Statement list and indented block of statements lead to the same AST
+        suite << ( stmt_list + newline | newline + stmt_block )                                                
+        
 
-        topLevelStms = classDef | funcDef | attributeDef | \
-                       compileStmt | assignment
-        module = (Group(ZeroOrMore(topLevelStms)) + StringEnd())    .setParseAction(self._actionModule)\
-                                                                     .setName('module')#.setDebug(True)
+#---------- module ------------------------------------------------------------------------------------#
+        module = (indentedBlock(statement, self.indentStack, indent=False) 
+                  + StringEnd())                                   .setParseAction(self._actionModule)\
+                                                                   .setName('module')#.setDebug(True)
 
         #................ End of language definition ..................................................
 
@@ -1244,6 +1253,8 @@ class ParseStage(object):
             self.progFileName = fileName
         if moduleName is not None:
             self.moduleName = moduleName
+        #initialize the indentation stack (just to be sure)
+        self.indentStack = [1]
         #parse the program
         try:
             astTree = self._parser.parseString(inProgram).asList()[0]
@@ -1367,7 +1378,7 @@ class RunTest(Process):
         #print parser.parseModuleStr(testProg2)
 
     flagTestExpression = True
-#    flagTestExpression = False
+    flagTestExpression = False
     if flagTestExpression:
         parser = ParseStage()
         #ParseStage.noTreeModification = 1
@@ -1383,17 +1394,32 @@ class RunTest(Process):
 #        print parser.parseExpressionStr('0**1**2**3**4**99')
 #        print parser.parseExpressionStr('a.b.c')
 #        print parser.parseExpressionStr('0+1*2+3+4-99')
-        #print parser.parseExpressionStr('0*1^2*3*4')
-        #print parser.parseExpressionStr('0+(1+2)+3+4')
 #        print parser.parseExpressionStr('-0+1+--2*-3--4')
-        #print parser.parseExpressionStr('-aa.a+bb.b+--cc.c*-dd.d--ee.e+f').asList()[0]
-        #print parser.parseExpressionStr('time+0+sin(2+3*4)+5').asList()[0]
 #        print parser.parseExpressionStr('0+a1.a2+b1.b2.b3*3+99 #comment')
-        print parser.parseExpressionStr('a(1, 3, )')
-        #print parser.parseExpressionStr('a(a.b.c(1,d)+ e(2) + 99')
-        #print parser.parseExpressionStr('0.123+1.2e3')
+#        print parser.parseExpressionStr('a(1, 3, )')
+        print parser.parseExpressionStr('a.b.c(1, d.e)')
+#        print parser.parseExpressionStr('0.123+1.2e3')
 
-        #print parser._expressionParser
+    flagTestModuleSimple = True
+#    flagTestModuleSimple = False
+# ---------- test -------------
+    if flagTestModuleSimple:
+        parser = ParseStage()
+        ParseStage.noTreeModification = 1
+
+        print 'keywords:'
+        print parser.keywords
+
+        prog = \
+"""
+print aa, \\
+      1, 2 
+print bb
+"""
+        print prog
+        print
+        print parser.parseModuleStr(prog)
+    
 
     print 'tests finished'
 
