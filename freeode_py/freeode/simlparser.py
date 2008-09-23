@@ -115,7 +115,7 @@ class ChMsg(object):
     Attach to parser with setFailAction
     '''
     def __init__(self, prepend=None, append=None):
-        object.__init__()
+        object.__init__(self)
         self.prepend_str = prepend
         self.append_str = append
         
@@ -266,12 +266,12 @@ class ParseStage(object):
         if identifier in ParseStage.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
             errMsg = 'Keyword can not be used as an identifier: ' + identifier
-            txtLoc = self.createTextLocation(loc)
-            raise UserException(errMsg, txtLoc)
+#            txtLoc = self.createTextLocation(loc)
+            raise ParseFatalException(s, loc, errMsg)
         if identifier in ParseStage.builtInVars:
             errMsg = 'Built in variables can not be redefined: ' + identifier
-            txtLoc = self.createTextLocation(loc)
-            raise UserException(errMsg, txtLoc)
+#            txtLoc = self.createTextLocation(loc)
+            raise ParseFatalException(s, loc, errMsg)
         return
 
 #    def _actionBuiltInValue(self, str, loc, toks):
@@ -645,12 +645,12 @@ class ParseStage(object):
         attrDefList = NodeDataDefList(loc=self.createTextLocation(loc))
         nameList = toks.attrNameList.asList()
         for name in nameList:
-            if name in ParseStage.keywords:
-                if name in ParseStage.builtInVars:
-                    errMsg = 'Special name can not be redefined: ' + name
-                else:
-                    errMsg = 'Keyword can not be used as an identifier: ' + name
-                raise ParseFatalException(str, loc, errMsg)
+#            if name in ParseStage.keywords:
+#                if name in ParseStage.builtInVars:
+#                    errMsg = 'Special name can not be redefined: ' + name
+#                else:
+#                    errMsg = 'Keyword can not be used as an identifier: ' + name
+#                raise ParseFatalException(str, loc, errMsg)
             attrDef = NodeDataDef(loc=self.createTextLocation(loc))
             attrDef.name = DotName(name) #store attribute name
             attrDef.className = DotName(toks.className.asList())  #store class name
@@ -939,12 +939,12 @@ class ParseStage(object):
         # more syntax checks are done in parse action to generate better error messages.
         #
         #one argument at the call site: x=2.5  ,  x  ,  2.5
-        keyword_argument = Group(identifier                        #.setResultsName('keyword')
-                                 + '=' - expression                #.setResultsName('value')
-                                 )                                 .setResultsName('keyword_argument', listAllMatches=True)
-        positional_argument = Group(expression)                    .setResultsName('positional_argument', listAllMatches=True)
+        keyword_argument = Group(identifier                         #.setResultsName('keyword')
+                                 + '=' - expression                 #.setResultsName('value')
+                                 )                                  .setResultsName('keyword_argument', listAllMatches=True)
+        positional_argument = Group(expression)                     .setResultsName('positional_argument', listAllMatches=True)
         call_argument = Group(keyword_argument | positional_argument) #extra group to make setResultsName work
-        argument_list = ( delimitedList(call_argument)             .setResultsName('argument_list')
+        argument_list = ( delimitedList(call_argument)              .setResultsName('argument_list')
                           + Optional(',') )
         call = Group('(' - Optional(argument_list) + ')') #TODO: Error message 'Function arguments: '
 
@@ -980,7 +980,7 @@ class ParseStage(object):
              (kw('not'),    1, opAssoc.RIGHT,            self._action_op_prefix),
              (kw('and'),    2, opAssoc.LEFT,             self._action_op_infix_left),
              (kw('or'),     2, opAssoc.LEFT,             self._action_op_infix_left),
-             ])                                                    .setName('expression')
+             ])                                                     .setName('expression')
 
 #        #Forward declarations for recursive top level rules
 #        expression = Forward() #mathematical expression (incuding bool logic)
@@ -1044,18 +1044,17 @@ class ParseStage(object):
 #        #This code insertion (inlinig) is done recursively and leaves only
 #        #a few big top level methods
 #        funcCall = Forward() #TODO: REMOVE!!!
-#        funcCallStmt = funcCall + ES(stmtEnd)                        .setErrMsgStart('Call statement: ')
+#        funcCallStmt = funcCall + ES(stmtEnd)                        .setErrMsgStart('call statement: ')
 
-        #Return values from a function
-        returnStmt = (kw('return') + ES(Optional(expression          .setResultsName('retVal'))
-                                        )                            .setErrMsgStart('Return statement: ')
-                      )                                              .setParseAction(self._actionReturnStmt)
+        #Return values from a function 
+        return_stmt = (kw('return') - Optional(expression           .setResultsName('ret_val'))
+                      )                                             .setParseAction(self._actionReturnStmt) \
+                                                                    .setFailAction(ChMsg(prepend='return statement: '))
 
         #pragma statement: tell any kind of options to the compiler
-        pragmaStmt = (kw('pragma')
-                      + ES(OneOrMore(Word(alphanums+'_')             .setName('pragma option')
-                                     ) )                             .setErrMsgStart('Pragma statement: ')
-                      )                                              .setParseAction(self._actionPragmaStmt)
+        pragma_stmt = (kw('pragma') 
+                       - OneOrMore(Word(alphanums+'_')))            .setParseAction(self._actionPragmaStmt) \
+                                                                    .setFailAction(ChMsg(prepend='pragma statement: '))
 
 #        #foreign code statement: specify code in the target language that is
 #        #inserted into the compiled module
@@ -1072,144 +1071,141 @@ class ParseStage(object):
 #                           )                                         .setParseAction(self._actionForeignCodeStmt)
 
         #expression list - parse: 2, foo.bar, 3*sin(baz)
-        commaSup = Literal(',').suppress()
-        expressionList = Group(expression
-                                + ZeroOrMore(commaSup + expression)).setName('exprList')
+        expression_list = delimitedList(expression, ',')            .setName('exprList')
         #print something to stdout
-        printStmt = Group(kw('print')
-                          + ES(expressionList                        .setResultsName('argList')
-                                    + Optional(',')                  .setResultsName('trailComma')
-                                    )                                .setErrMsgStart('Print statement: ')
-                          )                                          .setParseAction(self._actionPrintStmt)\
-                                                                     .setName('printStmt')#.setDebug(True)
+        print_stmt = Group(kw('print')
+                          - Optional(expression_list)               .setResultsName('arg_list')
+                          + Optional(',')                           .setResultsName('trail_comma')                       
+                          )                                         .setParseAction(self._actionPrintStmt)\
+                                                                    .setFailAction(ChMsg(prepend='print statement: '))
         #show graphs
-        graphStmt = Group(kw('graph')
-                          + ES(expressionList                        .setResultsName('argList')
-                                    )                                .setErrMsgStart('Graph statement: ')
-                          )                                          .setParseAction(self._actionGraphStmt)\
-                                                                     .setName('graphStmt')#.setDebug(True)
+        graph_stmt = Group(kw('graph') - expression_list            .setResultsName('arg_list')
+                           - Optional(','))                         .setParseAction(self._actionGraphStmt)\
+                                                                    .setFailAction(ChMsg(prepend='graph statement: '))
         #store to disk
-        storeStmt = Group(kw('save')
-                          + ES(expressionList                        .setResultsName('argList')
-                                     )                               .setErrMsgStart('Save statement: ')
-                          )                                          .setParseAction(self._actionStoreStmt)\
-                                                                     .setName('storeStmt')#.setDebug(True)
+        store_stmt = Group(kw('save') - expression_list             .setResultsName('arg_list')
+                          - Optional(','))                          .setParseAction(self._actionStoreStmt)\
+                                                                    .setFailAction(ChMsg(prepend='save statement: '))
+
         #compile a class
-        compileStmt = (kw('compile') + ES(
-                          (expression                                .setResultsName('className')
-                           ) |
-                          (identifier                                .setResultsName('name')
-                           + ':' + expression                        .setResultsName('className')
-                           )
-                          )                                          .setErrMsgStart('compile statement: ')
-                       )                                             .setParseAction(self._actionCompileStmt)\
+        compile_stmt = (kw('compile') 
+                        - Optional(identifier                       .setResultsName('name')
+                                   + ':') 
+                        + expression                                .setResultsName('class_name')
+                        )                                           .setParseAction(self._actionCompileStmt)\
+                                                                    .setFailAction(ChMsg(prepend='compile statement: '))
 
         #compute expression and assign to value
-        assignment = Group(expression + '='
-                           + ES(expression)                          .setErrMsgStart('Assignment statement: ')
-                           )                                         .setParseAction(self._actionAssignment)\
-                                                                     .setName('assignment')#.setDebug(True)
-                                                                     
+        assign_stmt = Group(expression + '=' - expression)          .setParseAction(self._actionAssignment)\
+                                                                    .setFailAction(ChMsg(prepend='assignment statement: '))
+
         #------------ data statemnt -------------------------------------------------------------------------
         #define parameters, variables, constants and submodels
-        #commaSup = Literal(',').suppress()
-        #parse: 'foo, bar, baz
-        #Identifiers must not be keywords, check is done in _actionDataDef
-        newAttrList = Group(identifier
-                            + ZeroOrMore(commaSup + identifier))     .setName('attrNameList')
         #The roles of data (maybe call it storage class?):
         #variable:    changes during the simulation
         #parameter:   constant during a (dynamic?) simulation, can change beween simulations,
         #             can be computed in the init function.
         #constant:    must be known at compile time, may be optimized away,
         #             the compiler may generate special code depending on the value.
-        attrRole = kw('state_variable') | kw('algebraic_variable') | \
-                   kw('variable') | kw('param') | kw('const')
+        attrRole = (  kw('state_variable') | kw('algebraic_variable') 
+                    | kw('variable') | kw('param') | kw('const')      )
+        #parse: 'foo, bar, baz
+        newAttrList = Group(delimitedList(newIdentifier))          
         #parse 'data foo, bar: baz.boo parameter;
         data_stmt = Group(kw('data')
-                             + ES(newAttrList                        .setResultsName('attrNameList')
-                                  + ':' + expression                 .setResultsName('className')
-                                  + Optional(attrRole)               .setResultsName('attrRole')
-                                  + Optional('=' + ES(expression     .setResultsName('defaultValue')
-                                                      )              .setErrMsgStart('default value: ') )
-                                  )                                  .setErrMsgStart('data definition: ')
-                             )                                       .setParseAction(self._actionDataDef)\
-       
-        simple_stmt = (storeStmt | graphStmt | printStmt |                                   #IGNORE:W0104
-                        returnStmt | pragmaStmt | data_stmt |
-                        compileStmt | assignment )                 .setName('simple statement')
+                          - newAttrList                             .setResultsName('attr_name_list')
+                          + ':' + expression                        .setResultsName('class_name')
+                          + Optional(attrRole)                      .setResultsName('attr_role')
+                          + Optional('=' - expression               .setResultsName('default_value')
+                                     )                              .setFailAction(ChMsg(prepend='default value: '))
+                          )                                         .setParseAction(self._actionDataDef)\
+                                                                    .setFailAction(ChMsg(prepend='data definition: '))
+                                                                   
+        simple_stmt = (store_stmt | graph_stmt | print_stmt |                                   #IGNORE:W0104
+                        return_stmt | pragma_stmt | data_stmt |
+                        compile_stmt | assign_stmt )                  .setName('simple statement')
 
 #------------- Compound statements ............................................................................
         #body of compound statements
         suite = Forward()
         
         #Flow control - if then else
-        ifStatement = \
-            Group(kw('if') + ES(expression + ':' + suite
-                  + ZeroOrMore(kw('elif') + ES(expression + ':' + suite) .setErrMsgStart('elif: '))
-                  + Optional(  kw('else') + ES(':' + suite)              .setErrMsgStart('else: '))
-                  )                                                      .setErrMsgStart('if: ')
-                  )                                                      .setParseAction(self._actionIfStatement)\
-                                                                         .setName('ifStatement')#.setDebug(True)
-
+        if_stmt = \
+            Group(kw('if') - expression + ':' + suite
+                  + ZeroOrMore(kw('elif') - expression + ':' + suite) #.setErrMsgStart('elif: '))
+                  + Optional(  kw('else') - ':' + suite)              #.setErrMsgStart('else: '))
+                  )                                                 .setParseAction(self._actionIfStatement)\
+                                                                    .setName('ifStatement')#.setDebug(True)
+                                                                    #.setErrMsgStart('if: ')
+        
         #------------- Function / Method ............................................................................
         #Function definition (class method or global function)
         #one argument of the definition: inX:Real=2.5
-        funcArgDef = Group(identifier                                .setResultsName('name')
-                           + Optional(':' + ES(expression            .setResultsName('className')
-                                               )                     .setErrMsgStart('type specifier: '))
-                           + Optional('=' + ES(expression            .setResultsName('defaultValue')
-                                               )                     .setErrMsgStart('default value: '))
-                           )                                         .setParseAction(self._actionFuncArgDef)
+        funcArgDef = Group(identifier                               .setResultsName('name')
+                           + Optional(':' + ES(expression           .setResultsName('className')
+                                               )                    .setErrMsgStart('type specifier: '))
+                           + Optional('=' + ES(expression           .setResultsName('defaultValue')
+                                               )                    .setErrMsgStart('default value: '))
+                           )                                        .setParseAction(self._actionFuncArgDef)
         funcArgListDef = \
-                Group(Optional(delimitedList(funcArgDef, ',')))      .setParseAction(self._actionStatementList)
+                Group(Optional(delimitedList(funcArgDef, ',')))     .setParseAction(self._actionStatementList)
         #the function: func doFoo(a:Real=2.5, b) -> Real {...}
         funcDef = Group(kw('func') + ES(
-                        newIdentifier                                .setResultsName('funcName')
-                        + '(' + ES(Group(funcArgListDef)             .setResultsName('argList')
-                                   + ')' )                           .setErrMsgStart('argument List: ')
-                        + Optional('->' + ES(expression              .setResultsName('returnType')
-                                             )                       .setErrMsgStart('return type: '))
+                        newIdentifier                               .setResultsName('funcName')
+                        + '(' + ES(Group(funcArgListDef)            .setResultsName('argList')
+                                   + ')' )                          .setErrMsgStart('argument List: ')
+                        + Optional('->' + ES(expression             .setResultsName('returnType')
+                                             )                      .setErrMsgStart('return type: '))
                         + ':'
-                        + Group(suite)                               .setResultsName('funcBody')
-                        )                                            .setErrMsgStart('function definition: ')
-                        )                                            .setParseAction(self._actionFuncDef)\
-                                                                     #.setName('memberFuncDef')#.setDebug(True)
+                        + Group(suite)                              .setResultsName('funcBody')
+                        )                                           .setErrMsgStart('function definition: ')
+                        )                                           .setParseAction(self._actionFuncDef)\
+                                                                    #.setName('memberFuncDef')#.setDebug(True)
 
         #---------- class  ......................................................................
         #definition of a class (process, model, type?)
         #TODO: "inherit" statement
         classdef = Group(kw('class')
-                         - newIdentifier                           .setResultsName('classname')
-                         + Optional('(' - argument_list + ')' ) #error msg: 'Arguments for compile time constructor :'
-                         + ':' + suite                             .setResultsName('class_body_stmts')
-                         )                                         .setParseAction(self._action_class_def)
-                                                                    #.setErrMsgStart('class definition: ')
+                         - newIdentifier                            .setResultsName('classname')
+                         + Optional('(' - argument_list + ')' )     .setFailAction(ChMsg(prepend='constructor arguments: '))
+                         + ':' + suite                              .setResultsName('class_body_stmts')
+                         )                                          .setParseAction(self._action_class_def)\
+                                                                    .setFailAction(ChMsg(prepend='class definition: '))
+                                      
         
-        compound_stmt = (classdef | funcDef | ifStatement)
+        compound_stmt = (classdef | funcDef | if_stmt)
         
         
         #------ Statement, Suite -------------------------------------------------------------------------
         # See: http://docs.python.org/ref/compound.html
         #list of simple statements, separated by semicolon: a=1; b=2; print a, b
         stmt_list = Group(delimitedList(Group(simple_stmt), ';') 
-                     + Optional(Suppress(";")) )                   .setParseAction(self._actionStatementList)
+                     + Optional(Suppress(";")) )                    .setParseAction(self._actionStatementList)
         #Statement: one line of code, or a compound (if, class, func) statement
         statement = (  simple_stmt + newline 
                      | stmt_list + newline 
                      | compound_stmt         )
         #And indented block of statements
-        stmt_block = indentedBlock(statement, self.indentStack)    .setParseAction(self._actionStatementList)
+        stmt_block = indentedBlock(statement, self.indentStack)     .setParseAction(self._actionStatementList)
         #Body of class or function; the dependent code of 'if'
         # Statement list and indented block of statements lead to the same AST
         suite << ( stmt_list + newline | newline + stmt_block )                                                
         
-
+#        #simple definition for debuging
+#        #simple statements are terminated by newline
+#        #while the indented block eats all newlines after the compound statement
+#        statement = simple_stmt + newline | compound_stmt 
+#        #a suite is an indented block of statements
+#        suite << indentedBlock(statement, self.indentStack)
+        
 #---------- module ------------------------------------------------------------------------------------#
         module = (indentedBlock(statement, self.indentStack, indent=False) 
-                  + StringEnd())                                   .setParseAction(self._actionModule)\
-                                                                   .setName('module')#.setDebug(True)
-
+                  + StringEnd())                                      .setParseAction(self._actionModule)
+        
+        #workaround for pyparsing bug          
+#        module = (ZeroOrMore(newline) 
+#                  + ZeroOrMore(Group(statement) + ZeroOrMore(newline)) 
+#                  + StringEnd())
         #................ End of language definition ..................................................
 
         #determine start symbol
@@ -1411,15 +1407,27 @@ class RunTest(Process):
         print parser.keywords
 
         prog = \
+'''
+print 'start'
+'''
+        print prog
+        print parser.parseModuleStr(prog)
+        print 
+        
+        prog = \
 """
-print aa, \\
-      1, 2 
-print bb
+print 'start'
+data a:Real
+a = 2*2
+if a > 2:
+    print 'a > 2: ', a
+else:
+    print 'a <= 2: ', a
+print 'end'
 """
         print prog
-        print
         print parser.parseModuleStr(prog)
-    
+        print 
 
     print 'tests finished'
 
