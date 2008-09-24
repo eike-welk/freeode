@@ -13,6 +13,55 @@ from pyparsing import ParseElementEnhance, Keyword, Word, Group, ZeroOrMore, \
     ParseFatalException, _ustr
 
 
+##-------------------------------------------------------------------------------------
+##                    The ErrStop as it was used in the SIML parser
+##-------------------------------------------------------------------------------------
+#class ErrStop(ParseElementEnhance):
+#    """Parser that prevents backtracking.
+#       The parser tries to match the given expression (which consists of other
+#       parsers). If this expression does not match the parser raises a
+#       ParseFatalException and parsing stops.
+#       Otherwise, if the given expression matches, its parse results are returned
+#       and the ErrStop has no effect on the parse results.
+#
+#       TODO: usage
+#    """
+#
+#    def __init__(self, expr):
+#        super(ErrStop, self).__init__(expr, savelist=False)
+#        self.mayReturnEmpty = True
+#        #Additional string, that will be put in front of the error message.
+#        self.errMsgStart = ''
+#
+#    def parseImpl(self, instring, loc, doActions=True):
+#        try:
+#            loc, tokens = self.expr._parse(instring, loc, doActions, callPreParse=False)
+#        except IndexError:
+#            raise ParseFatalException(instring, loc, 'Index error: ', self.expr)
+#        except ParseException, theError:
+#            errMsg = self.errMsgStart + theError.msg
+#            raise ParseFatalException(instring, theError.loc, errMsg, self.expr)
+#        return loc, tokens
+#
+#    def setErrMsgStart(self, msg):
+#        """Set additional error message.
+#           This string will be put in front of the error message of the given
+#           parser.
+#        """
+#        self.errMsgStart = msg
+#        return self
+#
+#    def __str__(self):
+#        if hasattr(self,"name"):
+#            return self.name
+#
+#        if self.strRepr is None:
+#            self.strRepr = "[" + _ustr(self.expr) + "]"
+#
+#        return self.strRepr
+
+
+
 #Took code from pyparsing.Optional as a template
 class ErrStop(ParseElementEnhance):
     """Parser that prevents backtracking.

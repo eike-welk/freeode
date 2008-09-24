@@ -8,12 +8,6 @@ S = Suppress
 L = Literal
 kw = Keyword
 
-# TODO: Enter Pyparsing whish:
-#       Inconsistent behavior of operatorPrecedence
-#       operators with two terms:
-#       opAssoc.RIGHT: "1**2**3" -> [1 ** [2 ** 3]] (recursive list)
-#       opAssoc.LEFT:  "1+2+3"   -> [1 + 2 + 3]     (flat list)
-
 def action_op_prefix(s, loc, toks):
     toklist = toks.asList()[0]
 #    print "pre: ",  toklist
@@ -102,7 +96,6 @@ expression << operatorPrecedence(atom,
      (slicing,      1, opAssoc.LEFT,                action_slicing), #slicing/subscription: a[23]
      #Power and unary operations are intertwined to get correct operator precedence:
      #   -a**-b == -(a ** (-b))
-     # TODO: TEST: -a**-b**-c is not parsed correctly???
      (oneOf('+ -'), 1, opAssoc.RIGHT,               action_op_prefix), #sign (+, -)
      (L('**'),      2, opAssoc.RIGHT,               action_op_infix), #power
      (oneOf('+ -'), 1, opAssoc.RIGHT,               action_op_prefix), #sign (+, -)
