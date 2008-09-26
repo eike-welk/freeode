@@ -1223,7 +1223,7 @@ class ProgramTreeCreator(Visitor):
         ----------
         moduleTree : ast.Node
             The module's parse tree, the output of 
-            simlparser.ParseStage.parseModuleStr(...).
+            simlparser.Parser.parseModuleStr(...).
             This tree will be modified in place to become the program tree.
     
         Returns
@@ -1284,7 +1284,7 @@ class ProgramTreeCreator(Visitor):
             message = 'Could not read input file.\n' + str(theError)
             raise UserException(message, None)
         #parse the program
-        parser = simlparser.ParseStage()
+        parser = simlparser.Parser()
         parseTree = parser.parseModuleStr(inputFileContents, fileName, moduleName) 
         #do semantic analysis and decorate tree
         self.visitModule(parseTree)
@@ -1310,7 +1310,7 @@ class ProgramTreeCreator(Visitor):
 #        moduleTree : ast.Node
 #            AST of a module. Will be assembled into a complete program tree.
 #        '''
-#        parser = simlparser.ParseStage()
+#        parser = simlparser.Parser()
 #        parseTree = parser.parseModuleStr(moduleStr, fileName, moduleName) 
 #        self.visitModule(parseTree)
 #        return parseTree
@@ -1343,7 +1343,7 @@ class ProgramTreeCreator(Visitor):
         moduleName = '__main__'
         if moduleContentStr is not None:
             #The program text is given as a string.
-            parser = simlparser.ParseStage()
+            parser = simlparser.Parser()
             programTree = parser.parseModuleStr(moduleContentStr, fileName, moduleName) 
             self.visitModule(programTree)
         else:
@@ -1534,7 +1534,7 @@ compile bar1: Bar;
     flagTestILTGenerator = False
     #flagTestILTGenerator = True
     if flagTestILTGenerator:
-        parser = simlparser.ParseStage()
+        parser = simlparser.Parser()
         #iltGen = ILTGenerator()
 
         astTree = parser.parseModuleStr(testProg2)

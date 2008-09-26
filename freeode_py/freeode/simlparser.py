@@ -100,7 +100,7 @@ class ChMsg(object):
 
 
 
-class ParseStage(object):
+class Parser(object):
     '''
     Parse the Siml program. Generate a parse tree.
 
@@ -118,7 +118,7 @@ class ParseStage(object):
     The parse* methods return a tree of ast.Node objects; the parse tree.
 
     Usage:
-    parser = ParseStage()
+    parser = Parser()
     ast1 = parser.parseExpressionStr('0+1+2+3+4')
     ast2 = parser.parseModuleFile('foo-bar.siml')
     '''
@@ -163,11 +163,11 @@ class ParseStage(object):
 
     def defineKeyword(self, inString):
         '''
-        Store keyword (in ParseStage.keywords) and create parser for it.
+        Store keyword (in Parser.keywords) and create parser for it.
         Use this function (in _defineLanguageSyntax(...)) instead of using the
         Keyword class directly.
         '''
-        ParseStage.keywords.add(inString)
+        Parser.keywords.add(inString)
         return Keyword(inString)
 
     def createTextLocation(self, atChar):
@@ -196,7 +196,7 @@ class ParseStage(object):
         '''
         tokList = toks.asList() #asList() this time ads *no* extra pair of brackets
         identifier = tokList[0]
-        if identifier in ParseStage.keywords:
+        if identifier in Parser.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
             errMsg = 'Keyword can not be used as an identifier: ' + identifier
             raise ParseException(s, loc, errMsg)
@@ -213,12 +213,12 @@ class ParseStage(object):
         '''
         tokList = toks.asList() #asList() this time ads *no* extra pair of brackets
         identifier = tokList[0]
-        if identifier in ParseStage.keywords:
+        if identifier in Parser.keywords:
             #print 'found keyword', toks[0], 'at loc: ', loc
             errMsg = 'Keyword can not be used as an identifier: ' + identifier
 #            txtLoc = self.createTextLocation(loc)
             raise ParseFatalException(s, loc, errMsg)
-        if identifier in ParseStage.builtInVars:
+        if identifier in Parser.builtInVars:
             errMsg = 'Built in variables can not be redefined: ' + identifier
 #            txtLoc = self.createTextLocation(loc)
             raise ParseFatalException(s, loc, errMsg)
@@ -230,7 +230,7 @@ class ParseStage(object):
 #        tokList has the following structure:
 #        [<identifier>]
 #        '''
-#        if ParseStage.noTreeModification:
+#        if Parser.noTreeModification:
 #            return None #No parse result modifications for debugging
 #        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
 #        #create AST node
@@ -246,7 +246,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<number>]
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeNum()
@@ -260,7 +260,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<string>]
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeString()
@@ -278,7 +278,7 @@ class ParseStage(object):
         The information about parentheses is necessary to be able to output
         correct Python code, without the need for complicated algorithms.
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeParentheses()
@@ -292,7 +292,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<operator>, <expression>]
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeOpPrefix1()
@@ -309,7 +309,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<expression_1>, <operator_1>, <expression_2>, <operator_2>, ... ]
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0]
         tree = self._action_op_infix(s,  loc, tokList[0:3])
@@ -323,7 +323,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<expression_l>, <operator>, <expression_r>]
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         if not isinstance(toks,  list):
             #Convert parse result to list, remove extra pair of brackets
@@ -350,7 +350,7 @@ class ParseStage(object):
         tokList has the following structure:
         [<string>]
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeIdentifier()
@@ -370,7 +370,7 @@ class ParseStage(object):
                             + Optional(kw('else') +':' + statementList)
                             + kw('end'))
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeIfStmt()
@@ -399,7 +399,7 @@ class ParseStage(object):
         BNF:
         assignment = Group(valAccess + '=' + expression + ';')
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeAssignment()
@@ -420,7 +420,7 @@ class ParseStage(object):
                           + Optional(',')         .setResultsName('trailComma')
                           + ';')                  .setParseAction(self._actionPrintStmt)\
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -439,7 +439,7 @@ class ParseStage(object):
         graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
                           + ';')                  .setParseAction(self._actionDebug)\
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -456,7 +456,7 @@ class ParseStage(object):
         graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
                           + ';')                  .setParseAction(self._actionDebug)\
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -474,7 +474,7 @@ class ParseStage(object):
                                         + stmtEnd)                   .setErrMsgStart('Return statement: ')
                       )                                              .setParseAction(self._actionReturnStmt)
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         nCurr = NodeReturnStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -491,7 +491,7 @@ class ParseStage(object):
                       + ES(OneOrMore(Word(alphanums+'_')) + stmtEnd) .setErrMsgStart('Pragma statement: ')
                       )                                              #.setParseAction(self._actionPragmaStmt)
          '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         nCurr = NodePragmaStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -515,7 +515,7 @@ class ParseStage(object):
 #                                + stmtEnd)                           .setErrMsgStart('Foreign code statement: ')
 #                           )                                         .setParseAction(self._actionForeignCodeStmt)
 #         '''
-#        if ParseStage.noTreeModification:
+#        if Parser.noTreeModification:
 #            return None #No parse result modifications for debugging
 #        nCurr = NodeForeignCodeStmt()
 #        nCurr.loc = self.createTextLocation(loc) #Store position
@@ -539,7 +539,7 @@ class ParseStage(object):
                           )                                          .setErrMsgStart('compile statement: ')
                        )                                             .setParseAction(self._actionCompileStmt)\
          '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         nCurr = NodeCompileStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
@@ -554,7 +554,7 @@ class ParseStage(object):
         BNF:
         statementList << Group(OneOrMore(statement))
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeStmtList()
@@ -586,7 +586,7 @@ class ParseStage(object):
                                   + stmtEnd)                         .setErrMsgStart('data definition: ')
                              )                                       .setParseAction(self._actionDataDef)\
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -595,8 +595,8 @@ class ParseStage(object):
         attrDefList = NodeDataDefList(loc=self.createTextLocation(loc))
         nameList = toks.attrNameList.asList()
         for name in nameList:
-#            if name in ParseStage.keywords:
-#                if name in ParseStage.builtInVars:
+#            if name in Parser.keywords:
+#                if name in Parser.builtInVars:
 #                    errMsg = 'Special name can not be redefined: ' + name
 #                else:
 #                    errMsg = 'Keyword can not be used as an identifier: ' + name
@@ -627,7 +627,7 @@ class ParseStage(object):
         '''
         Create node for slicing operation.
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         raise UserException('Slicing is currently unsupported!',
                             self.createTextLocation(loc))
@@ -645,7 +645,7 @@ class ParseStage(object):
 #                        | Group(expression)                        .setResultsName('positional_argument')
 #                        )                                          .setParseAction(self._action_func_call_arg)
 #        '''
-#        if ParseStage.noTreeModification:
+#        if Parser.noTreeModification:
 #            return None #No parse result modifications for debuging
 #        #named argument: x=2.5
 #        if toks.keyword_argument:
@@ -672,7 +672,7 @@ class ParseStage(object):
                          + '(' + ES(funcArgListCall                  .setResultsName('argList')
                                     + ')' ))                         .setParseAction(self._action_func_call)
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         toks = toks[0] #remove extra bracket of group
         nCurr = NodeFuncExecute()
@@ -710,7 +710,7 @@ class ParseStage(object):
                                                    )                 .setErrMsgStart('default value: '))
                                )                                     .setParseAction(self._actionFuncArgument)
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -746,7 +746,7 @@ class ParseStage(object):
                         )                                            .setErrMsgStart('function definition: ')
                         )                                            .setParseAction(self._actionFuncDefinition)\
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
@@ -787,7 +787,7 @@ class ParseStage(object):
                          + ':' + suite                             .setResultsName('class_body_stmts')
                          )                                         .setParseAction(self._action_class_def)
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #the Group creates
         toks = toks[0]             #an extra pair of brackets
@@ -806,7 +806,7 @@ class ParseStage(object):
         BNF:
         program = Group(OneOrMore(classDef))
         '''
-        if ParseStage.noTreeModification:
+        if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeModule()
@@ -848,7 +848,7 @@ class ParseStage(object):
                                                                     .setName('uFloat')#.setDebug(True)
         #string
         #TODO: good error message for missing 2nd quote in single line string
-        stringLiteral = quotedString                             .setParseAction(self._actionString)\
+        stringLiteral = quotedString                                .setParseAction(self._actionString)\
                                                                     .setName('string')#.setDebug(True)
         literal = uFloat | stringLiteral
 
@@ -856,7 +856,7 @@ class ParseStage(object):
 
         #Built in variables, handled specially at attribute access.
         #kw('time'); kw('this')
-        ParseStage.builtInVars = set(['time', 'this'])
+        Parser.builtInVars = set(['time', 'this'])
         #identifiers
         identifierBase = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
         # identifier:    Should be used in expressions. If a keyword is used an ordinary parse error is
@@ -1263,8 +1263,8 @@ class RunTest(Process):
     flagTestParser = True
     flagTestParser = False
     if flagTestParser:
-        parser = ParseStage()
-        ParseStage.noTreeModification = 1
+        parser = Parser()
+        Parser.noTreeModification = 1
 
         print 'keywords:'
         print parser.keywords
@@ -1275,8 +1275,8 @@ class RunTest(Process):
     flagTestExpression = True
     flagTestExpression = False
     if flagTestExpression:
-        parser = ParseStage()
-        #ParseStage.noTreeModification = 1
+        parser = Parser()
+        #Parser.noTreeModification = 1
 
         print 'keywords:'
         print parser.keywords
@@ -1299,11 +1299,12 @@ class RunTest(Process):
 #    flagTestModuleSimple = False
 # ---------- test -------------
     if flagTestModuleSimple:
-        parser = ParseStage()
-        ParseStage.noTreeModification = 1
+        parser = Parser()
+        Parser.noTreeModification = 1
 
         print 'keywords:'
         print parser.keywords
+
 
         prog = \
 '''
@@ -1335,8 +1336,12 @@ if __name__ == '__main__':
     # Self-testing code goes here.
     #TODO: add unit tests
     #TODO: add doctest tests. With doctest tests are embedded in the documentation
-
-    doTests()
+        
+    #create profiler object
+    import cProfile
+    
+    cProfile.run('doTests()')
+#    doTests()
 else:
     # This will be executed in case the
     #    source has been imported as a

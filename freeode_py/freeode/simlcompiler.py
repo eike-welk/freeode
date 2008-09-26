@@ -122,7 +122,7 @@ class SimlCompilerMain(object):
     def doCompile(self):
         '''Do the work'''
         #create the top level objects that do the compilation
-        parser = simlparser.ParseStage()
+        parser = simlparser.Parser()
         iltGen = intermediate.ILTGenerator()
         progGen = pygenerator.ProgramGenerator()
 
