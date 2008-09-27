@@ -249,7 +249,7 @@ class Parser(object):
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeNum()
+        nCurr = NodeFloat()
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.dat = tokList[0] #Store the number
         return nCurr
@@ -361,7 +361,7 @@ class Parser(object):
         return nCurr
 
 
-    def _actionIfStatement(self, s, loc, toks): #IGNORE:W0613
+    def _actionIfStatement(self, s, loc, toks): #IGNORE:W0613 
         '''
         Create node for if ... : ... else: ... statement.
         BNF:
@@ -386,7 +386,7 @@ class Parser(object):
             nCurr.kids.append(condition)
             nCurr.kids.append(condStmts)
         #else: last condition is always true
-        elseCond = NodeNum(None, nCurr.loc, '1')
+        elseCond = NodeFloat(None, nCurr.loc, '1')
         elseStmts = tokList[-1]
         nCurr.kids.append(elseCond)
         nCurr.kids.append(elseStmts)

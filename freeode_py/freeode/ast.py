@@ -46,7 +46,8 @@ from __future__ import division
 
 from types import ClassType, FunctionType, NoneType #, TupleType, StringType
 import copy
-#import weakref
+import weakref
+from weakref import proxy
 
 import pyparsing
 
@@ -57,7 +58,7 @@ import pyparsing
 
 
 #version of the Siml compiler.
-progVersion = '0.3.2-dev-1'
+PROGRAM_VERSION = '0.4.0-dev-1'
 
 
 
@@ -135,8 +136,8 @@ class NameSpace(object):
 
         oldAttr = self.getAttr(name, None)
         if oldAttr is None:
-            self.setAttr(name, FunctionOverloadingResolver(newFunc))
-        elif isinstance(oldAttr, FunctionOverloadingResolver):
+            self.setAttr(name, list(newFunc))
+        elif isinstance(oldAttr, list):
             oldAttr.append(newFunc)
         else:
             raise UserException('Function can not have same name like data: '
@@ -361,277 +362,494 @@ class ExecutionEnvironment(object):
 
 
 
-#TODO: inherit FromNodeFuncDef ?
-#TODO: rename to multimethod
-class FunctionOverloadingResolver(object):
-    '''
-    Store multiple functions with the same name.
-    Find the correct overloaded function, that matches a function call best.
-    '''
+##TODO: inherit FromNodeFuncDef ?
+##TODO: rename to multimethod
+#class FunctionOverloadingResolver(object):
+#    '''
+#    Store multiple functions with the same name.
+#    Find the correct overloaded function, that matches a function call best.
+#    '''
+#
+#    def __init__(self, inFuncDef=None):
+#        '''
+#        ARGUMENT
+#        inFuncDef : NodeFuncDef
+#            The first function stored in the container. Optional.
+#        '''
+#        self._functions = []
+#        if inFuncDef is not None:
+#            self.append(inFuncDef)
+#
+#    def append(self, inFuncDef):
+#        '''Append a function to the list'''
+#        if not isinstance(inFuncDef, NodeFuncDef):
+#            raise Exception('Argument must be a NodeFuncDef! type(inFuncDef):'
+#                            + str(type(inFuncDef)))
+#        self._functions.append(inFuncDef)
+#        return
+#
+#    def resolve(self, inFuncCall):
+#        '''
+#        Return a function that matches the function call's signature.
+#        (currently always the last function in the list)
+#        '''
+#        return self._functions[-1]
+#
+##TODO: create MethodOverloadingResolver(OverloadingResolver):
 
-    def __init__(self, inFuncDef=None):
-        '''
-        ARGUMENT
-        --------
-        inFuncDef : NodeFuncDef
-            The first function stored in the container. Optional.
-        '''
-        self._functions = []
-        if inFuncDef is not None:
-            self.append(inFuncDef)
 
-    def append(self, inFuncDef):
-        '''Append a function to the list'''
-        if not isinstance(inFuncDef, NodeFuncDef):
-            raise Exception('Argument must be a NodeFuncDef! type(inFuncDef):'
-                            + str(type(inFuncDef)))
-        self._functions.append(inFuncDef)
-        return
-
-    def resolve(self, inFuncCall):
-        '''
-        Return a function that matches the function call's signature.
-        (currently always the last function in the list)
-        '''
-        return self._functions[-1]
-
-#TODO: create MethodOverloadingResolver(OverloadingResolver):
+##-------- Old Node Object ----------------------------------------------------
+#class Node(object):
+#    '''
+#    Building block of a n-ary tree structure.
+#    The abstract syntax tree (AST), and the intermediate language tree (ILT),
+#    are made of nodes that have this class as their base class.
+#
+#    Usage:
+#    >>> t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'),
+#    ...            Node([],5,'leaf')], 1, 'root')
+#
+#    print tree (loc attribute is abused here)(<BLANKLINE> does not work):
+#    > print t1
+#    Node:: dat: root loc: 1
+#    |   Node:: dat: branch loc: 2
+#    |   |   Node:: dat: leaf loc: 3
+#    |   |   Node:: dat: leaf loc: 4
+#    |   Node:: dat: leaf loc: 5
+#
+#    access to children with  [] operator:
+#    >>> t1[0][1]
+#    Node(,[], 4, 'leaf')
+#
+#    iterating over only the children of a node:
+#    >>> for n in t1:
+#    ...     print n.loc
+#    ...
+#    2
+#    5
+#
+#    iterating over the whole tree:
+#    >>> for n,d in t1.iterDepthFirst(returnDepth=True):
+#    ...     print n.dat, ' depth: ', d
+#    ...
+#    root  depth:  0
+#    branch  depth:  1
+#    leaf  depth:  2
+#    leaf  depth:  2
+#    leaf  depth:  1
+#
+#    TODO: New, simpler 'node' implementation, that does not behave like a list
+#          (without kids list).
+#        Methods:
+#        - copy(), __deepcopy__()
+#        - __str__()
+#        - __repr__() ???
+#        - __init__() elegant and matching to repr + usage pattern ???
+#    '''
+#
+#    def __init__(self, kids=None, loc=None, dat=None):
+#        #TODO: write an init function that can accept any number of named arguments
+#        #Variabe number of arguments:
+#        #*args    : is a list of all normal arguments
+#        #**kwargs : is a dict of keyword arguments
+#        #Code for derived classes: super(A, self).__init__(*args, **kwds)
+#        #self.parent = None
+#        #list of children
+#        self.kids = []
+#        #appendChild checks the type
+#        if kids is not None:
+#            for child in kids:
+#                self.appendChild(child)
+#        #the node's location in the parsed text
+#        self.loc  = loc
+#        #any data; whatever is appropriate
+#        self.dat = dat
+#
+#
+#    def __repr__(self):
+#        '''Create string representation that can also be used as code.'''
+#        className = self.__class__.__name__
+#        childStr = ',' + repr(self.kids)
+#        #if location and contents have their default value, don't print them
+#        if self.loc == None:
+#            locStr = ''
+#        else:
+#            locStr = ', ' + repr(self.loc)
+#        if self.dat == None:
+#            datStr =''
+#        else:
+#            datStr = ', ' + repr(self.dat)
+#        #treat all other attributes as named attributes
+#        standardAttributes = set(['kids', 'loc', 'dat'])
+#        extraAttrStr=''
+#        for key, attr in self.__dict__.iteritems():
+#            if key in standardAttributes:
+#                continue
+#            extraAttrStr += ', ' + key + '=' + repr(attr)
+#        #assemble the string
+#        reprStr = className  + '(' + childStr + locStr + datStr + \
+#                                    extraAttrStr + ')'
+#        return reprStr
+#
+#
+#    def __str__(self):
+#        '''Create pretty printed string represntation.'''
+#        return TreePrinter(self).makeTreeStr()
+#
+#    def __iter__(self):
+#        '''let for loop iterate over children'''
+#        return self.kids.__iter__()
+#
+#    def __len__(self):
+#        '''return number of children'''
+#        return len(self.kids)
+#
+#    def appendChild(self, inNode):
+#        '''Append node to list of children'''
+#        #test if child is a node
+#        if(not isinstance(inNode, Node)):
+#            raise TypeError('Children must inherit from Node!')
+#        self.kids.append(inNode)
+#
+#    def insertChild(self, index, inNode):
+#        '''
+#        Insert node into list of children.
+#        New child is inserted before the child at position self[index].
+#        '''
+#        #test if child is a node
+#        if(not isinstance(inNode, Node)):
+#            raise TypeError('Children must inherit from Node!')
+#        self.kids.insert(index, inNode)
+#
+#    def insertChildren(self, index, inSequence):
+#        '''
+#        Insert a node's children into list of own children.
+#
+#        New childen are inserted before the child at position self[index].
+#
+#        Parameters
+#        index: int
+#            The children are inserted before the this index.
+#        inSequence: Node
+#            Container of the children that will be inserted.
+#
+#        Returns
+#        None
+#        '''
+#        if(not isinstance(inSequence, Node)):
+#            raise TypeError('Node.insertChildrenChildren: '
+#                            'argument 2 must inherit from Node!')
+#        self.kids[index:index] = inSequence.kids
+#
+#    def __delitem__(self, index):
+#        '''Delete child at specified index'''
+#        del self.kids[index]
+#
+#    def __getitem__(self, i):
+#        '''
+#        Retriev children through []
+#
+#        Parameters
+#        i: int, slice
+#            Index of element which is retrieved, or slice object describing
+#            the subsequence which should be retrieved
+#
+#        Returns
+#        Node, sequence of Node
+#            The nodes that should be returned
+#        '''
+#        return self.kids[i]
+#
+##    def __setitem__(self, i, item):
+##        '''
+##        Change children through []
+##
+##        Parameters
+##        i: int, slice
+##            Index of element which is changed, or slice object describing
+##            the subsequence which should be changed
+##        item: Node, sequence of Node
+##
+##        Returns
+##        None
+##        '''
+##        #TODO: type checking
+##        #TODO: How should Nodes be treated in case slices are given?
+##        #      As sequences or as single objects?
+##        self.kids[i] = item
+#
+###    def __cmp__(self, o):
+###        return cmp(self.type, o)
+#
+#    def iterDepthFirst(self, returnDepth=False):
+#        '''
+#        Iterate over whole (sub) tree in a depth first manner.
+#        returnDepth :   if True the iterator returns a tuple (node, depth) otherwise it
+#                        returns only the current node.
+#        returns: a DepthFirstIterator instance
+#        '''
+#        return DepthFirstIterator(self, returnDepth)
+#
+#
+#    def copy(self):
+#        '''
+#        Return a (recursive) deep copy of the node.
+#
+#        Only children are copied deeply;
+#        all other attributes are not copied. Only new references are made.
+#        '''
+#        return copy.deepcopy(self)
+#
+#
+#    def __deepcopy__(self, memoDict):
+#        '''Hook that does the copying.
+#        Called by the function copy.deepcopy()'''
+#        #create empty instance of self.__class__
+#        newObj = Node.__new__(self.__class__)
+#        for name, attr in self.__dict__.iteritems():
+#            if name == 'kids':
+#                #kids: make deep copy
+#                newObj.kids = copy.deepcopy(self.kids, memoDict)
+#            else:
+#                #normal attribute: no copy, only reference.
+#                setattr(newObj, name, attr)
+#        return newObj
 
 
 
 class Node(object):
     '''
-    Building block of a n-ary tree structure.
-    The abstract syntax tree (AST), and the intermediate language tree (ILT),
-    are made of nodes that have this class as their base class.
-
-    Usage:
-    >>> t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'),
-    ...            Node([],5,'leaf')], 1, 'root')
-
-    print tree (loc attribute is abused here)(<BLANKLINE> does not work):
-    > print t1
-    Node:: dat: root loc: 1
-    |   Node:: dat: branch loc: 2
-    |   |   Node:: dat: leaf loc: 3
-    |   |   Node:: dat: leaf loc: 4
-    |   Node:: dat: leaf loc: 5
-
-    access to children with  [] operator:
-    >>> t1[0][1]
-    Node(,[], 4, 'leaf')
-
-    iterating over only the children of a node:
-    >>> for n in t1:
-    ...     print n.loc
-    ...
-    2
-    5
-
-    iterating over the whole tree:
-    >>> for n,d in t1.iterDepthFirst(returnDepth=True):
-    ...     print n.dat, ' depth: ', d
-    ...
-    root  depth:  0
-    branch  depth:  1
-    leaf  depth:  2
-    leaf  depth:  2
-    leaf  depth:  1
-
-    TODO: New, simpler 'node' implementation, that does not behave like a list
-          (without kids list).
-        Methods:
-        - copy(), __deepcopy__()
-        - __str__()
-        - __repr__() ???
-        - __init__() elegant and matching to repr + usage pattern ???
+    Base class for all elements of the AST.
+    
+    Features:
+    __init__(...)
+        Creates one attribute for each named argument.
+    __str__(), aa_tree(...): 
+        Creates Ascii-art tree representation of node and its 
+        attributes.
+    copy():
+        Returns deep copy of node and of all attributes that are 'owned'
+        by this node.
     '''
-
-    def __init__(self, kids=None, loc=None, dat=None):
-        #TODO: write an init function that can accept any number of named arguments
-        #Variabe number of arguments:
-        #*args    : is a list of all normal arguments
-        #**kwargs : is a dict of keyword arguments
-        #Code for derived classes: super(A, self).__init__(*args, **kwds)
-        #self.parent = None
-        #list of children
-        self.kids = []
-        #appendChild checks the type
-        if kids is not None:
-            for child in kids:
-                self.appendChild(child)
-        #the node's location in the parsed text
-        self.loc  = loc
-        #any data; whatever is appropriate
-        self.dat = dat
-
-
-    def __repr__(self):
-        '''Create string representation that can also be used as code.'''
-        className = self.__class__.__name__
-        childStr = ',' + repr(self.kids)
-        #if location and contents have their default value, don't print them
-        if self.loc == None:
-            locStr = ''
-        else:
-            locStr = ', ' + repr(self.loc)
-        if self.dat == None:
-            datStr =''
-        else:
-            datStr = ', ' + repr(self.dat)
-        #treat all other attributes as named attributes
-        standardAttributes = set(['kids', 'loc', 'dat'])
-        extraAttrStr=''
-        for key, attr in self.__dict__.iteritems():
-            if key in standardAttributes:
-                continue
-            extraAttrStr += ', ' + key + '=' + repr(attr)
-        #assemble the string
-        reprStr = className  + '(' + childStr + locStr + datStr + \
-                                    extraAttrStr + ')'
-        return reprStr
-
-
+    #put attributes with these names at the top or bottom of ASCII-art tree
+    aa_top = ['name']
+    aa_bottom = ['loc']
+    #Number of chars used for indentation. Must be >= 1
+    aa_indent_width = 4
+    #Length of line. Longer lines will be wrapped
+    aa_wrap_line_at = 150
+    #Also print the node's id() 
+    aa_show_ID = False
+    #Maximal nesting level, to catch infinite recursion.
+    aa_max_nesting_level = 100
+    #string to symbolize one indent level
+    aa_indent_step_str = '|' + ' '*int(aa_indent_width - 1)
+    
+    def __init__(self, **args): 
+        '''Create an attribute for each named argument.'''
+        object.__init__(self)
+        for key, value in args.iteritems():
+            setattr(self, key, value)
+            
     def __str__(self):
-        '''Create pretty printed string represntation.'''
-        return TreePrinter(self).makeTreeStr()
-
-    def __iter__(self):
-        '''let for loop iterate over children'''
-        return self.kids.__iter__()
-
-    def __len__(self):
-        '''return number of children'''
-        return len(self.kids)
-
-    def appendChild(self, inNode):
-        '''Append node to list of children'''
-        #test if child is a node
-        if(not isinstance(inNode, Node)):
-            raise TypeError('Children must inherit from Node!')
-        self.kids.append(inNode)
-
-    def insertChild(self, index, inNode):
         '''
-        Insert node into list of children.
-        New child is inserted before the child at position self[index].
+        Create ASCII-art tree of this object, and of all data attributes it 
+        contains recursively.
         '''
-        #test if child is a node
-        if(not isinstance(inNode, Node)):
-            raise TypeError('Children must inherit from Node!')
-        self.kids.insert(index, inNode)
-
-    def insertChildren(self, index, inSequence):
+        return self.aa_make_tree()
+    
+    def aa_attr_category(self, attr_name):
         '''
-        Insert a node's children into list of own children.
-
-        New childen are inserted before the child at position self[index].
-
-        Parameters
-        ----------
-        index: int
-            The children are inserted before the this index.
-        inSequence: Node
-            Container of the children that will be inserted.
-
-        Returns
-        -------
-        None
+        Categorize attributes for Ascii-art
+        
+        Returns:
+            -1: attribute does not exist
+            0: not a Node
+            1: not owned
+            2: Node
+            3: list(Node)
+            # removed: 4: list(list(Node))
+            TODO: category for dict(string():Node())
         '''
-        if(not isinstance(inSequence, Node)):
-            raise TypeError('Node.insertChildrenChildren: '
-                            'argument 2 must inherit from Node!')
-        self.kids[index:index] = inSequence.kids
-
-    def __delitem__(self, index):
-        '''Delete child at specified index'''
-        del self.kids[index]
-
-    def __getitem__(self, i):
+        #get attribute
+        if attr_name in self.__dict__:
+            attr = self.__dict__[attr_name]
+        else:
+            return -1 # attribute does not exist
+        #categorize attribute
+        if isinstance(attr, weakref.ProxyTypes):
+            return 1 #not owned by this Node
+        elif isinstance(attr, Node):
+            return 2 # Node
+        elif isinstance(attr, list) and len(attr) > 0 and \
+             isinstance(attr[0], Node):
+            return 3 # list(Node)
+#        elif isinstance(attr, list)    and len(attr) > 0    and \
+#             isinstance(attr[0], list) and len(attr[0]) > 0 and \
+#             isinstance(attr[0][0], Node):
+#            return 4 # list(list(Node))
+        else:
+            return 0 #not a Node
+            
+    def aa_make_str_block(self, attr_name_list, indent_str, nesting_level):
         '''
-        Retriev children through []
-
-        Parameters
-        ----------
-        i: int, slice
-            Index of element which is retrieved, or slice object describing
-            the subsequence which should be retrieved
-
-        Returns
-        -------
-        Node, sequence of Node
-            The nodes that should be returned
+        Convert attributes to a string. 
+        
+        Uses different algorithms for different attribute categories.
+        Performs the line wrapping.
         '''
-        return self.kids[i]
+        #initialize buffers
+        tree = ''
+        line = indent_str
+        #loop over list of attribute names
+        for name in attr_name_list:
+            cat = self.aa_attr_category(name)
+            #Non Node classes, assumed to be small 
+            #the atoms that really carry the information)
+            if cat == 0:
+                line += name + ' = ' + str(self.__dict__[name]) + '; '
+                if len(line) > self.aa_wrap_line_at:
+                    tree += line + '\n'
+                    line = indent_str
+            #Anything not owned by this node (printed small)
+            elif cat == 1:
+                line += (name + ' = ' 
+                         + str(self.__dict__[name].__class__.__name__) + ' :: '
+                         + repr(self.__dict__[name]) + '; ')
+                if len(line) > self.aa_wrap_line_at:
+                    tree += line + '\n'
+                    line = indent_str
+            #Attribute is Node
+            elif cat == 2:
+                if line != indent_str: 
+                    tree += line  + '\n'
+                    line = indent_str
+                tree += indent_str + name + ' = \n'
+                tree += self.__dict__[name].aa_make_tree(nesting_level +1)
+            #Attribute is list(Node)
+            elif cat == 3:
+                if line != indent_str: 
+                    tree += line  + '\n'
+                    line = indent_str   
+                tree += indent_str + name + ' = list :: \n'     
+                for item in self.__dict__[name]:
+                    tree += item.aa_make_tree(nesting_level +1)  
+#                    tree += indent_str + '|- ,\n'
+            #Attribute is list(list(Node))
+#            elif cat == 4:
+#                raise Exception('Feature unimplemented!')
+            else:
+                raise Exception('Internal error! Unknown attribute category: ' 
+                                + str(cat))
+                
+        if line != indent_str:
+            tree += line  + '\n'
+        return tree
 
-#    def __setitem__(self, i, item):
-#        '''
-#        Change children through []
-#
-#        Parameters
-    #        ----------
-#        i: int, slice
-#            Index of element which is changed, or slice object describing
-#            the subsequence which should be changed
-#        item: Node, sequence of Node
-#
-#        Returns
-    #        -------
-#        None
-#        '''
-#        #TODO: type checking
-#        #TODO: How should Nodes be treated in case slices are given?
-#        #      As sequences or as single objects?
-#        self.kids[i] = item
-
-##    def __cmp__(self, o):
-##        return cmp(self.type, o)
-
-    def iterDepthFirst(self, returnDepth=False):
+    
+    def aa_make_tree(self, nesting_level=0):
         '''
-        Iterate over whole (sub) tree in a depth first manner.
-        returnDepth :   if True the iterator returns a tuple (node, depth) otherwise it
-                        returns only the current node.
-        returns: a DepthFirstIterator instance
+        Create ASCII-art tree of this object, and of all data attributes it 
+        contains recursively.
+        
+        The algorithm only recurses into nodes owned by this node. All other 
+        objects will be printed in a very limited manner.
+        
+        The data attributes are be printed in four categories:
+        top: 
+            Attributes that should be viewed first, like 'name'.
+            Attribute names are in Node.aa_top, or in self.aa_top.
+        small:
+            These attributes are assumed to have only a small textual 
+            representation, which fits into one line:
+            - Attributes which are not Node subclasses. 
+            - Attributes which are not owned by this node. Only their class 
+              name is mentioned.
+        big:
+            These attributes have only a big, multi line textual representations.
+            - Node subclasses, lists of nodes, lists of lists of nodes.
+        bottom:  
+            Attributes that should be viewed last, like 'loc'.
+            Attribute names are in Node.aa_bottom, or in self.aa_bottom.
         '''
-        return DepthFirstIterator(self, returnDepth)
-
-
+        #catch infinite recursion
+        if nesting_level > Node.aa_max_nesting_level:
+            msg = 'Nesting of nodes too deep! (Infinite recursion?):' \
+                  ' nesting_level = ' + str(nesting_level) + '\n'
+#            print 'Warning: ' + msg
+            return msg                  
+        #initialize buffer
+        tree_buffer = ''
+        #string for indentation
+        indent_str = self.aa_indent_step_str * nesting_level 
+        
+        #create four lists with different categories of attributes
+        name_set = set(self.__dict__.keys())
+        attr_top =    [a for a in self.aa_top    if a in name_set]
+        attr_bottom = [a for a in self.aa_bottom if a in name_set]
+        body = list(name_set - set(attr_bottom) - set(attr_top))
+        body.sort()
+        attr_small = [a for a in body if self.aa_attr_category(a) <= 1]
+        attr_big =    [a for a in body if self.aa_attr_category(a) > 1]
+        
+        #create header with type information
+        tree_buffer += indent_str + self.__class__.__name__ + ' ::'
+        if self.aa_show_ID:
+            tree_buffer += ' ID: ' + hex(id(self))
+        tree_buffer += ' ---------------------------------\n'
+        indent_str += '|'
+        
+        #convert the attributes to string
+        tree_buffer += self.aa_make_str_block(attr_top,    indent_str, nesting_level)
+        tree_buffer += self.aa_make_str_block(attr_small,  indent_str, nesting_level)
+        tree_buffer += self.aa_make_str_block(attr_big,    indent_str, nesting_level)
+        tree_buffer += self.aa_make_str_block(attr_bottom, indent_str, nesting_level)
+        
+        return tree_buffer
+    
+             
     def copy(self):
         '''
         Return a (recursive) deep copy of the node.
 
-        Only children are copied deeply;
-        all other attributes are not copied. Only new references are made.
+        Only objects owned by this object are copied deeply.
+        For objects owned by other nodes proxies should be created:
+        self.foo = proxy(other.foo)
         '''
         return copy.deepcopy(self)
 
 
-    def __deepcopy__(self, memoDict):
-        '''Hook that does the copying.
-        Called by the function copy.deepcopy()'''
+    def __deepcopy__(self, memo_dict):
+        '''
+        Hook that does the copying for Node.copy.
+        Called by copy.deepcopy()
+        
+        copy - weakref interaction problems:
+        http://coding.derkeiler.com/Archive/Python/comp.lang.python/2008-02/msg01873.html
+        '''
         #create empty instance of self.__class__
-        newObj = Node.__new__(self.__class__)
+        new_obj = Node.__new__(self.__class__)
         for name, attr in self.__dict__.iteritems():
-            if name == 'kids':
-                #kids: make deep copy
-                newObj.kids = copy.deepcopy(self.kids, memoDict)
+            if not isinstance(attr, weakref.ProxyTypes):
+                #attribute owned by self: make deep copy
+                new_attr = copy.deepcopy(attr, memo_dict)
+                setattr(new_obj, name, new_attr)
             else:
-                #normal attribute: no copy, only reference.
-                setattr(newObj, name, attr)
-        return newObj
+                #attribute owned by other object: no copy only reference
+                setattr(new_obj, name, attr)
+        return new_obj
 
 
 
-class NodeNoneClass(Node):
-    '''Node that takes the function of None.'''
-    def __init__(self):
-        super(NodeNoneClass, self).__init__(None, None, None)
-#The single instance of NodeNoneClass. Should be used like None
-nodeNone = NodeNoneClass()
+#class NodeNoneClass(Node):
+#    '''Node that takes the function of None.'''
+#    def __init__(self):
+#        super(NodeNoneClass, self).__init__()
+##The single instance of NodeNoneClass. Should be used like None
+#nodeNone = NodeNoneClass()
 
 
-class NodeNum(Node):
+class NodeFloat(Node):
     '''
     Represent a real number in the AST.
     Example: 123.5
@@ -641,7 +859,7 @@ class NodeNum(Node):
         dat     : the number as a string
     '''
     def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeNum, self).__init__(kids, loc, dat)
+        super(NodeFloat, self).__init__(kids, loc, dat)
 
 
 class NodeString(Node):
@@ -682,7 +900,7 @@ class NodeOpInfix2(Node):
     def __init__(self, kids=None, loc=None, dat=None, operator=None):
         super(NodeOpInfix2, self).__init__(kids, loc, dat)
         self.operator = operator
-        if not self.kids:
+        if not self.kids: 
             self.kids = [Node(), Node()]
 
     #Get and set the left hand side
@@ -711,7 +929,7 @@ class NodeOpPrefix1(Node):
         self.operator = operator
 
     #Get and set the right hand side
-    def getRhs(self): return self.kids[0]
+    def getRhs(self): return self.kids[0]   
     def setRhs(self, inRhs): self.kids[0] = inRhs
     rhs = property(getRhs, setRhs, None,
                    'Right hand side of operator (proppery).')
@@ -1220,14 +1438,6 @@ class NodeModule(Node, NameSpace):
         self.name = name
         self.targetName = None
 
-    #Get or set the class body through a unified name
-    def getStatements(self):
-        return self
-    def setStatements(self, inDefs):
-        self.kids = inDefs.kids
-    body = property(getStatements, setStatements, None,
-            'Attribute definitions and operations on constants. (propperty).')
-
 
 class NodeFlatModule(Node, FlatNameSpace):
     '''
@@ -1250,13 +1460,6 @@ class NodeFlatModule(Node, FlatNameSpace):
         self.name = name
         self.targetName = None
 
-    #Get or set the class body through a unified name
-    def getStatements(self):
-        return self
-    def setStatements(self, inDefs):
-        self.kids = inDefs.kids
-    body = property(getStatements, setStatements, None,
-            'Attribute definitions and operations on constants. (propperty).')
 
 
 class DepthFirstIterator(object):
@@ -1286,6 +1489,9 @@ class DepthFirstIterator(object):
                       (node, depth) otherwise it only returns the current
                       node.
         """
+ 
+        raise Exception('DepthFirstIterator: Feaature not implemented!')
+        #TODO: make it work with new node class again!
         self.stack = [(treeRoot, 0)] #tuples (node, childIndex).
         self.depth = 0  #how deep we are in the tree.
         self.returnDepth = returnDepth #flag: shoult we return the current depth
@@ -1345,115 +1551,115 @@ class DepthFirstIterator(object):
 
 
 
-class TreePrinter(object):
-    '''Print a tree of Node objects in a nice way.'''
-
-    indentWidth = 4
-    '''Number of chars used for indentation. Must be >= 1'''
-    wrapLineAt = 150
-    '''Length of line. Longer lines will be wrapped'''
-    showID = False
-    '''Also print the node's id()'''
-
-    def __init__(self, root=None):
-        '''
-        Argument:
-        root : Node
-            the root of the tree, which will be printed
-        '''
-        #tree's root node.
-        self.root = root
-        #buffer for the textual reprentation
-        self.treeStr = ''
-        #partially completed line for line wrapping
-        self.line = ''
-
-    #TODO: def setIndentStr(self, indentStr): ??
-    #          newIndentLevel(self, nLevel) ???
-    def putStr(self, indentStr, contentStr):
-        '''Put string into buffer and apply line wrapping'''
-        #is there enough room to write?
-        if len(indentStr) + 20 > self.wrapLineAt:
-            wrapLineAt = len(indentStr)+60 #no: extend right margin
-        else:
-            wrapLineAt = self.wrapLineAt #yes: normal wrap
-        #empty line has special meaning: new node is started
-        if self.line == '':
-            self.line = indentStr
-        #Do the line wrapping
-        if len(self.line) + len(contentStr) > wrapLineAt:
-            #print self.line
-            self.treeStr += self.line + '\n'
-            self.line = indentStr + ': '
-        #add content to buffer
-        self.line += contentStr
-
-    def endLine(self):
-        '''End a partially completed line unconditionally'''
-        self.treeStr += self.line + '\n'
-        self.line = ''
-
-    def safeStr(self, inObj):
-        '''
-        Convert inObj to string without infinite recursion
-        into Node objects.
-        '''
-        if isinstance(inObj, Node):
-            return '<%s at %#x>' % (inObj.__class__.__name__, id(inObj))
-        else:
-            return str(inObj)
-
-    def makeTreeStr(self, root=None):
-        ''''Create string representation of Node tree.'''
-        #for fewer typing
-        putStr = self.putStr
-        safeStr = self.safeStr
-        #initialize
-        self.treeStr = ''
-        self.line = ''
-        if root is not None:
-            self.root = root
-        #string to symbolize one indent level
-        indentStepStr = '|' + ' '*int(self.indentWidth - 1)
-        for node, depth in self.root.iterDepthFirst(True):
-            #string for indentation
-            indentStr = indentStepStr * depth
-            #First print class name and if desired node's ID
-            putStr(indentStr, node.__class__.__name__ + ':: ')
-            if self.showID:
-                putStr(indentStr, ' ID: ' + str(id(node)))
-
-            #special case for non Node objects
-            if not isinstance(node, Node):
-                putStr(indentStr, str(node)); self.endLine()
-                print self.treeStr
-                raise Exception('All children must inherit from ast.Node!')
-                #TODO enhance the iterator to work with none Node classes as leafs.
-
-            #special handling for some important attributes
-            if hasattr(node, 'name'):
-                putStr(indentStr, 'name: ' + safeStr(node.name) + ' ')
-            if isinstance(node, NameSpace):
-                #print the name space speciffic attributes in short form
-                #they are causing infinite recursion otherwise
-                putStr(indentStr, '_nameSpaceAttrs.keys(): ' +
-                       str(node._nameSpaceAttrs.keys()) + ' ')
-            putStr(indentStr, 'loc: ' + safeStr(node.loc) + ' ')
-
-            #the node's attributes are printed in sorted order,
-            #but the special attributes are excluded
-            specialAttrs = set(['loc', 'kids', '_nameSpaceAttrs', 'name', 'mainFuncs'])
-            attrNameSet = set(node.__dict__.keys())
-            attrNames= list(attrNameSet - specialAttrs)
-            attrNames.sort()
-            #get attributes out node.__dict__
-            for name1 in attrNames:
-                #TODO:more robustness when other attributes are Nodes too
-                #TODO:more robustness against circular dependencies
-                putStr(indentStr, name1 + ': ' + safeStr(node.__dict__[name1]) + ' ')
-            #put newline after complete node
-            self.endLine()
-        return self.treeStr
+#class TreePrinter(object):
+#    '''Print a tree of Node objects in a nice way.'''
+#
+#    indentWidth = 4
+#    '''Number of chars used for indentation. Must be >= 1'''
+#    wrapLineAt = 150
+#    '''Length of line. Longer lines will be wrapped'''
+#    showID = False
+#    '''Also print the node's id()'''
+#
+#    def __init__(self, root=None):
+#        '''
+#        Argument:
+#        root : Node
+#            the root of the tree, which will be printed
+#        '''
+#        #tree's root node.
+#        self.root = root
+#        #buffer for the textual reprentation
+#        self.treeStr = ''
+#        #partially completed line for line wrapping
+#        self.line = ''
+#
+#    #TODO: def setIndentStr(self, indentStr): ??
+#    #          newIndentLevel(self, nLevel) ???
+#    def putStr(self, indentStr, contentStr):
+#        '''Put string into buffer and apply line wrapping'''
+#        #is there enough room to write?
+#        if len(indentStr) + 20 > self.wrapLineAt:
+#            wrapLineAt = len(indentStr)+60 #no: extend right margin
+#        else:
+#            wrapLineAt = self.wrapLineAt #yes: normal wrap
+#        #empty line has special meaning: new node is started
+#        if self.line == '':
+#            self.line = indentStr
+#        #Do the line wrapping
+#        if len(self.line) + len(contentStr) > wrapLineAt:
+#            #print self.line
+#            self.treeStr += self.line + '\n'
+#            self.line = indentStr + ': '
+#        #add content to buffer
+#        self.line += contentStr
+#
+#    def endLine(self):
+#        '''End a partially completed line unconditionally'''
+#        self.treeStr += self.line + '\n'
+#        self.line = ''
+#
+#    def safeStr(self, inObj):
+#        '''
+#        Convert inObj to string without infinite recursion
+#        into Node objects.
+#        '''
+#        if isinstance(inObj, Node):
+#            return '<%s at %#x>' % (inObj.__class__.__name__, id(inObj))
+#        else:
+#            return str(inObj)
+#
+#    def makeTreeStr(self, root=None):
+#        ''''Create string representation of Node tree.'''
+#        #for fewer typing
+#        putStr = self.putStr
+#        safeStr = self.safeStr
+#        #initialize
+#        self.treeStr = ''
+#        self.line = ''
+#        if root is not None:
+#            self.root = root
+#        #string to symbolize one indent level
+#        indentStepStr = '|' + ' '*int(self.indentWidth - 1)
+#        for node, depth in self.root.iterDepthFirst(True):
+#            #string for indentation
+#            indentStr = indentStepStr * depth
+#            #First print class name and if desired node's ID
+#            putStr(indentStr, node.__class__.__name__ + ':: ')
+#            if self.showID:
+#                putStr(indentStr, ' ID: ' + str(id(node)))
+#
+#            #special case for non Node objects
+#            if not isinstance(node, Node):
+#                putStr(indentStr, str(node)); self.endLine()
+#                print self.treeStr
+#                raise Exception('All children must inherit from ast.Node!')
+#                #TODO enhance the iterator to work with none Node classes as leafs.
+#
+#            #special handling for some important attributes
+#            if hasattr(node, 'name'):
+#                putStr(indentStr, 'name: ' + safeStr(node.name) + ' ')
+#            if isinstance(node, NameSpace):
+#                #print the name space speciffic attributes in short form
+#                #they are causing infinite recursion otherwise
+#                putStr(indentStr, '_nameSpaceAttrs.keys(): ' +
+#                       str(node._nameSpaceAttrs.keys()) + ' ')
+#            putStr(indentStr, 'loc: ' + safeStr(node.loc) + ' ')
+#
+#            #the node's attributes are printed in sorted order,
+#            #but the special attributes are excluded
+#            specialAttrs = set(['loc', 'kids', '_nameSpaceAttrs', 'name', 'mainFuncs'])
+#            attrNameSet = set(node.__dict__.keys())
+#            attrNames= list(attrNameSet - specialAttrs)
+#            attrNames.sort()
+#            #get attributes out node.__dict__
+#            for name1 in attrNames:
+#                #TODO:more robustness when other attributes are Nodes too
+#                #TODO:more robustness against circular dependencies
+#                putStr(indentStr, name1 + ': ' + safeStr(node.__dict__[name1]) + ' ')
+#            #put newline after complete node
+#            self.endLine()
+#        return self.treeStr
 
 
 
@@ -1529,26 +1735,26 @@ class UserException(Exception):
 
 
 
-class MultiErrorException(UserException):
-    '''Exception with many (user visible) error messages'''
-    def __init__(self, errTupList):
-        '''
-        Arguments:
-            errTupList : iterable (list) with tuples (message, loc)
-        '''
-        #init base class with first error; at least kind of sensible
-        msg1, loc1 = errTupList[0]
-        UserException.__init__(self, msg1, loc1)
-        self.errTupList = errTupList
-        '''iterable (list) with tuples (message, loc)'''
-
-    def __str__(self):
-        errMsg = 'Error!\n'
-        for msg1, _loc1 in self.errTupList:
-            errMsg += '%s \n    %s \n' % (msg1, str(self.loc))
-        errMsg += '------------------------\n'
-        errMsg += 'Total: %d Error(s).' % len(self.errTupList)
-        return errMsg
+#class MultiErrorException(UserException):
+#    '''Exception with many (user visible) error messages'''
+#    def __init__(self, errTupList):
+#        '''
+#        Arguments:
+#            errTupList : iterable (list) with tuples (message, loc)
+#        '''
+#        #init base class with first error; at least kind of sensible
+#        msg1, loc1 = errTupList[0]
+#        UserException.__init__(self, msg1, loc1)
+#        self.errTupList = errTupList
+#        '''iterable (list) with tuples (message, loc)'''
+#
+#    def __str__(self):
+#        errMsg = 'Error!\n'
+#        for msg1, _loc1 in self.errTupList:
+#            errMsg += '%s \n    %s \n' % (msg1, str(self.loc))
+#        errMsg += '------------------------\n'
+#        errMsg += 'Total: %d Error(s).' % len(self.errTupList)
+#        return errMsg
 
 
 
@@ -1850,113 +2056,87 @@ import unittest
 class TestAST(unittest.TestCase):
 
     def setUp(self):
-        '''perform common setup tasks for each test'''
-        #create test data; loc is abused as number for node identification
-        self.tree1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')],
-                               2, 'branch'),
-                          Node([],5,'leaf')], 1, 'root')
+        '''Node: perform common setup tasks for each test'''
+        #create a tree
+        n5 = Node(name='n5', type='leaf',   kids=[])       
+        n4 = Node(name='n4', type='leaf',   kids=[])       
+        n3 = Node(name='n3', type='leaf',   kids=[])       
+        n2 = Node(name='n2', type='branch', kids=[n3, n4])
+        n1 = Node(name='n1', type='trunk',  kids=[n2, n5]) 
+        self.tree1 = n1
+#        print n1
 
     def test__init__(self):
+        '''Node: Test the __init__ method'''
+        #The init method creates one attribute for each named argument.
+        #There are no default attributes.
         n1 = Node()
-        self.assertEqual(n1.kids, [])
-        self.assertEqual(n1.loc, None)
-        self.assertEqual(n1.dat, None)
-        n2 = Node([],1,'test')
-        self.assertEqual(n2.loc, 1)
-        self.assertEqual(n2.dat, 'test')
+        self.assertTrue(len(n1.__dict__) == 0)
+        n2 = Node(loc=1, dat='test')
+        self.assertTrue(n2.loc == 1)       #IGNORE:E1101  
+        self.assertTrue(n2.dat == 'test')  #IGNORE:E1101
         self.assertRaises(TypeError, self.raise__init__1)
     def raise__init__1(self):
+        '''Node: Positional arguments raise exceptions'''
         Node('test')
 
-    #missing: test__repr__
-
     def test__str__(self):
-        #test printing and line wraping (it must not crash)
+        '''Node: Test printing and line wraping (it must not crash)'''
+        #TODO: Make this smarter, printing and copying are the only 
+        #      genuine functions of Node
+        #Test wrapping
         #create additional node with many big attributes
-        nBig = Node([])
-        nBig.test1 = 'qworieoqwiruuqrw'
-        nBig.test2 = 'qworieoqwiruuqrw'
-        nBig.test3 = 'qworieoqwiruuqrw'
-        nBig.test4 = 'qworieoqwiruuqrw'
-        nBig.test5 = 'qworieoqwiruuqrw'
-        nBig.test6 = 'qworieoqwiruuqrw'
-        nBig.test7 = 'qworieoqwiruuqrw'
-        nBig.test8 = 'qworieoqwiruuqrw'
-        nBig.test9 = 'qworieoqwiruuqrw'
-        self.tree1[0][1].appendChild(nBig)
+        n_big = Node(  name='n_big', 
+                        test1 = 'qworieoqwiruuqrw',
+                        test2 = 'qworieoqwiruuqrw',
+                        test3 = 'qworieoqwiruuqrw',
+                        test4 = 'qworieoqwiruuqrw',
+                        test5 = 'qworieoqwiruuqrw',
+                        test6 = 'qworieoqwiruuqrw',
+                        test7 = 'qworieoqwiruuqrw',
+                        test8 = 'qworieoqwiruuqrw',
+                        test9 = 'qworieoqwiruuqrw',
+                        test10 = 'qworieoqwiruuqrw')
+        self.tree1.kids[0].big = n_big                #IGNORE:E1101
         _str1 = self.tree1.__str__()
         #to see it:
-        #print
-        #print self.tree1
-
-    def test__iter__(self):
-        #iteration, immediate children
-        l = []
-        for node1 in self.tree1:
-            l.append(node1.loc)
-        self.assertEqual(l, [2, 5])
-
-    def test__len__(self):
-        self.assertEqual(2, len(self.tree1))
-
-    def test__appendChild__(self):
-        self.tree1.appendChild(Node(loc=10))
-        self.assertEqual(3, len(self.tree1))    #one child added
-        self.assertEqual(10, self.tree1[2].loc) #at the end
-        self.assertRaises(TypeError, self.raise__appendChild__)
-    def raise__appendChild__(self):
-        #append child checks the type
-        self.tree1.appendChild('qwert')
-
-    def test__insertChild__(self):
-        self.tree1.insertChild(0, Node(loc=10))
-        self.assertEqual(3, len(self.tree1))    #one child added
-        self.assertEqual(10, self.tree1[0].loc) #at the begining
-        self.assertRaises(TypeError, self.raise__insertChild__)
-    def raise__insertChild__(self):
-        #append child checks the type
-        self.tree1.insertChild(0, 'qwert')
-
-    def test__delChild(self):
-        del self.tree1[0]
-        self.assertEqual(1, len(self.tree1))   #one child removed
-        self.assertEqual(5, self.tree1[0].loc) #at the begining
-
-    def test__getitem__(self):
 #        print
-#        print self.tree1 #in case you need an overwiew
-        self.assertEqual(1, self.tree1.loc)
-        self.assertEqual(2, self.tree1[0].loc)
-        self.assertEqual(3, self.tree1[0][0].loc)
+#        print self.tree1
+        
 
-    def testIterDepthFirst(self):
-        #iteration, all child nodes recursive
-        l = []
-        for node1 in self.tree1.iterDepthFirst():
-            l.append(node1.loc)
-        self.assertEqual(l, [1, 2, 3, 4, 5])
-        #iteration, all child nodes recursive also depth is returned
-        l = []
-        for node1, depth in self.tree1.iterDepthFirst(returnDepth=True):
-            line = 'dat: %s, depth; %d' % (node1.dat, depth)
-            l.append(line)
-        self.assertEqual(l, ['dat: root, depth; 0',
-                             'dat: branch, depth; 1',
-                             'dat: leaf, depth; 2',
-                             'dat: leaf, depth; 2',
-                             'dat: leaf, depth; 1'])
+#    def testIterDepthFirst(self):
+#        #TODO: Reenable when new iterator exists
+#        #iteration, all child nodes recursive
+#        l = []
+#        for node1 in self.tree1.iterDepthFirst():
+#            l.append(node1.loc)
+#        self.assertEqual(l, [1, 2, 3, 4, 5])
+#        #iteration, all child nodes recursive also depth is returned
+#        l = []
+#        for node1, depth in self.tree1.iterDepthFirst(returnDepth=True):
+#            line = 'dat: %s, depth; %d' % (node1.dat, depth)
+#            l.append(line)
+#        self.assertEqual(l, ['dat: root, depth; 0',
+#                             'dat: branch, depth; 1',
+#                             'dat: leaf, depth; 2',
+#                             'dat: leaf, depth; 2',
+#                             'dat: leaf, depth; 1'])
 
     def testCopy(self):
-        tree2 = self.tree1.copy() #create deep copy
+        '''Node: Test copy function'''
+        tree1_c = self.tree1.copy() #create deep copy
         #assert that values are equal
-        self.assertEqual(len(tree2), len(self.tree1))
-        self.assertEqual(tree2.loc, self.tree1.loc)
-        self.assertEqual(tree2[0].loc, self.tree1[0].loc)
-        self.assertEqual(tree2[0][0].loc, self.tree1[0][0].loc)
+        self.assertTrue(len(tree1_c.__dict__) == len(self.tree1.__dict__))
+        self.assertTrue(tree1_c.name == self.tree1.name)                     #IGNORE:E1101
+        self.assertTrue(tree1_c.kids[0].name == self.tree1.kids[0].name)     #IGNORE:E1101
+        self.assertTrue(   tree1_c.kids[0].kids[0].name == 
+                        self.tree1.kids[0].kids[0].name    )                 #IGNORE:E1101
         #assert that copy created new objects
-        self.assertNotEqual(id(tree2), id(self.tree1))
-        self.assertNotEqual(id(tree2[0]), id(self.tree1[0]))
-        self.assertNotEqual(id(tree2[0][0]), id(self.tree1[0][0]))
+        self.assertFalse(id(tree1_c) == id(self.tree1))
+        self.assertFalse(id(tree1_c.kids[0]) == id(self.tree1.kids[0]))      #IGNORE:E1101
+        self.assertFalse(id(   tree1_c.kids[0].kids[0]) == 
+                         id(self.tree1.kids[0].kids[0])    )                 #IGNORE:E1101
+        #TODO: test copying of not owned (weak, shared) attributes
 
 
 
@@ -2065,20 +2245,25 @@ class TestVisitor(unittest.TestCase):
     def test_priority_2(self):
         '''Visitor: Test priority 2.'''
 
+        class A(Node):
+            pass
+        class B(Node):
+            pass
+        
         class NodeVisitor(Visitor):
             def __init__(self):
                 Visitor.__init__(self)
 
             #Handlers for derived classes - specialized
             #- should have high priority
-            @Visitor.when_type(NodeClassDef, 2)
-            def visitClassDef(self, classDef): #IGNORE:W0613
+            @Visitor.when_type(A, 2)
+            def visitA(self, a_inst):                         #IGNORE:W0613
 #                print 'seen class def: ' + classDef.name
-                return ['NodeClassDef']
-            @Visitor.when_type(NodeFuncDef, 2)
-            def visitFuncDef(self, funcDef): #IGNORE:W0613
+                return ['A']
+            @Visitor.when_type(B, 2)
+            def visitB(self, b_inst):                          #IGNORE:W0613
 #                print 'seen func def: ' + funcDef.name
-                return ['NodeFuncDef']
+                return ['B']
 
             #handler for a base class - general
             #- should have low priority
@@ -2089,23 +2274,23 @@ class TestVisitor(unittest.TestCase):
 
             def mainLoop(self, tree):
                 retList = []
-                for node in tree:
+                for node in tree.kids:
                     retList += self.dispatch(node)
                 return retList
 
         #create a syntax tree
-        tr=Node()
-        tr.appendChild(NodeClassDef(name='c1'))
-        tr.appendChild(NodeClassDef(name='c2'))
-        tr.appendChild(Node(dat='n1'))
-        tr.appendChild(NodeFuncDef(name='f1'))
-        tr.appendChild(NodeFuncDef(name='f2'))
+        tr = Node(kids=[])
+        tr.kids.append(A(name='a1'))  #IGNORE:E1101
+        tr.kids.append(A(name='a2'))  #IGNORE:E1101
+        tr.kids.append(Node(name='n1'))           #IGNORE:E1101
+        tr.kids.append(B(name='b1'))   #IGNORE:E1101
+        tr.kids.append(B(name='b2'))   #IGNORE:E1101
         #visit all nodes
         nv = NodeVisitor()
         testList = nv.mainLoop(tr)
 #        print testList
 
-        expectedList = ['NodeClassDef', 'NodeClassDef', 'Node', 'NodeFuncDef', 'NodeFuncDef']
+        expectedList = ['A', 'A', 'Node', 'B', 'B']
         self.assertEqual(testList, expectedList)
 
 
@@ -2222,7 +2407,8 @@ if __name__ == '__main__':
     def doDoctest():
         import doctest
         doctest.testmod()
-    doDoctest()
+    #TODO: fix and reenable Doctest
+    #doDoctest()
 
     #perform the unit tests
     #unittest.main() #exits interpreter

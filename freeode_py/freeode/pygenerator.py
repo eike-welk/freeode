@@ -101,7 +101,7 @@ class FormulaGenerator(Visitor):
 #        retStr += ')'
 #        return retStr
         
-    @Visitor.when_type(NodeNum, 1)
+    @Visitor.when_type(NodeFloat, 1)
     def _createNum(self, iltFormula):
         #Number: 123.5
         return str(float(iltFormula.dat))

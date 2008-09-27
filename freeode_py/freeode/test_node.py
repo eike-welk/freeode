@@ -24,7 +24,7 @@ class NodeNg(object):
     aa_indent_width = 4
     #Length of line. Longer lines will be wrapped
     aa_wrap_line_at = 150
-    #Also print the node's id()
+    #Also print the node's id() 
     aa_show_ID = False
     #Maximal nesting level, to catch infinite recursion.
     aa_max_nesting_level = 100
@@ -73,7 +73,6 @@ class NodeNg(object):
              isinstance(attr[0][0], NodeNg):
             return 4 # list(list(NodeNg))
         else:
-            #TODO: return 1 for not owned attributes!
             return 0 #not a NodeNg
             
     def aa_make_str_block(self, attr_name_list, indent_str, nesting_level):
@@ -163,7 +162,7 @@ class NodeNg(object):
                   ' nesting_level = ' + str(nesting_level) + '\n'
 #            print 'Warning: ' + msg
             return msg                  
-        #init buffer
+        #initialize buffer
         tree_buffer = ''
         #string for indentation
         indent_str = self.aa_indent_step_str * nesting_level 
@@ -192,8 +191,7 @@ class NodeNg(object):
         
         return tree_buffer
     
-        
-    #TODO: implement!       
+             
     def copy(self):
         '''
         Return a (recursive) deep copy of the node.
@@ -222,7 +220,6 @@ class NodeNg(object):
                 setattr(new_obj, name, new_attr)
             else:
                 #attribute owned by other object: no copy only reference
-                #TODO: try to create a new proxy object.
                 setattr(new_obj, name, attr)
         return new_obj
 
