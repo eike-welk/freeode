@@ -256,6 +256,7 @@ class ExecutionEnvironment(object):
     Function findDotName searches the symbol in all name spaces.
 
     TODO: put into module intermediate?
+    TODO: rename to stack frame?
     '''
     def __init__(self):
         #Name space for global variables. Module where the code was written.
@@ -264,6 +265,8 @@ class ExecutionEnvironment(object):
         self.thisScope = None
         #scope for the local variables of a function
         self.localScope = None
+        #TODO: self.statements = None #Statements of function ore module
+
 
     #def findDotName(self, dotName, default=None):
     def findDotName(self, *posArg):
@@ -303,13 +306,12 @@ class ExecutionEnvironment(object):
                 continue
             attr = scope.findDotName(dotName, None)
             if attr is not None:
-                break
-        if attr is not None:
-            return attr
-        elif not raiseErr:
-            return default
-        else:
+                return attr
+        #attribute could not be found
+        if raiseErr:
             raise UndefinedAttributeError(attrName=str(dotName))
+        else:
+            return default            
 
 
 #    def setGlobalScope(self, inNameSpace):
@@ -398,7 +400,7 @@ class ExecutionEnvironment(object):
 ##TODO: create MethodOverloadingResolver(OverloadingResolver):
 
 
-##-------- Old Node Object ----------------------------------------------------
+######################## Old Node Object ###########################################
 #class Node(object):
 #    '''
 #    Building block of a n-ary tree structure.
@@ -840,7 +842,7 @@ class Node(object):
         return new_obj
 
 
-
+#---------- Nodes Start ------------------------------------------------------------*
 #class NodeNoneClass(Node):
 #    '''Node that takes the function of None.'''
 #    def __init__(self):
@@ -848,18 +850,19 @@ class Node(object):
 ##The single instance of NodeNoneClass. Should be used like None
 #nodeNone = NodeNoneClass()
 
-
+#--------- Expression --------------------------------------------------------------
 class NodeFloat(Node):
     '''
     Represent a real number in the AST.
     Example: 123.5
     Data attributes:
-        kids    : []
         loc     : location in input string
-        dat     : the number as a string
+        value   : the number as a string???
     '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeFloat, self).__init__(kids, loc, dat)
+    def __init__(self):
+        super(NodeFloat, self).__init__()
+        self.value = None
+        self.loc = None
 
 
 class NodeString(Node):
@@ -867,74 +870,147 @@ class NodeString(Node):
     Represent a string in the AST.
     Example: 'hello world'
     Data attributes:
-        kids    : []
         loc     : location in input string
-        dat     : the string
+        value   : the string
     '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeString, self).__init__(kids, loc, dat)
+    def __init__(self):
+        super(NodeString, self).__init__()
+        self.value = None
+        self.loc = None
 
+
+class NodeIdentifier(Node):
+    '''
+    AST node for an identifier. 
+    
+    Using an identifier always means some access to data.
+    
+    TODO: the '$' and 'deriv' operators will mean access to special variables 
+          with mangeld names: $foo.bar --> foo.bar$time; deriv(foo, x) --> foo$x
+    
+    Data Attributes:
+        name: DotName()
+            Name of attribute (DotName('a'), DotName('proc.model1.a'))
+        target_name : 
+            name in the target language (string, DotName)
+            Necessary? should be in node data (symbol table). See self.attr_ref
+        attr_ref: 
+            Reference to the attribute (definition, into symbol table) 
+            which is accessed.
+        attr_is_builtin:
+            True if identifier encodes access to variable of builtin type. 
+            Usefull for flattening. 
+        loc: 
+            Location in input string
+    '''
+    def __init__(self):
+        super(NodeIdentifier, self).__init__()
+        self.name = None
+        #TODO: necessary? should be in node data. See self.attr_ref
+        self.target_name = None 
+        self.attr_ref = None
+        self.attr_is_builtin = None #TODO: necessary? 
+        self.loc = None
+
+
+class NodeAttrAccess(Node):
+    '''
+    AST node for dot operator. 
+    '''
+    def __init__(self):
+        super(NodeAttrAccess, self).__init__()
+        #TODO: Implementation
+        
 
 class NodeParentheses(Node):
     '''
     Represent a pair of parentheses that enclose an expression, in the AST.
+    
     Example: ( ... )
+    Treated like a special (do nothing) operator
+    
     Data attributes:
-        kids[0] : the mathematical expression between the parentheses
-        loc     : location in input string
-        dat     : None
+        arguments: list(Node())
+            Mathematical expression between the parentheses. 
+            Naming is chosen to unify operators and function call
+        loc: 
+            Location in input string
     '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeParentheses, self).__init__(kids, loc, dat)
+    def __init__(self):
+        super(NodeParentheses, self).__init__()
+        self.arguments = []
+        self.loc = None
 
 
 class NodeOpInfix2(Node):
     '''
     AST node for a (binary) infix operator: + - * / ^ and or
     Data attributes:
-        kids    : [LHS, RHS] both sides of the operator
-        loc     : location in input string
-        dat     : None
-        operator: operator symbol e.g.: '+'
+        operator: 
+            Operator symbol e.g.: '+'
+        arguments:  list(Node(), Node())
+            Expression on left and right of operator: 
+            left: arguments[0], right: arguments[1]
+            Naming is chosen to unify operators and function call
+        loc: 
+            Location in input string
     '''
-    def __init__(self, kids=None, loc=None, dat=None, operator=None):
-        super(NodeOpInfix2, self).__init__(kids, loc, dat)
-        self.operator = operator
-        if not self.kids: 
-            self.kids = [Node(), Node()]
-
-    #Get and set the left hand side
-    def getLhs(self): return self.kids[0]
-    def setLhs(self, inLhs): self.kids[0] = inLhs
-    lhs = property(getLhs, setLhs, None,
-                   'Left hand side of operator (proppery).')
-
-    #Get and set the right hand side
-    def getRhs(self): return self.kids[1]
-    def setRhs(self, inRhs): self.kids[1] = inRhs
-    rhs = property(getRhs, setRhs, None,
-                   'Right hand side of operator (proppery).')
+    def __init__(self):
+        super(NodeOpInfix2, self).__init__()
+        self.operator = None
+        self.arguments = []
+        self.loc = None
 
 
 class NodeOpPrefix1(Node):
     '''
     AST node for a (unary) prefix operator: - not
-        kids    : [RHS] the term on which the operator acts
-        loc     : location in input string
-        dat     : None
-        operator: operator symbol e.g.: '+'
+    
+        operator: 
+            Operator symbol e.g.: '-'
+        arguments:  list(Node())
+            Expression on right side of operator
+            Naming is chosen to unify operators and function call
+        loc: 
+            Location in input string
+  '''
+    def __init__(self):
+        super(NodeOpPrefix1, self).__init__()
+        self.operator = None
+        self.arguments = []
+        self.loc = None
+
+
+class NodeFuncCall(Node):
     '''
-    def __init__(self, kids=None, loc=None, dat=None, operator=None):
-        super(NodeOpPrefix1, self).__init__(kids, loc, dat)
-        self.operator = operator
+    AST Node for calling a function or method.
+    
+    This will be usually done by inserting the code of the function's body
+    into the top level function. Similar to an inline function in C++.
+    
+    Data attributes:
+        name: DotName
+            Dotted name of function
+        attrRef: 
+            Reference to the function (definition) which is accessed.
+            Name choosen to ease unification with NodeIdentifier.
+        arguments: 
+            List of positional arguments
+        keyword_arguments: 
+            Dictionary of keyword arguments
+        loc: 
+            Location in input string
+    '''
+    def __init__(self):
+        super(NodeFuncCall, self).__init__()
+        self.name = None
+        self.attr_ref = None
+        self.attr_is_builtin = None
+        self.arguments = []
+        self.keyword_arguments = {}
+        self.loc = None
 
-    #Get and set the right hand side
-    def getRhs(self): return self.kids[0]   
-    def setRhs(self, inRhs): self.kids[0] = inRhs
-    rhs = property(getRhs, setRhs, None,
-                   'Right hand side of operator (proppery).')
-
-
+#-------------- Statements --------------------------------------------------
 class NodeIfStmt(Node):
     '''
     AST Node for an if ... the ... else statement
@@ -943,8 +1019,8 @@ class NodeIfStmt(Node):
         loc     : location in input string
         dat     : None
     '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeIfStmt, self).__init__(kids, loc, dat)
+    def __init__(self):
+        super(NodeIfStmt, self).__init__()
 
     #TODO: design good interface for NodeIfStmt
     #TODO: make compatible with multiple elif clauses:
@@ -979,39 +1055,14 @@ class NodeIfStmt(Node):
 class NodeAssignment(NodeOpInfix2):
     '''
     AST node for an assignment: '='
-        kids    : [LHS, RHS] both sides of the assignment operator
         loc     : location in input string
-        dat     : None
-        operator: operator symbol e.g.: '+'
+        lhs     : Left hand side of operator
+        rhs     : Right hand side of operator
+        operator: '='
     '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeAssignment, self).__init__(kids, loc, dat, operator='=')
-
-
-class NodeFuncExecute(Node):
-    '''
-    AST Node for calling a function or method.
-    This will be usually done by inserting the code of the function's body
-    into the top level function.
-    Similar to an inline function in C++.
-    Data attributes:
-        kids        : [<function arguments (any mathematical expression)>]
-        loc         : location in input string
-        dat         : None
-
-        name        : Dotted name of the function: DotName.
-        attrRef     : Reference to the function (definition) which is accessed.
-                      Name choosen to ease unification with NodeAttrAccess.
-
-    TODO: some unification with NodeAttrAccess required. Possibilities:
-          1: composition: call contains attr access.
-          2: Inheritance: call is attr access
-    '''
-    def __init__(self, kids=None, loc=None, dat=None, name=None):
-        super(NodeFuncExecute, self).__init__(kids, loc, dat)
-        self.name = name
-        self.attrRef = None
-        self.positional_arguments = []
+    def __init__(self):
+        super(NodeAssignment, self).__init__()
+        self.operator = '='
 
 
 class NodePrintStmt(Node):
@@ -1283,40 +1334,6 @@ class NodeCompileStmt(NodeDataDef):
         self.mainFuncs = []
 
 
-class NodeAttrAccess(Node):
-    '''
-    AST node for dot operator. 
-    '''
-    def __init__(self, kids=None, loc=None, dat=None):
-         super(NodeAttrAccess, self).__init__(kids, loc, dat)
-        #TODO: Implementation
-        
-class NodeIdentifier(Node):
-    '''
-    AST node for an identifier. 
-    
-    Using an identifier always means some access to data.
-    
-    TODO: the '$' and 'deriv' operators will mean access to special variables 
-          with mangeld names: $foo.bar --> foo.bar$time; deriv(foo, x) --> foo$x
-    
-    Data Attributes:
-        kids    :  ? slice object if attribute is an array?
-        loc     : location in input string
-        dat     : None
-
-        name       : DotName('proc.model1.a'), the dot separated name.
-        targetName : name in the target language (string, DotName)
-        attrRef    : Reference to the attribute (definition) which is accessed.
-    '''
-    def __init__(self, kids=None, loc=None, dat=None,
-                 name=None, targetName=None):
-        super(NodeIdentifier, self).__init__(kids, loc, dat)
-        self.name = DotName(name)
-        self.targetName = targetName #TODO: necessary after introduction of node data?
-        self.attrRef = None
-
-
 class NodeFuncDef(Node):
     """
     AST node for method/function definition.
@@ -1420,23 +1437,20 @@ class NodeClassDef(Node, NameSpace):
             'Attribute definitions and operations on constants. (propperty).')
 
 
-class NodeModule(Node, NameSpace):
+class NodeModule(Node):
     '''
     Root node of a module (or of the program)
     Attributes:
-    -----------
-    kids      : Definitions, the program's code.
-    loc       : location in input string (~0)
-    dat       : None
-
-    name      : Name of the module
-    targetName: Name useful in the context of flattening or code generation
+        loc       : location in input string (~0)
+        name      : Name of the module
+        target_name: Name useful in the context of flattening or code generation
     '''
-    def __init__(self, kids=None, loc=None, dat=None, name=None):
-        Node.__init__(self, kids, loc, dat)
-        NameSpace.__init__(self)
-        self.name = name
-        self.targetName = None
+    def __init__(self):
+        Node.__init__(self)
+        self.name = None
+        self.target_name = None
+        self.statements = []
+        self.loc = None
 
 
 class NodeFlatModule(Node, FlatNameSpace):
@@ -1460,7 +1474,7 @@ class NodeFlatModule(Node, FlatNameSpace):
         self.name = name
         self.targetName = None
 
-
+#---------- Nodes End --------------------------------------------------------*
 
 class DepthFirstIterator(object):
     """
@@ -1860,11 +1874,11 @@ class Visitor(object):
     ...         for node in tree:
     ...             self.dispatch(node)
 
-    >>> tr=Node()
-    >>> tr.appendChild(NodeClassDef(name='c1'))
-    >>> tr.appendChild(NodeClassDef(name='c2'))
-     >>> tr.appendChild(NodeFuncDef(name='f1'))
-    >>> tr.appendChild(NodeFuncDef(name='f2'))
+    >>> tr=Node(kids=[])
+    >>> tr.kids.append(NodeClassDef(name='c1'))
+    >>> tr.kids.append(NodeClassDef(name='c2'))
+    >>> tr.kids.append(NodeFuncDef(name='f1'))
+    >>> tr.kids.append(NodeFuncDef(name='f2'))
     >>> nv = NodeVisitor()
     >>> nv.mainLoop(tr)
     seen class def:  c1

@@ -240,7 +240,7 @@ class Parser(object):
 #        return nCurr
 
 
-    def _actionNumber(self, s, loc, toks): #IGNORE:W0613
+    def _action_number(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for a number: 5.23
         tokList has the following structure:
@@ -251,10 +251,10 @@ class Parser(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeFloat()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.dat = tokList[0] #Store the number
+        nCurr.value = tokList[0] #Store the number
         return nCurr
 
-    def _actionString(self, s, loc, toks): #IGNORE:W0613
+    def _action_string(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for a string: 'qwert'
         tokList has the following structure:
@@ -265,11 +265,10 @@ class Parser(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeString()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        #nCurr.dat = tokList #Store the string
-        nCurr.dat = tokList[1:-1] #Store the string; remove quotes
+        nCurr.value = tokList[1:-1] #Store the string; remove quotes
         return nCurr
 
-    def _actionParenthesesPair(self, s, loc, toks): #IGNORE:W0613
+    def _action_parentheses_pair(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for a pair of parentheses that enclose an expression: (...)
         tokList has the following structure:
@@ -283,7 +282,7 @@ class Parser(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeParentheses()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.kids = [tokList[1]] #store child expression
+        nCurr.arguments = [tokList[1]] #store child expression
         return nCurr
 
     def _action_op_prefix(self, s, loc, toks): #IGNORE:W0613
@@ -294,11 +293,11 @@ class Parser(object):
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        tokList = toks.asList()[0] #Group() ads an extra pair of brackets
         nCurr = NodeOpPrefix1()
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.operator = tokList[0]  #Store operator
-        nCurr.kids=[tokList[1]] #Store child tree
+        nCurr.arguments = [tokList[1]] #Store expression 
         return nCurr
 
     def _action_op_infix_left(self, s, loc, toks): #IGNORE:W0613
@@ -307,7 +306,8 @@ class Parser(object):
 
         operatorPrecedence returns such a list for left assocative operaators.
         tokList has the following structure:
-        [<expression_1>, <operator_1>, <expression_2>, <operator_2>, ... ]
+        [<expression_1>, <operator_1>, <expression_2>, <operator_2>, ... 
+         <expression_n+1>]
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
@@ -334,11 +334,11 @@ class Parser(object):
             tokList = toks
         nCurr = NodeOpInfix2()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        #create children and store operator
-        lhsTree = tokList[0]   #child lhs
+        #Store both expressions and operator
+        exprLhs = tokList[0]        #expression left hand side
         nCurr.operator = tokList[1] #operator
-        rhsTree = tokList[2]   #child rhs
-        nCurr.kids=[lhsTree, rhsTree]
+        exprRhs = tokList[2]        #rhs
+        nCurr.arguments = [exprLhs, exprRhs]
         return nCurr
 
     def _action_identifier(self, s, loc, toks): #IGNORE:W0613
@@ -675,7 +675,7 @@ class Parser(object):
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         toks = toks[0] #remove extra bracket of group
-        nCurr = NodeFuncExecute()
+        nCurr = NodeFuncCall() 
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store function name
         nCurr.name = toks[0]
@@ -844,11 +844,11 @@ class Parser(object):
         uFloat = Group( Combine(
                     uInteger +
                     Optional('.' + Optional(uInteger)) +
-                    Optional(eE + Word('+-'+nums, nums))))          .setParseAction(self._actionNumber)\
+                    Optional(eE + Word('+-'+nums, nums))))          .setParseAction(self._action_number)\
                                                                     .setName('uFloat')#.setDebug(True)
         #string
         #TODO: good error message for missing 2nd quote in single line string
-        stringLiteral = quotedString                                .setParseAction(self._actionString)\
+        stringLiteral = quotedString                                .setParseAction(self._action_string)\
                                                                     .setName('string')#.setDebug(True)
         literal = uFloat | stringLiteral
 
@@ -856,7 +856,7 @@ class Parser(object):
 
         #Built in variables, handled specially at attribute access.
         #kw('time'); kw('this')
-        Parser.builtInVars = set(['time', 'this'])
+        Parser.builtInVars = set(['time', 'this', 'diff', 'Unit'])
         #identifiers
         identifierBase = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
         # identifier:    Should be used in expressions. If a keyword is used an ordinary parse error is
@@ -876,7 +876,7 @@ class Parser(object):
         #Atoms are the most basic elements of expressions.
         #Brackets or braces are also categorized syntactically as atoms.
         #TODO: future extension: enclosures can also create tuples
-        enclosure = S('(') + expression + S(')')                    .setParseAction(self._actionParenthesesPair)
+        enclosure = S('(') + expression + S(')')                    .setParseAction(self._action_parentheses_pair)
         atom = identifier | literal | enclosure
       
         #Function/method call: everything within the round brackets is parsed here;
@@ -1273,7 +1273,7 @@ class RunTest(Process):
         #print parser.parseModuleStr(testProg2)
 
     flagTestExpression = True
-    flagTestExpression = False
+#    flagTestExpression = False
     if flagTestExpression:
         parser = Parser()
         #Parser.noTreeModification = 1
@@ -1288,15 +1288,15 @@ class RunTest(Process):
 #        print parser.parseExpressionStr('0*1*2*3*4*99')
 #        print parser.parseExpressionStr('0**1**2**3**4**99')
 #        print parser.parseExpressionStr('a.b.c')
-#        print parser.parseExpressionStr('0+1*2+3+4-99')
+        print parser.parseExpressionStr('0+1*2+3+4-99')
 #        print parser.parseExpressionStr('-0+1+--2*-3--4')
 #        print parser.parseExpressionStr('0+a1.a2+b1.b2.b3*3+99 #comment')
 #        print parser.parseExpressionStr('a(1, 3, )')
-        print parser.parseExpressionStr('a.b.c(1, d.e)')
+#        print parser.parseExpressionStr('a.b.c(1, d.e)')
 #        print parser.parseExpressionStr('0.123+1.2e3')
 
     flagTestModuleSimple = True
-#    flagTestModuleSimple = False
+    flagTestModuleSimple = False
 # ---------- test -------------
     if flagTestModuleSimple:
         parser = Parser()
@@ -1337,11 +1337,12 @@ if __name__ == '__main__':
     #TODO: add unit tests
     #TODO: add doctest tests. With doctest tests are embedded in the documentation
         
-    #create profiler object
-    import cProfile
+    #profile the tests
+#    import cProfile
+#    cProfile.run('doTests()')
     
-    cProfile.run('doTests()')
-#    doTests()
+    #run tests normally
+    doTests()
 else:
     # This will be executed in case the
     #    source has been imported as a

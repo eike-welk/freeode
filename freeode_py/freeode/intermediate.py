@@ -210,7 +210,7 @@ class ILTProcessGenerator(object):
                                 % maxRecursionDepth, block.loc)
         for statement in block:
             #Block execution statement: insert the block's code
-            if isinstance(statement, NodeFuncExecute):
+            if isinstance(statement, NodeFuncCall):
                 subBlockName = namePrefix + statement.name #dotted block name
                 subModelName = subBlockName[:-1] #name of model, where block is defined
 #                #Error if submodel or method does not exist
@@ -849,7 +849,7 @@ class ProgramTreeCreator(Visitor):
         NodeFuncDef should only be processed in class definition; 
         processing it in data tree expansion will process it multiple times.
         The individual function objects for flattening must be created 
-        when NodeFuncExecute is processed.
+        when NodeFuncCall is processed.
         '''
         print 'interpreting func def: ', funcDef.name
         #put function into module or class, store global scope
@@ -877,7 +877,7 @@ class ProgramTreeCreator(Visitor):
         return
 
 
-    @Visitor.when_type(NodeFuncExecute)
+    @Visitor.when_type(NodeFuncCall)
     def visitFuncExecute(self, funcCall, stmtContainer, environment):
         '''Interpret function call.'''
         print 'interpreting function call'
@@ -997,7 +997,7 @@ class ProgramTreeCreator(Visitor):
             #create all functions called by each main function.
             for funcName in mainFuncNames:
                 funcDotName = DotName((compileStmt.name, funcName))
-                funcCall = NodeFuncExecute(name=funcDotName)
+                funcCall = NodeFuncCall(name=funcDotName)
                 self.visitFuncExecute(funcCall, stmtContainer, environment) 
                 #remember generated main function in separate list
                 compileStmt.mainFuncs.append(funcCall.attrRef)
@@ -1138,7 +1138,7 @@ class ProgramTreeCreator(Visitor):
                                     expression.loc)
         #Check existence of functions, check correct function arguments
         for node in expression.iterDepthFirst():
-            if not isinstance(node, NodeFuncExecute):
+            if not isinstance(node, NodeFuncCall):
                 continue
             self.visitFuncExecute(node, stmtContainer, environment)
         
