@@ -199,7 +199,7 @@ class Instance(Node):
         return attr
     
   
-#---------- Built In Types  ------------------------------------------------*
+#---------- Built In Objects  ------------------------------------------------*
 class InstClass(Instance):
     '''Class: generator for instances'''
     def __init__(self):
@@ -210,7 +210,7 @@ class InstClass(Instance):
     #TODO: def make_instance(): 
 
 #TODO: InstClassBase     ???
-#        --> InstClass   ???
+#        --> SimlClass   ???
 #        --> ClassFloat  ???
 #        --> ClassString ???
 #TODO: InstUserDefinedClass????

@@ -411,24 +411,28 @@ class Parser(object):
         nCurr.kids=[lhsTree, rhsTree]
         return nCurr
 
-    def _actionPrintStmt(self, s, loc, toks): #IGNORE:W0613
+    def _action_print_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for print statement:
             print 'hello', foo.x
         BNF:
-        printStmt = Group(kw('print') + exprList  .setResultsName('argList')
-                          + Optional(',')         .setResultsName('trailComma')
-                          + ';')                  .setParseAction(self._actionPrintStmt)\
+        expression_list = delimitedList(expression, ',')            .setName('exprList')
+        print_stmt = Group(kw('print')
+                          - Optional(expression_list)               .setResultsName('arg_list')
+                          + Optional(',')                           .setResultsName('trail_comma')                       
+                          )                                         .setParseAction(self._action_print_stmt)\
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        #tokList = toks.asList()[0] #there always seems to be
+        #tokList = toks.asList()[0] #Group adds 
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodePrintStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.kids = toks.argList.asList()[0]
+        nCurr.arguments = toks.arg_list.asList()
         if toks.trailComma:
             nCurr.newline = False
+        else:
+            nCurr.newline = True
         return nCurr
 
     def _actionGraphStmt(self, s, loc, toks): #IGNORE:W0613
@@ -565,7 +569,7 @@ class Parser(object):
         return nCurr
 
 
-    def _actionDataDef(self, s, loc, toks): #IGNORE:W0613
+    def _action_data_def(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for defining parameter, variable or submodel:
             'data foo, bar: baz.boo parameter;
@@ -573,52 +577,44 @@ class Parser(object):
         NodeDataDef is created for each. They are returned together inside a
         list node of type NodeStmtList.
         BNF:
-        newAttrList = Group( identifier +
-                                ZeroOrMore(',' + identifier))
-        attrRole = kw('state_variable') |kw('variable') | kw('param') | kw('const')
-        #parse 'data foo, bar: baz.boo param;
-        attributeDef = Group(kw('data')
-                             + ES(newAttrList                        .setResultsName('attrNameList')
-                                  + ':' + dotIdentifier              .setResultsName('className')
-                                  + Optional(attrRole)               .setResultsName('attrRole')
-                                  + Optional('=' + ES(expression     .setResultsName('value')
-                                                      )              .setErrMsgStart('default value: ') )
-                                  + stmtEnd)                         .setErrMsgStart('data definition: ')
-                             )                                       .setParseAction(self._actionDataDef)\
-        '''
+        newAttrList = delimitedList(newIdentifier)   
+        data_stmt = Group(kw('data')
+                          - newAttrList                             .setResultsName('attr_name_list')
+                          + ':' + expression                        .setResultsName('class_name')
+                          + Optional(attrRole)                      .setResultsName('attr_role')
+                          + Optional('=' - expression               .setResultsName('default_value')
+                                     )                              .setFailAction(ChMsg(prepend='default value: '))
+                          )                                         .setParseAction(self._action_data_def)\
+         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
         #multiple attributes can be defined in a single statement
-        #Create a node for each of them and put them into a statement list
-        attrDefList = NodeDataDefList(loc=self.createTextLocation(loc))
-        nameList = toks.attrNameList.asList()
+        #Create a node for each of them and put them into a special statement list
+        attrDefList = NodeDataDefList()
+        attrDefList.loc=self.createTextLocation(loc)
+        nameList = toks.attr_name_list.asList()
         for name in nameList:
-#            if name in Parser.keywords:
-#                if name in Parser.builtInVars:
-#                    errMsg = 'Special name can not be redefined: ' + name
-#                else:
-#                    errMsg = 'Keyword can not be used as an identifier: ' + name
-#                raise ParseFatalException(str, loc, errMsg)
-            attrDef = NodeDataDef(loc=self.createTextLocation(loc))
+            attrDef = NodeDataDef()
+            attrDef.loc=self.createTextLocation(loc)
             attrDef.name = DotName(name) #store attribute name
-            attrDef.className = DotName(toks.className.asList())  #store class name
+            attrDef.className = toks.class_name.name #toks.class_name is NodeIdenifier
             #map role string to role object, and store the role
             #If role is not specified RoleVariable is assumed.
             #Submodels will be labeled variables even though these categories don't apply to them.
             roleDict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleVariable,
                         'algebraic_variable':RoleAlgebraicVariable,
                         'state_variable':RoleStateVariable}
-            attrDef.role = roleDict.get(toks.attrRole, None)
+            attrDef.role = roleDict.get(toks.attr_role, None)
             #store the default value
-            if isinstance(toks.defaultValue, Node):
-                attrDef.setValue(toks.defaultValue)
-            #store the attribute definition in the statement list
-            attrDefList.appendChild(attrDef)
+            if isinstance(toks.default_value, Node):
+                attrDef.default_value = toks.default_value
+            #store the attribute definition in the list
+            attrDefList.statements.append(attrDef)
         #Special case: only one attribute defined
-        if len(attrDefList) == 1:
-            return attrDefList[0] #take it out of the list and return it
+        if len(attrDefList.statements) == 1:
+            return attrDefList.statements[0] #take it out of the list and return it
         else:
             return attrDefList #return list with multiple definitions
 
@@ -701,7 +697,7 @@ class Parser(object):
         '''
         Create node for one function argument of a function definition.
         A NodeDataDef is created; therefore this method is quite similar
-        to _actionDataDef.
+        to _action_data_def.
         BNF:
         funcArgDefault = Group(identifier                            .setResultsName('name')
                                + Optional(':' + ES(dotIdentifier     .setResultsName('className')
@@ -800,22 +796,25 @@ class Parser(object):
         return nCurr
 
 
-    def _actionModule(self, s, loc, toks): #IGNORE:W0613
+    def _action_module(self, s, loc, toks): #IGNORE:W0613
         '''
         Create the root node of a module.
         BNF:
-        program = Group(OneOrMore(classDef))
+        module = (indentedBlock(statement, self.indentStack, indent=False) 
+                  + StringEnd())                                      .setParseAction(self._action_module)
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        tokList = toks.asList()[0] 
         nCurr = NodeModule()
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.name = self.moduleName
-        #create children - each child is a Node
-        for tok in tokList:
-            nCurr.kids.append(tok)
-        return nCurr
+        #take the sublists out of the nested lists that indentedBlock produces
+        statements = []
+        for sublist in tokList:
+            statements.append(sublist[0])
+        nCurr.statements = statements
+        return nCurr 
 
 
 #------------------- BNF ------------------------------------------------------------------------*
@@ -975,7 +974,7 @@ class Parser(object):
         print_stmt = Group(kw('print')
                           - Optional(expression_list)               .setResultsName('arg_list')
                           + Optional(',')                           .setResultsName('trail_comma')                       
-                          )                                         .setParseAction(self._actionPrintStmt)\
+                          )                                         .setParseAction(self._action_print_stmt)\
                                                                     .setFailAction(ChMsg(prepend='print statement: '))
         #show graphs
         graph_stmt = Group(kw('graph') - expression_list            .setResultsName('arg_list')
@@ -995,7 +994,7 @@ class Parser(object):
                                                                     .setFailAction(ChMsg(prepend='compile statement: '))
 
         #compute expression and assign to value
-        assign_stmt = Group(expression + '=' - expression)          .setParseAction(self._actionAssignment)\
+        assign_stmt = Group(expression_ex + '=' - expression)          .setParseAction(self._actionAssignment)\
                                                                     .setFailAction(ChMsg(prepend='assignment statement: '))
 
         #------------ data statemnt -------------------------------------------------------------------------
@@ -1009,7 +1008,7 @@ class Parser(object):
         attrRole = (  kw('state_variable') | kw('algebraic_variable') 
                     | kw('variable') | kw('param') | kw('const')      )
         #parse: 'foo, bar, baz
-        newAttrList = Group(delimitedList(newIdentifier))          
+        newAttrList = delimitedList(newIdentifier)         
         #parse 'data foo, bar: baz.boo parameter;
         data_stmt = Group(kw('data')
                           - newAttrList                             .setResultsName('attr_name_list')
@@ -1017,7 +1016,7 @@ class Parser(object):
                           + Optional(attrRole)                      .setResultsName('attr_role')
                           + Optional('=' - expression               .setResultsName('default_value')
                                      )                              .setFailAction(ChMsg(prepend='default value: '))
-                          )                                         .setParseAction(self._actionDataDef)\
+                          )                                         .setParseAction(self._action_data_def)\
                                                                     .setFailAction(ChMsg(prepend='data definition: '))
                                                                    
         simple_stmt = (data_stmt| print_stmt | return_stmt |
@@ -1099,7 +1098,7 @@ class Parser(object):
         
 #---------- module ------------------------------------------------------------------------------------#
         module = (indentedBlock(statement, self.indentStack, indent=False) 
-                  + StringEnd())                                      .setParseAction(self._actionModule)
+                  + StringEnd())                                      .setParseAction(self._action_module)
         
         #workaround for pyparsing bug ???         
 #        module = (ZeroOrMore(newline) 
@@ -1260,9 +1259,9 @@ class RunTest(Process):
 ''')
 
     #test the parser ----------------------------------------------------------------------
-    flagTestParser = True
-    flagTestParser = False
-    if flagTestParser:
+    do_test = True
+    do_test = False
+    if do_test:
         parser = Parser()
         Parser.noTreeModification = 1
 
@@ -1272,9 +1271,9 @@ class RunTest(Process):
         print parser.parseModuleStr(testProg1)
         #print parser.parseModuleStr(testProg2)
 
-    flagTestExpression = True
-#    flagTestExpression = False
-    if flagTestExpression:
+    do_test = True
+    do_test = False
+    if do_test:
         parser = Parser()
         #Parser.noTreeModification = 1
 
@@ -1295,12 +1294,12 @@ class RunTest(Process):
 #        print parser.parseExpressionStr('a.b.c(1, d.e)')
 #        print parser.parseExpressionStr('0.123+1.2e3')
 
-    flagTestModuleSimple = True
-    flagTestModuleSimple = False
+    do_test = True
+#    do_test = False
 # ---------- test -------------
-    if flagTestModuleSimple:
+    if do_test:
         parser = Parser()
-        Parser.noTreeModification = 1
+#        Parser.noTreeModification = 1
 
         print 'keywords:'
         print parser.keywords
@@ -1309,6 +1308,7 @@ class RunTest(Process):
         prog = \
 '''
 print 'start'
+print 'end'
 '''
         print prog
         print parser.parseModuleStr(prog)
@@ -1317,7 +1317,7 @@ print 'start'
         prog = \
 """
 print 'start'
-data a:Real
+data a:Real const =6
 a = 2*2 + 2**-3 * 2**-3**4
 if a > 2:
     print 'a > 2: ', a

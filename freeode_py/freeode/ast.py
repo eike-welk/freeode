@@ -657,9 +657,9 @@ class Node(object):
         Create ASCII-art tree of this object, and of all data attributes it 
         contains recursively.
         '''
-        return self.aa_make_tree()
+        return self._aa_make_tree()
     
-    def aa_attr_category(self, attr_name):
+    def _aa_attr_category(self, attr_name):
         '''
         Categorize attributes for Ascii-art
         
@@ -694,7 +694,7 @@ class Node(object):
                 return 5 # dict(<any>:Node())
         return 0 #not a Node
             
-    def aa_make_str_block(self, attr_name_list, indent_str, nesting_level):
+    def _aa_make_str_block(self, attr_name_list, indent_str, nesting_level):
         '''
         Convert attributes to a string. 
         
@@ -706,7 +706,7 @@ class Node(object):
         line = indent_str
         #loop over list of attribute names
         for key in attr_name_list:
-            cat = self.aa_attr_category(key)
+            cat = self._aa_attr_category(key)
             #Non Node classes, assumed to be small 
             #the atoms that really carry the information)
             if cat == 0:
@@ -736,7 +736,7 @@ class Node(object):
                     tree += line  + '\n'
                     line = indent_str
                 tree += indent_str + key + ' = \n'
-                tree += self.__dict__[key].aa_make_tree(nesting_level +1)
+                tree += self.__dict__[key]._aa_make_tree(nesting_level +1)
             #Attribute is list(Node)
             elif cat == 3:
                 if line != indent_str: 
@@ -744,7 +744,7 @@ class Node(object):
                     line = indent_str   
                 tree += indent_str + key + ' = list :: \n'     
                 for item in self.__dict__[key]:
-                    tree += item.aa_make_tree(nesting_level +1)  
+                    tree += item._aa_make_tree(nesting_level +1)  
 #                    tree += indent_str + '|- ,\n'
             #Attribute is list(list(Node)) (cat = 4)
             #Attribute is dict(<any>:Node())
@@ -755,7 +755,7 @@ class Node(object):
                 tree += indent_str + key + ' = dict :: \n'     
                 for key, item in self.__dict__[key].iteritems():
                     tree += indent_str + ' ' + str(key) + ':\n'  #print key:
-                    tree += item.aa_make_tree(nesting_level +1)  #print node
+                    tree += item._aa_make_tree(nesting_level +1)  #print node
 #                    tree += indent_str + '|- ,\n'
             else:
                 raise Exception('Internal error! Unknown attribute category: ' 
@@ -766,7 +766,7 @@ class Node(object):
         return tree
 
     
-    def aa_make_tree(self, nesting_level=0):
+    def _aa_make_tree(self, nesting_level=0):
         '''
         Create ASCII-art tree of this object, and of all data attributes it 
         contains recursively.
@@ -808,8 +808,8 @@ class Node(object):
         attr_bottom = [a for a in self.aa_bottom if a in name_set]
         body = list(name_set - set(attr_bottom) - set(attr_top))
         body.sort()
-        attr_small = [a for a in body if self.aa_attr_category(a) <= 1]
-        attr_big =    [a for a in body if self.aa_attr_category(a) > 1]
+        attr_small = [a for a in body if self._aa_attr_category(a) <= 1]
+        attr_big =    [a for a in body if self._aa_attr_category(a) > 1]
         
         #create header with type information
         tree_buffer += indent_str + self.__class__.__name__ + ' ::'
@@ -819,10 +819,10 @@ class Node(object):
         indent_str += '|'
         
         #convert the attributes to string
-        tree_buffer += self.aa_make_str_block(attr_top,    indent_str, nesting_level)
-        tree_buffer += self.aa_make_str_block(attr_small,  indent_str, nesting_level)
-        tree_buffer += self.aa_make_str_block(attr_big,    indent_str, nesting_level)
-        tree_buffer += self.aa_make_str_block(attr_bottom, indent_str, nesting_level)
+        tree_buffer += self._aa_make_str_block(attr_top,    indent_str, nesting_level)
+        tree_buffer += self._aa_make_str_block(attr_small,  indent_str, nesting_level)
+        tree_buffer += self._aa_make_str_block(attr_big,    indent_str, nesting_level)
+        tree_buffer += self._aa_make_str_block(attr_bottom, indent_str, nesting_level)
         
         return tree_buffer
     
@@ -936,8 +936,10 @@ class NodeAttrAccess(Node):
     '''
     def __init__(self):
         super(NodeAttrAccess, self).__init__()
-        #TODO: Implementation
-        
+        self.operator = '.'
+        self.arguments = []
+        self.loc = None        
+
 
 class NodeParentheses(Node):
     '''
@@ -1093,9 +1095,10 @@ class NodePrintStmt(Node):
         newline     : if True: add newline to end of output;
                       if False: don't add newline.
     '''
-    def __init__(self, kids=None, loc=None, dat=None, newline=True):
-        super(NodePrintStmt, self).__init__(kids, loc, dat)
-        self.newline = newline
+    def __init__(self):
+        super(NodePrintStmt, self).__init__()
+        self.arguments = []
+        self.newline = None
 
 
 class NodeGraphStmt(Node):
@@ -1201,8 +1204,9 @@ class NodeStmtList(Node):
     AST Node for list of statements
     Each child is a statement.
     '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeStmtList, self).__init__(kids, loc, dat)
+    def __init__(self):
+        super(NodeStmtList, self).__init__()
+        self.statements = []
 
 
 class NodeDataDefList(NodeStmtList):
@@ -1212,8 +1216,8 @@ class NodeDataDefList(NodeStmtList):
     Used to identify these lists so they can be flattened with a pretty
     simple algogithm.
     '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeDataDefList, self).__init__(kids, loc, dat)
+    def __init__(self):
+        super(NodeDataDefList, self).__init__()
 
 
 class AttributeRole(object):
@@ -1277,62 +1281,25 @@ class NodeDataDef(Node):
     '''
     AST node for definition of a variable, parameter or submodel.
     Data Attributes:
-        kids            : [<default value>, <instance attributes>]
         loc             : location in input string
-        dat             : None
 
-        value           : Default value, initial value, value of a constant; interpreted
+        default_value   : Default value, initial value, value of a constant; interpreted
                           according to context. (mathematical expression)
                           (propperty stored in kids[0])
-        body            : statements of a recursive data definition. The statements of a class
-                          definition. (propperty stored in kids[0])
 
         name            : name of the attribute. DotName
         className       : type of the attribute; possibly dotted name: ('aa', 'bb')
         role            : Is this attribute a state or algebraic variable, a constant
                           or a parameter? (AttributeRole subclass).
-        targetName      : Name in the target language (dict).
-                          Variables with derivatives have multiple target names.
-                          Example:
-                          {():'v_foo', ('time',):'v_foo_dt'}
-                          TODO: replace by accessor functions to create more robust interface
-                          TODO: Derivatives should be separate variables. These variables should
-                                be created in the intermediate language logic.
-        isBuiltinType   : If True: the data is a built in class. The inner
-                          structure of these objects is invisible.
-        noFlatten       : If True: Do not flatten this data tree. The class is
-                          handled specially in a later step.
+
         TODO: isReference : Contains no own data; points to something else.
     '''
-    def __init__(self, kids=None, loc=None, dat=None,
-                        name=None, className=None, targetName=None,
-                        role=None):
-        Node.__init__(self, kids, loc, dat)
-        if not self.kids:
-            self.kids = [nodeNone, NodeStmtList()]
-        self.name = name
-        self.className = className
-        self.targetName = targetName
-        self.role = role
-        self.isBuiltinType = False
-        self.noFlatten = False
-        #self.isAssigned = False #can not be done this easy because variables
-        #                        #are assigned in initialize() and in dynamic()
-
-    #Get or set the default value
-    def getValue(self):
-        return self.kids[0]
-    def setValue(self, inValue):
-        self.kids[0] = inValue
-    value = property(getValue, setValue, None,
-                   'Default value or initial value of the defined data (propperty).')
-    #Get or set the recursive definitions
-    def getStatements(self):
-        return self.kids[1]
-    def setStatements(self, inDefs):
-        self.kids[1] = inDefs
-    body = property(getStatements, setStatements, None,
-                   'Attribute definitions. Copied from class definition. (propperty).')
+    def __init__(self):
+        Node.__init__(self)
+        self.name = None
+        self.class_name = None
+        self.role = None
+        self.default_value = None
 
 
 class NodeCompileStmt(NodeDataDef):
@@ -2093,6 +2060,10 @@ class TestAST(unittest.TestCase):
         n1 = Node(name='n1', type='trunk',  kids=[n2, n5]) 
         self.tree1 = n1
 #        print n1
+        n1 = Node(name='n1', type='leaf',   kids={}) 
+        n2 = Node(name='n2', type='leaf',   kids={}) 
+        n3 = Node(name='n3', type='trunk',  kids={'n1':n1, 'n2':n2}) 
+        self.tree2 = n3
 
     def test__init__(self):
         '''Node: Test the __init__ method'''
@@ -2112,7 +2083,7 @@ class TestAST(unittest.TestCase):
         '''Node: Test printing and line wraping (it must not crash)'''
         #TODO: Make this smarter, printing and copying are the only 
         #      genuine functions of Node
-        #Test wrapping
+        #Test wrapping and lists
         #create additional node with many big attributes
         n_big = Node(  name='n_big', 
                         test1 = 'qworieoqwiruuqrw',
@@ -2126,11 +2097,13 @@ class TestAST(unittest.TestCase):
                         test9 = 'qworieoqwiruuqrw',
                         test10 = 'qworieoqwiruuqrw')
         self.tree1.kids[0].big = n_big                #IGNORE:E1101
-        _str1 = self.tree1.__str__()
-        #to see it:
+        _str1 = str(self.tree1)
 #        print
 #        print self.tree1
-        
+        #Test dicts
+        _str2 = str(self.tree2)
+#        print
+#        print self.tree2
 
 #    def testIterDepthFirst(self):
 #        #TODO: Reenable when new iterator exists
