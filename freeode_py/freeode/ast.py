@@ -62,256 +62,251 @@ PROGRAM_VERSION = '0.4.0-dev-1'
 
 
 
-class DuplicateAttributeError(Exception):
-    '''
-    Exception raised by NameSpace
-    when the user tries to redefine an attribute.
-    '''
-    def __init__(self, msg='Duplicate Attribute.', attrName=None):
-        Exception.__init__(self, msg)
-        self.attrName = attrName
+#class DuplicateAttributeError(Exception):
+#    '''
+#    Exception raised by NameSpace
+#    when the user tries to redefine an attribute.
+#    '''
+#    def __init__(self, msg='Duplicate Attribute.', attrName=None):
+#        Exception.__init__(self, msg)
+#        self.attrName = attrName
+#
+#class UndefinedAttributeError(Exception):
+#    '''
+#    Exception: Attribute is unknown in namespace.
+#    '''
+#    def __init__(self, msg='Undefined Attribute.', attrName=None):
+#        Exception.__init__(self, msg)
+#        self.attrName = attrName
 
-class UndefinedAttributeError(Exception):
-    '''
-    Exception: Attribute is unknown in namespace.
-    '''
-    def __init__(self, msg='Undefined Attribute.', attrName=None):
-        Exception.__init__(self, msg)
-        self.attrName = attrName
 
-
-class NameSpace(object):
-    '''
-    Name space for modules, classes and functions.
-
-    TODO: Convert this class to (or incorporate into)
-          basic instance object "object".
-          Instance object does not need to be a 'ast.node' subclass;
-          only the functions need to contain pieces of the AST.
-    '''
-    def __init__(self):
-        #the attributes of this name space
-        self._nameSpaceAttrs = {} #weakref.WeakValueDictionary()
-        #This object's name in the enclosing scope
-        self.name = None
-
-    def setAttr(self, name, newAttr):
-        '''
-        Add new attribute to the name space.
-
-        Attributes can exist multiple times.
-
-        Parameters
-        ----------
-        name: str, DotName
-            Name of the new attribute
-        newAttr: NodeDataDef, NodeClassDef, NodeFuncDef, NodeModule
-            The new attribute, which is added to the name space.
-        '''
-        #Argument type checking and compatibility with DotName
-        if isinstance(name, DotName):
-            if len(name) > 1:
-                raise Exception('DotName must have only one component!'
-                                + ' str(name): ' + str(name))
-            name = str(name)
-        elif not isinstance(name, str):
-            raise Exception('Argument name must be of type str or DotName! type(name): '
-                            + str(type(name)) + ' str(name): ' + str(name))
-        #add attribute to name space - attributes must be unique
-        if name in self._nameSpaceAttrs:
-            #TODO: raise UserException? Error message as named argument?
-            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
-        self._nameSpaceAttrs[name] = newAttr
-        return
-
-    def setFuncAttr(self, name, newFunc):
-        '''
-        Special method to enter NodeFuncDef into namespace.
-
-        Functions don't need to be unique. Therefore they are stored
-        in special containers: "FunctionOverloadingResolver".
-        '''
-        if not isinstance(newFunc, NodeFuncDef):
-            raise Exception('Argument 2 must be NodeFuncDef')
-
-        oldAttr = self.getAttr(name, None)
-        if oldAttr is None:
-            self.setAttr(name, list(newFunc))
-        elif isinstance(oldAttr, list):
-            oldAttr.append(newFunc)
-        else:
-            raise UserException('Function can not have same name like data: '
-                                + str(name), newFunc.loc)
-
-    def update(self, otherNameSpace):
-        '''
-        Put attributes of otherNameSpace into this name space.
-        Raises exceptions when attributes are redefined.
-        '''
-        for name, node in otherNameSpace._nameSpaceAttrs.iteritems():
-            self.setAttr(name, node)
-
-    def hasAttr(self, name):
-        '''
-        Test if attribute exists in this name space.
-
-        Parameter
-        ---------
-        name: str, (DotName with one element)
-            Attribute name to be tested.
-
-        Returns
-        -------
-        bool
-            True if a attribute of this name exists in this name space,
-            False otherwise.
-        '''
-        return str(name) in self._nameSpaceAttrs
-
-    def getAttr(self, name, default=None):
-        '''Return attribute with that name from this name space'''
-        return self._nameSpaceAttrs.get(str(name), default)
-
-    def findDotName(self, dotName, default=None):
-        '''
-        Find dot name recursively and return attribute with this name.
-
-        #TODO: raise UserException when attribute undefined?
-        #      Error message could be named attribute."
-        '''
-        dotName = DotName(dotName) #make compatible with str too
-        firstPart = self._nameSpaceAttrs.get(dotName[0], None)
-        if firstPart is not None:
-            #leftmost part of name exists in this name space
-            if len(dotName) == 1:
-                #only one part in dot name, the user wants this attribute
-                return firstPart
-            elif isinstance(firstPart, NameSpace):
-                #attribute is name space, try to resolve rest of name
-                return firstPart.findDotName(dotName[1:], default)
-            else:
-                return default
-        else:
-            #leftmost part of name does not exist in this name space
-            return default
+#class NameSpace(object):
+#    '''
+#    Name space for modules, classes and functions.
+#
+#    TODO: Convert this class to (or incorporate into)
+#          basic instance object "object".
+#          Instance object does not need to be a 'ast.node' subclass;
+#          only the functions need to contain pieces of the AST.
+#    '''
+#    def __init__(self):
+#        #the attributes of this name space
+#        self._nameSpaceAttrs = {} #weakref.WeakValueDictionary()
+#        #This object's name in the enclosing scope
+#        self.name = None
+#
+#    def setAttr(self, name, newAttr):
+#        '''
+#        Add new attribute to the name space.
+#
+#        Attributes can exist multiple times.
+#
+#        Parameters
+#        name: str, DotName
+#            Name of the new attribute
+#        newAttr: NodeDataDef, NodeClassDef, NodeFuncDef, NodeModule
+#            The new attribute, which is added to the name space.
+#        '''
+#        #Argument type checking and compatibility with DotName
+#        if isinstance(name, DotName):
+#            if len(name) > 1:
+#                raise Exception('DotName must have only one component!'
+#                                + ' str(name): ' + str(name))
+#            name = str(name)
+#        elif not isinstance(name, str):
+#            raise Exception('Argument name must be of type str or DotName! type(name): '
+#                            + str(type(name)) + ' str(name): ' + str(name))
+#        #add attribute to name space - attributes must be unique
+#        if name in self._nameSpaceAttrs:
+#            #TODO: raise UserException? Error message as named argument?
+#            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
+#        self._nameSpaceAttrs[name] = newAttr
+#        return
+#
+#    def setFuncAttr(self, name, newFunc):
+#        '''
+#        Special method to enter NodeFuncDef into namespace.
+#
+#        Functions don't need to be unique. Therefore they are stored
+#        in special containers: "FunctionOverloadingResolver".
+#        '''
+#        if not isinstance(newFunc, NodeFuncDef):
+#            raise Exception('Argument 2 must be NodeFuncDef')
+#
+#        oldAttr = self.getAttr(name, None)
+#        if oldAttr is None:
+#            self.setAttr(name, list(newFunc))
+#        elif isinstance(oldAttr, list):
+#            oldAttr.append(newFunc)
+#        else:
+#            raise UserException('Function can not have same name like data: '
+#                                + str(name), newFunc.loc)
+#
+#    def update(self, otherNameSpace):
+#        '''
+#        Put attributes of otherNameSpace into this name space.
+#        Raises exceptions when attributes are redefined.
+#        '''
+#        for name, node in otherNameSpace._nameSpaceAttrs.iteritems():
+#            self.setAttr(name, node)
+#
+#    def hasAttr(self, name):
+#        '''
+#        Test if attribute exists in this name space.
+#
+#        Parameter
+#        name: str, (DotName with one element)
+#            Attribute name to be tested.
+#
+#        Returns
+#        bool
+#            True if a attribute of this name exists in this name space,
+#            False otherwise.
+#        '''
+#        return str(name) in self._nameSpaceAttrs
+#
+#    def getAttr(self, name, default=None):
+#        '''Return attribute with that name from this name space'''
+#        return self._nameSpaceAttrs.get(str(name), default)
+#
+#    def findDotName(self, dotName, default=None):
+#        '''
+#        Find dot name recursively and return attribute with this name.
+#
+#        #TODO: raise UserException when attribute undefined?
+#        #      Error message could be named attribute."
+#        '''
+#        dotName = DotName(dotName) #make compatible with str too
+#        firstPart = self._nameSpaceAttrs.get(dotName[0], None)
+#        if firstPart is not None:
+#            #leftmost part of name exists in this name space
+#            if len(dotName) == 1:
+#                #only one part in dot name, the user wants this attribute
+#                return firstPart
+#            elif isinstance(firstPart, NameSpace):
+#                #attribute is name space, try to resolve rest of name
+#                return firstPart.findDotName(dotName[1:], default)
+#            else:
+#                return default
+#        else:
+#            #leftmost part of name does not exist in this name space
+#            return default
 
 
 
-class FlatNameSpace(NameSpace):
-    '''A name space where attributes can have multiple dots in their name'''
-    def __init__(self):
-        NameSpace.__init__(self)
-
-    def setAttr(self, name, newAttr):
-        '''
-        Add new attribute to the name space.
-
-        Attributes can exist multiple times.
-
-        Parameters
-        ----------
-        name: str, DotName
-            Name of the new attribute
-        newAttr: NodeDataDef, NodeClassDef, NodeFuncDef, NodeModule
-            The new attribute, which is added to the name space.
-        '''
-        #Argument type checking and compatibility with DotName
-        if not isinstance(name, (str, DotName)):
-            raise Exception('Argument name must be of type str or DotName! type(name): '
-                            + str(type(name)) + ' str(name): ' + str(name))
-        name = str(name)
-        #add attribute to name space - attributes must be unique
-        if name in self._nameSpaceAttrs:
-            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
-        self._nameSpaceAttrs[name] = newAttr
-        return
-
-    def findDotName(self, dotName, default=None):
-        '''
-        Find dot name recursively and return attribute with this name.
-        '''
-        dotName = DotName(dotName) #make compatible with str too
-        attr = self.getAttr(dotName, None)
-        if attr is not None:
-            return attr
-        #maybe partial name is known here.
-        #Rest may be stored in child name space
-        nameShort = dotName
-        nameTail = DotName()
-        while len(nameShort)>1:
-            #remove last element
-            nameTail += nameShort[-1]
-            nameShort = nameShort[0:-1]
-            #try to find shortened name; look up rest of name recursively
-            attr = self.getAttr(nameShort, None)
-            if attr is not None:
-                return attr.findDotName(nameTail, default)
-        return default
-
+#class FlatNameSpace(NameSpace):
+#    '''A name space where attributes can have multiple dots in their name'''
+#    def __init__(self):
+#        NameSpace.__init__(self)
+#
+#    def setAttr(self, name, newAttr):
+#        '''
+#        Add new attribute to the name space.
+#
+#        Attributes can exist multiple times.
+#
+#        Parameters
+#        name: str, DotName
+#            Name of the new attribute
+#        newAttr: NodeDataDef, NodeClassDef, NodeFuncDef, NodeModule
+#            The new attribute, which is added to the name space.
+#        '''
+#        #Argument type checking and compatibility with DotName
+#        if not isinstance(name, (str, DotName)):
+#            raise Exception('Argument name must be of type str or DotName! type(name): '
+#                            + str(type(name)) + ' str(name): ' + str(name))
+#        name = str(name)
+#        #add attribute to name space - attributes must be unique
+#        if name in self._nameSpaceAttrs:
+#            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
+#        self._nameSpaceAttrs[name] = newAttr
+#        return
+#
+#    def findDotName(self, dotName, default=None):
+#        '''
+#        Find dot name recursively and return attribute with this name.
+#        '''
+#        dotName = DotName(dotName) #make compatible with str too
+#        attr = self.getAttr(dotName, None)
+#        if attr is not None:
+#            return attr
+#        #maybe partial name is known here.
+#        #Rest may be stored in child name space
+#        nameShort = dotName
+#        nameTail = DotName()
+#        while len(nameShort)>1:
+#            #remove last element
+#            nameTail += nameShort[-1]
+#            nameShort = nameShort[0:-1]
+#            #try to find shortened name; look up rest of name recursively
+#            attr = self.getAttr(nameShort, None)
+#            if attr is not None:
+#                return attr.findDotName(nameTail, default)
+#        return default
 
 
-class ExecutionEnvironment(object):
-    '''
-    Container for name spaces where symbols are looked up.
-    Function findDotName searches the symbol in all name spaces.
 
-    TODO: put into module intermediate?
-    TODO: rename to stack frame?
-    '''
-    def __init__(self):
-        #Name space for global variables. Module where the code was written.
-        self.globalScope = None
-        #Name space of the this pointer in a method. None outside methods.
-        self.thisScope = None
-        #scope for the local variables of a function
-        self.localScope = None
-        #TODO: self.statements = None #Statements of function ore module
-
-
-    #def findDotName(self, dotName, default=None):
-    def findDotName(self, *posArg):
-        '''
-        Find a dot name in this environment.
-
-        When the name is not found an exception is raised, or a default
-        value is returned.
-        Tries local name space, 'this' name space, global name space.
-
-        Arguments
-        ---------
-        dotName : DotName
-            Dotted name that is looked up in the different name spaces.
-        default : object
-            Object which is returned when dotName could not be found.
-            If argument is omitted, a UndefinedAttributeError is raised.
-        '''
-        #get arguments from vector
-        if len(posArg) == 1:
-            dotName = posArg[0]
-            default = None
-            raiseErr = True
-        elif len(posArg) == 2:
-            dotName = posArg[0]
-            default = posArg[1]
-            raiseErr = False
-        else:
-            raise Exception('Required number of arguments 1 or 2. '
-                            'Actual number of arguments: ' + str(len(posArg)))
-        #try to find name in scope hierarchy:
-        # function --> class --> module
-        scopeList = [self.localScope, self.thisScope, self.globalScope]
-        attr = None
-        for scope in scopeList:
-            if scope is None:
-                continue
-            attr = scope.findDotName(dotName, None)
-            if attr is not None:
-                return attr
-        #attribute could not be found
-        if raiseErr:
-            raise UndefinedAttributeError(attrName=str(dotName))
-        else:
-            return default            
+#class ExecutionEnvironment(object):
+#    '''
+#    Container for name spaces where symbols are looked up.
+#    Function findDotName searches the symbol in all name spaces.
+#
+#    TODO: put into module intermediate?
+#    TODO: rename to stack frame?
+#    '''
+#    def __init__(self):
+#        #Name space for global variables. Module where the code was written.
+#        self.globalScope = None
+#        #Name space of the this pointer in a method. None outside methods.
+#        self.thisScope = None
+#        #scope for the local variables of a function
+#        self.localScope = None
+#        #TODO: self.statements = None #Statements of function ore module
+#
+#
+#    #def findDotName(self, dotName, default=None):
+#    def findDotName(self, *posArg):
+#        '''
+#        Find a dot name in this environment.
+#
+#        When the name is not found an exception is raised, or a default
+#        value is returned.
+#        Tries local name space, 'this' name space, global name space.
+#
+#        Arguments
+#        dotName : DotName
+#            Dotted name that is looked up in the different name spaces.
+#        default : object
+#            Object which is returned when dotName could not be found.
+#            If argument is omitted, a UndefinedAttributeError is raised.
+#        '''
+#        #get arguments from vector
+#        if len(posArg) == 1:
+#            dotName = posArg[0]
+#            default = None
+#            raiseErr = True
+#        elif len(posArg) == 2:
+#            dotName = posArg[0]
+#            default = posArg[1]
+#            raiseErr = False
+#        else:
+#            raise Exception('Required number of arguments 1 or 2. '
+#                            'Actual number of arguments: ' + str(len(posArg)))
+#        #try to find name in scope hierarchy:
+#        # function --> class --> module
+#        scopeList = [self.localScope, self.thisScope, self.globalScope]
+#        attr = None
+#        for scope in scopeList:
+#            if scope is None:
+#                continue
+#            attr = scope.findDotName(dotName, None)
+#            if attr is not None:
+#                return attr
+#        #attribute could not be found
+#        if raiseErr:
+#            raise UndefinedAttributeError(attrName=str(dotName))
+#        else:
+#            return default            
 
 
 #    def setGlobalScope(self, inNameSpace):
@@ -647,6 +642,10 @@ class Node(object):
     #string to symbolize one indent level
     aa_indent_step_str = '|' + ' '*int(aa_indent_width - 1)
     
+    #we dont own instances of these classes.
+    #tuple of types that are not copied deeply
+    _weak_types = weakref.ProxyTypes + (weakref.ReferenceType,)
+    
     def __init__(self, **args): 
         '''Create an attribute for each named argument.'''
         object.__init__(self)
@@ -666,12 +665,13 @@ class Node(object):
         
         Returns:
             -1: attribute does not exist
-            0: not a Node
-            1: not owned
-            2: Node
-            3: list(Node)
-            # removed: 4: list(list(Node))
-            TODO: category for dict(string():Node())
+             0: not a Node
+             1: proxy: not owned
+            11: ref: not owned by this Node
+             2: Node
+             3: list(Node)
+             # removed: 4: list(list(Node))
+             5: dict(<any>:Node())
         '''
         #get attribute
         if attr_name in self.__dict__:
@@ -680,18 +680,19 @@ class Node(object):
             return -1 # attribute does not exist
         #categorize attribute
         if isinstance(attr, weakref.ProxyTypes):
-            return 1 #not owned by this Node
-        elif isinstance(attr, Node):
+            return 1 #proxy: not owned by this Node
+        if isinstance(attr, weakref.ReferenceType):
+            return 11 #ref: not owned by this Node
+        if isinstance(attr, Node):
             return 2 # Node
-        elif isinstance(attr, list) and len(attr) > 0 and \
+        if isinstance(attr, list) and len(attr) > 0 and \
              isinstance(attr[0], Node):
             return 3 # list(Node)
-#        elif isinstance(attr, list)    and len(attr) > 0    and \
-#             isinstance(attr[0], list) and len(attr[0]) > 0 and \
-#             isinstance(attr[0][0], Node):
-#            return 4 # list(list(Node))
-        else:
-            return 0 #not a Node
+        if isinstance(attr, dict):
+            vals = attr.values()
+            if len(vals) > 0 and isinstance(vals[0], Node):
+                return 5 # dict(<any>:Node())
+        return 0 #not a Node
             
     def aa_make_str_block(self, attr_name_list, indent_str, nesting_level):
         '''
@@ -704,20 +705,28 @@ class Node(object):
         tree = ''
         line = indent_str
         #loop over list of attribute names
-        for name in attr_name_list:
-            cat = self.aa_attr_category(name)
+        for key in attr_name_list:
+            cat = self.aa_attr_category(key)
             #Non Node classes, assumed to be small 
             #the atoms that really carry the information)
             if cat == 0:
-                line += name + ' = ' + str(self.__dict__[name]) + '; '
+                line += key + ' = ' + str(self.__dict__[key]) + '; '
                 if len(line) > self.aa_wrap_line_at:
                     tree += line + '\n'
                     line = indent_str
-            #Anything not owned by this node (printed small)
+            #proxy: not owned by this node (printed small)
             elif cat == 1:
-                line += (name + ' = ' 
-                         + str(self.__dict__[name].__class__.__name__) + ' :: '
-                         + repr(self.__dict__[name]) + '; ')
+                line += (key + ' = ' 
+                         + str(self.__dict__[key].__class__.__name__) + ' :: '
+                         + repr(self.__dict__[key]) + '; ')
+                if len(line) > self.aa_wrap_line_at:
+                    tree += line + '\n'
+                    line = indent_str
+            #ref: not owned by this node (printed small)
+            elif cat == 11:
+                line += (key + ' = ' 
+                         + str(self.__dict__[key]().__class__.__name__) + ' :: '
+                         + repr(self.__dict__[key]) + '; ')
                 if len(line) > self.aa_wrap_line_at:
                     tree += line + '\n'
                     line = indent_str
@@ -726,20 +735,28 @@ class Node(object):
                 if line != indent_str: 
                     tree += line  + '\n'
                     line = indent_str
-                tree += indent_str + name + ' = \n'
-                tree += self.__dict__[name].aa_make_tree(nesting_level +1)
+                tree += indent_str + key + ' = \n'
+                tree += self.__dict__[key].aa_make_tree(nesting_level +1)
             #Attribute is list(Node)
             elif cat == 3:
                 if line != indent_str: 
                     tree += line  + '\n'
                     line = indent_str   
-                tree += indent_str + name + ' = list :: \n'     
-                for item in self.__dict__[name]:
+                tree += indent_str + key + ' = list :: \n'     
+                for item in self.__dict__[key]:
                     tree += item.aa_make_tree(nesting_level +1)  
 #                    tree += indent_str + '|- ,\n'
-            #Attribute is list(list(Node))
-#            elif cat == 4:
-#                raise Exception('Feature unimplemented!')
+            #Attribute is list(list(Node)) (cat = 4)
+            #Attribute is dict(<any>:Node())
+            elif cat == 5:
+                if line != indent_str: 
+                    tree += line  + '\n'
+                    line = indent_str   
+                tree += indent_str + key + ' = dict :: \n'     
+                for key, item in self.__dict__[key].iteritems():
+                    tree += indent_str + ' ' + str(key) + ':\n'  #print key:
+                    tree += item.aa_make_tree(nesting_level +1)  #print node
+#                    tree += indent_str + '|- ,\n'
             else:
                 raise Exception('Internal error! Unknown attribute category: ' 
                                 + str(cat))
@@ -832,13 +849,13 @@ class Node(object):
         #create empty instance of self.__class__
         new_obj = Node.__new__(self.__class__)
         for name, attr in self.__dict__.iteritems():
-            if not isinstance(attr, weakref.ProxyTypes):
+            if isinstance(attr, Node._weak_types):
+                #attribute owned by other object: no copy only reference
+                setattr(new_obj, name, attr)
+            else:
                 #attribute owned by self: make deep copy
                 new_attr = copy.deepcopy(attr, memo_dict)
                 setattr(new_obj, name, new_attr)
-            else:
-                #attribute owned by other object: no copy only reference
-                setattr(new_obj, name, attr)
         return new_obj
 
 
@@ -1256,7 +1273,7 @@ class RoleAlgebraicVariable(RoleVariable):
     userStr = 'algebraic_variable'
 
 
-class NodeDataDef(Node, NameSpace):
+class NodeDataDef(Node):
     '''
     AST node for definition of a variable, parameter or submodel.
     Data Attributes:
@@ -1291,7 +1308,6 @@ class NodeDataDef(Node, NameSpace):
                         name=None, className=None, targetName=None,
                         role=None):
         Node.__init__(self, kids, loc, dat)
-        NameSpace.__init__(self)
         if not self.kids:
             self.kids = [nodeNone, NodeStmtList()]
         self.name = name
@@ -1397,7 +1413,7 @@ class NodeGenFunc(NodeFuncDef):
         self.targetName = None
 
 
-class NodeClassDef(Node, NameSpace):
+class NodeClassDef(Node):
     """
     AST node for class definition.
     Data Attributes:
@@ -1420,7 +1436,6 @@ class NodeClassDef(Node, NameSpace):
     """
     def __init__(self, kids=None, loc=None, dat=None, name=None, baseName=None):
         Node.__init__(self, kids, loc, dat)
-        NameSpace.__init__(self)
         self.name = name
         self.baseName = baseName
         self.base = None
@@ -1453,26 +1468,25 @@ class NodeModule(Node):
         self.loc = None
 
 
-class NodeFlatModule(Node, FlatNameSpace):
-    '''
-    Module where all attributes have long, dotted names, and where all
-    attributes are defined on the top (module) level.
-    Data defs are only built in types.
-
-    Attributes:
-    -----------
-    kids      : Definitions, the program's code.
-    loc       : location in input string (~0)
-    dat       : None
-
-    name      : Name of the module
-    targetName: Name useful in the context of flattening or code generation
-    '''
-    def __init__(self, kids=None, loc=None, dat=None, name=None):
-        Node.__init__(self, kids, loc, dat)
-        FlatNameSpace.__init__(self)
-        self.name = name
-        self.targetName = None
+#class NodeFlatModule(Node):
+#    '''
+#    Module where all attributes have long, dotted names, and where all
+#    attributes are defined on the top (module) level.
+#    Data defs are only built in types.
+#
+#    Attributes:
+#    -----------
+#    kids      : Definitions, the program's code.
+#    loc       : location in input string (~0)
+#    dat       : None
+#
+#    name      : Name of the module
+#    targetName: Name useful in the context of flattening or code generation
+#    '''
+#    def __init__(self, kids=None, loc=None, dat=None, name=None):
+#        Node.__init__(self, kids, loc, dat)
+#        self.name = name
+#        self.targetName = None
 
 #---------- Nodes End --------------------------------------------------------*
 
