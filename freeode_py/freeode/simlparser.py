@@ -406,9 +406,9 @@ class Parser(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         #create children and store operator
         lhsTree = tokList[0]   #child lhs
-        nCurr.operator = tokList[1] #operator
+#        nCurr.operator = '=' #operator
         rhsTree = tokList[2]   #child rhs
-        nCurr.kids=[lhsTree, rhsTree]
+        nCurr.arguments = [lhsTree, rhsTree]
         return nCurr
 
     def _action_print_stmt(self, s, loc, toks): #IGNORE:W0613
@@ -599,7 +599,7 @@ class Parser(object):
             attrDef = NodeDataDef()
             attrDef.loc=self.createTextLocation(loc)
             attrDef.name = DotName(name) #store attribute name
-            attrDef.className = toks.class_name.name #toks.class_name is NodeIdenifier
+            attrDef.class_name = toks.class_name.name #toks.class_name is NodeIdenifier
             #map role string to role object, and store the role
             #If role is not specified RoleVariable is assumed.
             #Submodels will be labeled variables even though these categories don't apply to them.
@@ -994,17 +994,19 @@ class Parser(object):
                                                                     .setFailAction(ChMsg(prepend='compile statement: '))
 
         #compute expression and assign to value
-        assign_stmt = Group(expression_ex + '=' - expression)          .setParseAction(self._actionAssignment)\
+        assign_stmt = Group(expression_ex + '=' - expression)       .setParseAction(self._actionAssignment)\
                                                                     .setFailAction(ChMsg(prepend='assignment statement: '))
 
         #------------ data statemnt -------------------------------------------------------------------------
         #define parameters, variables, constants and submodels
+        #TODO: add 'save' - 'no_save' keywords 
         #The roles of data (maybe call it storage class?):
         #variable:    changes during the simulation
         #parameter:   constant during a (dynamic?) simulation, can change beween simulations,
         #             can be computed in the init function.
         #constant:    must be known at compile time, may be optimized away,
         #             the compiler may generate special code depending on the value.
+        #TODO: maybe add role for automatically created variables
         attrRole = (  kw('state_variable') | kw('algebraic_variable') 
                     | kw('variable') | kw('param') | kw('const')      )
         #parse: 'foo, bar, baz
@@ -1317,12 +1319,14 @@ print 'end'
         prog = \
 """
 print 'start'
+
+func foo(b):
+    return b*b
+    
 data a:Real const =6
 a = 2*2 + 2**-3 * 2**-3**4
-if a > 2:
-    print 'a > 2: ', a
-else:
-    print 'a <= 2: ', a
+
+print 'a = ', a
 print 'end'
 """
         print prog

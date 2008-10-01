@@ -855,7 +855,7 @@ class ProgramTreeCreator(Visitor):
         #put function into module or class, store global scope
         stmtContainer.setFuncAttr(funcDef.name, funcDef) 
         #functions are executed in the global scope where they are defined.       
-        funcDef.environment.globalScope = environment.globalScope
+        funcDef.environment.global_scope = environment.global_scope
 
         if isinstance(stmtContainer, NodeClassDef):
             #create "this" pointer and put into argument list
@@ -893,14 +893,14 @@ class ProgramTreeCreator(Visitor):
             if len(funcName) >= 2:
                 #name with dots - take part left of last dot
                 funcParent = environment.findDotName(funcName[0:-1])
-            elif environment.localScope.findDotName(funcName, None) is not None:
+            elif environment.local_scope.findDotName(funcName, None) is not None:
                 #local (nested) function - future extension
-                funcParent = environment.localScope
-            elif environment.thisScope.findDotName(funcName, None) is not None:
+                funcParent = environment.local_scope
+            elif environment.this_scope.findDotName(funcName, None) is not None:
                 #member function of same class
-                funcParent = environment.thisScope 
-            elif environment.globalScope.findDotName(funcName, None) is not None:
-                funcParent = environment.globalScope            
+                funcParent = environment.this_scope 
+            elif environment.global_scope.findDotName(funcName, None) is not None:
+                funcParent = environment.global_scope            
             #Prepend "this" pointer if it is call to member function
             #and remember "this" namespace
             if isinstance(funcParent, NodeDataDef):
@@ -936,9 +936,9 @@ class ProgramTreeCreator(Visitor):
             funcCall.attrRef = newFunc
      
             #Set up execution environment for the function
-            newFunc.environment.globalScope = funcDef.environment.globalScope
-            newFunc.environment.thisScope = thisScope
-            newFunc.environment.localScope = NameSpace()
+            newFunc.environment.global_scope = funcDef.environment.global_scope
+            newFunc.environment.this_scope = thisScope
+            newFunc.environment.local_scope = NameSpace()
             
             #TODO create a NodeDataDef for each function argument
     #        #TODO: put function arguments into function's local namespace
@@ -1087,8 +1087,8 @@ class ProgramTreeCreator(Visitor):
         # The definition of a (base) class might be in an other module than
         # the data statement, and might therefore have an other global scope.
         environment = ExecutionEnvironment()
-        environment.globalScope = classDef.defEnvironment.globalScope
-        environment.localScope = ioDataDef
+        environment.global_scope = classDef.defEnvironment.global_scope
+        environment.local_scope = ioDataDef
         #interpret each statement, the definitions are expanded recursively
         for stmt in classBodyStmts:
             self.dispatch(stmt, ioDataDef, environment)
@@ -1243,7 +1243,7 @@ class ProgramTreeCreator(Visitor):
             moduleTree.update(self.builtInLib)
         #create module (global) namespace
         environment = ExecutionEnvironment()
-        environment.globalScope = moduleTree
+        environment.global_scope = moduleTree
         #interpret module nodes
         for node in moduleTree:
             self.dispatch(node, moduleTree, environment)

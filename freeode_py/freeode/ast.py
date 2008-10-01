@@ -917,6 +917,8 @@ class NodeIdentifier(Node):
         attr_is_builtin:
             True if identifier encodes access to variable of builtin type. 
             Usefull for flattening. 
+        type:
+            Type of the results of the operation. For decoorating the AST.
         loc: 
             Location in input string
     '''
@@ -927,17 +929,21 @@ class NodeIdentifier(Node):
         self.target_name = None 
         self.attr_ref = None
         self.attr_is_builtin = None #TODO: necessary? 
+        self.type = None
         self.loc = None
 
 
 class NodeAttrAccess(Node):
     '''
     AST node for dot operator. 
+        type:
+            Type of the results of the operation. For decoorating the AST.
     '''
     def __init__(self):
         super(NodeAttrAccess, self).__init__()
         self.operator = '.'
         self.arguments = []
+        self.type = None
         self.loc = None        
 
 
@@ -952,12 +958,15 @@ class NodeParentheses(Node):
         arguments: list(Node())
             Mathematical expression between the parentheses. 
             Naming is chosen to unify operators and function call
+        type:
+            Type of the results of the operation. For decoorating the AST.
         loc: 
             Location in input string
     '''
     def __init__(self):
         super(NodeParentheses, self).__init__()
         self.arguments = []
+        self.type = None
         self.loc = None
 
 
@@ -971,6 +980,8 @@ class NodeOpInfix2(Node):
             Expression on left and right of operator: 
             left: arguments[0], right: arguments[1]
             Naming is chosen to unify operators and function call
+        type:
+            Type of the results of the operation. For decoorating the AST.
         loc: 
             Location in input string
     '''
@@ -978,6 +989,7 @@ class NodeOpInfix2(Node):
         super(NodeOpInfix2, self).__init__()
         self.operator = None
         self.arguments = []
+        self.type = None
         self.loc = None
 
 
@@ -990,6 +1002,8 @@ class NodeOpPrefix1(Node):
         arguments:  list(Node())
             Expression on right side of operator
             Naming is chosen to unify operators and function call
+        type:
+            Type of the results of the operation. For decoorating the AST.
         loc: 
             Location in input string
   '''
@@ -997,6 +1011,7 @@ class NodeOpPrefix1(Node):
         super(NodeOpPrefix1, self).__init__()
         self.operator = None
         self.arguments = []
+        self.type = None
         self.loc = None
 
 
@@ -1291,7 +1306,7 @@ class NodeDataDef(Node):
         className       : type of the attribute; possibly dotted name: ('aa', 'bb')
         role            : Is this attribute a state or algebraic variable, a constant
                           or a parameter? (AttributeRole subclass).
-
+    
         TODO: isReference : Contains no own data; points to something else.
     '''
     def __init__(self):
@@ -1326,38 +1341,22 @@ class NodeFuncDef(Node):
 
     The childern are the statements.
     Attributes:
-    -----------
-    kids : [<argument list>, <function body>]
-    loc  : location in input string
-    dat  : None
-
-    name       : name of the function; DotName
-    returnType : class name of return value; tuple of strings: ('Real',)
-    environment: container for namespaces. Functions store the global name space
-                 where they were defined.
+        name: DotName
+            Name of the function; 
+        return_type: 
+            Class name of return value; tuple of strings: ('Real',)???
+        loc: 
+            Location in input string
     """
-    def __init__(self, kids=None, loc=None, dat=None, name=None, returnType=None):
-        Node.__init__(self, kids, loc, dat)
-#        NameSpace.__init__(self)
-        self.name = name
-        if not self.kids:
-            self.kids = [NodeStmtList(), NodeStmtList()]
-        self.returnType = returnType
-        self.environment = ExecutionEnvironment()
-        self.isBuiltIn = False
+    def __init__(self):
+        Node.__init__(self)
+        self.name = None
+        self.arguments = []
+        self.keyword_arguments = {}
+        self.statements = None
+        self.return_type = None
+        self.loc = None
 
-    #Get and set the argument list
-    def getArgList(self): return self.kids[0]
-    def setArgList(self, inArgs): self.kids[0] = inArgs; inArgs.dat = 'argument list'
-    argList = property(getArgList, setArgList, None,
-                       'The argument list (proppery).')
-
-    #TODO: rename to "statements"? Rationale: same name like in NodeDataDef
-    #Get and set the function body
-    def getFuncBody(self): return self.kids[1]
-    def setFuncBody(self, inBody): self.kids[1] = inBody; inBody.dat = 'function body'
-    body = property(getFuncBody, setFuncBody, None,
-                        'The function body (proppery).')
 
 
 class NodeGenFunc(NodeFuncDef):
@@ -1442,7 +1441,6 @@ class NodeModule(Node):
 #    Data defs are only built in types.
 #
 #    Attributes:
-#    -----------
 #    kids      : Definitions, the program's code.
 #    loc       : location in input string (~0)
 #    dat       : None
