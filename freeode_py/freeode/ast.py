@@ -1041,6 +1041,8 @@ class NodeFuncCall(Node):
         self.attr_ref = None
         self.attr_is_builtin = None
         self.arguments = []
+        #TODO: keyword_arguments can't be dict, because dict does not store the 
+        #      position/order in which the items are entered.
         self.keyword_arguments = {}
         self.loc = None
 
@@ -1089,10 +1091,19 @@ class NodeIfStmt(Node):
 class NodeAssignment(NodeOpInfix2):
     '''
     AST node for an assignment: '='
-        loc     : location in input string
-        lhs     : Left hand side of operator
-        rhs     : Right hand side of operator
-        operator: '='
+    
+    Arguments:
+        operator: 
+            Operator symbol always: '='
+        arguments:  list(Node(), Node())
+            Expression on left and right of operator: 
+            left: arguments[0], right: arguments[1]
+            Naming is chosen to unify operators and function call
+        type:
+            Type of the results of the operation. Not apliceable here. (None)
+            Operation has no result, only side effect.
+        loc: 
+            Location in input string
     '''
     def __init__(self):
         super(NodeAssignment, self).__init__()
@@ -1332,6 +1343,28 @@ class NodeCompileStmt(NodeDataDef):
         self.mainFuncs = []
 
 
+class NodeFuncArg(Node):
+    '''
+    One argument of a function 
+    
+    Attributes:
+        name: DotName
+            Name of argument
+        type:
+            Type of argument
+        default_value:
+            default value
+        loc:
+            Location in input file
+    '''
+    def __init__(self):
+        Node.__init__(self)
+        self.name = None
+        self.type = None
+        self.default_value = None
+        self.loc = None
+        
+        
 class NodeFuncDef(Node):
     """
     AST node for method/function definition.
@@ -1340,9 +1373,16 @@ class NodeFuncDef(Node):
     function in C++.
 
     The childern are the statements.
+    
     Attributes:
         name: DotName
-            Name of the function; 
+            Name of the function
+        arguments:
+            Positional arguments
+        keyword_arguments:
+            Keyword arguments
+        statements: list(Node()]
+            Statements of function body
         return_type: 
             Class name of return value; tuple of strings: ('Real',)???
         loc: 
@@ -1352,7 +1392,7 @@ class NodeFuncDef(Node):
         Node.__init__(self)
         self.name = None
         self.arguments = []
-        self.keyword_arguments = {}
+        self.keyword_arguments = []
         self.statements = None
         self.return_type = None
         self.loc = None

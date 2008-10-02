@@ -683,7 +683,7 @@ class Parser(object):
                 if there_was_keyword_argument:
                     raise UserException('Positional arguments must come before keyword arguments!',
                                         nCurr.loc)
-                nCurr.positional_arguments.append(arg.positional_argument[0][0])
+                nCurr.arguments.append(arg.positional_argument[0][0])
             elif arg.keyword_argument:
                 there_was_keyword_argument = True
 #                print 'arg.keyword_argument: ', arg.keyword_argument
@@ -693,78 +693,79 @@ class Parser(object):
         return nCurr
 
 
-    def _actionFuncArgDef(self, s, loc, toks): #IGNORE:W0613
+    def _action_func_def_arg(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for one function argument of a function definition.
         A NodeDataDef is created; therefore this method is quite similar
         to _action_data_def.
         BNF:
-        funcArgDefault = Group(identifier                            .setResultsName('name')
-                               + Optional(':' + ES(dotIdentifier     .setResultsName('className')
-                                                   )                 .setErrMsgStart('type specifier: '))
-                               + Optional('=' + ES(expression        .setResultsName('defaultValue')
-                                                   )                 .setErrMsgStart('default value: '))
-                               )                                     .setParseAction(self._actionFuncArgument)
+        func_def_arg = Group(identifier                             .setResultsName('name')
+                           + Optional(':' - expression              .setResultsName('type')
+                                      )                             .setFailAction(ChMsg(prepend='type specifier: '))
+                           + Optional('=' - expression              .setResultsName('default_value')
+                                      )                             .setFailAction(ChMsg(prepend='default value: '))
+                           )                                        .setParseAction(self._action_func_def_arg)
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         #tokList = toks.asList()[0] #there always seems to be
         toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeDataDef()
+        nCurr = NodeFuncArg()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store argument name
-        nCurr.name = DotName(toks.name)
+        nCurr.name = DotName(toks.name.name)
         #store optional type of argument
-        if toks.className:
-            nCurr.className = DotName(toks.className.asList())
+        if toks.type:
+            nCurr.type = toks.type
         #store optional default value
-        if isinstance(toks.defaultValue, Node):
-            nCurr.setValue(toks.defaultValue)
-        #store role
-        nCurr.role = RoleFuncArgument
+        if toks.default_value:
+            nCurr.default_value = toks.default_value
         return nCurr
 
 
-    def _actionFuncDef(self, s, loc, toks): #IGNORE:W0613
+    def _action_func_def(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for definition of a function or method.
             func doFoo(a:Real=2.5, b) -> Real: {... }
         BNF:
-        funcDef = Group(kw('func') + ES(
-                        newIdentifier                                .setResultsName('funcName')
-                        + '(' + ES(Group(funcArgList)                .setResultsName('argList')
-                                   )                                 .setErrMsgStart('argument List: ')
-                        + ')'
-                        + Optional('->' + ES(dotIdentifier           .setResultsName('returnType')
-                                             )                       .setErrMsgStart('return type: '))
+        func_def_arg_list = (delimitedList(func_def_arg, ',')
+                             + Optional(','))                
+        #the function: func doFoo(a:Real=2.5, b) -> Real {...}
+        func_def_stmt = Group(kw('func') - newIdentifier            .setResultsName('func_name')
+                        + ('(' - Optional(func_def_arg_list         .setResultsName('arg_list'))
+                           + ')' )                                  .setFailAction(ChMsg(prepend='argument list: '))
+                        + Optional('->' - expression                .setResultsName('return_type')
+                                   )                                .setFailAction(ChMsg(prepend='return type: : '))
                         + ':'
-                        + Group(suite)                               .setResultsName('funcBody')
-                        )                                            .setErrMsgStart('function definition: ')
-                        )                                            .setParseAction(self._actionFuncDefinition)\
+                        + suite                                     .setResultsName('func_body')
+                        )                                           .setParseAction(self._action_func_def) \
+                                                                    .setFailAction(ChMsg(prepend='function definition: ')) \
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be
+        #tokList = toks.asList()[0] #Group adds
         toks = toks[0]             #an extra pair of brackets
         nCurr = NodeFuncDef()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store function name
-        nCurr.name = DotName(toks.funcName)
+        nCurr.name = DotName(toks.func_name)
         #store function arguments: statement list of 'data' statements
-        nCurr.argList = toks.argList[0]
-        #check argument list - arguments without default values must come first!
-        thereWasDefaultArgument = False
-        for arg in nCurr.argList:
-            if arg.value is not None:
-                thereWasDefaultArgument = True
-            elif thereWasDefaultArgument:
-                raise UserException('Arguments without defaut values must come first!',
+        nCurr.arguments = toks.arg_list.asList()
+        #check argument list - arguments with default values must come last!
+        thereWasKeywordArgument = False
+        for arg in nCurr.arguments:
+            if arg.default_value is not None:
+                thereWasKeywordArgument = True
+            elif thereWasKeywordArgument:
+                raise UserException('Positional arguments must come first!',
                                     nCurr.loc)
         #store return type
-        if toks.returnType:
-            nCurr.returnType = DotName(toks.returnType)
-        #store function body: statement list
-        nCurr.body = toks.funcBody[0]
+        if toks.return_type:
+            nCurr.return_type = toks.return_type
+        #store function body; take each statement out of its sublist
+        nCurr.statements = []
+        for sublist in toks.func_body.asList():
+            nCurr.statements.append(sublist[0])
         return nCurr
 
 
@@ -1043,13 +1044,13 @@ class Parser(object):
         #Function definition (class method or global function)
         #one argument of the definition: inX:Real=2.5
         func_def_arg = Group(identifier                             .setResultsName('name')
-                           + Optional(':' - expression)             .setResultsName('class_name')
-                                                                    .setFailAction(ChMsg(prepend='type specifier: '))
-                           + Optional('=' - expression)             .setResultsName('default_value')
-                                                                    .setFailAction(ChMsg(prepend='default value: '))
-                           )                                        .setParseAction(self._actionFuncArgDef)
-        func_def_arg_list = Group(delimitedList(func_def_arg, ',')
-                                  + Optional(','))                  .setParseAction(self._actionStatementList)
+                           + Optional(':' - expression              .setResultsName('type')
+                                      )                             .setFailAction(ChMsg(prepend='type specifier: '))
+                           + Optional('=' - expression              .setResultsName('default_value')
+                                      )                             .setFailAction(ChMsg(prepend='default value: '))
+                           )                                        .setParseAction(self._action_func_def_arg)
+        func_def_arg_list = (delimitedList(func_def_arg, ',')
+                             + Optional(','))
         #the function: func doFoo(a:Real=2.5, b) -> Real {...}
         func_def_stmt = Group(kw('func') - newIdentifier            .setResultsName('func_name')
                         + ('(' - Optional(func_def_arg_list         .setResultsName('arg_list'))
@@ -1057,8 +1058,8 @@ class Parser(object):
                         + Optional('->' - expression                .setResultsName('return_type')
                                    )                                .setFailAction(ChMsg(prepend='return type: : '))
                         + ':'
-                        + Group(suite)                              .setResultsName('func_body')
-                        )                                           .setParseAction(self._actionFuncDef) \
+                        + suite                                     .setResultsName('func_body')
+                        )                                           .setParseAction(self._action_func_def) \
                                                                     .setFailAction(ChMsg(prepend='function definition: ')) \
                                                                     .setName('function definition')#.setDebug(True)
 
@@ -1080,13 +1081,13 @@ class Parser(object):
         # See: http://docs.python.org/ref/compound.html
         #list of simple statements, separated by semicolon: a=1; b=2; print a, b
         stmt_list = Group(delimitedList(Group(simple_stmt), ';') 
-                     + Optional(Suppress(";")) )                    .setParseAction(self._actionStatementList)
+                     + Optional(Suppress(";")) )                    #.setParseAction(self._actionStatementList)
         #Statement: one line of code, or a compound (if, class, func) statement
         statement = (  simple_stmt + newline 
                      | stmt_list + newline 
                      | compound_stmt         )
         #And indented block of statements
-        stmt_block = indentedBlock(statement, self.indentStack)     .setParseAction(self._actionStatementList)
+        stmt_block = indentedBlock(statement, self.indentStack)     #.setParseAction(self._actionStatementList)
         #Body of class or function; the dependent code of 'if'
         # Statement list and indented block of statements lead to the same AST
         suite << ( stmt_list + newline | newline + stmt_block )                                                
@@ -1320,8 +1321,10 @@ print 'end'
 """
 print 'start'
 
-func foo(b):
-    return b*b
+func foo(b:Real=6):
+    print b
+    print 'test'
+#    return b*b
     
 data a:Real const =6
 a = 2*2 + 2**-3 * 2**-3**4
