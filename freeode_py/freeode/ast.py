@@ -682,16 +682,16 @@ class Node(object):
         if isinstance(attr, weakref.ProxyTypes):
             return 1 #proxy: not owned by this Node
         if isinstance(attr, weakref.ReferenceType):
-            return 11 #ref: not owned by this Node
+            return 2 #ref: not owned by this Node
         if isinstance(attr, Node):
-            return 2 # Node
+            return 100 # Node
         if isinstance(attr, list) and len(attr) > 0 and \
              isinstance(attr[0], Node):
-            return 3 # list(Node)
+            return 101 # list(Node)
         if isinstance(attr, dict):
             vals = attr.values()
             if len(vals) > 0 and isinstance(vals[0], Node):
-                return 5 # dict(<any>:Node())
+                return 102 # dict(<any>:Node())
         return 0 #not a Node
             
     def _aa_make_str_block(self, attr_name_list, indent_str, nesting_level):
@@ -723,7 +723,7 @@ class Node(object):
                     tree += line + '\n'
                     line = indent_str
             #ref: not owned by this node (printed small)
-            elif cat == 11:
+            elif cat == 2:
                 line += (key + ' = ' 
                          + str(self.__dict__[key]().__class__.__name__) + ' :: '
                          + repr(self.__dict__[key]) + '; ')
@@ -731,14 +731,14 @@ class Node(object):
                     tree += line + '\n'
                     line = indent_str
             #Attribute is Node
-            elif cat == 2:
+            elif cat == 100:
                 if line != indent_str: 
                     tree += line  + '\n'
                     line = indent_str
                 tree += indent_str + key + ' = \n'
                 tree += self.__dict__[key]._aa_make_tree(nesting_level +1)
             #Attribute is list(Node)
-            elif cat == 3:
+            elif cat == 101:
                 if line != indent_str: 
                     tree += line  + '\n'
                     line = indent_str   
@@ -748,7 +748,7 @@ class Node(object):
 #                    tree += indent_str + '|- ,\n'
             #Attribute is list(list(Node)) (cat = 4)
             #Attribute is dict(<any>:Node())
-            elif cat == 5:
+            elif cat == 102:
                 if line != indent_str: 
                     tree += line  + '\n'
                     line = indent_str   
@@ -808,14 +808,15 @@ class Node(object):
         attr_bottom = [a for a in self.aa_bottom if a in name_set]
         body = list(name_set - set(attr_bottom) - set(attr_top))
         body.sort()
-        attr_small = [a for a in body if self._aa_attr_category(a) <= 1]
-        attr_big =    [a for a in body if self._aa_attr_category(a) > 1]
+        attr_small = [a for a in body if self._aa_attr_category(a) < 100]
+        attr_big =    [a for a in body if self._aa_attr_category(a) >= 100]
         
         #create header with type information
         tree_buffer += indent_str + self.__class__.__name__ + ' ::'
         if self.aa_show_ID:
             tree_buffer += ' ID: ' + hex(id(self))
-        tree_buffer += ' ---------------------------------\n'
+#        tree_buffer += ' ---------------------------------'
+        tree_buffer += '\n'
         indent_str += '|'
         
         #convert the attributes to string
@@ -1159,8 +1160,10 @@ class NodeReturnStmt(Node):
         loc         : location in input string
         dat         : The return value (expression)
     '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeReturnStmt, self).__init__(kids, loc, dat)
+    def __init__(self):
+        super(NodeReturnStmt, self).__init__()
+        self.arguments = []
+        self.loc = None
 
 
 class NodePragmaStmt(Node):
@@ -1260,7 +1263,7 @@ class RoleCompiledObject(AttributeRole):
     '''Mark objects that are compiled. TODO: seems to be no good solution.'''
     pass
 class RoleConstant(AttributeRole):
-    '''The attribute is a constant'''
+    '''The attribute is a constant; it can only be changed at compile time.'''
     userStr = 'const'
 class RoleParameter(AttributeRole):
     '''
@@ -1393,7 +1396,7 @@ class NodeFuncDef(Node):
         self.name = None
         self.arguments = []
         self.keyword_arguments = []
-        self.statements = None
+        self.statements = []
         self.return_type = None
         self.loc = None
 

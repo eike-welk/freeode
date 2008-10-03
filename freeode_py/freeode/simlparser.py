@@ -469,21 +469,21 @@ class Parser(object):
         nCurr.kids = toks.argList.asList()
         return nCurr
 
-    def _actionReturnStmt(self, s, loc, toks): #IGNORE:W0613
+    def _action_return_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for return statement:
             return 2*a;
         BNF:
-        returnStmt = (kw('return') + ES(Optional(expression          .setResultsName('retVal'))
-                                        + stmtEnd)                   .setErrMsgStart('Return statement: ')
-                      )                                              .setParseAction(self._actionReturnStmt)
+        return_stmt = (kw('return') - Optional(expression           .setResultsName('ret_val'))
+                      )                                             .setParseAction(self._action_return_stmt) \
+                                                                    .setFailAction(ChMsg(prepend='return statement: '))
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         nCurr = NodeReturnStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        if isinstance(toks.retVal, Node):
-            nCurr.appendChild(toks.retVal)
+        if isinstance(toks.ret_val, Node):
+            nCurr.arguments.append(toks.ret_val)
         return nCurr
 
     def _actionPragmaStmt(self, s, loc, toks): #IGNORE:W0613
@@ -664,9 +664,6 @@ class Parser(object):
         Create node for calling a function or method.
             bar.doFoo(10, x, a=2.5)
         BNF:
-        funcCall << Group(dotIdentifier                              .setResultsName('funcName')
-                         + '(' + ES(funcArgListCall                  .setResultsName('argList')
-                                    + ')' ))                         .setParseAction(self._action_func_call)
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
@@ -717,9 +714,13 @@ class Parser(object):
         #store optional type of argument
         if toks.type:
             nCurr.type = toks.type
+            raise UserException('Type specifications are not yet supported!', 
+                                nCurr.loc)
         #store optional default value
         if toks.default_value:
             nCurr.default_value = toks.default_value
+            raise UserException('Default values are not yet supported!', 
+                                nCurr.loc)
         return nCurr
 
 
@@ -752,6 +753,7 @@ class Parser(object):
         #store function arguments: statement list of 'data' statements
         nCurr.arguments = toks.arg_list.asList()
         #check argument list - arguments with default values must come last!
+        #TODO: put keyword arguments into keyword_argument list
         thereWasKeywordArgument = False
         for arg in nCurr.arguments:
             if arg.default_value is not None:
@@ -763,7 +765,6 @@ class Parser(object):
         if toks.return_type:
             nCurr.return_type = toks.return_type
         #store function body; take each statement out of its sublist
-        nCurr.statements = []
         for sublist in toks.func_body.asList():
             nCurr.statements.append(sublist[0])
         return nCurr
@@ -947,7 +948,7 @@ class Parser(object):
 
         #Return values from a function 
         return_stmt = (kw('return') - Optional(expression           .setResultsName('ret_val'))
-                      )                                             .setParseAction(self._actionReturnStmt) \
+                      )                                             .setParseAction(self._action_return_stmt) \
                                                                     .setFailAction(ChMsg(prepend='return statement: '))
 
         #pragma statement: tell any kind of options to the compiler
@@ -1321,13 +1322,13 @@ print 'end'
 """
 print 'start'
 
-func foo(b:Real=6):
+func foo(b):
     print b
     print 'test'
-#    return b*b
+    return b*b
     
-data a:Real const =6
-a = 2*2 + 2**-3 * 2**-3**4
+data a:Real const
+a = foo(3) + 99
 
 print 'a = ', a
 print 'end'

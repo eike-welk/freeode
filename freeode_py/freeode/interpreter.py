@@ -207,7 +207,30 @@ class InterpreterObject(Node):
         return attr
     
   
-#---------- Built In Objects  ------------------------------------------------*
+#---------- Built In Types  ------------------------------------------------*
+#---------- Infrastructure -------------------------------------------------
+class CreateBuiltInType(InterpreterObject): 
+    '''
+    Create instances of built in classes (Float, String, ...)
+    
+    Instances of this class act as the class/type of built in objects
+    Float, String, Function, Class, ...
+    The built in data objects (Float, String) are mainly wrappers around 
+    Python objects. The infrastructure objects (Function, Class, Module)
+    are a structured symbol table, that creates the illusion of a object 
+    oriented programming language.    
+    '''
+    def __init__(self, class_name, python_class):
+        InterpreterObject.__init__(self)
+        self.type = None #TODO: set meaningful type
+        self.name = DotName(class_name)
+        self.python_class = python_class
+   
+    def construct_instance(self, init_val=None):
+        '''Return the new object'''
+        return self.python_class(self, init_val)
+        
+        
 class InstClass(InterpreterObject):
     '''Class: generator for instances'''
     def __init__(self):
@@ -215,7 +238,7 @@ class InstClass(InterpreterObject):
         #TODO: set meaningful type
         self.name = None
         self.constructor = None
-    def make_instance(self): 
+    def construct_instance(self): 
         pass
 
 #TODO: InstClassBase     ???
@@ -233,30 +256,26 @@ class InstModule(InterpreterObject):
         self.name = None
 #        self.statements = None
         
+        
 class InstFunction(InterpreterObject):
     '''A Function or Method'''
-
-#------- Built In Types --------------------------------------------------
-class CreateBuiltInType(InterpreterObject): 
-    '''
-    Create instances built in classes (Float, String, ...)
-    
-    Instances of this class act as the class of built in objects
-    Float, String, (Distribution, Array)
-    These built in objects are mainly wrappers around Python objects.
-    '''
-    def __init__(self, class_name, python_class):
+    def __init__(self, class_obj, name):
         InterpreterObject.__init__(self)
-        #TODO: set meaningful type
-        self.type = None
-        self.name = DotName(class_name)
-        self.python_class = python_class
-   
-    def make_instance(self, init_val=None):
-        '''Return the new object'''
-        return self.python_class(init_val, self)
-        
-        
+        self.type = ref(class_obj)
+        self.role = RoleConstant
+        self.name = name
+        self.arguments = []
+        self.keyword_arguments = []
+        self.statements = []
+        self.return_type = None
+        #save the current global namespace in the function. This otherwise 
+        #access to global variables would have surprising results
+        self.global_scope = None
+#the single object that should be used to create all Functions
+CLASS_FUNCTION = CreateBuiltInType('Function', InstFunction)
+
+
+#------- Built In Data --------------------------------------------------
 class InstFloat(InterpreterObject):
     '''Floating point number'''
     #Example object to test if two operands are compatible
@@ -264,7 +283,7 @@ class InstFloat(InterpreterObject):
     type_compat_example = 1
     #TODO: instances can be only assigned once.
     #TODO: add self.default_value ??? (or into InterpreterObject?)
-    def __init__(self, value, class_obj):
+    def __init__(self, class_obj, value):
         InterpreterObject.__init__(self)
         self.type = ref(class_obj)
         if value is None:
@@ -279,7 +298,7 @@ class InstString(InterpreterObject):
     '''Character string'''
     #Example object to test if operation is feasible
     type_compat_example = 'aa'
-    def __init__(self, value, class_obj):
+    def __init__(self, class_obj, value):
         InterpreterObject.__init__(self)
         self.type = ref(class_obj)
         if value is None:
@@ -301,14 +320,13 @@ class ExpressionVisitor(Visitor):
     @Visitor.when_type(NodeFloat)
     def visit_NodeFloat(self, node):
         '''Create floating point number'''
-        #TODO: use CLASS_FLOAT to create the float object
-        result = CLASS_FLOAT.make_instance(node.value)
+        result = CLASS_FLOAT.construct_instance(node.value)
         return result
         
     @Visitor.when_type(NodeString)
     def visit_NodeString(self, node):
         '''Create floating point number'''
-        result = CLASS_STRING.make_instance(node.value)
+        result = CLASS_STRING.construct_instance(node.value)
         return result
         
     @Visitor.when_type(NodeIdentifier)
@@ -329,10 +347,35 @@ class ExpressionVisitor(Visitor):
         result = eval('inst_lhs.value ' + node.operator + ' inst_rhs.value')
         #Wrap the python result type in the Interpreter's instance types
         if isinstance(result, float):
-            resultInst = CLASS_FLOAT.make_instance(result)
+            resultInst = CLASS_FLOAT.construct_instance(result)
         else:
-            resultInst = CLASS_STRING.make_instance(result)
+            resultInst = CLASS_STRING.construct_instance(result)
         return resultInst
+    
+    @Visitor.when_type(NodeFuncCall)
+    def visit_NodeFuncCall(self, node):
+        '''Call a function and execute its code.'''
+        #evaluate all arguments in the callers environment.
+        ev_args = []
+        for arg in node.arguments:
+            ev_arg1 = self.evaluate(arg)
+            ev_args.append(ev_arg1)
+        #TODO: evaluate keyword arguments too
+        #find the right function object   
+        func = self.evaluate(node.name)
+        #Create new environment for the function. 
+        #Use the function's global scope.
+        func_env = ExecutionEnvironment()
+        func_env.global_scope = func.global_scope
+#        func_env.this_scope = #TODO: How????
+        func_env.local_scope = InterpreterObject()
+        #Create local variables for each argument, 
+        #and assign the values to them.
+        for arg_def, arg_val in zip(func.arguments, ev_args):
+            func_env.local_scope.create_attribute(arg_def.name, arg_val)
+        #TODO: execute the function's code in the new environment.
+        #TODO: return the return values.
+        return
     
     def evaluate(self, expression):
         '''Compute and return value of expression'''
@@ -364,7 +407,7 @@ class StatementVisitor(Visitor):
         class_name = node.class_name
         class_object = self.environment.get_attribute(class_name)
         #create new object and store it in local scope
-        new_object = class_object.make_instance()
+        new_object = class_object.construct_instance()
         new_name = node.name
         self.environment.local_scope.create_attribute(new_name, new_object)
         #Save options
@@ -392,7 +435,23 @@ class StatementVisitor(Visitor):
             raise Exception('Type mismatch!')
         return
     
-        
+    @Visitor.when_type(NodeFuncDef)
+    def visit_NodeFuncDef(self, node):
+        '''Add function object to local namespace'''
+        #create new function object and put it into the local namespace
+        new_name = node.name
+        new_func = CLASS_FUNCTION.construct_instance(new_name)
+        self.environment.local_scope.create_attribute(new_name, new_func)
+        #save the current global namespace in the function. This otherwise 
+        #access to global variables would have surprising results
+        new_func.global_scope = proxy(self.environment.global_scope)
+        #TODO: Evaluate all expressions in default arguments and type specifications
+        new_func.arguments = node.arguments
+        new_func.keyword_arguments = node.keyword_arguments
+        new_func.return_type = node.return_type
+        #the code
+        new_func.statements = node.statements
+                
     def execute(self, statement):   
         self.dispatch(statement)
             
@@ -401,6 +460,7 @@ class StatementVisitor(Visitor):
 #------ Tests ----------------------------------------------------------------*   
 def do_tests():
     '''Test the module.'''
+    Node.aa_show_ID = True
     #simple expression
     doTest = True
     doTest = False
@@ -430,7 +490,8 @@ def do_tests():
         mod = InstModule()
         mod.create_attribute(DotName('Float'), CLASS_FLOAT)
         mod.create_attribute(DotName('String'), CLASS_STRING)
-        mod.create_attribute(DotName('a'), CLASS_FLOAT.make_instance(2))
+        mod.create_attribute(DotName('Function'), CLASS_FUNCTION)
+        mod.create_attribute(DotName('a'), CLASS_FLOAT.construct_instance(2))
         
         env = ExecutionEnvironment()
         env.global_scope = mod
@@ -449,37 +510,45 @@ def do_tests():
         prog_text = \
 '''
 print 'start'
+
+func foo(b):
+    print 'in foo'
+    return b*b
+
 data a:Float const #=6
-a = 2*2 + 2**3 * 2**3**4
-#if a > 2:
-#    print 'a > 2: '
-#else:
-#    print 'a <= 2: '
+a = 2*2 + foo(3*4)
 print 'a = ', a
 print 'end'
 '''
 #-------- Work ----------------------------------------s------------------------
-        from simlparser import Parser
-        ps = Parser()
-        module_code = ps.parseModuleStr(prog_text)
-        
+        #create the built in library
         mod = InstModule()
 #        mod.statements = module_code
         mod.create_attribute(DotName('Float'), CLASS_FLOAT)
         mod.create_attribute(DotName('String'), CLASS_STRING)
+        mod.create_attribute(DotName('Function'), CLASS_FUNCTION)
         print mod
-        
-        env = ExecutionEnvironment()
-        env.global_scope = mod
-        env.local_scope = mod
-        
+               
+        #init the interpreter
         exv = ExpressionVisitor()
         exv.environment = env
         
         stv = StatementVisitor()
         stv.environment = env
         stv.expression_visitor = exv
+
+        #parse the program text
+        from simlparser import Parser
+        ps = Parser()
+        module_code = ps.parseModuleStr(prog_text)
         
+        #set up parsing the main module
+        env = ExecutionEnvironment()
+        env.global_scope = mod
+        env.local_scope = mod
+        #TODO: import_from_module(module, name_list)
+        # self.import_from_module(BUILTIN_MODULE, ['*'])
+        #interpreter main loop
         for stmt in module_code.statements:
             stv.execute(stmt)
             
