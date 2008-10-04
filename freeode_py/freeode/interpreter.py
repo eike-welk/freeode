@@ -35,9 +35,12 @@ The interpreter reads the AST from the parser. It generates constant
 objects (the symbol table) and changes (simplifies) the code.
 """
 
+from __future__ import division
+#from __future__ import absolute_import              #IGNORE:W0410
+
 #import copy
-import weakref
-from weakref import ref
+#import weakref
+from weakref import ref, proxy
 
 from freeode.ast import *
 
@@ -185,18 +188,18 @@ class InterpreterObject(Node):
     #TODO: def set_value(new_val): ??? changes the value of an attribute. 
     #      Checks compatibility. Must be re-implemented in leaf subclasses.
     #TODO: remove? object contents is instead changed?
-    def set_attribute(self, name, newAttr):
-        '''Change value of attribute.'''
-        oldAttr = self.attributes[name]
-        if newAttr.type() is not oldAttr.type():
-            raise Exception('Wrong type! attribute: %s; \n'
-                            'has type: %s; \nrequired type: %s' % 
-                            (str(name), 
-                             str(newAttr.type()), str(oldAttr.type())))
-        #TODO: enforce: attributes can be set only once
-        #TODO: maybe recursive copying of values under SIML's control 
-        self.attributes[name] = newAttr.copy()
-        return
+#    def set_attribute(self, name, newAttr):
+#        '''Change value of attribute.'''
+#        oldAttr = self.attributes[name]
+#        if newAttr.type() is not oldAttr.type():
+#            raise Exception('Wrong type! attribute: %s; \n'
+#                            'has type: %s; \nrequired type: %s' % 
+#                            (str(name), 
+#                             str(newAttr.type()), str(oldAttr.type())))
+#        #TODO: enforce: attributes can be set only once
+#        #TODO: maybe recursive copying of values under SIML's control 
+#        self.attributes[name] = newAttr.copy()
+#        return
         
     def get_attribute(self, name):
         '''Return attribute object'''
@@ -530,9 +533,9 @@ print 'end'
         print mod
                
         #init the interpreter
+        env = ExecutionEnvironment()
         exv = ExpressionVisitor()
         exv.environment = env
-        
         stv = StatementVisitor()
         stv.environment = env
         stv.expression_visitor = exv
@@ -543,9 +546,8 @@ print 'end'
         module_code = ps.parseModuleStr(prog_text)
         
         #set up parsing the main module
-        env = ExecutionEnvironment()
-        env.global_scope = mod
-        env.local_scope = mod
+        stv.environment.global_scope = mod
+        stv.environment.local_scope = mod
         #TODO: import_from_module(module, name_list)
         # self.import_from_module(BUILTIN_MODULE, ['*'])
         #interpreter main loop

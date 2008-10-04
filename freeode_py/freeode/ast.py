@@ -43,11 +43,13 @@ modules of Freeode:
 
 
 from __future__ import division
+from __future__ import absolute_import              #IGNORE:W0410
+
 
 from types import ClassType, FunctionType, NoneType #, TupleType, StringType
 import copy
 import weakref
-from weakref import proxy
+#from weakref import proxy
 
 import pyparsing
 
@@ -2455,6 +2457,7 @@ if __name__ == '__main__':
     #perform the unit tests
     #unittest.main() #exits interpreter
     testSuite = unittest.TestSuite()
+#    testSuite.addTest(unittest.makeSuite(TestAST)) ???
     testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAST))
     testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVisitor))
     testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDotName))
