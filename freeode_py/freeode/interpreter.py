@@ -408,7 +408,10 @@ class ExpressionVisitor(Visitor):
             func_env.local_scope.create_attribute(arg_def.name, arg_val)
         #execute the function's code in the new environment.
         self.interpreter.push_environment(func_env)
-        self.interpreter.run(func.statements)
+        try:
+            self.interpreter.run(func.statements)
+        except ReturnFromFunctionException:
+            pass
         self.interpreter.pop_environment()
         #return the return values.
         return func_env.return_value
@@ -502,7 +505,8 @@ class StatementVisitor(Visitor):
         #evaluate the expression of the returned value
         retval = self.expression_visitor.evaluate(node.arguments[0])
         self.environment.return_value = retval
-        #TODO: end function execution
+        #Forcibly end function execution
+        raise ReturnFromFunctionException()
                 
     def execute(self, statement):  
         '''Execute one statement''' 
@@ -511,7 +515,14 @@ class StatementVisitor(Visitor):
             
 
 class Interpreter(object):
-    '''Interpret the constant parts of the program'''
+    '''
+    Interpret the constant parts of the program
+    
+    Contains some high-level entry points for the interpreter algorithm.
+    These methods are used from outside (to start the interpreter) as 
+    well as from inside the interpreter (to coordinate between StatementVisitor
+    and expression visitor.
+    '''
     def __init__(self):
         #object that interprets a single statement
         self.statement_visitor = StatementVisitor(self)
@@ -558,7 +569,7 @@ def do_tests():
     Node.aa_show_ID = True
     #simple expression ------------------------------------------------------------------------
     doTest = True
-    doTest = False
+#    doTest = False
     if doTest:
         print 'Test expression evaluation (only immediate values) .......................................'
         from simlparser import Parser
@@ -567,14 +578,14 @@ def do_tests():
     #    ex = ps.parseExpressionStr('"a"+"b"')
         print ex
         
-        exv = ExpressionVisitor()
+        exv = ExpressionVisitor(None)
         res = exv.evaluate(ex)
         print 'res = ', res 
         
         
     #expression with attribute access ---------------------------------------------------------------
     doTest = True
-    doTest = False
+#    doTest = False
     if doTest:
         print 'Test expression evaluation (access to variables) ...................................'
         from simlparser import Parser
@@ -583,14 +594,16 @@ def do_tests():
 #        ex = ps.parseExpressionStr('"a"+"b"')
         print ex
         
-        mod = InstModule()
+        #create module where name lives
+        dummy_class = InterpreterObject()
+        mod = InstModule(dummy_class, None)
         mod.create_attribute(DotName('a'), CLASS_FLOAT.construct_instance(2))
         
         env = ExecutionEnvironment()
         env.global_scope = mod
         print mod
         
-        exv = ExpressionVisitor()
+        exv = ExpressionVisitor(None)
         exv.environment = env
         res = exv.evaluate(ex)
         print 'res = ', res 
@@ -598,7 +611,7 @@ def do_tests():
         
     #interpret some simple statements----------------------------------------------------------------
     doTest = True
-    doTest = False
+#    doTest = False
     if doTest:
         print 'Test statement execution ...............................................................'
         prog_text = \
@@ -627,9 +640,9 @@ print 'end'
                
         #init the interpreter
         env = ExecutionEnvironment()
-        exv = ExpressionVisitor()
+        exv = ExpressionVisitor(None)
         exv.environment = env
-        stv = StatementVisitor()
+        stv = StatementVisitor(None)
         stv.environment = env
         stv.expression_visitor = exv
 
@@ -662,6 +675,7 @@ print 'start'
 func foo(b):
     print 'in foo. b = ', b
     return b*b
+    print 'after return'
 
 data a:Float const
 a = 2*2 + foo(3*4) + foo(2)
