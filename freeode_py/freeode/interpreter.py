@@ -43,6 +43,7 @@ from __future__ import division
 from weakref import ref, proxy
 
 from freeode.ast import *
+import simlparser
 
 
 
@@ -101,7 +102,8 @@ class ExecutionEnvironment(object):
         self.this_scope = None
         #scope for the local variables of a function
         self.local_scope = None
-        #TODO: self.statements = None #Statements of function ore module
+        #return value from function call
+        self.return_value = None
 
 
     #def findDotName(self, dotName, default=None):
@@ -214,9 +216,9 @@ class InterpreterObject(Node):
 #---------- Infrastructure -------------------------------------------------
 class CreateBuiltInType(InterpreterObject): 
     '''
-    Create instances of built in classes (Float, String, ...)
+    Create instances of built in classes. - The class of built in objects.
     
-    Instances of this class act as the class/type of built in objects
+    Instances of this class act as the class/type of built in objects like:
     Float, String, Function, Class, ...
     The built in data objects (Float, String) are mainly wrappers around 
     Python objects. The infrastructure objects (Function, Class, Module)
@@ -234,14 +236,14 @@ class CreateBuiltInType(InterpreterObject):
         return self.python_class(self, init_val)
         
         
-class InstClass(InterpreterObject):
+class InstUserDefinedClass(InterpreterObject):
     '''Class: generator for instances'''
     def __init__(self):
         InterpreterObject.__init__(self)
         #TODO: set meaningful type
         self.name = None
         self.constructor = None
-    def construct_instance(self): 
+    def construct_instance(self, *arg): 
         pass
 
 #TODO: InstClassBase     ???
@@ -252,12 +254,14 @@ class InstClass(InterpreterObject):
         
 class InstModule(InterpreterObject):
     '''Represent one file'''
-    def __init__(self):
+    def __init__(self, class_obj, name):
         InterpreterObject.__init__(self)
-        #TODO: set meaningful type
-        self.type = None
-        self.name = None
+        self.type = ref(class_obj)
+        self.name = name
 #        self.statements = None
+#the single object that should be used to create all Modules
+CLASS_MODULE = CreateBuiltInType('Module', InstModule)
+
         
         
 class InstFunction(InterpreterObject):
@@ -312,14 +316,40 @@ class InstString(InterpreterObject):
 CLASS_STRING = CreateBuiltInType('String', InstString)
   
   
+def create_built_in_lib():
+    '''
+    Returns module with objects that are built into interpreter.
+    '''  
+    lib = CLASS_MODULE.construct_instance('__built_in__')
+    lib.create_attribute(DotName('Module'), CLASS_MODULE)
+    lib.create_attribute(DotName('Function'), CLASS_FUNCTION)
+    lib.create_attribute(DotName('Float'), CLASS_FLOAT)
+    lib.create_attribute(DotName('String'), CLASS_STRING)
+    return lib
+#the module of built in objects
+BUILT_IN_LIB = create_built_in_lib()    
+    
+    
+    
 #--------- Interpreter -------------------------------------------------------*
+class ReturnFromFunctionException(Exception):
+    '''Functions return by raising this exception.'''
+    pass
+
+
 class ExpressionVisitor(Visitor): 
     '''Compute the value of an expression'''
-    def __init__(self):
+    def __init__(self, interpreter):
         Visitor.__init__(self) 
+        #the interpreter top level object - necessary for function call
+        self.interpreter = interpreter
         #the places where attributes are stored (the symbol tables)
         self.environment = None
         
+    def set_environment(self, new_env):
+        '''Change part of the symbol table which is currently used.'''
+        self.environment = new_env
+
     @Visitor.when_type(NodeFloat)
     def visit_NodeFloat(self, node):
         '''Create floating point number'''
@@ -360,8 +390,8 @@ class ExpressionVisitor(Visitor):
         '''Call a function and execute its code.'''
         #evaluate all arguments in the callers environment.
         ev_args = []
-        for arg in node.arguments:
-            ev_arg1 = self.evaluate(arg)
+        for arg1 in node.arguments:
+            ev_arg1 = self.evaluate(arg1)
             ev_args.append(ev_arg1)
         #TODO: evaluate keyword arguments too
         #find the right function object   
@@ -376,9 +406,12 @@ class ExpressionVisitor(Visitor):
         #and assign the values to them.
         for arg_def, arg_val in zip(func.arguments, ev_args):
             func_env.local_scope.create_attribute(arg_def.name, arg_val)
-        #TODO: execute the function's code in the new environment.
-        #TODO: return the return values.
-        return
+        #execute the function's code in the new environment.
+        self.interpreter.push_environment(func_env)
+        self.interpreter.run(func.statements)
+        self.interpreter.pop_environment()
+        #return the return values.
+        return func_env.return_value
     
     def evaluate(self, expression):
         '''Compute and return value of expression'''
@@ -388,11 +421,19 @@ class ExpressionVisitor(Visitor):
         
 class StatementVisitor(Visitor):
     '''Execute statements'''
-    def __init__(self):
+    def __init__(self, interpreter):
         Visitor.__init__(self) 
+        #the interpreter top level object - necessary for return statement
+        self.interpreter = interpreter
         #the places where attributes are stored (the symbol tables)
         self.environment = None
-        self.expression_visitor = None #TODO: create ExpressionVisitor here!
+        #object to evaluate expressions
+        self.expression_visitor = ExpressionVisitor(interpreter)
+        
+    def set_environment(self, new_env):
+        '''Change part of the symbol table which is currently used.'''
+        self.environment = new_env
+        self.expression_visitor.set_environment(new_env)
         
     @Visitor.when_type(NodePrintStmt)
     def visit_NodePrintStmt(self, node):
@@ -431,7 +472,7 @@ class StatementVisitor(Visitor):
         lhs_expr = node.arguments[0]
         lhs_attr = self.expression_visitor.evaluate(lhs_expr)
         #TODO: work out how to do this correctly
-        #TODO: this can't work
+        #TODO: this can't work with user defined classes
         if lhs_attr.type == rhs_val.type:
             lhs_attr.value = rhs_val.value
         else:
@@ -452,11 +493,62 @@ class StatementVisitor(Visitor):
         new_func.arguments = node.arguments
         new_func.keyword_arguments = node.keyword_arguments
         new_func.return_type = node.return_type
-        #the code
+        #reference the code
         new_func.statements = node.statements
+        
+    @Visitor.when_type(NodeReturnStmt)
+    def visit_NodeReturnStmt(self, node):
+        '''Return value from function call'''
+        #evaluate the expression of the returned value
+        retval = self.expression_visitor.evaluate(node.arguments[0])
+        self.environment.return_value = retval
+        #TODO: end function execution
                 
-    def execute(self, statement):   
+    def execute(self, statement):  
+        '''Execute one statement''' 
         self.dispatch(statement)
+            
+            
+
+class Interpreter(object):
+    '''Interpret the constant parts of the program'''
+    def __init__(self):
+        #object that interprets a single statement
+        self.statement_visitor = StatementVisitor(self)
+        #the built in objects - Initialize with empty object.
+        self.built_in_lib = BUILT_IN_LIB
+        #directory of modules - the symbol table
+        self.modules = {}
+        #frame stack
+        self.env_stack = []
+        
+    def interpret_module_string(self, text, file_name=None, module_name=None):
+        #create the new module and import the built in objects
+        mod = CLASS_MODULE.construct_instance(module_name)
+        self.modules[module_name] = mod
+        mod.attributes.update(self.built_in_lib.attributes)
+        #set up new module's symbol table
+        env = ExecutionEnvironment()
+        env.global_scope = mod
+        env.local_scope = mod
+        self.push_environment(env)
+        #parse the program
+        prs = simlparser.Parser()
+        ast = prs.parseModuleStr(text, file_name, module_name)
+        #execute the statements
+        self.run(ast.statements)
+
+    def push_environment(self, new_env):
+        self.env_stack.append(new_env)
+        self.statement_visitor.set_environment(new_env)
+            
+    def pop_environment(self):
+        old_env = self.env_stack.pop()
+        self.statement_visitor.set_environment(old_env)
+        
+    def run(self, stmt_list):
+        for node in stmt_list:
+            self.statement_visitor.execute(node)
             
             
             
@@ -464,10 +556,11 @@ class StatementVisitor(Visitor):
 def do_tests():
     '''Test the module.'''
     Node.aa_show_ID = True
-    #simple expression
+    #simple expression ------------------------------------------------------------------------
     doTest = True
     doTest = False
     if doTest:
+        print 'Test expression evaluation (only immediate values) .......................................'
         from simlparser import Parser
         ps = Parser()
         ex = ps.parseExpressionStr('0+1*2')
@@ -478,22 +571,19 @@ def do_tests():
         res = exv.evaluate(ex)
         print 'res = ', res 
         
-#------ Test ----------------------------------------------------------------*   
-    #expression with attribute access
+        
+    #expression with attribute access ---------------------------------------------------------------
     doTest = True
-#    doTest = False
+    doTest = False
     if doTest:
-        print 'Test expression evaluation .............................................................'
+        print 'Test expression evaluation (access to variables) ...................................'
         from simlparser import Parser
         ps = Parser()
-        ex = ps.parseExpressionStr('0+a*2')
+        ex = ps.parseExpressionStr('1 + a * 2')
 #        ex = ps.parseExpressionStr('"a"+"b"')
         print ex
         
         mod = InstModule()
-        mod.create_attribute(DotName('Float'), CLASS_FLOAT)
-        mod.create_attribute(DotName('String'), CLASS_STRING)
-        mod.create_attribute(DotName('Function'), CLASS_FUNCTION)
         mod.create_attribute(DotName('a'), CLASS_FLOAT.construct_instance(2))
         
         env = ExecutionEnvironment()
@@ -505,31 +595,34 @@ def do_tests():
         res = exv.evaluate(ex)
         print 'res = ', res 
         
-    #interpret statement
+        
+    #interpret some simple statements----------------------------------------------------------------
     doTest = True
-#    doTest = False
+    doTest = False
     if doTest:
         print 'Test statement execution ...............................................................'
         prog_text = \
 '''
 print 'start'
 
-func foo(b):
-    print 'in foo'
-    return b*b
+data a:Float const 
+data b:Float const 
+a = 2*2 + 3*4
+b = 2 * a
+print 'a = ', a, 'b = ', b
 
-data a:Float const #=6
-a = 2*2 + foo(3*4)
-print 'a = ', a
+data c:String const
+c = 'Hello ' + 'world!'
+print 'c = ', c
+
 print 'end'
 '''
-#-------- Work ----------------------------------------s------------------------
+
         #create the built in library
-        mod = InstModule()
-#        mod.statements = module_code
+        dummy_class = InterpreterObject()
+        mod = InstModule(dummy_class, None)
         mod.create_attribute(DotName('Float'), CLASS_FLOAT)
         mod.create_attribute(DotName('String'), CLASS_STRING)
-        mod.create_attribute(DotName('Function'), CLASS_FUNCTION)
         print mod
                
         #init the interpreter
@@ -556,6 +649,33 @@ print 'end'
             
         print
         print mod
+      
+    #test interpreter object
+    doTest = True
+#    doTest = False
+    if doTest:
+        print 'Test interpreter object ...............................................................'
+        prog_text = \
+'''
+print 'start'
+
+func foo(b):
+    print 'in foo. b = ', b
+    return b*b
+
+data a:Float const
+a = 2*2 + foo(3*4) + foo(2)
+print 'a = ', a
+print 'end'
+'''
+#-------- Work ----------------------------------------s------------------------
+        #create the interpreter
+        intp = Interpreter()
+        intp.interpret_module_string(prog_text, None, 'test')
+      
+        print
+        print intp.modules['test']
+      
       
 if __name__ == '__main__':
     # Self-testing code goes here.
