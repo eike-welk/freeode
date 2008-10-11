@@ -593,13 +593,13 @@ class Parser(object):
         #multiple attributes can be defined in a single statement
         #Create a node for each of them and put them into a special statement list
         attrDefList = NodeDataDefList()
-        attrDefList.loc=self.createTextLocation(loc)
+        attrDefList.loc = self.createTextLocation(loc)
         nameList = toks.attr_name_list.asList()
         for name in nameList:
             attrDef = NodeDataDef()
-            attrDef.loc=self.createTextLocation(loc)
+            attrDef.loc = self.createTextLocation(loc)
             attrDef.name = DotName(name) #store attribute name
-            attrDef.class_name = toks.class_name.name #toks.class_name is NodeIdenifier
+            attrDef.class_name = toks.class_name #.name #toks.class_name is NodeIdenifier
             #map role string to role object, and store the role
             #If role is not specified RoleVariable is assumed.
             #Submodels will be labeled variables even though these categories don't apply to them.
@@ -610,6 +610,8 @@ class Parser(object):
             #store the default value
             if isinstance(toks.default_value, Node):
                 attrDef.default_value = toks.default_value
+                raise UserException('Default values are currently unsupported!',
+                                    self.createTextLocation(loc))
             #store the attribute definition in the list
             attrDefList.statements.append(attrDef)
         #Special case: only one attribute defined
@@ -754,6 +756,7 @@ class Parser(object):
         nCurr.arguments = toks.arg_list.asList()
         #check argument list - arguments with default values must come last!
         #TODO: put keyword arguments into keyword_argument list
+        #TODO: put complete algorithm into separate function: it is used in _action_class_def too!
         thereWasKeywordArgument = False
         for arg in nCurr.arguments:
             if arg.default_value is not None:
@@ -765,7 +768,7 @@ class Parser(object):
         if toks.return_type:
             nCurr.return_type = toks.return_type
         #store function body; take each statement out of its sublist
-        for sublist in toks.func_body.asList():
+        for sublist in toks.func_body:
             nCurr.statements.append(sublist[0])
         return nCurr
 
@@ -778,12 +781,12 @@ class Parser(object):
                 data myA: Real = a
             
         BNF:
-        classBodyStmts = pragmaStmt | attributeDef | funcDef | assignment
-        classdef = Group(kw('class')
-                         - newIdentifier                           .setResultsName('classname')
-                         + Optional('(' - argument_list+ ')' ) #error msg: 'Arguments for compile time constructor :'
-                         + ':' + suite                             .setResultsName('class_body_stmts')
-                         )                                         .setParseAction(self._action_class_def)
+        class_stmt = Group(kw('class')
+                         - newIdentifier                            .setResultsName('classname')
+                         + Optional('(' - argument_list + ')' )     .setFailAction(ChMsg(prepend='constructor arguments: '))
+                         + ':' + suite                              .setResultsName('class_body_stmts')
+                         )                                          .setParseAction(self._action_class_def)\
+                                                                    .setFailAction(ChMsg(prepend='class definition: '))
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
@@ -793,8 +796,12 @@ class Parser(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         #store class name and name of super class
         nCurr.name = DotName(toks.classname)
-        #store class body (may or may not be present):  data, functions
-        nCurr.statements = toks.class_body_stmts
+        #store function arguments: statement list of 'data' statements
+        if toks.arg_list:
+            nCurr.arguments = toks.arg_list.asList()
+        #store class body; take each statement out of its sublist 
+        for sublist in toks.class_body_stmts:
+            nCurr.statements.append(sublist[0])
         return nCurr
 
 
@@ -1065,13 +1072,14 @@ class Parser(object):
                                                                     .setName('function definition')#.setDebug(True)
 
         #---------- class  ......................................................................
-        #definition of a class (process, model, type?)
+        #definition of a class 
         #TODO: "inherit" statement
         class_stmt = Group(kw('class')
-                         - newIdentifier                            .setResultsName('classname')
-                         + Optional('(' - argument_list + ')' )     .setFailAction(ChMsg(prepend='constructor arguments: '))
-                         + ':' + suite                              .setResultsName('class_body_stmts')
-                         )                                          .setParseAction(self._action_class_def)\
+                           - newIdentifier                          .setResultsName('classname')
+                           + Optional('(' - func_def_arg_list       .setResultsName('arg_list')
+                                      + ')' )                       .setFailAction(ChMsg(prepend='constructor arguments: '))
+                           + ':' + suite                            .setResultsName('class_body_stmts')
+                           )                                        .setParseAction(self._action_class_def)\
                                                                     .setFailAction(ChMsg(prepend='class definition: '))
                                       
         
@@ -1322,15 +1330,16 @@ print 'end'
 """
 print 'start'
 
-func foo(b):
-    print b
-    print 'test'
-    return b*b
+func foo(a, b):
+    print a, b
     
-data a:Real const
-a = foo(3) + 99
+class A(a, b):
+    data a1: Float
+    data a2: Float
 
-print 'a = ', a
+data a: A(1)
+data b: A
+
 print 'end'
 """
         print prog

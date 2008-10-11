@@ -230,10 +230,13 @@ class CreateBuiltInType(InterpreterObject):
         self.type = None #TODO: set meaningful type
         self.name = DotName(class_name)
         self.python_class = python_class
+        self.arguments = []
    
-    def construct_instance(self, init_val=None):
+    def construct_instance(self):
         '''Return the new object'''
-        return self.python_class(self, init_val)
+        new_obj = self.python_class()
+        new_obj.type = ref(self)
+        return new_obj
         
         
 class InstUserDefinedClass(InterpreterObject):
@@ -241,10 +244,16 @@ class InstUserDefinedClass(InterpreterObject):
     def __init__(self):
         InterpreterObject.__init__(self)
         #TODO: set meaningful type
+        self.type = None
+        self.role = RoleConstant
         self.name = None
-        self.constructor = None
-    def construct_instance(self, *arg): 
-        pass
+        self.arguments = []
+        self.keyword_arguments = []
+        self.statements = []
+        #save the current global namespace in the function. This otherwise 
+        #access to global variables would have surprising results
+        self.global_scope = None
+
 
 #TODO: InstClassBase     ???
 #        --> SimlClass   ???
@@ -254,10 +263,9 @@ class InstUserDefinedClass(InterpreterObject):
         
 class InstModule(InterpreterObject):
     '''Represent one file'''
-    def __init__(self, class_obj, name):
+    def __init__(self):
         InterpreterObject.__init__(self)
-        self.type = ref(class_obj)
-        self.name = name
+        self.name = None
 #        self.statements = None
 #the single object that should be used to create all Modules
 CLASS_MODULE = CreateBuiltInType('Module', InstModule)
@@ -266,11 +274,11 @@ CLASS_MODULE = CreateBuiltInType('Module', InstModule)
         
 class InstFunction(InterpreterObject):
     '''A Function or Method'''
-    def __init__(self, class_obj, name):
+    def __init__(self):
         InterpreterObject.__init__(self)
-        self.type = ref(class_obj)
+        self.type = None
         self.role = RoleConstant
-        self.name = name
+        self.name = None
         self.arguments = []
         self.keyword_arguments = []
         self.statements = []
@@ -278,6 +286,8 @@ class InstFunction(InterpreterObject):
         #save the current global namespace in the function. This otherwise 
         #access to global variables would have surprising results
         self.global_scope = None
+        #the scope of the object if applicable
+        self.this_scope = None
 #the single object that should be used to create all Functions
 CLASS_FUNCTION = CreateBuiltInType('Function', InstFunction)
 
@@ -288,15 +298,10 @@ class InstFloat(InterpreterObject):
     #Example object to test if two operands are compatible
     #and if the operation is feasible
     type_compat_example = 1
-    #TODO: instances can be only assigned once.
-    #TODO: add self.default_value ??? (or into InterpreterObject?)
-    def __init__(self, class_obj, value):
+    def __init__(self):
         InterpreterObject.__init__(self)
-        self.type = ref(class_obj)
-        if value is None:
-            self.value = None
-        else:
-            self.value = float(value)
+        self.type = None
+        self.value = None
 #the single object that should be used to create all floats
 CLASS_FLOAT = CreateBuiltInType('Float', InstFloat)
 
@@ -305,13 +310,10 @@ class InstString(InterpreterObject):
     '''Character string'''
     #Example object to test if operation is feasible
     type_compat_example = 'aa'
-    def __init__(self, class_obj, value):
+    def __init__(self):
         InterpreterObject.__init__(self)
-        self.type = ref(class_obj)
-        if value is None:
-            self.value = None
-        else:       
-            self.value = str(value)
+        self.type = None
+        self.value = None
 #the single object that should be used to create all strings
 CLASS_STRING = CreateBuiltInType('String', InstString)
   
@@ -320,7 +322,8 @@ def create_built_in_lib():
     '''
     Returns module with objects that are built into interpreter.
     '''  
-    lib = CLASS_MODULE.construct_instance('__built_in__')
+    lib = CLASS_MODULE.construct_instance()
+    lib.name = DotName('__built_in__')
     lib.create_attribute(DotName('Module'), CLASS_MODULE)
     lib.create_attribute(DotName('Function'), CLASS_FUNCTION)
     lib.create_attribute(DotName('Float'), CLASS_FLOAT)
@@ -353,13 +356,15 @@ class ExpressionVisitor(Visitor):
     @Visitor.when_type(NodeFloat)
     def visit_NodeFloat(self, node):
         '''Create floating point number'''
-        result = CLASS_FLOAT.construct_instance(node.value)
+        result = CLASS_FLOAT.construct_instance()
+        result.value = float(node.value)
         return result
         
     @Visitor.when_type(NodeString)
     def visit_NodeString(self, node):
-        '''Create floating point number'''
-        result = CLASS_STRING.construct_instance(node.value)
+        '''Create string'''
+        result = CLASS_STRING.construct_instance()
+        result.value = str(node.value)
         return result
         
     @Visitor.when_type(NodeIdentifier)
@@ -380,41 +385,82 @@ class ExpressionVisitor(Visitor):
         result = eval('inst_lhs.value ' + node.operator + ' inst_rhs.value')
         #Wrap the python result type in the Interpreter's instance types
         if isinstance(result, float):
-            resultInst = CLASS_FLOAT.construct_instance(result)
+            resultInst = CLASS_FLOAT.construct_instance()
+            resultInst.value = result
         else:
-            resultInst = CLASS_STRING.construct_instance(result)
+            resultInst = CLASS_STRING.construct_instance()
+            resultInst.value = result
         return resultInst
     
     @Visitor.when_type(NodeFuncCall)
     def visit_NodeFuncCall(self, node):
-        '''Call a function and execute its code.'''
+        '''Call a call-able object (function, class) and execute its code.'''
+        #find the right call-able object   
+        call_obj = self.evaluate(node.name)
+        
         #evaluate all arguments in the callers environment.
         ev_args = []
         for arg1 in node.arguments:
             ev_arg1 = self.evaluate(arg1)
             ev_args.append(ev_arg1)
         #TODO: evaluate keyword arguments too
-        #find the right function object   
-        func = self.evaluate(node.name)
-        #Create new environment for the function. 
-        #Use the function's global scope.
-        func_env = ExecutionEnvironment()
-        func_env.global_scope = func.global_scope
-#        func_env.this_scope = #TODO: How????
-        func_env.local_scope = InterpreterObject()
-        #Create local variables for each argument, 
-        #and assign the values to them.
-        for arg_def, arg_val in zip(func.arguments, ev_args):
-            func_env.local_scope.create_attribute(arg_def.name, arg_val)
-        #execute the function's code in the new environment.
-        self.interpreter.push_environment(func_env)
-        try:
-            self.interpreter.run(func.statements)
-        except ReturnFromFunctionException:
-            pass
-        self.interpreter.pop_environment()
-        #return the return values.
-        return func_env.return_value
+        #create dictionary {argument_name:argument_value}
+        arg_dict = {}
+        for arg_def, arg_val in zip(call_obj.arguments, ev_args):
+            arg_dict[arg_def.name] = arg_val
+            
+        #TODO: write general call-able objects (with __call__ method)
+        #TODO: write SIML wrapper for Python function
+        #different reactions on the different call-able objects
+        #execute a function
+        if isinstance(call_obj, InstFunction):
+            #Create new environment for the function. 
+            #Use global scope from function definition.
+            new_env = ExecutionEnvironment()
+            new_env.global_scope = call_obj.global_scope
+            new_env.this_scope = call_obj.this_scope
+            new_env.local_scope = InterpreterObject()
+            #Create local variables for each argument, 
+            #and assign the values to them.
+            for arg_name, arg_val in arg_dict.iteritems():
+                new_env.local_scope.create_attribute(arg_name, arg_val)
+            #execute the function's code in the new environment.
+            self.interpreter.push_environment(new_env)
+            try:
+                self.interpreter.run(call_obj.statements)
+            except ReturnFromFunctionException:           #IGNORE:W0704
+                pass
+            self.interpreter.pop_environment()
+            #the return value is stored in the environment (stack frame)
+            return new_env.return_value
+        #instantiate a user defined class. 
+        elif isinstance(call_obj, InstUserDefinedClass):
+            #create new object
+            new_obj = InterpreterObject()
+            new_obj.type = ref(call_obj)
+            #Create new environment for object construction. 
+            #Use global scope from class definition.
+            new_env = ExecutionEnvironment()
+            new_env.global_scope = call_obj.global_scope
+            new_env.this_scope = None
+            new_env.local_scope = new_obj
+            #Create local variables for each argument, 
+            #and assign the values to them.
+            for arg_name, arg_val in arg_dict.iteritems():
+                new_env.local_scope.create_attribute(arg_name, arg_val)
+            #execute the function's code in the new environment.
+            self.interpreter.push_environment(new_env)
+            try:
+                self.interpreter.run(call_obj.statements)
+            except ReturnFromFunctionException:           #IGNORE:W0704
+                pass
+#                raise Exception('Return statements are illegal in function bodies!')
+            self.interpreter.pop_environment()
+            return new_obj
+        #instantiate a built in class. 
+        elif isinstance(call_obj, CreateBuiltInType):
+            new_obj = call_obj.construct_instance()
+            return new_obj
     
     def evaluate(self, expression):
         '''Compute and return value of expression'''
@@ -450,20 +496,31 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeDataDef)
     def visit_NodeDataDef(self, node):
         '''Create object and put it into symbol table'''
-        #get the class object which we need to create the data object
-        class_name = node.class_name
-        class_object = self.environment.get_attribute(class_name)
-        #create new object and store it in local scope
-        new_object = class_object.construct_instance()
+        #Objects are created by calling the class object.
+        class_spec = node.class_name
+        #only the class name is given e.g.: Foo. Transform: Foo --> Foo()
+        if isinstance(class_spec, NodeIdentifier):
+            new_spec = NodeFuncCall()
+            new_spec.name = class_spec
+            new_spec.loc = class_spec.loc
+            class_spec = new_spec
+        #class name and constructor arguments are given e.g.: Foo(42)
+        elif isinstance(class_spec, NodeFuncCall):
+            pass
+        #anything else is illegal. 
+        else:
+            raise UserException('Expecting class name (for example "Foo") or '
+                                'call to class object (for example "Foo(a)")!',
+                                 node.loc)
+        
+        #Create the new object - evaluate call to class object
+        new_object = self.expression_visitor.visit_NodeFuncCall(class_spec)
+        #Set options
+        new_object.role = node.role
+        #store new object in local scope
         new_name = node.name
         self.environment.local_scope.create_attribute(new_name, new_object)
-        #Save options
-        new_object.role = node.role
-        #evaluate default value and save it
-        default_expr = node.default_value
-        if default_expr is not None:
-            default_value = self.expression_visitor.evaluate(default_expr)
-            new_object.default_value = default_value
+        
         
     @Visitor.when_type(NodeAssignment)
     def visit_NodeAssignment(self, node):
@@ -487,12 +544,15 @@ class StatementVisitor(Visitor):
         '''Add function object to local namespace'''
         #create new function object and put it into the local namespace
         new_name = node.name
-        new_func = CLASS_FUNCTION.construct_instance(new_name)
+        new_func = CLASS_FUNCTION.construct_instance()
+        new_func.name = new_name
         self.environment.local_scope.create_attribute(new_name, new_func)
         #save the current global namespace in the function. This otherwise 
         #access to global variables would have surprising results
         new_func.global_scope = proxy(self.environment.global_scope)
         #TODO: Evaluate all expressions in default arguments and type specifications
+        #TODO: Put complete argument treatment algorithm into separate function:
+        #      visit_NodeClassDef can use the same algorithm
         new_func.arguments = node.arguments
         new_func.keyword_arguments = node.keyword_arguments
         new_func.return_type = node.return_type
@@ -505,9 +565,26 @@ class StatementVisitor(Visitor):
         #evaluate the expression of the returned value
         retval = self.expression_visitor.evaluate(node.arguments[0])
         self.environment.return_value = retval
-        #Forcibly end function execution
+        #Forcibly end function execution - 
+        #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
         raise ReturnFromFunctionException()
-                
+    
+    @Visitor.when_type(NodeClassDef)
+    def visit_NodeClassDef(self, node):
+        '''Define a class - create a class object in local namespace'''
+        #create new class object and put it into the local namespace
+        new_class = InstUserDefinedClass()
+        new_class.name = node.name
+        self.environment.local_scope.create_attribute(node.name, new_class)
+        #save the current global namespace in the function. This otherwise 
+        #access to global variables would have surprising results
+        new_class.global_scope = proxy(self.environment.global_scope)
+        #TODO: Evaluate all expressions in default arguments and type specifications
+        new_class.arguments = node.arguments
+        new_class.keyword_arguments = node.keyword_arguments
+        #reference the code
+        new_class.statements = node.statements
+        
     def execute(self, statement):  
         '''Execute one statement''' 
         self.dispatch(statement)
@@ -521,7 +598,7 @@ class Interpreter(object):
     Contains some high-level entry points for the interpreter algorithm.
     These methods are used from outside (to start the interpreter) as 
     well as from inside the interpreter (to coordinate between StatementVisitor
-    and expression visitor.
+    and expression visitor).
     '''
     def __init__(self):
         #object that interprets a single statement
@@ -534,8 +611,10 @@ class Interpreter(object):
         self.env_stack = []
         
     def interpret_module_string(self, text, file_name=None, module_name=None):
+        '''Interpret the program text of a module.'''
         #create the new module and import the built in objects
-        mod = CLASS_MODULE.construct_instance(module_name)
+        mod = CLASS_MODULE.construct_instance()
+        mod.name = module_name
         self.modules[module_name] = mod
         mod.attributes.update(self.built_in_lib.attributes)
         #set up new module's symbol table
@@ -550,12 +629,22 @@ class Interpreter(object):
         self.run(ast.statements)
 
     def push_environment(self, new_env):
+        '''
+        Put new stack frame on stack. 
+        Change environment in all visitors.
+        '''
         self.env_stack.append(new_env)
         self.statement_visitor.set_environment(new_env)
             
     def pop_environment(self):
+        '''
+        Remove one stack frame from stack. 
+        Change environment in all visitors.
+        '''
         old_env = self.env_stack.pop()
-        self.statement_visitor.set_environment(old_env)
+        new_env = self.env_stack[-1]
+        self.statement_visitor.set_environment(new_env)
+        return old_env
         
     def run(self, stmt_list):
         for node in stmt_list:
@@ -595,9 +684,10 @@ def do_tests():
         print ex
         
         #create module where name lives
-        dummy_class = InterpreterObject()
-        mod = InstModule(dummy_class, None)
-        mod.create_attribute(DotName('a'), CLASS_FLOAT.construct_instance(2))
+        mod = InstModule()
+        val_2 = CLASS_FLOAT.construct_instance()
+        val_2.value = 2.0
+        mod.create_attribute(DotName('a'), val_2)
         
         env = ExecutionEnvironment()
         env.global_scope = mod
@@ -632,8 +722,7 @@ print 'end'
 '''
 
         #create the built in library
-        dummy_class = InterpreterObject()
-        mod = InstModule(dummy_class, None)
+        mod = CLASS_MODULE.construct_instance()
         mod.create_attribute(DotName('Float'), CLASS_FLOAT)
         mod.create_attribute(DotName('String'), CLASS_STRING)
         print mod
@@ -667,7 +756,7 @@ print 'end'
     doTest = True
 #    doTest = False
     if doTest:
-        print 'Test interpreter object ...............................................................'
+        print 'Test interpreter object: function call ...............................................................'
         prog_text = \
 '''
 print 'start'
@@ -680,6 +769,32 @@ func foo(b):
 data a:Float const
 a = 2*2 + foo(3*4) + foo(2)
 print 'a = ', a
+print 'end'
+'''
+        #create the interpreter
+        intp = Interpreter()
+        intp.interpret_module_string(prog_text, None, 'test')
+      
+        print
+        print intp.modules['test']
+      
+      
+    #test interpreter object
+    doTest = True
+#    doTest = False
+    if doTest:
+        print 'Test interpreter object: class definition ...............................................................'
+        prog_text = \
+'''
+print 'start'
+
+class A:
+    print 'in A definition'
+    data a1: Float
+    data a2: Float
+
+data a: A
+
 print 'end'
 '''
 #-------- Work ----------------------------------------s------------------------

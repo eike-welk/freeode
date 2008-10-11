@@ -1026,8 +1026,8 @@ class NodeFuncCall(Node):
     into the top level function. Similar to an inline function in C++.
     
     Data attributes:
-        name: DotName
-            Dotted name of function
+        name: typically NodeIdentifier
+            expression that yields the function object
         attrRef: 
             Reference to the function (definition) which is accessed.
             Name choosen to ease unification with NodeIdentifier.
@@ -1266,14 +1266,14 @@ class RoleCompiledObject(AttributeRole):
     pass
 class RoleConstant(AttributeRole):
     '''The attribute is a constant; it can only be changed at compile time.'''
-    userStr = 'const'
+#    userStr = 'const'
 class RoleParameter(AttributeRole):
     '''
     Attribute is a parameter of the simulation:
     - is constant during the simulation, but can vary between simulations.
     - is stored.
     '''
-    userStr = 'param'
+#    userStr = 'param'
 class RoleDataCanVaryDuringSimulation(AttributeRole):
     '''Data that can vary during the simulation. (Base class.)'''
     pass
@@ -1284,7 +1284,7 @@ class RoleFuncArgument(RoleDataCanVaryDuringSimulation):
     - should be optmized away
     - is not stored.
     '''
-    userStr = 'function argument'
+#    userStr = 'function argument'
 class RoleLocalVariable(RoleDataCanVaryDuringSimulation):
     '''
     The attribute is a local variable:
@@ -1292,20 +1292,20 @@ class RoleLocalVariable(RoleDataCanVaryDuringSimulation):
     - should be optmized away
     - is not stored.
     '''
-    userStr = 'local variable'
+#    userStr = 'local variable'
 class RoleVariable(RoleDataCanVaryDuringSimulation):
     '''
     The attribute is a state or algebraic variable:
     - can vary during the simulation
     - is stored.
     '''
-    userStr = 'variable'
+#    userStr = 'variable'
 class RoleStateVariable(RoleVariable):
     '''The attribute is a state variable'''
-    userStr = 'state_variable'
+#    userStr = 'state_variable'
 class RoleAlgebraicVariable(RoleVariable):
     '''The attribute is an algebraic variable'''
-    userStr = 'algebraic_variable'
+#    userStr = 'algebraic_variable'
 
 
 class NodeDataDef(Node):
@@ -1328,7 +1328,7 @@ class NodeDataDef(Node):
     def __init__(self):
         Node.__init__(self)
         self.name = None
-        self.class_name = None
+        self.class_name = None #TODO: rename to class_spec this is eiter a NodeIdentifier or a NodeFuncCall
         self.role = None
         self.default_value = None
 
@@ -1427,54 +1427,40 @@ class NodeGenFunc(NodeFuncDef):
 class NodeClassDef(Node):
     """
     AST node for class definition.
+    
     Data Attributes:
-    ----------------
-    kids     : The statements, the block's code.
-    loc      : location in input string
-    dat      : None
-
-    name     : name of the class defined here.
-    baseName : name of the class, from which this class inherits.
-    base     : refference to base class definition
-
-    isBuiltinType :
-        True if this class is built into the compiler
-    noFlatten :
-        True if the compiler should not flatten the class
-    defEnvironment :
-        Execution environment at time of definition. The data statements (and
-        the assignments to constants) are executed in this environment.
+    name: DotName
+        name of the class defined here.
+    arguments: list(Node())
+        Constructor arguments, the expressions between the brackets
+    statements: list(Node())
+        the statements of the class body
+    loc: 
+        location in input string, and file name
     """
-    def __init__(self, kids=None, loc=None, dat=None, name=None, baseName=None):
-        Node.__init__(self, kids, loc, dat)
-        self.name = name
-        self.baseName = baseName
-        self.base = None
-        self.isBuiltinType = False
-        self.noFlatten = False
-        self.defEnvironment = None #TODO: put data statements into a function?
-
-    #Get or set the class body through a unified name
-    def getStatements(self):
-        return self
-    def setStatements(self, inDefs):
-        self.kids = inDefs.kids
-    body = property(getStatements, setStatements, None,
-            'Attribute definitions and operations on constants. (propperty).')
+    def __init__(self):
+        Node.__init__(self)
+        self.name = None
+        self.arguments = []
+        self.keyword_arguments = []
+        self.statements = []
+        self.loc = None
 
 
 class NodeModule(Node):
     '''
     Root node of a module (or of the program)
-    Attributes:
-        loc       : location in input string (~0)
-        name      : Name of the module
-        target_name: Name useful in the context of flattening or code generation
+    Data Attributes:
+    name: 
+        Name of the module
+    statements: list(Node())
+        the statements of the class body
+    loc: 
+        location in input string (~0)
     '''
     def __init__(self):
         Node.__init__(self)
         self.name = None
-        self.target_name = None
         self.statements = []
         self.loc = None
 
