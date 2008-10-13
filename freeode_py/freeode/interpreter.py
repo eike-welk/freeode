@@ -392,11 +392,28 @@ class ExpressionVisitor(Visitor):
             resultInst.value = result
         return resultInst
     
+    @Visitor.when_type(NodeAttrAccess)
+    def visit_NodeAttrAccess(self, node):
+        '''Evaluate attribute access ('.') operator'''
+        #evaluate the object on the left hand side
+        inst_lhs = self.dispatch(node.arguments[0])
+        #the object on the right hand side must be an identifier
+        id_rhs = node.arguments[1]
+        if not isinstance(id_rhs, NodeIdentifier):
+            raise UserException('Expecting identifier on right side of "." operator',
+                                node.loc)
+        #get attribute from object on lhs
+        attr = inst_lhs.get_attribute(id_rhs.name)
+        return attr        
+        
     @Visitor.when_type(NodeFuncCall)
     def visit_NodeFuncCall(self, node):
         '''Call a call-able object (function, class) and execute its code.'''
         #find the right call-able object   
         call_obj = self.evaluate(node.name)
+        if not isinstance(call_obj, (InstFunction, InstUserDefinedClass, 
+                                     CreateBuiltInType)):
+            raise UserException('Expecting callable object!', node.loc)
         
         #evaluate all arguments in the callers environment.
         ev_args = []
@@ -788,12 +805,25 @@ print 'end'
 '''
 print 'start'
 
+data pi: Float
+pi = 3.1415
+
 class A:
     print 'in A definition'
     data a1: Float
     data a2: Float
 
+class B:
+    data b1: Float
+    b1 = pi
+    data b2: Float
+
 data a: A
+data b: B
+
+a.a1 = 1
+a.a2 = 2 * b.b1
+print 'a.a1: ', a.a1, ', a.a2: ', a.a2
 
 print 'end'
 '''

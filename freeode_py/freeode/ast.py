@@ -60,7 +60,7 @@ import pyparsing
 
 
 #version of the Siml compiler.
-PROGRAM_VERSION = '0.4.0-dev-1'
+PROGRAM_VERSION = '0.4.0a1'
 
 
 

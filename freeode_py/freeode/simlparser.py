@@ -325,6 +325,7 @@ class Parser(object):
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
+        #toks might be a list or a ParseResults object
         if not isinstance(toks,  list):
             #Convert parse result to list, remove extra pair of brackets
             tokList = toks.asList()[0] 
@@ -332,12 +333,18 @@ class Parser(object):
             #function was called by _action_op_infix_left(...) toks is already
             #a list.
             tokList = toks
-        nCurr = NodeOpInfix2()
+        #collect the relevant data 
+        exprLhs = tokList[0]        #expression left hand side
+        operator = tokList[1]       #operator
+        exprRhs = tokList[2]        #rhs
+        #create correct node type
+        if operator == '.':
+            nCurr = NodeAttrAccess()
+        else:
+            nCurr = NodeOpInfix2()
         nCurr.loc = self.createTextLocation(loc) #Store position
         #Store both expressions and operator
-        exprLhs = tokList[0]        #expression left hand side
-        nCurr.operator = tokList[1] #operator
-        exprRhs = tokList[2]        #rhs
+        nCurr.operator = operator
         nCurr.arguments = [exprLhs, exprRhs]
         return nCurr
 
@@ -753,7 +760,8 @@ class Parser(object):
         #store function name
         nCurr.name = DotName(toks.func_name)
         #store function arguments: statement list of 'data' statements
-        nCurr.arguments = toks.arg_list.asList()
+        if toks.arg_list:
+            nCurr.arguments = toks.arg_list.asList()
         #check argument list - arguments with default values must come last!
         #TODO: put keyword arguments into keyword_argument list
         #TODO: put complete algorithm into separate function: it is used in _action_class_def too!
@@ -1336,11 +1344,15 @@ func foo(a, b):
 class A(a, b):
     data a1: Float
     data a2: Float
+    
+#    func foo():
+#        return 'foo'
+    print 1
+    
+data a: A
+a.a1 = 1
 
-data a: A(1)
-data b: A
-
-print 'end'
+#print 'end'
 """
         print prog
         print parser.parseModuleStr(prog)
