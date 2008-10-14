@@ -43,7 +43,8 @@ __version__ = "$Revision: $"
 #import pdb
 import os
 #import parser library
-from pyparsing import ( Literal, CaselessLiteral, Keyword, Word,
+from freeode.third_party.pyparsing import ( 
+    Literal, CaselessLiteral, Keyword, Word,
     ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,
     oneOf, LineEnd, indentedBlock, 
     delimitedList, Suppress, operatorPrecedence, opAssoc,
@@ -55,7 +56,7 @@ from freeode.ast import *
 
 
 #Enable a fast parsing mode with caching. May not always work.
-pyparsing.ParserElement.enablePackrat()
+ParserElement.enablePackrat()
 
 
 class ChMsg(object):
@@ -1338,21 +1339,17 @@ print 'end'
 """
 print 'start'
 
-func foo(a, b):
-    print a, b
-    
 class A(a, b):
     data a1: Float
     data a2: Float
     
-#    func foo():
-#        return 'foo'
-    print 1
+    func foo():
+        return 'foo'
     
 data a: A
 a.a1 = 1
 
-#print 'end'
+print 'end'
 """
         print prog
         print parser.parseModuleStr(prog)

@@ -827,6 +827,35 @@ print 'a.a1: ', a.a1, ', a.a2: ', a.a2
 
 print 'end'
 '''
+
+        #create the interpreter
+        intp = Interpreter()
+        intp.interpret_module_string(prog_text, None, 'test')
+      
+        print
+        print intp.modules['test']
+      
+      
+    #test interpreter object
+    doTest = True
+#    doTest = False
+    if doTest:
+        print 'Test interpreter object: class methods ...............................................................'
+        prog_text = \
+'''
+print 'start'
+
+class A:
+    data a1: Float
+    data a2: Float
+    func test1():
+        print 'in A.test'
+    func test2():
+        print 'in A.test'
+data a: A
+
+print 'end'
+'''
 #-------- Work ----------------------------------------s------------------------
         #create the interpreter
         intp = Interpreter()
