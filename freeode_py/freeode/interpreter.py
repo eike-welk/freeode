@@ -39,8 +39,8 @@ from __future__ import division
 #from __future__ import absolute_import              #IGNORE:W0410
 
 #import copy
-#import weakref
-from weakref import ref, proxy
+import weakref
+from weakref import ref
 
 from freeode.ast import *
 import simlparser
@@ -335,6 +335,31 @@ BUILT_IN_LIB = create_built_in_lib()
     
     
 #--------- Interpreter -------------------------------------------------------*
+def make_proxy(in_obj):
+    '''
+    Return a proxy object.
+    
+    Will create a weakref.proxy object from normal objects and from 
+    weakref.ref objects. If in_obj is already a projy it will be returned.
+    '''
+    if isinstance(in_obj, weakref.ProxyTypes):
+        return in_obj
+    elif isinstance(in_obj, weakref.ReferenceType):
+        return weakref.proxy(in_obj())
+    else:
+        return weakref.proxy(in_obj)
+    
+
+def siml_isinstance(in_object, class_or_type_or_tuple):    
+    '''isinstance but inside the SIML language'''
+    if not isinstance(class_or_type_or_tuple, tuple):
+        class_or_type_or_tuple = (class_or_type_or_tuple,)
+    if in_object.type() in class_or_type_or_tuple:
+        return True
+    else:
+        return False
+    
+    
 class ReturnFromFunctionException(Exception):
     '''Functions return by raising this exception.'''
     pass
@@ -560,13 +585,18 @@ class StatementVisitor(Visitor):
     def visit_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
         #create new function object and put it into the local namespace
-        new_name = node.name
         new_func = CLASS_FUNCTION.construct_instance()
-        new_func.name = new_name
-        self.environment.local_scope.create_attribute(new_name, new_func)
-        #save the current global namespace in the function. This otherwise 
+        new_func.name = node.name
+        self.environment.local_scope.create_attribute(node.name, new_func)
+        #save the current global namespace in the function. Otherwise 
         #access to global variables would have surprising results
-        new_func.global_scope = proxy(self.environment.global_scope)
+        new_func.global_scope = make_proxy(self.environment.global_scope)
+        #find out if this is a method (member function) or a function,
+        #store the this object if it is a method.
+        if not siml_isinstance(self.environment.local_scope, CLASS_MODULE):
+            new_func.this_scope = make_proxy(self.environment.local_scope)
+        #TODO: if the function is defined inside a class, add the this argument 
+        #      to the front of the argument list. Maybe put right default value in place.
         #TODO: Evaluate all expressions in default arguments and type specifications
         #TODO: Put complete argument treatment algorithm into separate function:
         #      visit_NodeClassDef can use the same algorithm
@@ -595,7 +625,7 @@ class StatementVisitor(Visitor):
         self.environment.local_scope.create_attribute(node.name, new_class)
         #save the current global namespace in the function. This otherwise 
         #access to global variables would have surprising results
-        new_class.global_scope = proxy(self.environment.global_scope)
+        new_class.global_scope = make_proxy(self.environment.global_scope)
         #TODO: Evaluate all expressions in default arguments and type specifications
         new_class.arguments = node.arguments
         new_class.keyword_arguments = node.keyword_arguments
@@ -845,14 +875,24 @@ print 'end'
 '''
 print 'start'
 
+func times_3(x):
+    print 'times_2: x=', x
+    return 2*x
+    
 class A:
     data a1: Float
     data a2: Float
-    func test1():
-        print 'in A.test'
-    func test2():
-        print 'in A.test'
+    
+    func compute_a2(x):
+        print 'in compute_a2 x=', x
+        a2 = x + times_3(a1)
+        return a2
+        
 data a: A
+data dummy: Float
+a.a1 = 2
+dummy = a.compute_a2(3)
+print 'a.a2', a.a2, 
 
 print 'end'
 '''
