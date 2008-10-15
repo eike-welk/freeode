@@ -64,138 +64,6 @@ PROGRAM_VERSION = '0.4.0a1'
 
 
 
-#class DuplicateAttributeError(Exception):
-#    '''
-#    Exception raised by NameSpace
-#    when the user tries to redefine an attribute.
-#    '''
-#    def __init__(self, msg='Duplicate Attribute.', attrName=None):
-#        Exception.__init__(self, msg)
-#        self.attrName = attrName
-#
-#class UndefinedAttributeError(Exception):
-#    '''
-#    Exception: Attribute is unknown in namespace.
-#    '''
-#    def __init__(self, msg='Undefined Attribute.', attrName=None):
-#        Exception.__init__(self, msg)
-#        self.attrName = attrName
-
-
-#class NameSpace(object):
-#    '''
-#    Name space for modules, classes and functions.
-#
-#    TODO: Convert this class to (or incorporate into)
-#          basic instance object "object".
-#          Instance object does not need to be a 'ast.node' subclass;
-#          only the functions need to contain pieces of the AST.
-#    '''
-#    def __init__(self):
-#        #the attributes of this name space
-#        self._nameSpaceAttrs = {} #weakref.WeakValueDictionary()
-#        #This object's name in the enclosing scope
-#        self.name = None
-#
-#    def setAttr(self, name, newAttr):
-#        '''
-#        Add new attribute to the name space.
-#
-#        Attributes can exist multiple times.
-#
-#        Parameters
-#        name: str, DotName
-#            Name of the new attribute
-#        newAttr: NodeDataDef, NodeClassDef, NodeFuncDef, NodeModule
-#            The new attribute, which is added to the name space.
-#        '''
-#        #Argument type checking and compatibility with DotName
-#        if isinstance(name, DotName):
-#            if len(name) > 1:
-#                raise Exception('DotName must have only one component!'
-#                                + ' str(name): ' + str(name))
-#            name = str(name)
-#        elif not isinstance(name, str):
-#            raise Exception('Argument name must be of type str or DotName! type(name): '
-#                            + str(type(name)) + ' str(name): ' + str(name))
-#        #add attribute to name space - attributes must be unique
-#        if name in self._nameSpaceAttrs:
-#            #TODO: raise UserException? Error message as named argument?
-#            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
-#        self._nameSpaceAttrs[name] = newAttr
-#        return
-#
-#    def setFuncAttr(self, name, newFunc):
-#        '''
-#        Special method to enter NodeFuncDef into namespace.
-#
-#        Functions don't need to be unique. Therefore they are stored
-#        in special containers: "FunctionOverloadingResolver".
-#        '''
-#        if not isinstance(newFunc, NodeFuncDef):
-#            raise Exception('Argument 2 must be NodeFuncDef')
-#
-#        oldAttr = self.getAttr(name, None)
-#        if oldAttr is None:
-#            self.setAttr(name, list(newFunc))
-#        elif isinstance(oldAttr, list):
-#            oldAttr.append(newFunc)
-#        else:
-#            raise UserException('Function can not have same name like data: '
-#                                + str(name), newFunc.loc)
-#
-#    def update(self, otherNameSpace):
-#        '''
-#        Put attributes of otherNameSpace into this name space.
-#        Raises exceptions when attributes are redefined.
-#        '''
-#        for name, node in otherNameSpace._nameSpaceAttrs.iteritems():
-#            self.setAttr(name, node)
-#
-#    def hasAttr(self, name):
-#        '''
-#        Test if attribute exists in this name space.
-#
-#        Parameter
-#        name: str, (DotName with one element)
-#            Attribute name to be tested.
-#
-#        Returns
-#        bool
-#            True if a attribute of this name exists in this name space,
-#            False otherwise.
-#        '''
-#        return str(name) in self._nameSpaceAttrs
-#
-#    def getAttr(self, name, default=None):
-#        '''Return attribute with that name from this name space'''
-#        return self._nameSpaceAttrs.get(str(name), default)
-#
-#    def findDotName(self, dotName, default=None):
-#        '''
-#        Find dot name recursively and return attribute with this name.
-#
-#        #TODO: raise UserException when attribute undefined?
-#        #      Error message could be named attribute."
-#        '''
-#        dotName = DotName(dotName) #make compatible with str too
-#        firstPart = self._nameSpaceAttrs.get(dotName[0], None)
-#        if firstPart is not None:
-#            #leftmost part of name exists in this name space
-#            if len(dotName) == 1:
-#                #only one part in dot name, the user wants this attribute
-#                return firstPart
-#            elif isinstance(firstPart, NameSpace):
-#                #attribute is name space, try to resolve rest of name
-#                return firstPart.findDotName(dotName[1:], default)
-#            else:
-#                return default
-#        else:
-#            #leftmost part of name does not exist in this name space
-#            return default
-
-
-
 #class FlatNameSpace(NameSpace):
 #    '''A name space where attributes can have multiple dots in their name'''
 #    def __init__(self):
@@ -245,374 +113,6 @@ PROGRAM_VERSION = '0.4.0a1'
 #            if attr is not None:
 #                return attr.findDotName(nameTail, default)
 #        return default
-
-
-
-#class ExecutionEnvironment(object):
-#    '''
-#    Container for name spaces where symbols are looked up.
-#    Function findDotName searches the symbol in all name spaces.
-#
-#    TODO: put into module intermediate?
-#    TODO: rename to stack frame?
-#    '''
-#    def __init__(self):
-#        #Name space for global variables. Module where the code was written.
-#        self.globalScope = None
-#        #Name space of the this pointer in a method. None outside methods.
-#        self.thisScope = None
-#        #scope for the local variables of a function
-#        self.localScope = None
-#        #TODO: self.statements = None #Statements of function ore module
-#
-#
-#    #def findDotName(self, dotName, default=None):
-#    def findDotName(self, *posArg):
-#        '''
-#        Find a dot name in this environment.
-#
-#        When the name is not found an exception is raised, or a default
-#        value is returned.
-#        Tries local name space, 'this' name space, global name space.
-#
-#        Arguments
-#        dotName : DotName
-#            Dotted name that is looked up in the different name spaces.
-#        default : object
-#            Object which is returned when dotName could not be found.
-#            If argument is omitted, a UndefinedAttributeError is raised.
-#        '''
-#        #get arguments from vector
-#        if len(posArg) == 1:
-#            dotName = posArg[0]
-#            default = None
-#            raiseErr = True
-#        elif len(posArg) == 2:
-#            dotName = posArg[0]
-#            default = posArg[1]
-#            raiseErr = False
-#        else:
-#            raise Exception('Required number of arguments 1 or 2. '
-#                            'Actual number of arguments: ' + str(len(posArg)))
-#        #try to find name in scope hierarchy:
-#        # function --> class --> module
-#        scopeList = [self.localScope, self.thisScope, self.globalScope]
-#        attr = None
-#        for scope in scopeList:
-#            if scope is None:
-#                continue
-#            attr = scope.findDotName(dotName, None)
-#            if attr is not None:
-#                return attr
-#        #attribute could not be found
-#        if raiseErr:
-#            raise UndefinedAttributeError(attrName=str(dotName))
-#        else:
-#            return default            
-
-
-#    def setGlobalScope(self, inNameSpace):
-#        '''
-#        Change the global name space.
-#        The global name space is finally searched when the DotName is neither
-#        found locally (self._nameSpaceAttrs) nor in the scope of the "this"
-#        pointer (self.thisScop).
-#
-#        Used by self.findDotName(...), but not by self.getAttr(...).
-#        '''
-#        self._globalScope = inNameSpace
-##        if inNameSpace is None:
-##            self._globalScope = None
-##        elif isinstance(inNameSpace, weakref.ProxyTypes):
-##            self._globalScope = inNameSpace
-##        else:
-##            self._globalScope = weakref.proxy(inNameSpace)
-#
-#    def getGlobalScope(self):
-#        '''Return the global name space.'''
-#        return self._globalScope
-#
-#    globalScope = property(getGlobalScope, setGlobalScope, None,
-#                           'Global (module) name space.')
-#
-#    def setThisScope(self, inNameSpace):
-#        '''
-#        Change the name space of the "this" pointer.
-#        The "this" name space is searched second, when the DotName is not
-#        found locally. When the DotName is not fount in the "this" name space
-#        the global name space is searched.
-#
-#        Used by self.findDotName(...), but not by self.getAttr(...).
-#        '''
-#        self._thisScope = inNameSpace
-##        if inNameSpace is None:
-##            self._thisScope = None
-##        elif isinstance(inNameSpace, weakref.ProxyTypes):
-##            self._thisScope = inNameSpace
-##        else:
-##            self._thisScope = weakref.proxy(inNameSpace)
-#
-#    def getThisScope(self):
-#        '''Return the "this" name space.'''
-#        return self._thisScope
-#
-#    thisScope = property(getGlobalScope, setGlobalScope, None,
-#                           'Name space of the this pointer, class name space.')
-
-
-
-##TODO: inherit FromNodeFuncDef ?
-##TODO: rename to multimethod
-#class FunctionOverloadingResolver(object):
-#    '''
-#    Store multiple functions with the same name.
-#    Find the correct overloaded function, that matches a function call best.
-#    '''
-#
-#    def __init__(self, inFuncDef=None):
-#        '''
-#        ARGUMENT
-#        inFuncDef : NodeFuncDef
-#            The first function stored in the container. Optional.
-#        '''
-#        self._functions = []
-#        if inFuncDef is not None:
-#            self.append(inFuncDef)
-#
-#    def append(self, inFuncDef):
-#        '''Append a function to the list'''
-#        if not isinstance(inFuncDef, NodeFuncDef):
-#            raise Exception('Argument must be a NodeFuncDef! type(inFuncDef):'
-#                            + str(type(inFuncDef)))
-#        self._functions.append(inFuncDef)
-#        return
-#
-#    def resolve(self, inFuncCall):
-#        '''
-#        Return a function that matches the function call's signature.
-#        (currently always the last function in the list)
-#        '''
-#        return self._functions[-1]
-#
-##TODO: create MethodOverloadingResolver(OverloadingResolver):
-
-
-######################## Old Node Object ###########################################
-#class Node(object):
-#    '''
-#    Building block of a n-ary tree structure.
-#    The abstract syntax tree (AST), and the intermediate language tree (ILT),
-#    are made of nodes that have this class as their base class.
-#
-#    Usage:
-#    >>> t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'),
-#    ...            Node([],5,'leaf')], 1, 'root')
-#
-#    print tree (loc attribute is abused here)(<BLANKLINE> does not work):
-#    > print t1
-#    Node:: dat: root loc: 1
-#    |   Node:: dat: branch loc: 2
-#    |   |   Node:: dat: leaf loc: 3
-#    |   |   Node:: dat: leaf loc: 4
-#    |   Node:: dat: leaf loc: 5
-#
-#    access to children with  [] operator:
-#    >>> t1[0][1]
-#    Node(,[], 4, 'leaf')
-#
-#    iterating over only the children of a node:
-#    >>> for n in t1:
-#    ...     print n.loc
-#    ...
-#    2
-#    5
-#
-#    iterating over the whole tree:
-#    >>> for n,d in t1.iterDepthFirst(returnDepth=True):
-#    ...     print n.dat, ' depth: ', d
-#    ...
-#    root  depth:  0
-#    branch  depth:  1
-#    leaf  depth:  2
-#    leaf  depth:  2
-#    leaf  depth:  1
-#
-#    TODO: New, simpler 'node' implementation, that does not behave like a list
-#          (without kids list).
-#        Methods:
-#        - copy(), __deepcopy__()
-#        - __str__()
-#        - __repr__() ???
-#        - __init__() elegant and matching to repr + usage pattern ???
-#    '''
-#
-#    def __init__(self, kids=None, loc=None, dat=None):
-#        #TODO: write an init function that can accept any number of named arguments
-#        #Variabe number of arguments:
-#        #*args    : is a list of all normal arguments
-#        #**kwargs : is a dict of keyword arguments
-#        #Code for derived classes: super(A, self).__init__(*args, **kwds)
-#        #self.parent = None
-#        #list of children
-#        self.kids = []
-#        #appendChild checks the type
-#        if kids is not None:
-#            for child in kids:
-#                self.appendChild(child)
-#        #the node's location in the parsed text
-#        self.loc  = loc
-#        #any data; whatever is appropriate
-#        self.dat = dat
-#
-#
-#    def __repr__(self):
-#        '''Create string representation that can also be used as code.'''
-#        className = self.__class__.__name__
-#        childStr = ',' + repr(self.kids)
-#        #if location and contents have their default value, don't print them
-#        if self.loc == None:
-#            locStr = ''
-#        else:
-#            locStr = ', ' + repr(self.loc)
-#        if self.dat == None:
-#            datStr =''
-#        else:
-#            datStr = ', ' + repr(self.dat)
-#        #treat all other attributes as named attributes
-#        standardAttributes = set(['kids', 'loc', 'dat'])
-#        extraAttrStr=''
-#        for key, attr in self.__dict__.iteritems():
-#            if key in standardAttributes:
-#                continue
-#            extraAttrStr += ', ' + key + '=' + repr(attr)
-#        #assemble the string
-#        reprStr = className  + '(' + childStr + locStr + datStr + \
-#                                    extraAttrStr + ')'
-#        return reprStr
-#
-#
-#    def __str__(self):
-#        '''Create pretty printed string represntation.'''
-#        return TreePrinter(self).makeTreeStr()
-#
-#    def __iter__(self):
-#        '''let for loop iterate over children'''
-#        return self.kids.__iter__()
-#
-#    def __len__(self):
-#        '''return number of children'''
-#        return len(self.kids)
-#
-#    def appendChild(self, inNode):
-#        '''Append node to list of children'''
-#        #test if child is a node
-#        if(not isinstance(inNode, Node)):
-#            raise TypeError('Children must inherit from Node!')
-#        self.kids.append(inNode)
-#
-#    def insertChild(self, index, inNode):
-#        '''
-#        Insert node into list of children.
-#        New child is inserted before the child at position self[index].
-#        '''
-#        #test if child is a node
-#        if(not isinstance(inNode, Node)):
-#            raise TypeError('Children must inherit from Node!')
-#        self.kids.insert(index, inNode)
-#
-#    def insertChildren(self, index, inSequence):
-#        '''
-#        Insert a node's children into list of own children.
-#
-#        New childen are inserted before the child at position self[index].
-#
-#        Parameters
-#        index: int
-#            The children are inserted before the this index.
-#        inSequence: Node
-#            Container of the children that will be inserted.
-#
-#        Returns
-#        None
-#        '''
-#        if(not isinstance(inSequence, Node)):
-#            raise TypeError('Node.insertChildrenChildren: '
-#                            'argument 2 must inherit from Node!')
-#        self.kids[index:index] = inSequence.kids
-#
-#    def __delitem__(self, index):
-#        '''Delete child at specified index'''
-#        del self.kids[index]
-#
-#    def __getitem__(self, i):
-#        '''
-#        Retriev children through []
-#
-#        Parameters
-#        i: int, slice
-#            Index of element which is retrieved, or slice object describing
-#            the subsequence which should be retrieved
-#
-#        Returns
-#        Node, sequence of Node
-#            The nodes that should be returned
-#        '''
-#        return self.kids[i]
-#
-##    def __setitem__(self, i, item):
-##        '''
-##        Change children through []
-##
-##        Parameters
-##        i: int, slice
-##            Index of element which is changed, or slice object describing
-##            the subsequence which should be changed
-##        item: Node, sequence of Node
-##
-##        Returns
-##        None
-##        '''
-##        #TODO: type checking
-##        #TODO: How should Nodes be treated in case slices are given?
-##        #      As sequences or as single objects?
-##        self.kids[i] = item
-#
-###    def __cmp__(self, o):
-###        return cmp(self.type, o)
-#
-#    def iterDepthFirst(self, returnDepth=False):
-#        '''
-#        Iterate over whole (sub) tree in a depth first manner.
-#        returnDepth :   if True the iterator returns a tuple (node, depth) otherwise it
-#                        returns only the current node.
-#        returns: a DepthFirstIterator instance
-#        '''
-#        return DepthFirstIterator(self, returnDepth)
-#
-#
-#    def copy(self):
-#        '''
-#        Return a (recursive) deep copy of the node.
-#
-#        Only children are copied deeply;
-#        all other attributes are not copied. Only new references are made.
-#        '''
-#        return copy.deepcopy(self)
-#
-#
-#    def __deepcopy__(self, memoDict):
-#        '''Hook that does the copying.
-#        Called by the function copy.deepcopy()'''
-#        #create empty instance of self.__class__
-#        newObj = Node.__new__(self.__class__)
-#        for name, attr in self.__dict__.iteritems():
-#            if name == 'kids':
-#                #kids: make deep copy
-#                newObj.kids = copy.deepcopy(self.kids, memoDict)
-#            else:
-#                #normal attribute: no copy, only reference.
-#                setattr(newObj, name, attr)
-#        return newObj
 
 
 
@@ -1000,6 +500,7 @@ class NodeOpPrefix1(Node):
     '''
     AST node for a (unary) prefix operator: - not
     
+    Data attributes:
         operator: 
             Operator symbol e.g.: '-'
         arguments:  list(Node())
@@ -1020,7 +521,7 @@ class NodeOpPrefix1(Node):
 
 class NodeFuncCall(Node):
     '''
-    AST Node for calling a function or method.
+    AST node for calling a function or method.
     
     This will be usually done by inserting the code of the function's body
     into the top level function. Similar to an inline function in C++.
@@ -1049,10 +550,29 @@ class NodeFuncCall(Node):
         self.keyword_arguments = {}
         self.loc = None
 
+
 #-------------- Statements --------------------------------------------------
+class NodeExpressionStmt(Node):
+    '''
+    AST node intended for a function call. It can however contain any 
+    expression. The expressions result is discarded.
+    
+    Data attributes:
+        expression: Node()
+            Expression that is evaluated. ( The expressions result is 
+            discarded.) 
+        loc: 
+            Location in input string
+    '''
+    def __init__(self):
+        super(NodeExpressionStmt, self).__init__()
+        self.expression = None
+        self.loc = None
+        
+
 class NodeIfStmt(Node):
     '''
-    AST Node for an if ... the ... else statement
+    AST node for an if ... the ... else statement
     Data attributes:
         kids    : [<condition>, <then statements>, <else statements>]
         loc     : location in input string
@@ -1095,7 +615,7 @@ class NodeAssignment(NodeOpInfix2):
     '''
     AST node for an assignment: '='
     
-    Arguments:
+    Data attributes:
         operator: 
             Operator symbol always: '='
         arguments:  list(Node(), Node())
@@ -1107,6 +627,14 @@ class NodeAssignment(NodeOpInfix2):
             Operation has no result, only side effect.
         loc: 
             Location in input string
+            
+    TODO: change attributes:
+        target: Node()
+            Expression that describes which object should be changed
+        expression: Node()
+            Expression that computes the new value
+        loc: 
+            Location in input string    
     '''
     def __init__(self):
         super(NodeAssignment, self).__init__()
@@ -1341,11 +869,9 @@ class NodeCompileStmt(NodeDataDef):
 
     mainFuncs : List of (generated) main functions: [NodeFuncDef]
     '''
-    def __init__(self, kids=None, loc=None, dat=None,
-                        name=None, className=None, targetName=None):
-        NodeDataDef.__init__(self, kids, loc, dat,
-                             name, className, targetName, role=RoleCompiledObject)
-        self.mainFuncs = []
+    def __init__(self):
+        NodeDataDef.__init__(self)
+        self.role = RoleCompiledObject
 
 
 class NodeFuncArg(Node):
@@ -1486,204 +1012,92 @@ class NodeModule(Node):
 
 #---------- Nodes End --------------------------------------------------------*
 
-class DepthFirstIterator(object):
-    """
-    Iterate over each node of a (AST) tree, in a depth first fashion.
-    Designed for Node and its subclasses. It works for other nodes though:
-    The nodes must have the functions __getitem__ and __len__.
-
-    Usage:
-    >>> t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'),
-    ...            Node([],5,'leaf')], 1, 'root')
-    >>> for n in DepthFirstIterator(t1):
-    ...     print n.dat
-    ...
-    root
-    branch
-    leaf
-    leaf
-    leaf
-    """
-    #TODO: Find out if this is really depth first iteration.
-
-    def __init__(self, treeRoot, returnDepth=False):
-        """
-        treeRoot    : root node of the tree over which the iterator goes.
-        returnDepth : if True the __next__ function returns a tuple
-                      (node, depth) otherwise it only returns the current
-                      node.
-        """
- 
-        raise Exception('DepthFirstIterator: Feaature not implemented!')
-        #TODO: make it work with new node class again!
-        self.stack = [(treeRoot, 0)] #tuples (node, childIndex).
-        self.depth = 0  #how deep we are in the tree.
-        self.returnDepth = returnDepth #flag: shoult we return the current depth
-        self.start = True #remember that we've just been initialized
-
-
-    def __iter__(self):
-        '''Called at start of for loop.'''
-        return self
-
-
-    #TODO: enhance DepthFirstIterator: remember already seen nodes in set.
-    #TODO: make possible child[i] == None
-    def next(self):
-        '''Go to the next node, return current node.'''
-        #After tree has been traversed throw exception, don't start again
-        if len(self.stack) == 0:
-            raise StopIteration
-        #start: special handling
-        if self.start:
-            self.start = False
-            currNode, currChild = self.stack[-1]
-            return self._createReturnVals(currNode, currChild)
-
-        #go to next node.
-        #get current state, from top of stack
-        currNode, currChild = self.stack[-1]
-
-        #if all children visited: go up one or more levels
-        while currChild == len(currNode):
-            self.stack.pop()
-            #stop iterating, if no nodes are left on the stack
-            if len(self.stack) == 0:
-                raise StopIteration
-            self.depth -= 1
-            currNode, currChild = self.stack[-1] #get state from one level up
-
-        #remember to visit next child when we come here again
-        self.stack[-1] = (currNode, currChild+1)
-        #TODO: Make iterator work also with objects that are not children of Node;
-        #TODO: or make iterator throw an erception with useful error message when
-        #      non Node object is discovered
-        #get node that will be visited next
-        nextNode = currNode[currChild]
-        #go to one level down, to current child.
-        self.stack.append((nextNode, 0))
-        self.depth += 1
-        #return the next node
-        return self._createReturnVals(nextNode, self.depth)
-
-
-    def _createReturnVals(self, node, depth):
-        if self.returnDepth:
-            return (node, depth)
-        else:
-            return node
-
-
-
-#class TreePrinter(object):
-#    '''Print a tree of Node objects in a nice way.'''
+#class DepthFirstIterator(object):
+#    """
+#    Iterate over each node of a (AST) tree, in a depth first fashion.
+#    Designed for Node and its subclasses. It works for other nodes though:
+#    The nodes must have the functions __getitem__ and __len__.
 #
-#    indentWidth = 4
-#    '''Number of chars used for indentation. Must be >= 1'''
-#    wrapLineAt = 150
-#    '''Length of line. Longer lines will be wrapped'''
-#    showID = False
-#    '''Also print the node's id()'''
+#    Usage:
+#    >>> t1 = Node([Node([Node([],3,'leaf'), Node([],4,'leaf')], 2, 'branch'),
+#    ...            Node([],5,'leaf')], 1, 'root')
+#    >>> for n in DepthFirstIterator(t1):
+#    ...     print n.dat
+#    ...
+#    root
+#    branch
+#    leaf
+#    leaf
+#    leaf
+#    """
+#    #TODO: Find out if this is really depth first iteration.
 #
-#    def __init__(self, root=None):
-#        '''
-#        Argument:
-#        root : Node
-#            the root of the tree, which will be printed
-#        '''
-#        #tree's root node.
-#        self.root = root
-#        #buffer for the textual reprentation
-#        self.treeStr = ''
-#        #partially completed line for line wrapping
-#        self.line = ''
+#    def __init__(self, treeRoot, returnDepth=False):
+#        """
+#        treeRoot    : root node of the tree over which the iterator goes.
+#        returnDepth : if True the __next__ function returns a tuple
+#                      (node, depth) otherwise it only returns the current
+#                      node.
+#        """
+# 
+#        raise Exception('DepthFirstIterator: Feaature not implemented!')
+#        #TODO: make it work with new node class again!
+#        self.stack = [(treeRoot, 0)] #tuples (node, childIndex).
+#        self.depth = 0  #how deep we are in the tree.
+#        self.returnDepth = returnDepth #flag: shoult we return the current depth
+#        self.start = True #remember that we've just been initialized
 #
-#    #TODO: def setIndentStr(self, indentStr): ??
-#    #          newIndentLevel(self, nLevel) ???
-#    def putStr(self, indentStr, contentStr):
-#        '''Put string into buffer and apply line wrapping'''
-#        #is there enough room to write?
-#        if len(indentStr) + 20 > self.wrapLineAt:
-#            wrapLineAt = len(indentStr)+60 #no: extend right margin
+#
+#    def __iter__(self):
+#        '''Called at start of for loop.'''
+#        return self
+#
+#
+#    #TODO: enhance DepthFirstIterator: remember already seen nodes in set.
+#    #TODO: make possible child[i] == None
+#    def next(self):
+#        '''Go to the next node, return current node.'''
+#        #After tree has been traversed throw exception, don't start again
+#        if len(self.stack) == 0:
+#            raise StopIteration
+#        #start: special handling
+#        if self.start:
+#            self.start = False
+#            currNode, currChild = self.stack[-1]
+#            return self._createReturnVals(currNode, currChild)
+#
+#        #go to next node.
+#        #get current state, from top of stack
+#        currNode, currChild = self.stack[-1]
+#
+#        #if all children visited: go up one or more levels
+#        while currChild == len(currNode):
+#            self.stack.pop()
+#            #stop iterating, if no nodes are left on the stack
+#            if len(self.stack) == 0:
+#                raise StopIteration
+#            self.depth -= 1
+#            currNode, currChild = self.stack[-1] #get state from one level up
+#
+#        #remember to visit next child when we come here again
+#        self.stack[-1] = (currNode, currChild+1)
+#        #TODO: Make iterator work also with objects that are not children of Node;
+#        #TODO: or make iterator throw an erception with useful error message when
+#        #      non Node object is discovered
+#        #get node that will be visited next
+#        nextNode = currNode[currChild]
+#        #go to one level down, to current child.
+#        self.stack.append((nextNode, 0))
+#        self.depth += 1
+#        #return the next node
+#        return self._createReturnVals(nextNode, self.depth)
+#
+#
+#    def _createReturnVals(self, node, depth):
+#        if self.returnDepth:
+#            return (node, depth)
 #        else:
-#            wrapLineAt = self.wrapLineAt #yes: normal wrap
-#        #empty line has special meaning: new node is started
-#        if self.line == '':
-#            self.line = indentStr
-#        #Do the line wrapping
-#        if len(self.line) + len(contentStr) > wrapLineAt:
-#            #print self.line
-#            self.treeStr += self.line + '\n'
-#            self.line = indentStr + ': '
-#        #add content to buffer
-#        self.line += contentStr
-#
-#    def endLine(self):
-#        '''End a partially completed line unconditionally'''
-#        self.treeStr += self.line + '\n'
-#        self.line = ''
-#
-#    def safeStr(self, inObj):
-#        '''
-#        Convert inObj to string without infinite recursion
-#        into Node objects.
-#        '''
-#        if isinstance(inObj, Node):
-#            return '<%s at %#x>' % (inObj.__class__.__name__, id(inObj))
-#        else:
-#            return str(inObj)
-#
-#    def makeTreeStr(self, root=None):
-#        ''''Create string representation of Node tree.'''
-#        #for fewer typing
-#        putStr = self.putStr
-#        safeStr = self.safeStr
-#        #initialize
-#        self.treeStr = ''
-#        self.line = ''
-#        if root is not None:
-#            self.root = root
-#        #string to symbolize one indent level
-#        indentStepStr = '|' + ' '*int(self.indentWidth - 1)
-#        for node, depth in self.root.iterDepthFirst(True):
-#            #string for indentation
-#            indentStr = indentStepStr * depth
-#            #First print class name and if desired node's ID
-#            putStr(indentStr, node.__class__.__name__ + ':: ')
-#            if self.showID:
-#                putStr(indentStr, ' ID: ' + str(id(node)))
-#
-#            #special case for non Node objects
-#            if not isinstance(node, Node):
-#                putStr(indentStr, str(node)); self.endLine()
-#                print self.treeStr
-#                raise Exception('All children must inherit from ast.Node!')
-#                #TODO enhance the iterator to work with none Node classes as leafs.
-#
-#            #special handling for some important attributes
-#            if hasattr(node, 'name'):
-#                putStr(indentStr, 'name: ' + safeStr(node.name) + ' ')
-#            if isinstance(node, NameSpace):
-#                #print the name space speciffic attributes in short form
-#                #they are causing infinite recursion otherwise
-#                putStr(indentStr, '_nameSpaceAttrs.keys(): ' +
-#                       str(node._nameSpaceAttrs.keys()) + ' ')
-#            putStr(indentStr, 'loc: ' + safeStr(node.loc) + ' ')
-#
-#            #the node's attributes are printed in sorted order,
-#            #but the special attributes are excluded
-#            specialAttrs = set(['loc', 'kids', '_nameSpaceAttrs', 'name', 'mainFuncs'])
-#            attrNameSet = set(node.__dict__.keys())
-#            attrNames= list(attrNameSet - specialAttrs)
-#            attrNames.sort()
-#            #get attributes out node.__dict__
-#            for name1 in attrNames:
-#                #TODO:more robustness when other attributes are Nodes too
-#                #TODO:more robustness against circular dependencies
-#                putStr(indentStr, name1 + ': ' + safeStr(node.__dict__[name1]) + ' ')
-#            #put newline after complete node
-#            self.endLine()
-#        return self.treeStr
+#            return node
 
 
 

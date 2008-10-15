@@ -369,6 +369,23 @@ class Parser(object):
         return nCurr
 
 
+    def _action_expression_stmt(self, s, loc, toks):
+        '''
+        Create node for a function call. Really any expression can be 
+        present, but only function calls make sense.
+        
+        BNF:
+        expression_stmt = Group(expression)
+        '''
+        if Parser.noTreeModification:
+            return None #No parse result modifications for debugging
+#        tokList = toks.asList()[0] #Group() ads an extra pair of brackets
+        nCurr = NodeExpressionStmt()
+        nCurr.loc = self.createTextLocation(loc) #Store position
+        nCurr.expression = toks[0][0]
+        return nCurr
+   
+    
     def _actionIfStatement(self, s, loc, toks): #IGNORE:W0613 
         '''
         Create node for if ... : ... else: ... statement.
@@ -383,22 +400,22 @@ class Parser(object):
         tokList = toks.asList()[0] #asList() ads an extra pair of brackets
         nCurr = NodeIfStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        #there must be the correct number of tokens
-        if len(tokList) < 7 or (len(tokList)-7) % 4:
-            raise Exception('Broken "if" statement! loc: '
-                                       + str(nCurr.loc))
-        #extract the interesting tokens
-        for i in range(1, len(tokList)-4, 4):
-            condition = tokList[i]
-            condStmts = tokList[i+2]
-            nCurr.kids.append(condition)
-            nCurr.kids.append(condStmts)
-        #else: last condition is always true
-        elseCond = NodeFloat(None, nCurr.loc, '1')
-        elseStmts = tokList[-1]
-        nCurr.kids.append(elseCond)
-        nCurr.kids.append(elseStmts)
-        return nCurr
+#        #there must be the correct number of tokens
+#        if len(tokList) < 7 or (len(tokList)-7) % 4:
+#            raise Exception('Broken "if" statement! loc: '
+#                                       + str(nCurr.loc))
+#        #extract the interesting tokens
+#        for i in range(1, len(tokList)-4, 4):
+#            condition = tokList[i]
+#            condStmts = tokList[i+2]
+#            nCurr.kids.append(condition)
+#            nCurr.kids.append(condStmts)
+#        #else: last condition is always true
+#        elseCond = NodeFloat(None, nCurr.loc, '1')
+#        elseStmts = tokList[-1]
+#        nCurr.kids.append(elseCond)
+#        nCurr.kids.append(elseStmts)
+#        return nCurr
 
 
     def _actionAssignment(self, s, loc, toks): #IGNORE:W0613
@@ -414,7 +431,6 @@ class Parser(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         #create children and store operator
         lhsTree = tokList[0]   #child lhs
-#        nCurr.operator = '=' #operator
         rhsTree = tokList[2]   #child rhs
         nCurr.arguments = [lhsTree, rhsTree]
         return nCurr
@@ -536,45 +552,42 @@ class Parser(object):
 #        nCurr.code = toks.code
 #        return nCurr
 
-    def _actionCompileStmt(self, s, loc, toks): #IGNORE:W0613
+    def _action_compile_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
-        Create node for foreign_code statement:
-            foreign_code python replace_call ::{{ sin(x) }}:: ;
+        Create node for compile statement.
+        
         BNF:
-        compileStmt = (kw('compile') + ES(
-                          (dotIdentifier                             .setResultsName('className')
-                           + stmtEnd
-                           ) |
-                          (identifier                                .setResultsName('name')
-                           + ':' + dotIdentifier                     .setResultsName('className')
-                           + stmtEnd)
-                          )                                          .setErrMsgStart('compile statement: ')
-                       )                                             .setParseAction(self._actionCompileStmt)\
+        compile_stmt = (kw('compile') 
+                        - Optional(newIdentifier                    .setResultsName('name')
+                                   + ':') 
+                        + expression                                .setResultsName('class_name')
+                        )                                           .setParseAction(self._action_compile_stmt)\
          '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         nCurr = NodeCompileStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.className = DotName(toks.className)
+        nCurr.class_name = toks.class_name
         if toks.name:
-            nCurr.name = toks.name
+            nCurr.name = DotName(toks.name)
         return nCurr
+    
 
-    def _actionStatementList(self, s, loc, toks): #IGNORE:W0613
-        '''
-        Create node for list of statements: a=1; b=2; ...
-        BNF:
-        statementList << Group(OneOrMore(statement))
-        '''
-        if Parser.noTreeModification:
-            return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeStmtList()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        #create children - each child is a statement
-        for tok in tokList:
-            nCurr.kids.append(tok)
-        return nCurr
+#    def _actionStatementList(self, s, loc, toks): #IGNORE:W0613
+#        '''
+#        Create node for list of statements: a=1; b=2; ...
+#        BNF:
+#        statementList << Group(OneOrMore(statement))
+#        '''
+#        if Parser.noTreeModification:
+#            return None #No parse result modifications for debugging
+#        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+#        nCurr = NodeStmtList()
+#        nCurr.loc = self.createTextLocation(loc) #Store position
+#        #create children - each child is a statement
+#        for tok in tokList:
+#            nCurr.kids.append(tok)
+#        return nCurr
 
 
     def _action_data_def(self, s, loc, toks): #IGNORE:W0613
@@ -994,27 +1007,32 @@ class Parser(object):
                           + Optional(',')                           .setResultsName('trail_comma')                       
                           )                                         .setParseAction(self._action_print_stmt)\
                                                                     .setFailAction(ChMsg(prepend='print statement: '))
-        #show graphs
-        graph_stmt = Group(kw('graph') - expression_list            .setResultsName('arg_list')
-                           - Optional(','))                         .setParseAction(self._actionGraphStmt)\
-                                                                    .setFailAction(ChMsg(prepend='graph statement: '))
+        #TODO: create built in graph function instead
+#        #show graphs
+#        graph_stmt = Group(kw('graph') - expression_list            .setResultsName('arg_list')
+#                           - Optional(','))                         .setParseAction(self._actionGraphStmt)\
+#                                                                    .setFailAction(ChMsg(prepend='graph statement: '))
+        #TODO: create built in store function instead
         #store to disk
-        store_stmt = Group(kw('save') - expression_list             .setResultsName('arg_list')
-                          - Optional(','))                          .setParseAction(self._actionStoreStmt)\
-                                                                    .setFailAction(ChMsg(prepend='save statement: '))
+#        store_stmt = Group(kw('save') - expression_list             .setResultsName('arg_list')
+#                          - Optional(','))                          .setParseAction(self._actionStoreStmt)\
+#                                                                    .setFailAction(ChMsg(prepend='save statement: '))
 
         #compile a class
         compile_stmt = (kw('compile') 
-                        - Optional(identifier                       .setResultsName('name')
+                        - Optional(newIdentifier                    .setResultsName('name')
                                    + ':') 
                         + expression                                .setResultsName('class_name')
-                        )                                           .setParseAction(self._actionCompileStmt)\
+                        )                                           .setParseAction(self._action_compile_stmt)\
                                                                     .setFailAction(ChMsg(prepend='compile statement: '))
 
         #compute expression and assign to value
         assign_stmt = Group(expression_ex + '=' - expression)       .setParseAction(self._actionAssignment)\
                                                                     .setFailAction(ChMsg(prepend='assignment statement: '))
 
+        #Evaluate an expression (usually call a fuction); the result is discarded.
+        expression_stmt = Group(expression)                         .setParseAction(self._action_expression_stmt)
+        
         #------------ data statemnt -------------------------------------------------------------------------
         #define parameters, variables, constants and submodels
         #TODO: add 'save' - 'no_save' keywords 
@@ -1040,8 +1058,8 @@ class Parser(object):
                                                                     .setFailAction(ChMsg(prepend='data definition: '))
                                                                    
         simple_stmt = (data_stmt| print_stmt | return_stmt |
-                       pragma_stmt |store_stmt | graph_stmt |                                    #IGNORE:W0104
-                       compile_stmt | assign_stmt )                 .setName('simple statement')
+                       pragma_stmt | #store_stmt | graph_stmt |                                    
+                       compile_stmt | assign_stmt |expression_stmt ).setName('simple statement')
 
 #------------- Compound statements ............................................................................
         #body of compound statements
@@ -1326,28 +1344,31 @@ class RunTest(Process):
         print parser.keywords
 
 
-        prog = \
-'''
-print 'start'
-print 'end'
-'''
-        print prog
-        print parser.parseModuleStr(prog)
-        print 
+#        prog = \
+#'''
+#print 'start'
+#print 'end'
+#'''
+#        print prog
+#        print parser.parseModuleStr(prog)
+#        print 
         
         prog = \
 """
 print 'start'
 
-class A(a, b):
-    data a1: Float
-    data a2: Float
-    
-    func foo():
-        return 'foo'
-    
-data a: A
-a.a1 = 1
+#class A(a, b):
+#    data a1: Float
+#    data a2: Float
+#    
+#    func foo():
+#        return 'foo'
+#    
+#data a: A
+#a.a1 = 1
+a.foo()
+compile A
+compile aa:A
 
 print 'end'
 """

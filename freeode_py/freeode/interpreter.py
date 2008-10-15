@@ -534,6 +534,82 @@ class StatementVisitor(Visitor):
             print result.value,
         if node.newline:
             print
+            
+    @Visitor.when_type(NodeReturnStmt)
+    def visit_NodeReturnStmt(self, node):
+        '''Return value from function call'''
+        #evaluate the expression of the returned value
+        retval = self.expression_visitor.evaluate(node.arguments[0])
+        self.environment.return_value = retval
+        #Forcibly end function execution - 
+        #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
+        raise ReturnFromFunctionException()
+
+    @Visitor.when_type(NodeExpressionStmt)
+    def visit_NodeExpressionStmt(self, node):
+        '''Intened to call functions. Compute expression and forget result'''
+        self.expression_visitor.evaluate(node.expression)
+    
+    @Visitor.when_type(NodeAssignment)
+    def visit_NodeAssignment(self, node):
+        '''Change value of an object'''
+        #compute value of expression on right hand side
+        rhs_expr = node.arguments[1]
+        rhs_val = self.expression_visitor.evaluate(rhs_expr)
+        #store the value in an existing data attribute
+        lhs_expr = node.arguments[0]
+        lhs_attr = self.expression_visitor.evaluate(lhs_expr)
+        #TODO: work out how to do this correctly
+        #TODO: this can't work with user defined classes
+        if lhs_attr.type == rhs_val.type:
+            lhs_attr.value = rhs_val.value
+        else:
+            raise Exception('Type mismatch!')
+        return
+    
+    
+    @Visitor.when_type(NodeFuncDef)
+    def visit_NodeFuncDef(self, node):
+        '''Add function object to local namespace'''
+        #create new function object and put it into the local namespace
+        new_func = CLASS_FUNCTION.construct_instance()
+        new_func.name = node.name
+        self.environment.local_scope.create_attribute(node.name, new_func)
+        #save the current global namespace in the function. Otherwise 
+        #access to global variables would have surprising results
+        new_func.global_scope = make_proxy(self.environment.global_scope)
+        #find out if this is a method (member function) or a function,
+        #store the this object if it is a method.
+        if not siml_isinstance(self.environment.local_scope, CLASS_MODULE):
+            new_func.this_scope = make_proxy(self.environment.local_scope)
+        #TODO: if the function is defined inside a class, add the this argument 
+        #      to the front of the argument list. Maybe put right default value in place.
+        #TODO: Evaluate all expressions in default arguments and type specifications
+        #TODO: Put complete argument treatment algorithm into separate function:
+        #      visit_NodeClassDef can use the same algorithm
+        new_func.arguments = node.arguments
+        new_func.keyword_arguments = node.keyword_arguments
+        new_func.return_type = node.return_type
+        #reference the code
+        new_func.statements = node.statements
+
+    
+    @Visitor.when_type(NodeClassDef)
+    def visit_NodeClassDef(self, node):
+        '''Define a class - create a class object in local namespace'''
+        #create new class object and put it into the local namespace
+        new_class = InstUserDefinedClass()
+        new_class.name = node.name
+        self.environment.local_scope.create_attribute(node.name, new_class)
+        #save the current global namespace in the function. This otherwise 
+        #access to global variables would have surprising results
+        new_class.global_scope = make_proxy(self.environment.global_scope)
+        #TODO: Evaluate all expressions in default arguments and type specifications
+        new_class.arguments = node.arguments
+        new_class.keyword_arguments = node.keyword_arguments
+        #reference the code
+        new_class.statements = node.statements
+        
         
     @Visitor.when_type(NodeDataDef)
     def visit_NodeDataDef(self, node):
@@ -564,73 +640,11 @@ class StatementVisitor(Visitor):
         self.environment.local_scope.create_attribute(new_name, new_object)
         
         
-    @Visitor.when_type(NodeAssignment)
-    def visit_NodeAssignment(self, node):
-        '''Change value of an object'''
-        #compute value of expression on right hand side
-        rhs_expr = node.arguments[1]
-        rhs_val = self.expression_visitor.evaluate(rhs_expr)
-        #store the value in an existing data attribute
-        lhs_expr = node.arguments[0]
-        lhs_attr = self.expression_visitor.evaluate(lhs_expr)
-        #TODO: work out how to do this correctly
-        #TODO: this can't work with user defined classes
-        if lhs_attr.type == rhs_val.type:
-            lhs_attr.value = rhs_val.value
-        else:
-            raise Exception('Type mismatch!')
-        return
-    
-    @Visitor.when_type(NodeFuncDef)
-    def visit_NodeFuncDef(self, node):
-        '''Add function object to local namespace'''
-        #create new function object and put it into the local namespace
-        new_func = CLASS_FUNCTION.construct_instance()
-        new_func.name = node.name
-        self.environment.local_scope.create_attribute(node.name, new_func)
-        #save the current global namespace in the function. Otherwise 
-        #access to global variables would have surprising results
-        new_func.global_scope = make_proxy(self.environment.global_scope)
-        #find out if this is a method (member function) or a function,
-        #store the this object if it is a method.
-        if not siml_isinstance(self.environment.local_scope, CLASS_MODULE):
-            new_func.this_scope = make_proxy(self.environment.local_scope)
-        #TODO: if the function is defined inside a class, add the this argument 
-        #      to the front of the argument list. Maybe put right default value in place.
-        #TODO: Evaluate all expressions in default arguments and type specifications
-        #TODO: Put complete argument treatment algorithm into separate function:
-        #      visit_NodeClassDef can use the same algorithm
-        new_func.arguments = node.arguments
-        new_func.keyword_arguments = node.keyword_arguments
-        new_func.return_type = node.return_type
-        #reference the code
-        new_func.statements = node.statements
+    @Visitor.when_type(NodeCompileStmt)
+    def visit_NodeCompileStmt(self, node):
+        '''Create object and record program code.'''
+        raise Exception('Compiling is not implemented yet')
         
-    @Visitor.when_type(NodeReturnStmt)
-    def visit_NodeReturnStmt(self, node):
-        '''Return value from function call'''
-        #evaluate the expression of the returned value
-        retval = self.expression_visitor.evaluate(node.arguments[0])
-        self.environment.return_value = retval
-        #Forcibly end function execution - 
-        #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
-        raise ReturnFromFunctionException()
-    
-    @Visitor.when_type(NodeClassDef)
-    def visit_NodeClassDef(self, node):
-        '''Define a class - create a class object in local namespace'''
-        #create new class object and put it into the local namespace
-        new_class = InstUserDefinedClass()
-        new_class.name = node.name
-        self.environment.local_scope.create_attribute(node.name, new_class)
-        #save the current global namespace in the function. This otherwise 
-        #access to global variables would have surprising results
-        new_class.global_scope = make_proxy(self.environment.global_scope)
-        #TODO: Evaluate all expressions in default arguments and type specifications
-        new_class.arguments = node.arguments
-        new_class.keyword_arguments = node.keyword_arguments
-        #reference the code
-        new_class.statements = node.statements
         
     def execute(self, statement):  
         '''Execute one statement''' 
@@ -883,16 +897,18 @@ class A:
     data a1: Float
     data a2: Float
     
-    func compute_a2(x):
+    func compute(x):
         print 'in compute_a2 x=', x
+        a1 = x
         a2 = x + times_3(a1)
         return a2
         
 data a: A
-data dummy: Float
-a.a1 = 2
-dummy = a.compute_a2(3)
-print 'a.a2', a.a2, 
+a.compute(3)
+print 'a.a1 = ', a.a1
+print 'a.a2 = ', a.a2
+
+#compile test: A
 
 print 'end'
 '''
