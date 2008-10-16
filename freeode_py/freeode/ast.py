@@ -138,7 +138,7 @@ class Node(object):
     #Length of line. Longer lines will be wrapped
     aa_wrap_line_at = 150
     #Also print the node's id() 
-    aa_show_ID = False
+    aa_show_ID = True
     #Maximal nesting level, to catch infinite recursion.
     aa_max_nesting_level = 100
     #string to symbolize one indent level
