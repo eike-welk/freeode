@@ -38,9 +38,6 @@ modules of Freeode:
 '''
 
 
-#TODO: Properties are currently undocumented in AST classes!
-#TODO: Unit tests for the more complex Nodes would be useful.
-
 
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
@@ -850,8 +847,6 @@ class NodeDataDef(Node):
         className       : type of the attribute; possibly dotted name: ('aa', 'bb')
         role            : Is this attribute a state or algebraic variable, a constant
                           or a parameter? (AttributeRole subclass).
-    
-        TODO: isReference : Contains no own data; points to something else.
     '''
     def __init__(self):
         Node.__init__(self)
@@ -1154,7 +1149,19 @@ class DotName(tuple):
         if isinstance(other, str):
             other = DotName(other)
         return DotName(tuple.__add__(other, self))
-    #TODO: add indexing operations. Currently dn[1:] returns a tuple.
+
+    def __getitem__(self, key):
+        '''Access a part of the dotname. Called for foo[1], foo[0:4] '''
+        #slices of DotName objects should also be DotName objects (not tuple).
+        if isinstance(key, slice):
+            return DotName(tuple.__getitem__(self, key))
+        #access to single items should return the item (string not DotName).
+        else:
+            return tuple.__getitem__(self, key)
+
+    def __getslice__(self, i, j):
+        '''Implement simple slicing (because tuple implements it).'''
+        return DotName(tuple.__getslice__(self, i, j))
 
 
 
@@ -1568,7 +1575,16 @@ class TestAST(unittest.TestCase):
 
     def testCopy(self):
         '''Node: Test copy function'''
-        tree1_c = self.tree1.copy() #create deep copy
+        #create additional weak attributes
+        n1 = Node(name='weak1')
+        n2 = Node(name='weak2')
+        pr = weakref.proxy(n1)
+#        pr = n1    #to make test fail
+        wr = weakref.ref(n2)
+        self.tree1.pr = pr                                                   #IGNORE:W0201
+        self.tree1.kids[0].wr = wr                                           #IGNORE:E1101
+        #create (mostly) deep copy
+        tree1_c = self.tree1.copy() 
         #assert that values are equal
         self.assertTrue(len(tree1_c.__dict__) == len(self.tree1.__dict__))
         self.assertTrue(tree1_c.name == self.tree1.name)                     #IGNORE:E1101
@@ -1580,7 +1596,18 @@ class TestAST(unittest.TestCase):
         self.assertFalse(id(tree1_c.kids[0]) == id(self.tree1.kids[0]))      #IGNORE:E1101
         self.assertFalse(id(   tree1_c.kids[0].kids[0]) == 
                          id(self.tree1.kids[0].kids[0])    )                 #IGNORE:E1101
-        #TODO: test copying of not owned (weak, shared) attributes
+        #test copying of not owned (weak, shared) attributes
+        #assert that values are equal
+        self.assertTrue(tree1_c.pr.name == self.tree1.pr.name)               #IGNORE:E1101
+        self.assertTrue(   tree1_c.kids[0].wr().name == 
+                        self.tree1.kids[0].wr().name    )                    #IGNORE:E1101
+        #assert no new objects were created
+        self.assertTrue(id(tree1_c.pr) == id(self.tree1.pr))                 #IGNORE:E1101
+        self.assertTrue(id(   tree1_c.kids[0].wr()) == 
+                        id(self.tree1.kids[0].wr())    )                     #IGNORE:E1101
+        # this assertion is an implementation detail
+        self.assertTrue(id(   tree1_c.kids[0].wr) == 
+                        id(self.tree1.kids[0].wr)    )                       #IGNORE:E1101
 
 
 
@@ -1841,6 +1868,52 @@ class TestDotName(unittest.TestCase):
         abcefg = ('a', 'b', 'c') + efg
         self.assertTrue(abcefg == DotName('a.b.c.e.f.g'))
         self.assertTrue(isinstance(abcefg, DotName))
+
+    def test__getitem__(self):
+        '''DotName: Test access to parts of the object (foo[1], foo[0:4]).'''
+        a_g = DotName('a.b.c.d.e.f.g')
+        #subscription
+        b = a_g[1]
+        self.assertTrue(b == 'b')
+        self.assertTrue(isinstance(b, str))
+        e = a_g[4]
+        self.assertTrue(e == 'e')
+        self.assertTrue(isinstance(e, str))
+        #simple slicing
+        abc = a_g[0:3]
+        self.assertTrue(abc == DotName('a.b.c'))
+        self.assertTrue(isinstance(abc, DotName))
+        c_c = a_g[2:3]
+        self.assertTrue(c_c == DotName('c'))
+        self.assertTrue(isinstance(c_c, DotName))
+        empty = a_g[3:3]
+        self.assertTrue(empty == DotName())
+        self.assertTrue(isinstance(empty, DotName))
+        #extendet slicing
+        a_g2 = a_g[0:7:2]
+        self.assertTrue(a_g2 == DotName('a.c.e.g'))
+        self.assertTrue(isinstance(a_g2, DotName))
+        #test boundary checking
+        self.assertRaises(IndexError, self.raise__getitem__1)
+        #This unexpectedly works, because the tuple implementation thinks 
+        #it's OK
+#        self.assertRaises(IndexError, self.raise__getitem__2)
+        self.raise__getitem__2()
+#        self.assertRaises(IndexError, self.raise__getitem__3)
+        self.raise__getitem__3()
+        return 
+    def raise__getitem__1(self):
+        '''Subscription out of bounds'''
+        a_g = DotName('a.b.c.d.e.f.g')
+        _foo = a_g[9]
+    def raise__getitem__2(self):
+        '''Simple slice out of bounds'''
+        a_g = DotName('a.b.c.d.e.f.g')
+        _foo = a_g[0:9]
+    def raise__getitem__3(self):
+        '''Extended slice out of bounds'''
+        a_g = DotName('a.b.c.d.e.f.g')
+        _foo = a_g[0:9:2]
 
 
 
