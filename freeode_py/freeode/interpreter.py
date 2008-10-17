@@ -266,6 +266,7 @@ class InstModule(InterpreterObject):
     def __init__(self):
         InterpreterObject.__init__(self)
         self.name = None
+        self.role = RoleConstant
 #        self.statements = None
 #the single object that should be used to create all Modules
 CLASS_MODULE = CreateBuiltInType('Module', InstModule)
@@ -351,10 +352,17 @@ def make_proxy(in_obj):
     
 
 def siml_isinstance(in_object, class_or_type_or_tuple):    
-    '''isinstance but inside the SIML language'''
+    '''isinstance(...) but inside the SIML language'''
+    #precondition: must be SIML object not AST node
+    if not isinstance(in_object, InterpreterObject):
+        return False
+    #always create tuple of class objects
     if not isinstance(class_or_type_or_tuple, tuple):
-        class_or_type_or_tuple = (class_or_type_or_tuple,)
-    if in_object.type() in class_or_type_or_tuple:
+        classes = (class_or_type_or_tuple,)
+    else:
+        classes = class_or_type_or_tuple
+    #the test, there is no inheritance, so it is simple
+    if in_object.type() in classes:
         return True
     else:
         return False
@@ -364,6 +372,9 @@ class ReturnFromFunctionException(Exception):
     '''Functions return by raising this exception.'''
     pass
 
+#constants to declare whether variables are read or written
+INTENT_READ = 'read'
+INTENT_WRITE = 'write'
 
 class ExpressionVisitor(Visitor): 
     '''Compute the value of an expression'''
@@ -383,6 +394,7 @@ class ExpressionVisitor(Visitor):
         '''Create floating point number'''
         result = CLASS_FLOAT.construct_instance()
         result.value = float(node.value)
+        result.role = RoleConstant
         return result
         
     @Visitor.when_type(NodeString)
@@ -390,35 +402,21 @@ class ExpressionVisitor(Visitor):
         '''Create string'''
         result = CLASS_STRING.construct_instance()
         result.value = str(node.value)
+        result.role = RoleConstant
         return result
         
     @Visitor.when_type(NodeIdentifier)
-    def visit_NodeIdentifier(self, node):
+    def visit_NodeIdentifier(self, node): #, intent=INTENT_READ):
         '''Lookup Identifier and get attribute'''
         attr = self.environment.get_attribute(node.name)
+#        if (intent is INTENT_READ and attr.role is RoleConstant and 
+#            attr.value is None):
+#            raise UserException('Undefined value: %s!' % str(node.name), 
+#                                node.loc)            
         return attr
     
-    @Visitor.when_type(NodeOpInfix2)
-    def visit_NodeOpInfix2(self, node):
-        '''Evaluate binary operator'''
-        inst_lhs = self.dispatch(node.arguments[0])
-        inst_rhs = self.dispatch(node.arguments[1])
-        #Compute the operation
-        #let the Python interpreter find the right function for the operator
-        #TODO: error handling
-        #TODO: move this code somehow into the Instances 
-        result = eval('inst_lhs.value ' + node.operator + ' inst_rhs.value')
-        #Wrap the python result type in the Interpreter's instance types
-        if isinstance(result, float):
-            resultInst = CLASS_FLOAT.construct_instance()
-            resultInst.value = result
-        else:
-            resultInst = CLASS_STRING.construct_instance()
-            resultInst.value = result
-        return resultInst
-    
     @Visitor.when_type(NodeAttrAccess)
-    def visit_NodeAttrAccess(self, node):
+    def visit_NodeAttrAccess(self, node): #, intent=INTENT_READ):
         '''Evaluate attribute access ('.') operator'''
         #evaluate the object on the left hand side
         inst_lhs = self.dispatch(node.arguments[0])
@@ -431,6 +429,51 @@ class ExpressionVisitor(Visitor):
         attr = inst_lhs.get_attribute(id_rhs.name)
         return attr        
         
+    @Visitor.when_type(NodeOpInfix2)
+    def visit_NodeOpInfix2(self, node):
+        '''Evaluate binary operator'''
+        #compute values on rhs and lhs of operator
+        inst_lhs = self.dispatch(node.arguments[0])
+        inst_rhs = self.dispatch(node.arguments[1])
+        #see if operation is feasible (for both compiled and interpreted code)
+        if not (inst_lhs.type == inst_rhs.type):
+            raise UserException('Type mismatch!', node.loc)
+        result_type = inst_lhs.type
+        #see if operators are constant numbers or strings
+        #if true compute the operation in the interpreter (at compile time)
+        if   (    siml_isinstance(inst_lhs, (CLASS_FLOAT, CLASS_STRING))
+              and inst_lhs.role == RoleConstant 
+              and siml_isinstance(inst_rhs, (CLASS_FLOAT, CLASS_STRING)) 
+              and inst_rhs.role == RoleConstant                     ):
+            #see if values exist
+            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
+            #      maybe with intent: write / read
+            if inst_lhs.value is None or inst_rhs.value is None:
+                raise UserException('Value is used before it was computed!', node.loc)
+            #Compute the operation
+            #let the Python interpreter perform the operation on the value
+            result = eval('inst_lhs.value ' + node.operator + ' inst_rhs.value')
+            #Wrap the python result type in the Interpreter's instance types
+            if isinstance(result, float):
+                resultInst = CLASS_FLOAT.construct_instance()
+            else:
+                resultInst = CLASS_STRING.construct_instance()
+            resultInst.value = result
+            resultInst.role = RoleConstant
+            #see if predicted result is identical to real outcome (sanity check)
+            if resultInst.type != result_type:
+                raise UserException('Unexpected result type!', node.loc)
+            return resultInst
+        #generate code to compute the operation after compiling (at runtime)
+        else:
+            #create unevaluated operator as the return value 
+            new_node = NodeOpInfix2()
+            new_node.operator = node.operator
+            new_node.arguments = [inst_lhs, inst_rhs]
+            new_node.type = result_type
+            new_node.loc = node.loc
+            return new_node
+    
     @Visitor.when_type(NodeFuncCall)
     def visit_NodeFuncCall(self, node):
         '''Call a call-able object (function, class) and execute its code.'''
@@ -556,15 +599,31 @@ class StatementVisitor(Visitor):
         #compute value of expression on right hand side
         rhs_expr = node.arguments[1]
         rhs_val = self.expression_visitor.evaluate(rhs_expr)
-        #store the value in an existing data attribute
+        #get a data attribute to store the value
         lhs_expr = node.arguments[0]
         lhs_attr = self.expression_visitor.evaluate(lhs_expr)
-        #TODO: work out how to do this correctly
-        #TODO: this can't work with user defined classes
-        if lhs_attr.type == rhs_val.type:
+        #find out if rhs can be stored in lhs (compile time or run time)
+        if lhs_attr.type != rhs_val.type:
+            raise UserException('Type mismatch!', node.loc)
+        #if RHS ind LHS are constant values try to write LHS into RHS
+        if   (    siml_isinstance(rhs_val, (CLASS_FLOAT, CLASS_STRING))
+              and rhs_val.role == RoleConstant 
+              and siml_isinstance(lhs_attr, (CLASS_FLOAT, CLASS_STRING))
+              and lhs_attr.role == RoleConstant 
+              ):
+            #Test is RHS is known and LHS is empty
+            if rhs_val.value is None:
+                raise UserException('Value is used before it was computed!', node.loc)
+            if lhs_attr.value is not None:
+                raise UserException('Trying to compute value twice!', node.loc)
+            #TODO: storing class, function, module, proxy 
+            #TODO: storing user defined types requires a loop
             lhs_attr.value = rhs_val.value
+    #        lhs_attr.role = rhs_val.role
         else:
-            raise Exception('Type mismatch!')
+            raise UserException('Operation not implemented!', node.loc)
+        #TODO: find out if rhs is an unevaluated expression
+        #      if true: emit code for an assignment statement.
         return
     
     
@@ -722,8 +781,7 @@ def do_tests():
 #    doTest = False
     if doTest:
         print 'Test expression evaluation (only immediate values) .......................................'
-        from simlparser import Parser
-        ps = Parser()
+        ps = simlparser.Parser()
         ex = ps.parseExpressionStr('0+1*2')
     #    ex = ps.parseExpressionStr('"a"+"b"')
         print ex
@@ -738,16 +796,17 @@ def do_tests():
 #    doTest = False
     if doTest:
         print 'Test expression evaluation (access to variables) ...................................'
-        from simlparser import Parser
-        ps = Parser()
-        ex = ps.parseExpressionStr('1 + a * 2')
+        ps = simlparser.Parser()
+        ex = ps.parseExpressionStr('a + 2*2')
 #        ex = ps.parseExpressionStr('"a"+"b"')
         print ex
         
         #create module where name lives
         mod = InstModule()
+        #create attribute
         val_2 = CLASS_FLOAT.construct_instance()
-        val_2.value = 2.0
+        val_2.value = None
+        val_2.role = RoleVariable
         mod.create_attribute(DotName('a'), val_2)
         
         env = ExecutionEnvironment()
@@ -815,7 +874,7 @@ print 'end'
       
     #test interpreter object
     doTest = True
-#    doTest = False
+    doTest = False
     if doTest:
         print 'Test interpreter object: function call ...............................................................'
         prog_text = \
@@ -842,7 +901,7 @@ print 'end'
       
     #test interpreter object
     doTest = True
-#    doTest = False
+    doTest = False
     if doTest:
         print 'Test interpreter object: class definition ...............................................................'
         prog_text = \
@@ -882,7 +941,7 @@ print 'end'
       
     #test interpreter object
     doTest = True
-#    doTest = False
+    doTest = False
     if doTest:
         print 'Test interpreter object: class methods ...............................................................'
         prog_text = \

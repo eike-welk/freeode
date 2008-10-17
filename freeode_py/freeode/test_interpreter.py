@@ -29,7 +29,7 @@
 #***************************************************************************
 
 """
-Test the interpretr module
+Test code for the interpreter module
 """
 
 from __future__ import division
@@ -45,8 +45,7 @@ doTest = True
 #    doTest = False
 if doTest:
     print 'Test expression evaluation (only immediate values) .......................................'
-    from simlparser import Parser
-    ps = Parser()
+    ps = simlparser.Parser()
     ex = ps.parseExpressionStr('0+1*2')
 #    ex = ps.parseExpressionStr('"a"+"b"')
     print ex
@@ -61,8 +60,7 @@ doTest = True
 #    doTest = False
 if doTest:
     print 'Test expression evaluation (access to variables) ...................................'
-    from simlparser import Parser
-    ps = Parser()
+    ps = simlparser.Parser()
     ex = ps.parseExpressionStr('1 + a * 2')
 #        ex = ps.parseExpressionStr('"a"+"b"')
     print ex
@@ -71,6 +69,7 @@ if doTest:
     mod = InstModule()
     val_2 = CLASS_FLOAT.construct_instance()
     val_2.value = 2.0
+    val_2.role = RoleConstant
     mod.create_attribute(DotName('a'), val_2)
     
     env = ExecutionEnvironment()
@@ -120,8 +119,7 @@ print 'end'
     stv.expression_visitor = exv
 
     #parse the program text
-    from simlparser import Parser
-    ps = Parser()
+    ps = simlparser.Parser()
     module_code = ps.parseModuleStr(prog_text)
     
     #set up parsing the main module
@@ -171,21 +169,21 @@ if doTest:
 '''
 print 'start'
 
-data pi: Float
+data pi: Float const
 pi = 3.1415
 
 class A:
     print 'in A definition'
-    data a1: Float
-    data a2: Float
+    data a1: Float const
+    data a2: Float const
 
 class B:
-    data b1: Float
+    data b1: Float const
     b1 = pi
-    data b2: Float
+    data b2: Float const
 
-data a: A
-data b: B
+data a: A const
+data b: B const
 
 a.a1 = 1
 a.a2 = 2 * b.b1
@@ -216,8 +214,8 @@ func times_3(x):
     return 2*x
     
 class A:
-    data a1: Float
-    data a2: Float
+    data a1: Float const
+    data a2: Float const
     
     func compute(x):
         print 'in compute_a2 x=', x
@@ -225,7 +223,7 @@ class A:
         a2 = x + times_3(a1)
         return a2
         
-data a: A
+data a: A const
 a.compute(3)
 print 'a.a1 = ', a.a1
 print 'a.a2 = ', a.a2
