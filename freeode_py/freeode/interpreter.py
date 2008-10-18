@@ -367,14 +367,41 @@ def siml_isinstance(in_object, class_or_type_or_tuple):
     else:
         return False
     
+
+def make_unique_name(base_name, existing_names):
+    '''
+    Make a unique name that is not in existing_names.
+    
+    If base_name is already contained in existing_names a number is appended 
+    to base_name to make it unique.
+    
+    Arguments:
+    base_name: DotName, str 
+        The name that should become unique.
+    existing_names: container that supports the 'in' operation
+        Container with the existing names. Names are expected to be 
+        DotName objects.
+        
+    Returns: DotName
+        Unique name; base_name with number appended if necessary
+    '''
+    base_name = DotName(base_name)
+    for number in range(1, 100000):
+        if base_name not in existing_names:
+            return  base_name
+        #append number to last component of DotName
+        base_name = base_name[0:-1] + DotName(base_name[-1] + str(number))
+    raise Exception('Too many similar names')    
+    
     
 class ReturnFromFunctionException(Exception):
     '''Functions return by raising this exception.'''
     pass
 
-#constants to declare whether variables are read or written
-INTENT_READ = 'read'
-INTENT_WRITE = 'write'
+
+##constants to declare whether variables are read or written
+#INTENT_READ = 'read'
+#INTENT_WRITE = 'write'
 
 class ExpressionVisitor(Visitor): 
     '''Compute the value of an expression'''
@@ -595,7 +622,8 @@ class StatementVisitor(Visitor):
     
     @Visitor.when_type(NodeAssignment)
     def visit_NodeAssignment(self, node):
-        '''Change value of an object'''
+        '''Assign value to a constant object, or emit assignment statement 
+        for code generation'''
         #compute value of expression on right hand side
         rhs_expr = node.arguments[1]
         rhs_val = self.expression_visitor.evaluate(rhs_expr)
@@ -605,7 +633,7 @@ class StatementVisitor(Visitor):
         #find out if rhs can be stored in lhs (compile time or run time)
         if lhs_attr.type != rhs_val.type:
             raise UserException('Type mismatch!', node.loc)
-        #if RHS ind LHS are constant values try to write LHS into RHS
+        #if RHS and LHS are constant values try to write LHS into RHS
         if   (    siml_isinstance(rhs_val, (CLASS_FLOAT, CLASS_STRING))
               and rhs_val.role == RoleConstant 
               and siml_isinstance(lhs_attr, (CLASS_FLOAT, CLASS_STRING))
@@ -619,11 +647,15 @@ class StatementVisitor(Visitor):
             #TODO: storing class, function, module, proxy 
             #TODO: storing user defined types requires a loop
             lhs_attr.value = rhs_val.value
-    #        lhs_attr.role = rhs_val.role
+        #emit code for an assignment statement.
         else:
-            raise UserException('Operation not implemented!', node.loc)
-        #TODO: find out if rhs is an unevaluated expression
-        #      if true: emit code for an assignment statement.
+            #TODO: find out if rhs is an unevaluated expression and lhs a variable
+            new_assign = NodeAssignment()
+            new_assign.arguments = [lhs_attr, rhs_val]
+            new_assign.loc = node.loc
+            self.interpreter.emit_statement(new_assign)
+            #
+#            raise UserException('Operation not implemented!', node.loc)
         return
     
     
@@ -670,11 +702,17 @@ class StatementVisitor(Visitor):
         new_class.statements = node.statements
         
         
-    @Visitor.when_type(NodeDataDef)
-    def visit_NodeDataDef(self, node):
-        '''Create object and put it into symbol table'''
-        #Objects are created by calling the class object.
-        class_spec = node.class_name
+    def normalize_class_spec(self, class_spec):
+        '''
+        Bring class specification into standard form (call to class object)
+        Common code for visit_NodeDataDef(...) and visit_NodeCompileStmt(...)
+        
+        Arguments:
+        class_spec: NodeIdentifier or NodeFuncCall
+            Name of new class or call to class object
+        Returns: NodeFuncCall
+            Call to class object
+        '''
         #only the class name is given e.g.: Foo. Transform: Foo --> Foo()
         if isinstance(class_spec, NodeIdentifier):
             new_spec = NodeFuncCall()
@@ -688,10 +726,18 @@ class StatementVisitor(Visitor):
         else:
             raise UserException('Expecting class name (for example "Foo") or '
                                 'call to class object (for example "Foo(a)")!',
-                                 node.loc)
+                                 class_spec.loc)
+        return class_spec
         
+        
+    @Visitor.when_type(NodeDataDef)
+    def visit_NodeDataDef(self, node):
+        '''Create object and put it into symbol table'''
+        #Objects are created by calling the class object.
+        class_spec = self.normalize_class_spec(node.class_name)
         #Create the new object - evaluate call to class object
-        new_object = self.expression_visitor.visit_NodeFuncCall(class_spec)
+        new_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
+    
         #Set options
         new_object.role = node.role
         #store new object in local scope
@@ -702,7 +748,27 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeCompileStmt)
     def visit_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
-        raise Exception('Compiling is not implemented yet')
+        #Objects are created by calling the class object.
+        class_spec = self.normalize_class_spec(node.class_name)
+        #Create the new object - evaluate call to class object
+        new_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
+        
+        #store new object in interpreter
+        #TODO: create unique name if none given
+        new_name = node.name
+        if new_name is None:
+            new_name = new_object.type().name
+        new_name = make_unique_name(new_name, self.interpreter.compile_obj)
+        self.interpreter.compile_obj[new_name] = new_object
+        
+        #TODO: Make list of main functions of all child objects for automatic calling 
+        #TODO: call the main functions and record code
+#        main_func = new_object.get_attribute(DotName('initialize'))
+#        main_func_call = NodeFuncCall()
+##        main_func_call.name =
+#        main_func_call.loc = node.loc
+                                             
+        #TODO: do flattening here?
         
         
     def execute(self, statement):  
@@ -729,6 +795,16 @@ class Interpreter(object):
         self.modules = {}
         #frame stack
         self.env_stack = []
+        #objects generated by the compile statement
+        self.compile_obj = {}
+        #list of emitted statements (temporary storage)
+        self.compile_stmt_collect = None
+        
+    def emit_statement(self, stmt):
+        '''Collect statement for code generation.'''
+        if self.compile_stmt_collect is None:
+            raise UserException('Only operations with constants allowed here!', stmt.loc)
+        self.compile_stmt_collect.append(stmt)
         
     def interpret_module_string(self, text, file_name=None, module_name=None):
         '''Interpret the program text of a module.'''
@@ -739,8 +815,8 @@ class Interpreter(object):
         mod.attributes.update(self.built_in_lib.attributes)
         #set up new module's symbol table
         env = ExecutionEnvironment()
-        env.global_scope = mod
-        env.local_scope = mod
+        env.global_scope = make_proxy(mod)
+        env.local_scope = make_proxy(mod)
         self.push_environment(env)
         #parse the program
         prs = simlparser.Parser()
@@ -767,6 +843,7 @@ class Interpreter(object):
         return old_env
         
     def run(self, stmt_list):
+        '''Interpret a list of statements'''
         for node in stmt_list:
             self.statement_visitor.execute(node)
             
@@ -856,8 +933,7 @@ print 'end'
         stv.expression_visitor = exv
 
         #parse the program text
-        from simlparser import Parser
-        ps = Parser()
+        ps = simlparser.Parser()
         module_code = ps.parseModuleStr(prog_text)
         
         #set up parsing the main module
@@ -872,64 +948,59 @@ print 'end'
         print
         print mod
       
-    #test interpreter object
+#---------------- Test interpreter object: emit code simple ----------------------------------------
     doTest = True
-    doTest = False
+#    doTest = False
     if doTest:
-        print 'Test interpreter object: function call ...............................................................'
+        print 'Test interpreter object: emit code simple ...............................................................'
         prog_text = \
 '''
 print 'start'
 
-func foo(b):
-    print 'in foo. b = ', b
-    return b*b
-    print 'after return'
 
-data a:Float const
-a = 2*2 + foo(3*4) + foo(2)
+data a: Float const
+data b: Float variable
+data c: Float variable
+a = 2*2 #constant no statement emitted
+b = 2*a #compute 2*a at compile time
+c = 2*b #emit everything
 print 'a = ', a
 print 'end'
 '''
+
         #create the interpreter
         intp = Interpreter()
+        #enable collection of statements for compilation
+        intp.compile_stmt_collect = []
         intp.interpret_module_string(prog_text, None, 'test')
       
-        print
+        print '--------------- main module ----------------------------------'
         print intp.modules['test']
+        #put collected statements into Node for pretty printing
+        n = Node(stmts=intp.compile_stmt_collect)
+        print '--------------- collected statements ----------------------------------'
+        print n
       
       
     #test interpreter object
     doTest = True
-    doTest = False
+#    doTest = False
     if doTest:
-        print 'Test interpreter object: class definition ...............................................................'
+        print 'Test interpreter object: compile statement ...............................................................'
         prog_text = \
 '''
 print 'start'
 
-data pi: Float
-pi = 3.1415
-
 class A:
-    print 'in A definition'
     data a1: Float
     data a2: Float
 
-class B:
-    data b1: Float
-    b1 = pi
-    data b2: Float
-
-data a: A
-data b: B
-
-a.a1 = 1
-a.a2 = 2 * b.b1
-print 'a.a1: ', a.a1, ', a.a2: ', a.a2
+compile A
+compile A
 
 print 'end'
 '''
+#-------- Work ----------------------------------------------------------------
 
         #create the interpreter
         intp = Interpreter()
@@ -971,7 +1042,6 @@ print 'a.a2 = ', a.a2
 
 print 'end'
 '''
-#-------- Work ----------------------------------------s------------------------
         #create the interpreter
         intp = Interpreter()
         intp.interpret_module_string(prog_text, None, 'test')

@@ -625,6 +625,8 @@ class NodeAssignment(NodeOpInfix2):
         loc: 
             Location in input string
             
+    TODO: inherit from Node directly. This is no operator, it is a statement.
+          As the data members should also change, this is now very appropriate.        
     TODO: change attributes:
         target: Node()
             Expression that describes which object should be changed
