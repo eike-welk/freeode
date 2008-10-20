@@ -501,9 +501,13 @@ class ExpressionVisitor(Visitor):
             new_node.loc = node.loc
             return new_node
     
+    
     @Visitor.when_type(NodeFuncCall)
     def visit_NodeFuncCall(self, node):
-        '''Call a call-able object (function, class) and execute its code.'''
+        '''
+        Evaluate a NodeFuncCall, which calls a call-able object (function, class).
+        Execute the callabe's code and return the return value.
+        '''
         #find the right call-able object   
         call_obj = self.evaluate(node.name)
         if not isinstance(call_obj, (InstFunction, InstUserDefinedClass, 
@@ -515,12 +519,23 @@ class ExpressionVisitor(Visitor):
         for arg1 in node.arguments:
             ev_arg1 = self.evaluate(arg1)
             ev_args.append(ev_arg1)
-        #TODO: evaluate keyword arguments too
+        #call the call-able object
+        return self.call_siml_object(call_obj, ev_args)
+        
+    def call_siml_object(self, call_obj, args):
+        '''
+        Call a call-able object (function, class) from Python code.
+        Execute the call-able's code and return the return value.
+        
+        All arguments must be already evaluated.
+        '''
         #create dictionary {argument_name:argument_value}
         arg_dict = {}
-        for arg_def, arg_val in zip(call_obj.arguments, ev_args):
+        for arg_def, arg_val in zip(call_obj.arguments, args):
             arg_dict[arg_def.name] = arg_val
             
+        #TODO: use the code for attribute generation and assignment to put 
+        #      the arguments into the local name-space    
         #TODO: write general call-able objects (with __call__ method)
         #TODO: write SIML wrapper for Python function
         #different reactions on the different call-able objects
@@ -566,13 +581,14 @@ class ExpressionVisitor(Visitor):
                 self.interpreter.run(call_obj.statements)
             except ReturnFromFunctionException:           #IGNORE:W0704
                 pass
-#                raise Exception('Return statements are illegal in function bodies!')
+#                raise Exception('Return statements are illegal in class bodies!')
             self.interpreter.pop_environment()
             return new_obj
         #instantiate a built in class. 
         elif isinstance(call_obj, CreateBuiltInType):
             new_obj = call_obj.construct_instance()
             return new_obj
+    
     
     def evaluate(self, expression):
         '''Compute and return value of expression'''
@@ -748,27 +764,53 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeCompileStmt)
     def visit_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
-        #Objects are created by calling the class object.
+        #Create a call to the class object
         class_spec = self.normalize_class_spec(node.class_name)
-        #Create the new object - evaluate call to class object
-        new_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
-        
+        #Create tree shaped object
+        tree_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
+        #create flat object
+        flat_object = InterpreterObject()
+        flat_object.type = tree_object.type
+                
+        #TODO: Make list of main functions of all child objects for automatic calling 
+        #call the main functions of tree_object and collect code
+        main_func_names = [DotName('init'), DotName('dynamic'), DotName('final')]
+        for func_name in main_func_names:
+            if func_name not in tree_object.attributes:
+                continue
+            func_tree = tree_object.get_attribute(func_name)
+            #call the main functions and collect code
+            self.interpreter.compile_stmt_collect = []
+            self.expression_visitor.call_siml_object(func_tree, [])
+            #create a new main function with the collected code
+            func_flat = CLASS_FUNCTION.construct_instance()
+            func_flat.name = func_name
+            func_flat.statements = self.interpreter.compile_stmt_collect
+#            func_flat.this_scope = make_proxy(flat_object)
+#            func_flat.global_scope = make_proxy(self.environment.global_scope)
+            #Put new function it into flat object
+            flat_object.create_attribute(func_name, func_flat)
+                                             
+        #flatten tree_object (the data)!
+        def flatten(tree_obj, flat_obj, prefix):
+            '''Flatten the tree shaped data recursively'''
+            for name, data in tree_obj.attributes.iteritems():
+                long_name = prefix + name
+                if siml_isinstance(data, (CLASS_FLOAT, CLASS_STRING)):
+                    flat_obj.create_attribute(long_name, data)
+                else:
+                    flatten(data, flat_obj, long_name)
+            
+        flatten(tree_object, flat_object, DotName())    
+     
         #store new object in interpreter
-        #TODO: create unique name if none given
         new_name = node.name
         if new_name is None:
-            new_name = new_object.type().name
-        new_name = make_unique_name(new_name, self.interpreter.compile_obj)
-        self.interpreter.compile_obj[new_name] = new_object
-        
-        #TODO: Make list of main functions of all child objects for automatic calling 
-        #TODO: call the main functions and record code
-#        main_func = new_object.get_attribute(DotName('initialize'))
-#        main_func_call = NodeFuncCall()
-##        main_func_call.name =
-#        main_func_call.loc = node.loc
-                                             
-        #TODO: do flattening here?
+            #create unique name if none given
+            new_name = tree_object.type().name
+            new_name = make_unique_name(new_name, 
+                                        self.interpreter.compile_module.attributes)
+        self.interpreter.compile_module.create_attribute(new_name, flat_object)
         
         
     def execute(self, statement):  
@@ -795,8 +837,9 @@ class Interpreter(object):
         self.modules = {}
         #frame stack
         self.env_stack = []
-        #objects generated by the compile statement
-        self.compile_obj = {}
+        #storage for objects generated by the compile statement
+        self.compile_module = CLASS_MODULE.construct_instance()
+        self.compile_module.name = DotName('compiled_object_namespace')
         #list of emitted statements (temporary storage)
         self.compile_stmt_collect = None
         
@@ -991,11 +1034,30 @@ print 'end'
 '''
 print 'start'
 
+class B:
+    data b1: Float variable
+    data b2: Float variable
+    
+    func foo():
+        b1 = b2 ** 2
+        b2 = b1 + 2
+    
 class A:
-    data a1: Float
-    data a2: Float
+    data a1: Float param
+    data a2: Float param
+    data b: B variable
+    
+    func init():
+        a1 = 1
+        a2 = 2
+        b.b1 = 11
+        b.b2 = 12
+        
+    func dynamic():
+        a1 = a1 + a2
+        a2 = a1 * a2
+        b.foo()
 
-compile A
 compile A
 
 print 'end'
@@ -1008,6 +1070,7 @@ print 'end'
       
         print
         print intp.modules['test']
+        print intp.compile_module
       
       
     #test interpreter object

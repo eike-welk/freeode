@@ -1126,7 +1126,7 @@ class Parser(object):
         stmt_block = indentedBlock(statement, self.indentStack)     #.setParseAction(self._actionStatementList)
         #Body of class or function; the dependent code of 'if'
         # Statement list and indented block of statements lead to the same AST
-        suite << ( stmt_list + newline | newline + stmt_block )                                                
+        suite << ( stmt_list + newline | newline + stmt_block )     #IGNORE:W0104                                           
         
 #        #simple definition for debuging
 #        #simple statements are terminated by newline
