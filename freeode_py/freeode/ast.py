@@ -480,8 +480,10 @@ class NodeOpInfix2(Node):
             Expression on left and right of operator: 
             left: arguments[0], right: arguments[1]
             Naming is chosen to unify operators and function call
-        type:
+        type: InterpreterObject
             Type of the results of the operation. For decoorating the AST.
+        role: AttributeRole
+            Role of the results of the operation. For decoorating the AST.
         loc: 
             Location in input string
     '''
@@ -490,6 +492,7 @@ class NodeOpInfix2(Node):
         self.operator = None
         self.arguments = []
         self.type = None
+        self.role = None
         self.loc = None
 
 
@@ -794,32 +797,35 @@ class RoleCompiledObject(AttributeRole):
 class RoleConstant(AttributeRole):
     '''The attribute is a constant; it can only be changed at compile time.'''
 #    userStr = 'const'
-class RoleParameter(AttributeRole):
+class RoleDataCanVaryAtRuntime(AttributeRole):
+    '''Data that can vary while the compiled program runs. 
+    Everything that is not RoleConstant. (Base class.)'''
+class RoleParameter(RoleDataCanVaryAtRuntime):
     '''
     Attribute is a parameter of the simulation:
     - is constant during the simulation, but can vary between simulations.
     - is stored.
     '''
 #    userStr = 'param'
-class RoleDataCanVaryDuringSimulation(AttributeRole):
+class RoleDataCanVaryDuringSimulation(RoleDataCanVaryAtRuntime):
     '''Data that can vary during the simulation. (Base class.)'''
     pass
-class RoleFuncArgument(RoleDataCanVaryDuringSimulation):
-    '''
-    The attribute is a function/method argument:
-    - can vary during the simulation
-    - should be optmized away
-    - is not stored.
-    '''
-#    userStr = 'function argument'
-class RoleLocalVariable(RoleDataCanVaryDuringSimulation):
-    '''
-    The attribute is a local variable:
-    - can vary during the simulation
-    - should be optmized away
-    - is not stored.
-    '''
-#    userStr = 'local variable'
+#class RoleFuncArgument(RoleDataCanVaryDuringSimulation):
+#    '''
+#    The attribute is a function/method argument:
+#    - can vary during the simulation
+#    - should be optmized away
+#    - is not stored.
+#    '''
+##    userStr = 'function argument'
+#class RoleLocalVariable(RoleDataCanVaryDuringSimulation):
+#    '''
+#    The attribute is a local variable:
+#    - can vary during the simulation
+#    - should be optmized away
+#    - is not stored.
+#    '''
+##    userStr = 'local variable'
 class RoleVariable(RoleDataCanVaryDuringSimulation):
     '''
     The attribute is a state or algebraic variable:

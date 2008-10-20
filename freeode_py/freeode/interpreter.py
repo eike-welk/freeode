@@ -185,23 +185,6 @@ class InterpreterObject(Node):
         if name in self.attributes:
             raise DuplicateAttributeError(attr_name=name)
         self.attributes[name] = newAttr
-      
-    #TODO: def is_assignment_possible(...) ???  
-    #TODO: def set_value(new_val): ??? changes the value of an attribute. 
-    #      Checks compatibility. Must be re-implemented in leaf subclasses.
-    #TODO: remove? object contents is instead changed?
-#    def set_attribute(self, name, newAttr):
-#        '''Change value of attribute.'''
-#        oldAttr = self.attributes[name]
-#        if newAttr.type() is not oldAttr.type():
-#            raise Exception('Wrong type! attribute: %s; \n'
-#                            'has type: %s; \nrequired type: %s' % 
-#                            (str(name), 
-#                             str(newAttr.type()), str(oldAttr.type())))
-#        #TODO: enforce: attributes can be set only once
-#        #TODO: maybe recursive copying of values under SIML's control 
-#        self.attributes[name] = newAttr.copy()
-#        return
         
     def get_attribute(self, name):
         '''Return attribute object'''
@@ -210,6 +193,10 @@ class InterpreterObject(Node):
             raise UndefinedAttributeError(attr_name=name)
         attr = self.attributes[name]
         return attr
+    
+    def has_attribute(self, name):
+        '''Return true if object has an attribute with name "name"'''
+        return name in self.attributes
     
   
 #---------- Built In Types  ------------------------------------------------*
@@ -289,6 +276,8 @@ class InstFunction(InterpreterObject):
         self.global_scope = None
         #the scope of the object if applicable
         self.this_scope = None
+        #function's local variables are stored here, for flattening
+        self.create_attribute(DotName('data'), InterpreterObject())
 #the single object that should be used to create all Functions
 CLASS_FUNCTION = CreateBuiltInType('Function', InstFunction)
 
@@ -362,7 +351,7 @@ def siml_isinstance(in_object, class_or_type_or_tuple):
     else:
         classes = class_or_type_or_tuple
     #the test, there is no inheritance, so it is simple
-    if in_object.type() in classes:
+    if (in_object.type is not None) and (in_object.type() in classes):
         return True
     else:
         return False
@@ -466,6 +455,8 @@ class ExpressionVisitor(Visitor):
         if not (inst_lhs.type == inst_rhs.type):
             raise UserException('Type mismatch!', node.loc)
         result_type = inst_lhs.type
+        #TODO: determine result type better
+        #TODO: determine result role
         #see if operators are constant numbers or strings
         #if true compute the operation in the interpreter (at compile time)
         if   (    siml_isinstance(inst_lhs, (CLASS_FLOAT, CLASS_STRING))
@@ -499,6 +490,7 @@ class ExpressionVisitor(Visitor):
             new_node.arguments = [inst_lhs, inst_rhs]
             new_node.type = result_type
             new_node.loc = node.loc
+            new_node.role = RoleDataCanVaryAtRuntime
             return new_node
     
     
@@ -520,37 +512,45 @@ class ExpressionVisitor(Visitor):
             ev_arg1 = self.evaluate(arg1)
             ev_args.append(ev_arg1)
         #call the call-able object
-        return self.call_siml_object(call_obj, ev_args)
+        return self.call_siml_object(call_obj, ev_args, node.loc)
         
-    def call_siml_object(self, call_obj, args):
+    def call_siml_object(self, call_obj, args, loc):
         '''
         Call a call-able object (function, class) from Python code.
         Execute the call-able's code and return the return value.
         
         All arguments must be already evaluated.
         '''
+        #associate argument values with argument names
         #create dictionary {argument_name:argument_value}
         arg_dict = {}
         for arg_def, arg_val in zip(call_obj.arguments, args):
             arg_dict[arg_def.name] = arg_val
             
-        #TODO: use the code for attribute generation and assignment to put 
-        #      the arguments into the local name-space    
         #TODO: write general call-able objects (with __call__ method)
         #TODO: write SIML wrapper for Python function
         #different reactions on the different call-able objects
         #execute a function
         if isinstance(call_obj, InstFunction):
+            #create local scope (for function arguments and local variables)
+            #store local scope so local variables are accessible for code generation
+            local_scope = InterpreterObject()
+            ls_storage = call_obj.get_attribute(DotName('data'))
+            ls_name = make_unique_name(DotName('call'), ls_storage.attributes)
+            ls_storage.create_attribute(ls_name, local_scope)
             #Create new environment for the function. 
-            #Use global scope from function definition.
             new_env = ExecutionEnvironment()
-            new_env.global_scope = call_obj.global_scope
-            new_env.this_scope = call_obj.this_scope
-            new_env.local_scope = InterpreterObject()
+            new_env.global_scope = call_obj.global_scope #global scope from function definition.
+            new_env.this_scope = call_obj.this_scope #object where function is defined
+            new_env.local_scope = local_scope
             #Create local variables for each argument, 
             #and assign the values to them.
             for arg_name, arg_val in arg_dict.iteritems():
-                new_env.local_scope.create_attribute(arg_name, arg_val)
+                new_arg = arg_val.type().construct_instance() #TODO: use code of data statement here 
+                new_arg.type = arg_val.type
+                new_arg.role = arg_val.role
+                new_env.local_scope.create_attribute(arg_name, new_arg)
+                self.interpreter.statement_visitor.assign(new_arg, arg_val, loc)
             #execute the function's code in the new environment.
             self.interpreter.push_environment(new_env)
             try:
@@ -636,6 +636,7 @@ class StatementVisitor(Visitor):
         '''Intened to call functions. Compute expression and forget result'''
         self.expression_visitor.evaluate(node.expression)
     
+    
     @Visitor.when_type(NodeAssignment)
     def visit_NodeAssignment(self, node):
         '''Assign value to a constant object, or emit assignment statement 
@@ -646,32 +647,52 @@ class StatementVisitor(Visitor):
         #get a data attribute to store the value
         lhs_expr = node.arguments[0]
         lhs_attr = self.expression_visitor.evaluate(lhs_expr)
-        #find out if rhs can be stored in lhs (compile time or run time)
-        if lhs_attr.type != rhs_val.type:
-            raise UserException('Type mismatch!', node.loc)
+        #perform the assignment
+        self.assign(lhs_attr, rhs_val, node.loc)
+        
+    def assign(self, target, value, loc):
+        '''
+        Assign value to target.
+        
+        If target and value are constant objects the value is changed
+        else code for an assignment is emitted. (Annotated AST)
+        
+        Arguments:
+            target: InterpreterObject
+                Object where the information should be stored
+            value: InterpreterObject
+                Object that contains the information, that should be stored.
+            loc: TextLocation, None
+                Location in program text for error messages
+        '''
+        #TODO: assignment without defining the variable first (no data statement.)
+        #      This would also be useful for function call
+        #TODO: storing class, function, module, proxy 
+        #TODO: storing user defined types requires a loop
+        #find out if value can be stored in target (compile time or run time)
+        if target.type != value.type:
+            raise UserException('Type mismatch!', loc)
         #if RHS and LHS are constant values try to write LHS into RHS
-        if   (    siml_isinstance(rhs_val, (CLASS_FLOAT, CLASS_STRING))
-              and rhs_val.role == RoleConstant 
-              and siml_isinstance(lhs_attr, (CLASS_FLOAT, CLASS_STRING))
-              and lhs_attr.role == RoleConstant 
+        if   (    siml_isinstance(value, (CLASS_FLOAT, CLASS_STRING))
+              and value.role == RoleConstant 
+              and siml_isinstance(target, (CLASS_FLOAT, CLASS_STRING))
+              and target.role == RoleConstant 
               ):
             #Test is RHS is known and LHS is empty
-            if rhs_val.value is None:
-                raise UserException('Value is used before it was computed!', node.loc)
-            if lhs_attr.value is not None:
-                raise UserException('Trying to compute value twice!', node.loc)
-            #TODO: storing class, function, module, proxy 
-            #TODO: storing user defined types requires a loop
-            lhs_attr.value = rhs_val.value
+            if value.value is None:
+                raise UserException('Value is used before it was computed!', loc)
+            if target.value is not None:
+                raise UserException('Trying to compute value twice!', loc)
+            target.value = value.value
         #emit code for an assignment statement.
         else:
-            #TODO: find out if rhs is an unevaluated expression and lhs a variable
+            #TODO: find out if value is an unevaluated expression and target a variable
             new_assign = NodeAssignment()
-            new_assign.arguments = [lhs_attr, rhs_val]
-            new_assign.loc = node.loc
+            new_assign.arguments = [target, value]
+            new_assign.loc = loc
             self.interpreter.emit_statement(new_assign)
             #
-#            raise UserException('Operation not implemented!', node.loc)
+#            raise UserException('Operation not implemented!', loc)
         return
     
     
@@ -781,7 +802,7 @@ class StatementVisitor(Visitor):
             func_tree = tree_object.get_attribute(func_name)
             #call the main functions and collect code
             self.interpreter.compile_stmt_collect = []
-            self.expression_visitor.call_siml_object(func_tree, [])
+            self.expression_visitor.call_siml_object(func_tree, [], node.loc)
             #create a new main function with the collected code
             func_flat = CLASS_FUNCTION.construct_instance()
             func_flat.name = func_name
@@ -1038,9 +1059,9 @@ class B:
     data b1: Float variable
     data b2: Float variable
     
-    func foo():
-        b1 = b2 ** 2
-        b2 = b1 + 2
+    func foo(x):
+        b1 = b2 * x
+        b2 = b1 + x
     
 class A:
     data a1: Float param
@@ -1056,7 +1077,7 @@ class A:
     func dynamic():
         a1 = a1 + a2
         a2 = a1 * a2
-        b.foo()
+        b.foo(a1)
 
 compile A
 
