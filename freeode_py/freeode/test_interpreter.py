@@ -51,7 +51,7 @@ if doTest:
     print ex
     
     exv = ExpressionVisitor(None)
-    res = exv.evaluate(ex)
+    res = exv.dispatch(ex)
     print 'res = ', res 
     
     
@@ -78,7 +78,7 @@ if doTest:
     
     exv = ExpressionVisitor(None)
     exv.environment = env
-    res = exv.evaluate(ex)
+    res = exv.dispatch(ex)
     print 'res = ', res 
     
     
@@ -127,7 +127,7 @@ print 'end'
     stv.environment.local_scope = mod
     #interpreter main loop
     for stmt in module_code.statements:
-        stv.execute(stmt)
+        stv.dispatch(stmt)
         
     print
     print mod

@@ -162,9 +162,9 @@ class InterpreterObject(Node):
     
     It inherits from Node only to get Ascii-art tree and copying.
     
-    TODO: data statement: 
-          What happens when a data statement is interpreted?
-          What distinguishes an instance from a variable?
+    type_ex: NodeFuncCall
+        Call to class that would create the correct object. All classes are
+        really templates. 
     '''
     def __init__(self):
         Node.__init__(self)
@@ -172,6 +172,9 @@ class InterpreterObject(Node):
         self.attributes = {}
         #weak reference to class of this instance
         self.type = None
+        #Call to class that would create the correct object.
+        #TODO: this should replace type one day
+        self.type_ex = None
         #const, param, variable, ... (Comparable to storage class in C++)
         self.role = None
         #TODO: self.save ??? True/False attribute is saved to disk as simulation result
@@ -221,8 +224,14 @@ class CreateBuiltInType(InterpreterObject):
    
     def construct_instance(self):
         '''Return the new object'''
+        #create object
         new_obj = self.python_class()
+        #set up type information
         new_obj.type = ref(self)
+        new_obj.type_ex = NodeFuncCall()
+        new_obj.type_ex.name = weakref.proxy(self)
+        new_obj.type_ex.arguments = []
+        new_obj.type_ex.keyword_arguments = {}
         return new_obj
         
         
@@ -241,12 +250,6 @@ class InstUserDefinedClass(InterpreterObject):
         #access to global variables would have surprising results
         self.global_scope = None
 
-
-#TODO: InstClassBase     ???
-#        --> SimlClass   ???
-#        --> ClassFloat  ???
-#        --> ClassString ???
-#TODO: InstUserDefinedClass????
         
 class InstModule(InterpreterObject):
     '''Represent one file'''
@@ -393,7 +396,16 @@ class ReturnFromFunctionException(Exception):
 #INTENT_WRITE = 'write'
 
 class ExpressionVisitor(Visitor): 
-    '''Compute the value of an expression'''
+    '''
+    Compute value of an expression.
+    
+    Each vistit_* function evaluates one type of AST-Node recursively. 
+    The functions return the (partial) expression's value. This value is either 
+    an Interpreter object, or a further annotated AST-tree.
+    
+    The right function is selected with the inherited function
+        self.dispatch(...) 
+    '''
     def __init__(self, interpreter):
         Visitor.__init__(self) 
         #the interpreter top level object - necessary for function call
@@ -405,6 +417,14 @@ class ExpressionVisitor(Visitor):
         '''Change part of the symbol table which is currently used.'''
         self.environment = new_env
 
+    @Visitor.when_type(InterpreterObject)
+    def visit_InterpreterObject(self, node):
+        '''
+        Visit a part of the expression that was already evaluated: 
+        Do nothing, return the interpreter object.
+        '''
+        return node
+        
     @Visitor.when_type(NodeFloat)
     def visit_NodeFloat(self, node):
         '''Create floating point number'''
@@ -501,7 +521,7 @@ class ExpressionVisitor(Visitor):
         Execute the callabe's code and return the return value.
         '''
         #find the right call-able object   
-        call_obj = self.evaluate(node.name)
+        call_obj = self.dispatch(node.name)
         if not isinstance(call_obj, (InstFunction, InstUserDefinedClass, 
                                      CreateBuiltInType)):
             raise UserException('Expecting callable object!', node.loc)
@@ -509,7 +529,7 @@ class ExpressionVisitor(Visitor):
         #evaluate all arguments in the callers environment.
         ev_args = []
         for arg1 in node.arguments:
-            ev_arg1 = self.evaluate(arg1)
+            ev_arg1 = self.dispatch(arg1)
             ev_args.append(ev_arg1)
         #call the call-able object
         return self.call_siml_object(call_obj, ev_args, node.loc)
@@ -529,6 +549,7 @@ class ExpressionVisitor(Visitor):
             
         #TODO: write general call-able objects (with __call__ method)
         #TODO: write SIML wrapper for Python function
+        
         #different reactions on the different call-able objects
         #execute a function
         if isinstance(call_obj, InstFunction):
@@ -543,16 +564,20 @@ class ExpressionVisitor(Visitor):
             new_env.global_scope = call_obj.global_scope #global scope from function definition.
             new_env.this_scope = call_obj.this_scope #object where function is defined
             new_env.local_scope = local_scope
+            self.interpreter.push_environment(new_env)
             #Create local variables for each argument, 
             #and assign the values to them.
             for arg_name, arg_val in arg_dict.iteritems():
-                new_arg = arg_val.type().construct_instance() #TODO: use code of data statement here 
-                new_arg.type = arg_val.type
+                #create new object. use exact information if available
+                if arg_val.type_ex is not None:
+                    new_arg = self.visit_NodeFuncCall(arg_val.type_ex)
+                else:
+                    new_arg = self.call_siml_object(arg_val.type(), [], loc) #TODO: remove when possible
                 new_arg.role = arg_val.role
+                #put object into local name-space and assign value to it 
                 new_env.local_scope.create_attribute(arg_name, new_arg)
                 self.interpreter.statement_visitor.assign(new_arg, arg_val, loc)
             #execute the function's code in the new environment.
-            self.interpreter.push_environment(new_env)
             try:
                 self.interpreter.run(call_obj.statements)
             except ReturnFromFunctionException:           #IGNORE:W0704
@@ -562,17 +587,23 @@ class ExpressionVisitor(Visitor):
             return new_env.return_value
         #instantiate a user defined class. 
         elif isinstance(call_obj, InstUserDefinedClass):
+            #TODO: move this into InstUserDefinedClass            
             #create new object
             new_obj = InterpreterObject()
+            #set up type information
             new_obj.type = ref(call_obj)
+            new_obj.type_ex = NodeFuncCall()
+            new_obj.type_ex.name = make_proxy(call_obj)
+            new_obj.type_ex.arguments = args
+            new_obj.type_ex.keyword_arguments = {}
             #Create new environment for object construction. 
             #Use global scope from class definition.
             new_env = ExecutionEnvironment()
             new_env.global_scope = call_obj.global_scope
             new_env.this_scope = None
             new_env.local_scope = new_obj
-            #Create local variables for each argument, 
-            #and assign the values to them.
+            #Put arguments into local scope. No need to create new objects
+            #because everything must be constant
             for arg_name, arg_val in arg_dict.iteritems():
                 new_env.local_scope.create_attribute(arg_name, arg_val)
             #execute the function's code in the new environment.
@@ -590,14 +621,24 @@ class ExpressionVisitor(Visitor):
             return new_obj
     
     
-    def evaluate(self, expression):
-        '''Compute and return value of expression'''
-        return self.dispatch(expression)
+#    def evaluate(self, expression):
+#        '''Compute and return value of expression'''
+#        return self.dispatch(expression)
         
         
         
 class StatementVisitor(Visitor):
-    '''Execute statements'''
+    '''
+    Execute statements
+         
+    Each vistit_* function executes one type of statement (AST-Node). 
+    The functions do not return any value, they change the state of the 
+    interpreter. Usually they create or modify the attributes of the current
+    local scope (self.environment.local_scope).
+    
+    The right function is selected with the inherited function
+        self.dispatch(...) 
+    '''
     def __init__(self, interpreter):
         Visitor.__init__(self) 
         #the interpreter top level object - necessary for return statement
@@ -616,7 +657,7 @@ class StatementVisitor(Visitor):
     def visit_NodePrintStmt(self, node):
         '''Print every expression in the argument list'''
         for expr in node.arguments:
-            result = self.expression_visitor.evaluate(expr)
+            result = self.expression_visitor.dispatch(expr)
             print result.value,
         if node.newline:
             print
@@ -625,7 +666,7 @@ class StatementVisitor(Visitor):
     def visit_NodeReturnStmt(self, node):
         '''Return value from function call'''
         #evaluate the expression of the returned value
-        retval = self.expression_visitor.evaluate(node.arguments[0])
+        retval = self.expression_visitor.dispatch(node.arguments[0])
         self.environment.return_value = retval
         #Forcibly end function execution - 
         #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
@@ -634,7 +675,7 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeExpressionStmt)
     def visit_NodeExpressionStmt(self, node):
         '''Intened to call functions. Compute expression and forget result'''
-        self.expression_visitor.evaluate(node.expression)
+        self.expression_visitor.dispatch(node.expression)
     
     
     @Visitor.when_type(NodeAssignment)
@@ -642,13 +683,11 @@ class StatementVisitor(Visitor):
         '''Assign value to a constant object, or emit assignment statement 
         for code generation'''
         #compute value of expression on right hand side
-        rhs_expr = node.arguments[1]
-        rhs_val = self.expression_visitor.evaluate(rhs_expr)
+        expr_val = self.expression_visitor.dispatch(node.expression)
         #get a data attribute to store the value
-        lhs_expr = node.arguments[0]
-        lhs_attr = self.expression_visitor.evaluate(lhs_expr)
+        target_obj = self.expression_visitor.dispatch(node.target)
         #perform the assignment
-        self.assign(lhs_attr, rhs_val, node.loc)
+        self.assign(target_obj, expr_val, node.loc)
         
     def assign(self, target, value, loc):
         '''
@@ -785,6 +824,7 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeCompileStmt)
     def visit_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
+        #Create data:
         #Create a call to the class object
         class_spec = self.normalize_class_spec(node.class_name)
         #Create tree shaped object
@@ -794,6 +834,7 @@ class StatementVisitor(Visitor):
         flat_object.type = tree_object.type
                 
         #TODO: Make list of main functions of all child objects for automatic calling 
+        #Create code: 
         #call the main functions of tree_object and collect code
         main_func_names = [DotName('init'), DotName('dynamic'), DotName('final')]
         for func_name in main_func_names:
@@ -807,14 +848,23 @@ class StatementVisitor(Visitor):
             func_flat = CLASS_FUNCTION.construct_instance()
             func_flat.name = func_name
             func_flat.statements = self.interpreter.compile_stmt_collect
-#            func_flat.this_scope = make_proxy(flat_object)
-#            func_flat.global_scope = make_proxy(self.environment.global_scope)
             #Put new function it into flat object
             flat_object.create_attribute(func_name, func_flat)
                                              
-        #flatten tree_object (the data)!
+        #flatten tree_object (the data) recursively.
         def flatten(tree_obj, flat_obj, prefix):
-            '''Flatten the tree shaped data recursively'''
+            '''
+            Put all attributes (all data leaf objects) into a new flat 
+            name-space. The attributes are not copied, but just placed under
+            new (long, dotted) names in a new parent object. Therefore the 
+            references to the objects in the AST stay intact.
+            
+            Arguments:
+            tree_obj: InterpreterObject (Tree shaped), source.
+            flat_obj: InterpreterObject (no tree) destination.
+            prefix: DotName
+                Prefix for attribute names, to create the long names.
+            '''
             for name, data in tree_obj.attributes.iteritems():
                 long_name = prefix + name
                 if siml_isinstance(data, (CLASS_FLOAT, CLASS_STRING)):
@@ -834,9 +884,9 @@ class StatementVisitor(Visitor):
         self.interpreter.compile_module.create_attribute(new_name, flat_object)
         
         
-    def execute(self, statement):  
-        '''Execute one statement''' 
-        self.dispatch(statement)
+#    def execute(self, statement):  
+#        '''Execute one statement''' 
+#        self.dispatch(statement)
             
             
 
@@ -909,7 +959,7 @@ class Interpreter(object):
     def run(self, stmt_list):
         '''Interpret a list of statements'''
         for node in stmt_list:
-            self.statement_visitor.execute(node)
+            self.statement_visitor.dispatch(node)
             
             
             
@@ -928,7 +978,7 @@ def do_tests():
         print ex
         
         exv = ExpressionVisitor(None)
-        res = exv.evaluate(ex)
+        res = exv.dispatch(ex)
         print 'res = ', res 
         
         
@@ -956,7 +1006,7 @@ def do_tests():
         
         exv = ExpressionVisitor(None)
         exv.environment = env
-        res = exv.evaluate(ex)
+        res = exv.dispatch(ex)
         print 'res = ', res 
         
         
@@ -1007,7 +1057,7 @@ print 'end'
         # self.import_from_module(BUILTIN_MODULE, ['*'])
         #interpreter main loop
         for stmt in module_code.statements:
-            stv.execute(stmt)
+            stv.dispatch(stmt)
             
         print
         print mod
@@ -1057,26 +1107,20 @@ print 'start'
 
 class B:
     data b1: Float variable
-    data b2: Float variable
     
     func foo(x):
-        b1 = b2 * x
-        b2 = b1 + x
+        b1 = b1 * x
     
 class A:
     data a1: Float param
-    data a2: Float param
     data b: B variable
     
     func init():
         a1 = 1
-        a2 = 2
         b.b1 = 11
-        b.b2 = 12
         
     func dynamic():
-        a1 = a1 + a2
-        a2 = a1 * a2
+        a1 = a1 + 2
         b.foo(a1)
 
 compile A

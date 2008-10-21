@@ -368,7 +368,6 @@ class Parser(object):
         nCurr.name = DotName(tokList)
         return nCurr
 
-
     def _action_expression_stmt(self, s, loc, toks):
         '''
         Create node for a function call. Really any expression can be 
@@ -385,7 +384,6 @@ class Parser(object):
         nCurr.expression = toks[0][0]
         return nCurr
    
-    
     def _actionIfStatement(self, s, loc, toks): #IGNORE:W0613 
         '''
         Create node for if ... : ... else: ... statement.
@@ -417,22 +415,19 @@ class Parser(object):
 #        nCurr.kids.append(elseStmts)
 #        return nCurr
 
-
-    def _actionAssignment(self, s, loc, toks): #IGNORE:W0613
+    def _action_assign_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for assignment: a = 2*b
         BNF:
-        assignment = Group(valAccess + '=' + expression + ';')
+        assign_stmt = Group(expression_ex + '=' - expression)
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
+        tokList = toks.asList()[0] #Group() ads an extra pair of brackets
         nCurr = NodeAssignment()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        #create children and store operator
-        lhsTree = tokList[0]   #child lhs
-        rhsTree = tokList[2]   #child rhs
-        nCurr.arguments = [lhsTree, rhsTree]
+        nCurr.target = tokList[0]   
+        nCurr.expression = tokList[2]   
         return nCurr
 
     def _action_print_stmt(self, s, loc, toks): #IGNORE:W0613
@@ -1027,7 +1022,7 @@ class Parser(object):
                                                                     .setFailAction(ChMsg(prepend='compile statement: '))
 
         #compute expression and assign to value
-        assign_stmt = Group(expression_ex + '=' - expression)       .setParseAction(self._actionAssignment)\
+        assign_stmt = Group(expression_ex + '=' - expression)       .setParseAction(self._action_assign_stmt)\
                                                                     .setFailAction(ChMsg(prepend='assignment statement: '))
 
         #Evaluate an expression (usually call a fuction); the result is discarded.

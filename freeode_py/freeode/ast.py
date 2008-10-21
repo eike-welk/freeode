@@ -482,8 +482,11 @@ class NodeOpInfix2(Node):
             Naming is chosen to unify operators and function call
         type: InterpreterObject
             Type of the results of the operation. For decoorating the AST.
+        type_ex: NodeFuncCall
+            Call to class that would create the correct object. All classes are
+            really templates. 
         role: AttributeRole
-            Role of the results of the operation. For decoorating the AST.
+            Role of the results of the operation. For decorating the AST.
         loc: 
             Location in input string
     '''
@@ -492,6 +495,7 @@ class NodeOpInfix2(Node):
         self.operator = None
         self.arguments = []
         self.type = None
+        self.type_ex = None
         self.role = None
         self.loc = None
 
@@ -542,11 +546,9 @@ class NodeFuncCall(Node):
     def __init__(self):
         super(NodeFuncCall, self).__init__()
         self.name = None
-        self.attr_ref = None
-        self.attr_is_builtin = None
+#        self.attr_ref = None
+#        self.attr_is_builtin = None
         self.arguments = []
-        #TODO: keyword_arguments can't be dict, because dict does not store the 
-        #      position/order in which the items are entered.
         self.keyword_arguments = {}
         self.loc = None
 
@@ -611,26 +613,11 @@ class NodeIfStmt(Node):
 #        'Statements executed when condition is false.')
 
 
-class NodeAssignment(NodeOpInfix2):
+class NodeAssignment(Node):
     '''
-    AST node for an assignment: '='
+    AST node for an assignment: 'a = 5'
     
     Data attributes:
-        operator: 
-            Operator symbol always: '='
-        arguments:  list(Node(), Node())
-            Expression on left and right of operator: 
-            left: arguments[0], right: arguments[1]
-            Naming is chosen to unify operators and function call
-        type:
-            Type of the results of the operation. Not apliceable here. (None)
-            Operation has no result, only side effect.
-        loc: 
-            Location in input string
-            
-    TODO: inherit from Node directly. This is no operator, it is a statement.
-          As the data members should also change, this is now very appropriate.        
-    TODO: change attributes:
         target: Node()
             Expression that describes which object should be changed
         expression: Node()
@@ -640,7 +627,9 @@ class NodeAssignment(NodeOpInfix2):
     '''
     def __init__(self):
         super(NodeAssignment, self).__init__()
-        self.operator = '='
+        self.target = None
+        self.expression = None
+        self.loc = None
 
 
 class NodePrintStmt(Node):
