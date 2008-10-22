@@ -245,15 +245,18 @@ class Node(object):
                 for item in self.__dict__[key]:
                     tree += item._aa_make_tree(nesting_level +1)  
 #                    tree += indent_str + '|- ,\n'
-            #Attribute is list(list(Node)) (cat = 4)
             #Attribute is dict(<any>:Node())
             elif cat == 102:
                 if line != indent_str: 
                     tree += line  + '\n'
                     line = indent_str   
-                tree += indent_str + key + ' = dict :: \n'     
-                for key, item in self.__dict__[key].iteritems():
-                    tree += indent_str + ' ' + str(key) + ':\n'  #print key:
+                tree += indent_str + key + ' = dict :: \n'  
+                dict_of_node = self.__dict__[key] 
+                name_list = dict_of_node.keys()
+                name_list.sort()         
+                for name in name_list:
+                    item = dict_of_node[name]
+                    tree += indent_str + ' ' + str(name) + ':\n'  #print key:
                     tree += item._aa_make_tree(nesting_level +1)  #print node
 #                    tree += indent_str + '|- ,\n'
             else:
@@ -407,43 +410,52 @@ class NodeIdentifier(Node):
     
     Data Attributes:
         name: DotName()
-            Name of attribute (DotName('a'), DotName('proc.model1.a'))
-        target_name : 
-            name in the target language (string, DotName)
-            Necessary? should be in node data (symbol table). See self.attr_ref
-        attr_ref: 
-            Reference to the attribute (definition, into symbol table) 
-            which is accessed.
-        attr_is_builtin:
-            True if identifier encodes access to variable of builtin type. 
-            Usefull for flattening. 
-        type:
-            Type of the results of the operation. For decoorating the AST.
+            Name of attribute: (DotName('a'); DotName('proc.model1.a'))
         loc: 
             Location in input string
     '''
     def __init__(self):
         super(NodeIdentifier, self).__init__()
         self.name = None
-        #TODO: necessary? should be in node data. See self.attr_ref
-        self.target_name = None 
-        self.attr_ref = None
-        self.attr_is_builtin = None #TODO: necessary? 
-        self.type = None
         self.loc = None
 
 
 class NodeAttrAccess(Node):
     '''
-    AST node for dot operator. 
-        type:
-            Type of the results of the operation. For decoorating the AST.
+    AST node for '.' (attribute access) operator. 
+    Attributes:
+    operator: '.' 
+        For uniform handling with other operators
+    arguments: list(Node, NodeIdentifier)
+        The two operands of the '.' (attribute access) operator.
+        self.arguments[0]: LHS: any expression that returns an InterpreterObject
+        self.arguments[1]: RHS: NodeIdentifier
+    loc: 
+        Location in input string
     '''
     def __init__(self):
         super(NodeAttrAccess, self).__init__()
         self.operator = '.'
         self.arguments = []
-        self.type = None
+        self.loc = None        
+
+
+class NodeDollarPrefix(Node):
+    '''
+    AST node for '$' (time derivation) operator.
+    Attributes:
+    operator: '$'  
+        For uniform handling with other operators
+    arguments: list(NodeIdentifier); list(InterpreterObject);
+        self.arguments[0]: RHS: NodeIdentifier:
+        State variable whose derivative should be returned
+    loc: 
+        Location in input string
+   '''
+    def __init__(self):
+        super(NodeDollarPrefix, self).__init__()
+        self.operator = '$'
+        self.arguments = []
         self.loc = None        
 
 
@@ -481,10 +493,10 @@ class NodeOpInfix2(Node):
             left: arguments[0], right: arguments[1]
             Naming is chosen to unify operators and function call
         type: InterpreterObject
-            Type of the results of the operation. For decoorating the AST.
+            Type of the results of the operation. For decorating the AST.
         type_ex: NodeFuncCall
             Call to class that would create the correct object. All classes are
-            really templates. 
+            really templates. For decorating the AST. 
         role: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: 
@@ -510,8 +522,13 @@ class NodeOpPrefix1(Node):
         arguments:  list(Node())
             Expression on right side of operator
             Naming is chosen to unify operators and function call
-        type:
-            Type of the results of the operation. For decoorating the AST.
+        type: InterpreterObject
+            Type of the results of the operation. For decorating the AST.
+        type_ex: NodeFuncCall
+            Call to class that would create the correct object. All classes are
+            really templates. For decorating the AST. 
+        role: AttributeRole
+            Role of the results of the operation. For decorating the AST.
         loc: 
             Location in input string
   '''
@@ -520,6 +537,8 @@ class NodeOpPrefix1(Node):
         self.operator = None
         self.arguments = []
         self.type = None
+        self.type_ex = None
+        self.role = None
         self.loc = None
 
 
@@ -533,23 +552,28 @@ class NodeFuncCall(Node):
     Data attributes:
         name: typically NodeIdentifier
             expression that yields the function object
-        attrRef: 
-            Reference to the function (definition) which is accessed.
-            Name choosen to ease unification with NodeIdentifier.
         arguments: 
             List of positional arguments
         keyword_arguments: 
             Dictionary of keyword arguments
-        loc: 
+        type: InterpreterObject
+            Type of the results of the operation. For decorating the AST.
+        type_ex: NodeFuncCall
+            Call to class that would create the correct object. All classes are
+            really templates. For decorating the AST.
+        role: AttributeRole
+            Role of the results of the operation. For decorating the AST.
+       loc: 
             Location in input string
     '''
     def __init__(self):
         super(NodeFuncCall, self).__init__()
         self.name = None
-#        self.attr_ref = None
-#        self.attr_is_builtin = None
         self.arguments = []
         self.keyword_arguments = {}
+        self.type = None
+        self.type_ex = None
+        self.role = None
         self.loc = None
 
 
@@ -780,9 +804,9 @@ class AttributeRole(object):
     shaped relationship between the roles.
     '''
     pass
-class RoleCompiledObject(AttributeRole):
-    '''Mark objects that are compiled. TODO: seems to be no good solution.'''
-    pass
+#class RoleCompiledObject(AttributeRole):
+#    '''Mark objects that are compiled. TODO: seems to be no good solution.'''
+#    pass
 class RoleConstant(AttributeRole):
     '''The attribute is a constant; it can only be changed at compile time.'''
 #    userStr = 'const'
@@ -863,7 +887,7 @@ class NodeCompileStmt(NodeDataDef):
     '''
     def __init__(self):
         NodeDataDef.__init__(self)
-        self.role = RoleCompiledObject
+#        self.role = RoleCompiledObject
 
 
 class NodeFuncArg(Node):

@@ -82,6 +82,34 @@ if doTest:
     print 'res = ', res 
     
     
+    #Test expression evaluation (returning of partially evaluated expression when accessing variables)-------------------
+    doTest = True
+#    doTest = False
+    if doTest:
+        print 'Test expression evaluation (returning of partially evaluated expression when accessing variables) ...................................'
+        ps = simlparser.Parser()
+        ex = ps.parseExpressionStr('a + 2*2')
+#        ex = ps.parseExpressionStr('"a"+"b"')
+        print ex
+        
+        #create module where name lives
+        mod = InstModule()
+        #create attribute
+        val_2 = CLASS_FLOAT.construct_instance()
+        val_2.value = None
+        val_2.role = RoleVariable
+        mod.create_attribute(DotName('a'), val_2)
+        
+        env = ExecutionEnvironment()
+        env.global_scope = mod
+        print mod
+        
+        exv = ExpressionVisitor(None)
+        exv.environment = env
+        res = exv.dispatch(ex)
+        print 'res = ', res 
+    
+    
 #--------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
 doTest = True
 #    doTest = False
@@ -232,12 +260,132 @@ print 'a.a2 = ', a.a2
 
 print 'end'
 '''
-#-------- Work ----------------------------------------s------------------------
+
     #create the interpreter
     intp = Interpreter()
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
     print intp.modules['test']
+  
+      
+#---------------- Test interpreter object: emit code simple ----------------------------------------
+    doTest = True
+#    doTest = False
+    if doTest:
+        print 'Test interpreter object: emit code simple ...............................................................'
+        prog_text = \
+'''
+print 'start'
+
+
+data a: Float const
+data b: Float variable
+data c: Float variable
+a = 2*2 #constant no statement emitted
+b = 2*a #compute 2*a at compile time
+c = 2*b #emit everything
+print 'a = ', a
+print 'end'
+'''
+
+        #create the interpreter
+        intp = Interpreter()
+        #enable collection of statements for compilation
+        intp.compile_stmt_collect = []
+        #interpret the program
+        intp.interpret_module_string(prog_text, None, 'test')
+      
+        print '--------------- main module ----------------------------------'
+        print intp.modules['test']
+        #put collected statements into Node for pretty printing
+        n = Node(stmts=intp.compile_stmt_collect)
+        print '--------------- collected statements ----------------------------------'
+        print n
+        
+      
+    #------------- Test interpreter object: compile statement ...............................................................
+    doTest = True
+#    doTest = False
+    if doTest:
+        print 'Test interpreter object: compile statement ...............................................................'
+        prog_text = \
+'''
+print 'start'
+
+class B:
+    data b1: Float variable
+    
+    func foo(x):
+        b1 = b1 * x
+    
+class A:
+    data a1: Float param
+    data b: B variable
+    
+    func init():
+        a1 = 1
+        b.b1 = 11
+        
+    func dynamic():
+        a1 = a1 + 2
+        b.foo(a1)
+
+compile A
+
+print 'end'
+'''
+
+        #create the interpreter
+        intp = Interpreter()
+        intp.interpret_module_string(prog_text, None, 'test')
+      
+        print
+        print intp.modules['test']
+        print intp.compile_module
+      
+      
+    #------------------------- Test interpreter object: "$" operator ...............................................
+    doTest = True
+#    doTest = False
+    if doTest:
+        print 'Test interpreter object: "$" operator ...............................................................'
+        prog_text = \
+'''
+print 'start'
+
+class B:
+    data b1: Float variable
+    
+    func foo(x):
+        $b1 = b1 * x
+    
+class A:
+    data a1: Float param
+    data b: B variable
+    
+    func init():
+        a1 = 1
+        b.b1 = 11
+        
+    func dynamic():
+        a1 = a1 + 2
+        b.foo(a1)
+
+compile A
+
+print 'end'
+'''
+
+        #create the interpreter
+        intp = Interpreter()
+        intp.interpret_module_string(prog_text, None, 'test')
+      
+        print
+        print intp.modules['test']
+        print intp.compile_module
+      
+      
+
   
       

@@ -289,17 +289,25 @@ class Parser(object):
     def _action_op_prefix(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for math prefix operators: -
-        tokList has the following structure:
+        tok_list has the following structure:
         [<operator>, <expression>]
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #Group() ads an extra pair of brackets
-        nCurr = NodeOpPrefix1()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.operator = tokList[0]  #Store operator
-        nCurr.arguments = [tokList[1]] #Store expression 
-        return nCurr
+        tok_list = toks.asList()[0] #Group() ads an extra pair of brackets
+        #collect the relevant data 
+        operator = tok_list[0]       #operator
+        expr_rhs = tok_list[1]        #RHS expression
+        #create correct node type
+        if operator == '$':
+            node = NodeDollarPrefix()
+        else:
+            node = NodeOpPrefix1()
+        #put data into node
+        node.loc = self.createTextLocation(loc) #Store position
+        node.operator = operator
+        node.arguments = [expr_rhs] 
+        return node
 
     def _action_op_infix_left(self, s, loc, toks): #IGNORE:W0613
         '''

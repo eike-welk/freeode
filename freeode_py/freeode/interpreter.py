@@ -166,8 +166,11 @@ class InterpreterObject(Node):
         Call to class that would create the correct object. All classes are
         really templates. 
     '''
+    aa_top = ['name', 'type', 'type_ex']
     def __init__(self):
         Node.__init__(self)
+        #Reference to object one level up in the tree
+        self.parent = None
         #The symbol table
         self.attributes = {}
         #weak reference to class of this instance
@@ -188,6 +191,7 @@ class InterpreterObject(Node):
         if name in self.attributes:
             raise DuplicateAttributeError(attr_name=name)
         self.attributes[name] = newAttr
+        newAttr.parent = weakref.ref(self)
         
     def get_attribute(self, name):
         '''Return attribute object'''
@@ -295,6 +299,7 @@ class InstFloat(InterpreterObject):
         InterpreterObject.__init__(self)
         self.type = None
         self.value = None
+        self.time_derivative = None
 #the single object that should be used to create all floats
 CLASS_FLOAT = CreateBuiltInType('Float', InstFloat)
 
@@ -416,13 +421,34 @@ class ExpressionVisitor(Visitor):
     def set_environment(self, new_env):
         '''Change part of the symbol table which is currently used.'''
         self.environment = new_env
-
+        
+        
+    def make_derivative(self, variable):    
+        '''Create time derivative of given variable. 
+        Put it into the variable's parent.'''
+        #mark attribute as state variable
+        variable.role = RoleStateVariable
+        #create the associated derived variable
+        deri_var = self.dispatch(variable.type_ex)
+        deri_var.role = RoleAlgebraicVariable
+        #find state variable's name in parent
+        for var_name, var in variable.parent().attributes.iteritems():
+            if var is variable: 
+                break
+        else:
+            raise Exception('Broken parent reference! "variable" is not '
+                            'in "variable.parent().attributes".')
+        #put time derivative in parent, with nice name
+        deri_name = DotName(var_name[0] + '$time')         #IGNORE:W0631
+        variable.parent().create_attribute(deri_name, deri_var)
+        #remember time derivative also in state variable
+        variable.time_derivative = weakref.ref(deri_var)
+   
+    
     @Visitor.when_type(InterpreterObject)
     def visit_InterpreterObject(self, node):
-        '''
-        Visit a part of the expression that was already evaluated: 
-        Do nothing, return the interpreter object.
-        '''
+        '''Visit a part of the expression that was already evaluated: 
+        Do nothing, return the interpreter object.'''
         return node
         
     @Visitor.when_type(NodeFloat)
@@ -452,8 +478,8 @@ class ExpressionVisitor(Visitor):
         return attr
     
     @Visitor.when_type(NodeAttrAccess)
-    def visit_NodeAttrAccess(self, node): #, intent=INTENT_READ):
-        '''Evaluate attribute access ('.') operator'''
+    def visit_NodeAttrAccess(self, node):
+        '''Evaluate attribute access; ('.') operator'''
         #evaluate the object on the left hand side
         inst_lhs = self.dispatch(node.arguments[0])
         #the object on the right hand side must be an identifier
@@ -465,6 +491,22 @@ class ExpressionVisitor(Visitor):
         attr = inst_lhs.get_attribute(id_rhs.name)
         return attr        
         
+    @Visitor.when_type(NodeDollarPrefix)
+    def visit_NodeDollarPrefix(self, node): 
+        '''Return time derivative of state variable. 
+        Create this special attribute if necessary'''
+        #evaluate expression on RHS of operator
+        variable = self.dispatch(node.arguments[0])
+        #Precondition: $ acts upon a variable
+        if not (siml_isinstance(variable, CLASS_FLOAT) and 
+                issubclass(variable.role, RoleDataCanVaryAtRuntime)):
+            raise UserException('Expecting variable after "$" operator.', 
+                                node.loc)
+        if variable.role is not RoleStateVariable:
+            self.make_derivative(variable)
+        #return the associated derived variable
+        return variable.time_derivative()
+
     @Visitor.when_type(NodeOpInfix2)
     def visit_NodeOpInfix2(self, node):
         '''Evaluate binary operator'''
@@ -813,12 +855,14 @@ class StatementVisitor(Visitor):
         class_spec = self.normalize_class_spec(node.class_name)
         #Create the new object - evaluate call to class object
         new_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
-    
-        #Set options
-        new_object.role = node.role
         #store new object in local scope
         new_name = node.name
-        self.environment.local_scope.create_attribute(new_name, new_object)
+        self.environment.local_scope.create_attribute(new_name, new_object)   
+        #Set options
+        new_object.role = node.role
+        #create associated time derivative if the object is a state variable
+        if new_object.role is RoleStateVariable:
+            self.expression_visitor.make_derivative(new_object)
         
         
     @Visitor.when_type(NodeCompileStmt)
@@ -986,7 +1030,7 @@ def do_tests():
     doTest = True
 #    doTest = False
     if doTest:
-        print 'Test expression evaluation (access to variables) ...................................'
+        print 'Test expression evaluation (returning of partially evaluated expression when accessing variables) ...................................'
         ps = simlparser.Parser()
         ex = ps.parseExpressionStr('a + 2*2')
 #        ex = ps.parseExpressionStr('"a"+"b"')
@@ -1061,6 +1105,7 @@ print 'end'
             
         print
         print mod
+  
       
 #---------------- Test interpreter object: emit code simple ----------------------------------------
     doTest = True
@@ -1109,7 +1154,7 @@ class B:
     data b1: Float variable
     
     func foo(x):
-        b1 = b1 * x
+        $b1 = b1 * x
     
 class A:
     data a1: Float param
