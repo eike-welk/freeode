@@ -418,15 +418,23 @@ class NodeParentheses(Node):
         arguments: list(Node())
             Mathematical expression between the parentheses. 
             Naming is chosen to unify operators and function call
-        type:
-            Type of the results of the operation. For decoorating the AST.
-        loc: 
+        type: InterpreterObject
+            Type of the results of the operation. For decorating the AST.
+        type_ex: NodeFuncCall
+            Call to class that would create the correct object. All classes are
+            really templates. For decorating the AST. 
+        role: AttributeRole
+            Role of the results of the operation. For decorating the AST.
+        loc: TextLocation; None
             Location in input string
     '''
     def __init__(self):
         super(NodeParentheses, self).__init__()
         self.arguments = []
         self.type = None
+        self.type = None
+        self.type_ex = None
+        self.role = None
         self.loc = None
 
 
@@ -447,7 +455,7 @@ class NodeOpInfix2(Node):
             really templates. For decorating the AST. 
         role: AttributeRole
             Role of the results of the operation. For decorating the AST.
-        loc: 
+        loc: TextLocation; None
             Location in input string
     '''
     def __init__(self):
@@ -721,26 +729,37 @@ class NodeImportStmt(Node):
         self.attrsToImport = [] if attrsToImport is None else attrsToImport
 
 
-#TODO: remove
 class NodeStmtList(Node):
     '''
     AST Node for list of statements
-    Each child is a statement.
+    
+    Attributes:
+    statements: list(Node())
+        The list of statements.
+    loc: TextLocation; None
+        Location in input string
     '''
     def __init__(self):
         super(NodeStmtList, self).__init__()
         self.statements = []
+        self.loc = None
 
-
-class NodeDataDefList(NodeStmtList):
-    '''
-    AST Node for list of atribute definitions.
-    Each child is an attribute definition statement.
-    Used to identify these lists so they can be flattened with a pretty
-    simple algogithm.
-    '''
-    def __init__(self):
-        super(NodeDataDefList, self).__init__()
+##TODO: remove? NodeStmtList should do the same now
+#class NodeDataDefList(NodeStmtList):
+#    '''
+#    AST Node for list of atribute definitions.
+#    Each child is an attribute definition statement.
+#    Used to identify these lists so they can be flattened with a pretty
+#    simple algogithm.
+#    
+#    Attributes:
+#    statements: list(Node())
+#        The list of statements.
+#    loc: TextLocation; None
+#        Location in input string
+#    '''
+#    def __init__(self):
+#        super(NodeDataDefList, self).__init__()
 
 
 class AttributeRole(object):

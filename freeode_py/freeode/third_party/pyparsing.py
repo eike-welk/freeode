@@ -3371,7 +3371,7 @@ opAssoc = _Constants()
 opAssoc.LEFT = object()
 opAssoc.RIGHT = object()
 
-def operatorPrecedence( baseExpr, opList ):
+def operatorPrecedence( baseExpr, opList, handleBrackets=True ):
     """Helper method for constructing grammars of expressions made up of
        operators working in a precedence hierarchy.  Operators may be unary or
        binary, left- or right-associative.  Parse actions can also be attached
@@ -3394,9 +3394,15 @@ def operatorPrecedence( baseExpr, opList ):
            - parseAction is the parse action to be associated with
               expressions matching this operator expression (the
               parse action tuple member may be omitted)
+        - handleBrackets - if True the parser knows about brackets and uses them
+            to group sub-expressions. if False the parser does not know about 
+            brackets. 
     """
     ret = Forward()
-    lastExpr = baseExpr | ( Suppress('(') + ret + Suppress(')') )
+    if handleBrackets:
+        lastExpr = baseExpr | ( Suppress('(') + ret + Suppress(')') )
+    else:
+        lastExpr = baseExpr         
     for i,operDef in enumerate(opList):
         opExpr,arity,rightLeftAssoc,pa = (operDef + (None,))[:4]
         if arity == 3:

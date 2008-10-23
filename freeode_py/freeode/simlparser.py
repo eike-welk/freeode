@@ -272,7 +272,7 @@ class Parser(object):
     def _action_parentheses_pair(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for a pair of parentheses that enclose an expression: (...)
-        tokList has the following structure:
+        tok_list has the following structure:
         ['(', <expression>, ')']
 
         The information about parentheses is necessary to be able to output
@@ -280,11 +280,11 @@ class Parser(object):
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeParentheses()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.arguments = [tokList[1]] #store child expression
-        return nCurr
+        tok_list = toks.asList()
+        node = NodeParentheses()
+        node.loc = self.createTextLocation(loc) #Store position
+        node.arguments = [tok_list[0]] #store child expression
+        return node
 
     def _action_op_prefix(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -576,21 +576,22 @@ class Parser(object):
         return nCurr
     
 
-#    def _actionStatementList(self, s, loc, toks): #IGNORE:W0613
-#        '''
-#        Create node for list of statements: a=1; b=2; ...
-#        BNF:
-#        statementList << Group(OneOrMore(statement))
-#        '''
-#        if Parser.noTreeModification:
-#            return None #No parse result modifications for debugging
-#        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-#        nCurr = NodeStmtList()
-#        nCurr.loc = self.createTextLocation(loc) #Store position
-#        #create children - each child is a statement
-#        for tok in tokList:
-#            nCurr.kids.append(tok)
-#        return nCurr
+    def _action_stmt_list(self, s, loc, toks): #IGNORE:W0613
+        '''
+        Create node for list of statements: a=1; b=2; ...
+        BNF:
+        stmt_list = Group(delimitedList(Group(simple_stmt), ';') 
+                             + Optional(Suppress(";")) )                  
+        '''
+        if Parser.noTreeModification:
+            return None #No parse result modifications for debugging
+        tok_list = toks.asList()[0] #Group() ads an extra pair of brackets
+        node = NodeStmtList()
+        node.loc = self.createTextLocation(loc) #Store position
+        #store function body; take each statement out of its sublist
+        for sublist in tok_list:
+            node.statements.append(sublist[0])
+        return node
 
 
     def _action_data_def(self, s, loc, toks): #IGNORE:W0613
@@ -616,7 +617,7 @@ class Parser(object):
         toks = toks[0]             #an extra pair of brackets
         #multiple attributes can be defined in a single statement
         #Create a node for each of them and put them into a special statement list
-        attrDefList = NodeDataDefList()
+        attrDefList = NodeStmtList()
         attrDefList.loc = self.createTextLocation(loc)
         nameList = toks.attr_name_list.asList()
         for name in nameList:
@@ -888,7 +889,6 @@ class Parser(object):
 #------------------ Identifiers .................................................................
 
         #Built in variables, handled specially at attribute access.
-        #kw('time'); kw('this')
         Parser.builtInVars = set(['time', 'this', 'diff', 'Unit'])
         #identifiers
         identifierBase = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
@@ -909,7 +909,7 @@ class Parser(object):
         #Atoms are the most basic elements of expressions.
         #Brackets or braces are also categorized syntactically as atoms.
         #TODO: future extension: enclosures can also create tuples
-        enclosure = S('(') + expression + S(')')                    .setParseAction(self._action_parentheses_pair)
+        enclosure = (S('(') + expression + S(')'))                  .setParseAction(self._action_parentheses_pair)
         atom = identifier | literal | enclosure
       
         #Function/method call: everything within the round brackets is parsed here;
@@ -944,7 +944,7 @@ class Parser(object):
              (L('$'),       1, opAssoc.RIGHT,            self._action_op_prefix), #time differential
              (call,         1, opAssoc.LEFT,             self._action_func_call), #function/method call: f(23)
              (slicing,      1, opAssoc.LEFT,             self._action_slicing), #slicing/subscription: a[23]
-             ])                                                     .setName('expression_ex')
+             ], handleBrackets=False)                               .setName('expression_ex')
 
         #Power and unary (sign) operators are intertwined, to get correct operator precedence:
         #   -a**-b == -(a ** (-b))
@@ -966,7 +966,7 @@ class Parser(object):
              (kw('not'),    1, opAssoc.RIGHT,            self._action_op_prefix),
              (kw('and'),    2, opAssoc.LEFT,             self._action_op_infix_left),
              (kw('or'),     2, opAssoc.LEFT,             self._action_op_infix_left),
-             ])                                                     .setName('expression')
+             ], handleBrackets=False)                               .setName('expression')
 
 #------------------- STATEMEMTS -------------------------------------------------------------------------*
 #------------------- Simple statements ..................................................................
@@ -1120,13 +1120,15 @@ class Parser(object):
         # See: http://docs.python.org/ref/compound.html
         #list of simple statements, separated by semicolon: a=1; b=2; print a, b
         stmt_list = Group(delimitedList(Group(simple_stmt), ';') 
-                     + Optional(Suppress(";")) )                    #.setParseAction(self._actionStatementList)
+                     + Optional(Suppress(";")) )          
+        #necessary for statement list (stmt_list) inside of block (stmt_block)        
+        stmt_list_1 = stmt_list.copy()                              .setParseAction(self._action_stmt_list)
         #Statement: one line of code, or a compound (if, class, func) statement
         statement = (  simple_stmt + newline 
-                     | stmt_list + newline 
+                     | stmt_list_1 + newline 
                      | compound_stmt         )
         #And indented block of statements
-        stmt_block = indentedBlock(statement, self.indentStack)     #.setParseAction(self._actionStatementList)
+        stmt_block = indentedBlock(statement, self.indentStack)     #.setParseAction(self._action_stmt_list)
         #Body of class or function; the dependent code of 'if'
         # Statement list and indented block of statements lead to the same AST
         suite << ( stmt_list + newline | newline + stmt_block )     #IGNORE:W0104                                           
@@ -1230,88 +1232,61 @@ def doTests():
 #------------ testProg1 -----------------------
     testProg1 = (
 '''
-class Test(Model):
-{
-    data V, h: Real;
-    data A_bott, A_o, mu, q, g: Real param;
+class Test:
+    data V, h: Float
+    data A_bott, A_o, mu, q, g: Float param
 
     func dynamic():
-    {
-        h = V/A_bott;
-        $V = q - mu*A_o*sqrt(2*g*h);
-        print 'h: ', h,;
-    }
+        h = V/A_bott
+        $V = q - mu*A_o*sqrt(2*g*h)
+        print 'h: ', h,
 
     func init():
-    {
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
-        q = 0.05;
-    }
-}
-
-class RunTest(Process):
-{
-    data g: Real param;
-    data test: Test;
+        q = 0.05
+ 
+ 
+class RunTest:
+    data g: Float param
+    data test: Test
 
     func dynamic():
-    {
-        test.dynamic();
-    }
+        test.dynamic()
 
     func init():
-    {
-        g = 9.81;
-        test.init();
-        solutionParameters.simulationTime = 100;
-        solutionParameters.reportingInterval = 1;
-    }
+        g = 9.81
+        test.init()
+#        solutionParameters.simulationTime = 100
+#        solutionParameters.reportingInterval = 1
 
     func final():
-    {
-        #store;
-        graph test.V, test.h;
-        print 'Simulation finished successfully.';
-    }
-}
+#        graph test.V, test.h
+        print 'Simulation finished successfully.'
+        
 
-compile RunTest;
-compile run1: RunTest;
+compile RunTest
 ''' )
 
 #------------ testProg2 -----------------------
     testProg2 = (
 '''
-class RunTest(Process):
-{
-    data test: Real;
-    data a,b: Real const = sin(3*pi);
-
-    func foo(a:real, b:Real=2):
-    {
-        foo.bar(2, x );
-        a=foo.bar(2)+time;
-        return 2;
-        pragma no_flatten;
-        foreign_code python replace_call
-        ::{{ sin(x) }}:: ;
-    }
-}
+#data a,b: Float const
+a = 2*(3+4)
 ''')
 
     #test the parser ----------------------------------------------------------------------
     do_test = True
-    do_test = False
+#    do_test = False
     if do_test:
         parser = Parser()
-        Parser.noTreeModification = 1
+#        Parser.noTreeModification = 1
 
         print 'keywords:'
         print parser.keywords
 
-        print parser.parseModuleStr(testProg1)
-        #print parser.parseModuleStr(testProg2)
+#        print parser.parseModuleStr(testProg1)
+        print parser.parseModuleStr(testProg2)
 
     do_test = True
     do_test = False
@@ -1336,9 +1311,9 @@ class RunTest(Process):
 #        print parser.parseExpressionStr('a.b.c(1, d.e)')
 #        print parser.parseExpressionStr('0.123+1.2e3')
 
+
     do_test = True
-#    do_test = False
-# ---------- test -------------
+    do_test = False
     if do_test:
         parser = Parser()
 #        Parser.noTreeModification = 1

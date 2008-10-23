@@ -92,8 +92,6 @@ class ExecutionEnvironment(object):
     '''
     Container for name spaces where symbols are looked up.
     Function findDotName searches the symbol in all name spaces.
-
-    TODO: rename to stack frame?
     '''
     def __init__(self):
         #Name space for global variables. Module where the code was written.
@@ -176,7 +174,6 @@ class InterpreterObject(Node):
         #weak reference to class of this instance
         self.type = None
         #Call to class that would create the correct object.
-        #TODO: this should replace type one day
         self.type_ex = None
         #const, param, variable, ... (Comparable to storage class in C++)
         self.role = None
@@ -195,7 +192,6 @@ class InterpreterObject(Node):
         
     def get_attribute(self, name):
         '''Return attribute object'''
-        #TODO: how are default values handled?
         if name not in self.attributes:
             raise UndefinedAttributeError(attr_name=name)
         attr = self.attributes[name]
@@ -507,9 +503,85 @@ class ExpressionVisitor(Visitor):
         #return the associated derived variable
         return variable.time_derivative()
 
+
+    @Visitor.when_type(NodeParentheses)
+    def visit_NodeParentheses(self, node):
+        '''Evaluate pair of parentheses: return expression between parentheses.'''
+        #compute values of expression
+        val_expr = self.dispatch(node.arguments[0])
+        #TODO: see if operation is feasible (for both compiled and interpreted code)
+        result_type = val_expr.type
+        #TODO: determine result type better
+        #TODO: determine result role
+        #see if operand is constant, number or string
+        #if true compute the operation in the interpreter (at compile time)
+        if   (siml_isinstance(val_expr, (CLASS_FLOAT, CLASS_STRING)) 
+              and val_expr.role == RoleConstant                     ):
+            #see if values exist
+            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
+            #      maybe with intent: write / read
+            if val_expr.value is None:
+                raise UserException('Value is used before it was computed!', node.loc)
+            #return the constant
+            return val_expr
+        #generate code to compute the code between the brackets after compiling (at runtime)
+        else:
+            #create unevaluated operator as the return value 
+            new_node = NodeParentheses()
+            new_node.arguments = [val_expr]
+            new_node.type = result_type
+            new_node.loc = node.loc
+            new_node.role = RoleDataCanVaryAtRuntime
+            return new_node
+
+
+    @Visitor.when_type(NodeOpPrefix1)
+    def visit_NodeOpPrefix1(self, node):
+        '''Evaluate unary operator and return result'''
+        #compute values on rhs of operator
+        inst_rhs = self.dispatch(node.arguments[0])
+        #TODO: see if operation is feasible (for both compiled and interpreted code)
+        result_type = inst_rhs.type
+        #TODO: determine result type better
+        #TODO: determine result role
+        #see if operand is constant, number or string
+        #if true compute the operation in the interpreter (at compile time)
+        if   (siml_isinstance(inst_rhs, (CLASS_FLOAT, CLASS_STRING)) 
+              and inst_rhs.role == RoleConstant                     ):
+            #see if values exist
+            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
+            #      maybe with intent: write / read
+            if inst_rhs.value is None:
+                raise UserException('Value is used before it was computed!', node.loc)
+            #Compute the operation
+            #let the Python interpreter perform the operation on the value
+            result = eval(node.operator + ' inst_rhs.value')
+            #Wrap the python result type in the Interpreter's instance types
+            if isinstance(result, float):
+                resultInst = CLASS_FLOAT.construct_instance()
+            else:
+                resultInst = CLASS_STRING.construct_instance()
+            resultInst.value = result
+            resultInst.role = RoleConstant
+            #see if predicted result is identical to real outcome (sanity check)
+            if resultInst.type != result_type:
+                raise UserException('Unexpected result type!', node.loc)
+            return resultInst
+        #generate code to compute the operation after compiling (at runtime)
+        else:
+            #create unevaluated operator as the return value 
+            new_node = NodeOpPrefix1()
+            new_node.operator = node.operator
+            new_node.arguments = [inst_rhs]
+            new_node.type = result_type
+            new_node.loc = node.loc
+            new_node.role = RoleDataCanVaryAtRuntime
+            return new_node
+    
+    
     @Visitor.when_type(NodeOpInfix2)
     def visit_NodeOpInfix2(self, node):
-        '''Evaluate binary operator'''
+        '''Evaluate binary operator and return result'''
         #compute values on rhs and lhs of operator
         inst_lhs = self.dispatch(node.arguments[0])
         inst_rhs = self.dispatch(node.arguments[1])
@@ -519,7 +591,7 @@ class ExpressionVisitor(Visitor):
         result_type = inst_lhs.type
         #TODO: determine result type better
         #TODO: determine result role
-        #see if operators are constant numbers or strings
+        #see if operands are constant numbers or strings
         #if true compute the operation in the interpreter (at compile time)
         if   (    siml_isinstance(inst_lhs, (CLASS_FLOAT, CLASS_STRING))
               and inst_lhs.role == RoleConstant 
@@ -661,11 +733,6 @@ class ExpressionVisitor(Visitor):
         elif isinstance(call_obj, CreateBuiltInType):
             new_obj = call_obj.construct_instance()
             return new_obj
-    
-    
-#    def evaluate(self, expression):
-#        '''Compute and return value of expression'''
-#        return self.dispatch(expression)
         
         
         
@@ -703,6 +770,7 @@ class StatementVisitor(Visitor):
             print result.value,
         if node.newline:
             print
+        #TODO: emit code for print statement when collecting  code
             
     @Visitor.when_type(NodeReturnStmt)
     def visit_NodeReturnStmt(self, node):
@@ -767,13 +835,11 @@ class StatementVisitor(Visitor):
             target.value = value.value
         #emit code for an assignment statement.
         else:
-            #TODO: find out if value is an unevaluated expression and target a variable
+            #TODO: find out if value is an unevaluated expression and target variable at runtime
             new_assign = NodeAssignment()
             new_assign.arguments = [target, value]
             new_assign.loc = loc
             self.interpreter.emit_statement(new_assign)
-            #
-#            raise UserException('Operation not implemented!', loc)
         return
     
     
@@ -805,19 +871,24 @@ class StatementVisitor(Visitor):
     
     @Visitor.when_type(NodeClassDef)
     def visit_NodeClassDef(self, node):
-        '''Define a class - create a class object in local namespace'''
-        #create new class object and put it into the local namespace
+        '''Define a class - create a class object in local name-space'''
+        #create new class object and put it into the local name-space
         new_class = InstUserDefinedClass()
         new_class.name = node.name
         self.environment.local_scope.create_attribute(node.name, new_class)
         #save the current global namespace in the function. This otherwise 
         #access to global variables would have surprising results
         new_class.global_scope = make_proxy(self.environment.global_scope)
-        #TODO: Evaluate all expressions in default arguments and type specifications
         new_class.arguments = node.arguments
         new_class.keyword_arguments = node.keyword_arguments
         #reference the code
         new_class.statements = node.statements
+        
+        
+    @Visitor.when_type(NodeStmtList)
+    def visit_NodeStmtList(self, node):
+        '''Visit node with a list of data definitions. Execute them.'''
+        self.interpreter.run(node.statements)
         
         
     def normalize_class_spec(self, class_spec):
@@ -851,17 +922,21 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeDataDef)
     def visit_NodeDataDef(self, node):
         '''Create object and put it into symbol table'''
-        #Objects are created by calling the class object.
+        #create a call to the class object.
         class_spec = self.normalize_class_spec(node.class_name)
         #Create the new object - evaluate call to class object
         new_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
         #store new object in local scope
         new_name = node.name
         self.environment.local_scope.create_attribute(new_name, new_object)   
+        
         #Set options
         new_object.role = node.role
+        #The default role is variable
+        if new_object.role is None:
+            new_object.role = RoleVariable
         #create associated time derivative if the object is a state variable
-        if new_object.role is RoleStateVariable:
+        elif new_object.role is RoleStateVariable:
             self.expression_visitor.make_derivative(new_object)
         
         
@@ -1097,8 +1172,6 @@ print 'end'
         #set up parsing the main module
         stv.environment.global_scope = mod
         stv.environment.local_scope = mod
-        #TODO: import_from_module(module, name_list)
-        # self.import_from_module(BUILTIN_MODULE, ['*'])
         #interpreter main loop
         for stmt in module_code.statements:
             stv.dispatch(stmt)
@@ -1145,34 +1218,19 @@ print 'end'
     doTest = True
 #    doTest = False
     if doTest:
-        print 'Test interpreter object: compile statement ...............................................................'
+        print 'Test interpreter object: brackets ...............................................................'
         prog_text = \
 '''
 print 'start'
 
-class B:
-    data b1: Float variable
-    
-    func foo(x):
-        $b1 = b1 * x
-    
-class A:
-    data a1: Float param
-    data b: B variable
-    
-    func init():
-        a1 = 1
-        b.b1 = 11
-        
-    func dynamic():
-        a1 = a1 + 2
-        b.foo(a1)
+data a,b: Float const
 
-compile A
+func foo():
+    a = 2 * (1+2)
 
+foo()
 print 'end'
 '''
-#-------- Work ----------------------------------------------------------------
 
         #create the interpreter
         intp = Interpreter()
@@ -1183,49 +1241,61 @@ print 'end'
         print intp.compile_module
       
       
-    #test interpreter object
+    #------------- Test interpreter: complete simple program ..................................................
     doTest = True
-    doTest = False
+#    doTest = False
     if doTest:
-        print 'Test interpreter object: class methods ...............................................................'
+        print 'Test interpreter: complete simple program ...............................................................'
         prog_text = \
 '''
-print 'start'
+class Test:
+    data V, h: Float 
+    data A_bott, A_o, mu, q, g: Float param
 
-func times_3(x):
-    print 'times_2: x=', x
-    return 2*x
-    
-class A:
-    data a1: Float
-    data a2: Float
-    
-    func compute(x):
-        print 'in compute_a2 x=', x
-        a1 = x
-        a2 = x + times_3(a1)
-        return a2
+    func dynamic():
+        h = V/A_bott
+#        $V = q - mu*A_o*sqrt(2*g*h)
+        $V = q + - mu*A_o*(2*g*h)
+#        print 'h: ', h,
+
+    func init():
+        V = 0
+        A_bott = 1; A_o = 0.02; mu = 0.55; 
+        q = 0.05
+ 
+ 
+class RunTest:
+    data g: Float param
+    data test: Test
+
+    func dynamic():
+        test.dynamic()
+
+    func init():
+        g = 9.81
+        test.init()
+#        solutionParameters.simulationTime = 100
+#        solutionParameters.reportingInterval = 1
+
+    func final():
+#        graph test.V, test.h
+        print 'Simulation finished successfully.'
         
-data a: A
-a.compute(3)
-print 'a.a1 = ', a.a1
-print 'a.a2 = ', a.a2
 
-#compile test: A
-
-print 'end'
+compile RunTest
 '''
+#-------- Work ----------------------------------------------------------------
         #create the interpreter
         intp = Interpreter()
         intp.interpret_module_string(prog_text, None, 'test')
       
         print
         print intp.modules['test']
+        print intp.compile_module
       
       
 if __name__ == '__main__':
     # Self-testing code goes here.
-    #TODO: add unit tests
     #TODO: add doctest tests. 
         
     #profile the tests
