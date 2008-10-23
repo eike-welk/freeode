@@ -61,58 +61,6 @@ PROGRAM_VERSION = '0.4.0a1'
 
 
 
-#class FlatNameSpace(NameSpace):
-#    '''A name space where attributes can have multiple dots in their name'''
-#    def __init__(self):
-#        NameSpace.__init__(self)
-#
-#    def setAttr(self, name, newAttr):
-#        '''
-#        Add new attribute to the name space.
-#
-#        Attributes can exist multiple times.
-#
-#        Parameters
-#        name: str, DotName
-#            Name of the new attribute
-#        newAttr: NodeDataDef, NodeClassDef, NodeFuncDef, NodeModule
-#            The new attribute, which is added to the name space.
-#        '''
-#        #Argument type checking and compatibility with DotName
-#        if not isinstance(name, (str, DotName)):
-#            raise Exception('Argument name must be of type str or DotName! type(name): '
-#                            + str(type(name)) + ' str(name): ' + str(name))
-#        name = str(name)
-#        #add attribute to name space - attributes must be unique
-#        if name in self._nameSpaceAttrs:
-#            raise DuplicateAttributeError('Duplicate attribute: ' + name, name)
-#        self._nameSpaceAttrs[name] = newAttr
-#        return
-#
-#    def findDotName(self, dotName, default=None):
-#        '''
-#        Find dot name recursively and return attribute with this name.
-#        '''
-#        dotName = DotName(dotName) #make compatible with str too
-#        attr = self.getAttr(dotName, None)
-#        if attr is not None:
-#            return attr
-#        #maybe partial name is known here.
-#        #Rest may be stored in child name space
-#        nameShort = dotName
-#        nameTail = DotName()
-#        while len(nameShort)>1:
-#            #remove last element
-#            nameTail += nameShort[-1]
-#            nameShort = nameShort[0:-1]
-#            #try to find shortened name; look up rest of name recursively
-#            attr = self.getAttr(nameShort, None)
-#            if attr is not None:
-#                return attr.findDotName(nameTail, default)
-#        return default
-
-
-
 class Node(object):
     '''
     Base class for all elements of the AST.
@@ -773,6 +721,7 @@ class NodeImportStmt(Node):
         self.attrsToImport = [] if attrsToImport is None else attrsToImport
 
 
+#TODO: remove
 class NodeStmtList(Node):
     '''
     AST Node for list of statements
@@ -1294,14 +1243,15 @@ class Visitor(object):
     .....
     .....
 
+    - A designated method is called for each type.
     - Single dispatch
-    - Switching which memberfuncion is used is done based on type and
+    - Switching which method is used is done based on type and
       inheritance
     - Ambigous situations can be avoided with a priority value. Functions with
       high priority values are considered before functions with low priority
       values.
     - The algorithm for matching is 'issubclass'.
-    - Association between type and memberfunction is done with decorators.
+    - Association between type and method is done with decorators.
 
     USAGE:
     ------
@@ -1318,26 +1268,26 @@ class Visitor(object):
     ...         Visitor.__init__(self)
     ...     @Visitor.when_type(NodeClassDef)
     ...     def visitClassDef(self, classDef):
-    ...         print 'seen class def: ', classDef.name
+    ...         print 'seen class def'
     ...     @Visitor.when_type(NodeFuncDef)
     ...     def visitFuncDef(self, funcDef):
-    ...         print 'seen func def: ', funcDef.name
-    ...     def mainLoop(self, tree):
-    ...         for node in tree:
+    ...         print 'seen func def'
+    ...     def mainLoop(self, node_list):
+    ...         for node in node_list:
     ...             self.dispatch(node)
 
-    >>> tr=Node(kids=[])
-    >>> tr.kids.append(NodeClassDef(name='c1'))
-    >>> tr.kids.append(NodeClassDef(name='c2'))
-    >>> tr.kids.append(NodeFuncDef(name='f1'))
-    >>> tr.kids.append(NodeFuncDef(name='f2'))
+    >>> nl = []
+    >>> nl.append(NodeClassDef())
+    >>> nl.append(NodeClassDef())
+    >>> nl.append(NodeFuncDef())
+    >>> nl.append(NodeFuncDef())
     >>> nv = NodeVisitor()
-    >>> nv.mainLoop(tr)
-    seen class def:  c1
-    seen class def:  c2
-    seen func def:  f1
-    seen func def:  f2
-
+    >>> nv.mainLoop(nl)
+    seen class def
+    seen class def
+    seen func def
+    seen func def
+    
     An example with priorities is part of the unit tests:
     TestVisitor.test_priority_2
 
@@ -1942,24 +1892,14 @@ if __name__ == '__main__':
     # Self-testing code goes here.
 
     #perform the doctests
-    def doDoctest():
-        import doctest
-        doctest.testmod()
-    #TODO: fix and reenable Doctest
-    #doDoctest()
+    import doctest
+    doctest.testmod()
 
     #perform the unit tests
     #unittest.main() #exits interpreter
     testSuite = unittest.TestSuite()
-#    testSuite.addTest(unittest.makeSuite(TestAST)) ???
     testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAST))
     testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVisitor))
     testSuite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDotName))
     unittest.TextTestRunner(verbosity=2).run(testSuite)
-
-else:
-    # This will be executed in case the
-    #    source has been imported as a
-    #    module.
-    pass
 
