@@ -432,9 +432,9 @@ class ProcessGenerator(object):
         self.targetName of NodeDataDef and NodeAttrAccess
         '''
         #TODO: prepend variables and parameters with different additional strings?
-#        paramPrefix = 'self.p'
+        param_prefix = 'self.p_'
 #        varPrefix = 'v'
-        py_names = set() #mapping between attribute name and python name: {('a','b'):'v_a_b'}
+        py_names = set() #set of already existing target names.
 
         #loop over all attribute definitions and create an unique python name
         #for each attribute
@@ -443,6 +443,9 @@ class ProcessGenerator(object):
                 continue
             #create underline separated name string
             py_name1 = '_'.join(name)
+            #add prefix to parameters
+            if attr.role is RoleParameter:
+                py_name1 = param_prefix + py_name1
             #see if python name is unique; append number to make it unique
             py_name1 = self.make_unique_str(py_name1, py_names)
             py_names.add(py_name1)

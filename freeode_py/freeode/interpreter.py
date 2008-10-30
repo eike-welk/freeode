@@ -236,19 +236,21 @@ class CreateBuiltInType(InterpreterObject):
         
         
 class InstUserDefinedClass(InterpreterObject):
-    '''Class: generator for instances'''
+    '''Class: generator for instances. Created by class statement.
+    This node creates an instance of an user defined class.'''
     def __init__(self):
         InterpreterObject.__init__(self)
-        #TODO: set meaningful type
-        self.type = None
+        #TODO: set meaningful type, type_ex
         self.role = RoleConstant
         self.name = None
         self.arguments = []
         self.keyword_arguments = []
         self.statements = []
-        #save the current global namespace in the function. This otherwise 
+        #save the current global name-space in the class definition. This otherwise 
         #access to global variables would have surprising results
-        self.global_scope = None
+        self.global_scope = None 
+        #text location where class was defined
+        self.loc = None
 
         
 class InstModule(InterpreterObject):
@@ -779,7 +781,7 @@ class StatementVisitor(Visitor):
         
     @Visitor.when_type(NodePrintStmt)
     def visit_NodePrintStmt(self, node):
-        '''Print every expression in the argument list'''
+        '''Emit print statement and/or print expressions in argument list.'''
         #create new print node
         new_print = NodePrintStmt()
         new_print.newline = node.newline
@@ -903,13 +905,14 @@ class StatementVisitor(Visitor):
         new_class = InstUserDefinedClass()
         new_class.name = node.name
         self.environment.local_scope.create_attribute(node.name, new_class)
-        #save the current global namespace in the function. This otherwise 
+        #save the current global name-space in the class. Otherwise 
         #access to global variables would have surprising results
         new_class.global_scope = make_proxy(self.environment.global_scope)
         new_class.arguments = node.arguments
         new_class.keyword_arguments = node.keyword_arguments
         #reference the code
         new_class.statements = node.statements
+        new_class.loc = node.loc
         
         
     @Visitor.when_type(NodeStmtList)
@@ -979,7 +982,7 @@ class StatementVisitor(Visitor):
         flat_object = CompiledClass()
         flat_object.type = tree_object.type
         #TODO: better solution: find loc of class definition.
-        flat_object.loc = node.loc 
+        flat_object.loc = tree_object.type().loc 
         
         #TODO: Make list of main functions of all child objects for automatic calling 
         #Create code: 
