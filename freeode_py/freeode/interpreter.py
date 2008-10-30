@@ -256,6 +256,7 @@ class InstModule(InterpreterObject):
     def __init__(self):
         InterpreterObject.__init__(self)
         self.name = None
+        self.file_name = None
         self.role = RoleConstant
 #        self.statements = None
 #the single object that should be used to create all Modules
@@ -291,11 +292,13 @@ class InstFloat(InterpreterObject):
     #Example object to test if two operands are compatible
     #and if the operation is feasible
     type_compat_example = 1
+    zero_value = 0
     def __init__(self):
         InterpreterObject.__init__(self)
         self.type = None
         self.value = None
         self.time_derivative = None
+        self.target_name = None
 #the single object that should be used to create all floats
 CLASS_FLOAT = CreateBuiltInType('Float', InstFloat)
 
@@ -304,10 +307,12 @@ class InstString(InterpreterObject):
     '''Character string'''
     #Example object to test if operation is feasible
     type_compat_example = 'aa'
+    zero_value = ''
     def __init__(self):
         InterpreterObject.__init__(self)
         self.type = None
         self.value = None
+        self.target_name = None
 #the single object that should be used to create all strings
 CLASS_STRING = CreateBuiltInType('String', InstString)
   
@@ -392,6 +397,13 @@ class ReturnFromFunctionException(Exception):
     pass
 
 
+class CompiledClass(InterpreterObject):
+    '''The compile statement creates this kind of object.'''
+    def __init__(self):
+        super(CompiledClass, self).__init__()
+        self.loc = None
+        
+    
 ##constants to declare whether variables are read or written
 #INTENT_READ = 'read'
 #INTENT_WRITE = 'write'
@@ -422,8 +434,8 @@ class ExpressionVisitor(Visitor):
     def make_derivative(self, variable):    
         '''Create time derivative of given variable. 
         Put it into the variable's parent.'''
-        #mark attribute as state variable
-        variable.role = RoleStateVariable
+#        #mark attribute as state variable
+#        variable.role = RoleStateVariable
         #create the associated derived variable
         deri_var = self.dispatch(variable.type_ex)
         deri_var.role = RoleAlgebraicVariable
@@ -435,7 +447,8 @@ class ExpressionVisitor(Visitor):
             raise Exception('Broken parent reference! "variable" is not '
                             'in "variable.parent().attributes".')
         #put time derivative in parent, with nice name
-        deri_name = DotName(var_name[0] + '$time')         #IGNORE:W0631
+        deri_name = DotName(var_name[0] + '__dt')         #IGNORE:W0631
+        deri_name = make_unique_name(deri_name, variable.parent().attributes)
         variable.parent().create_attribute(deri_name, deri_var)
         #remember time derivative also in state variable
         variable.time_derivative = weakref.ref(deri_var)
@@ -498,7 +511,9 @@ class ExpressionVisitor(Visitor):
                 issubclass(variable.role, RoleDataCanVaryAtRuntime)):
             raise UserException('Expecting variable after "$" operator.', 
                                 node.loc)
+        #change variable into state variable if necessary
         if variable.role is not RoleStateVariable:
+            variable.role = RoleStateVariable
             self.make_derivative(variable)
         #return the associated derived variable
         return variable.time_derivative()
@@ -837,7 +852,8 @@ class StatementVisitor(Visitor):
         else:
             #TODO: find out if value is an unevaluated expression and target variable at runtime
             new_assign = NodeAssignment()
-            new_assign.arguments = [target, value]
+            new_assign.target = target
+            new_assign.expression = value
             new_assign.loc = loc
             self.interpreter.emit_statement(new_assign)
         return
@@ -949,9 +965,11 @@ class StatementVisitor(Visitor):
         #Create tree shaped object
         tree_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
         #create flat object
-        flat_object = InterpreterObject()
+        flat_object = CompiledClass()
         flat_object.type = tree_object.type
-                
+        #TODO: better solution: find loc of class definition.
+        flat_object.loc = node.loc 
+        
         #TODO: Make list of main functions of all child objects for automatic calling 
         #Create code: 
         #call the main functions of tree_object and collect code
@@ -1044,6 +1062,7 @@ class Interpreter(object):
         #create the new module and import the built in objects
         mod = CLASS_MODULE.construct_instance()
         mod.name = module_name
+        mod.file_name = file_name
         self.modules[module_name] = mod
         mod.attributes.update(self.built_in_lib.attributes)
         #set up new module's symbol table

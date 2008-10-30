@@ -75,7 +75,7 @@ class ILTProcessGenerator(object):
         '''The new process which is currently assembled'''
         self.processAttributes = {}
         '''Attributes of the new process: {('mod1', 'var1'):NodeDataDef}'''
-        self.stateVariables = {}
+        self.state_variables = {}
         '''State variables of the new process; {('mod1', 'var1'):NodeDataDef}'''
         self.atomicClasses = set([('Real',),('Distribution',),('DistributionDomain',)])
         '''Classes that have no internal structure'''
@@ -266,14 +266,14 @@ class ILTProcessGenerator(object):
         '''
         Search for variables with a $ and mark them:
             1.: in their definition set role = RoleStateVariable;
-            2.: put them into self.stateVariables.
+            2.: put them into self.state_variables.
         All other variables are considered algebraic variables and in their
         definition role = RoleAlgebraicVariable.
         Arguments:
             dynamicMethod : method definition that is searched (always the
                             dynamic/run method)
         output:
-            self.stateVariables    : dict: {('a','b'):NodeDataDef(...)}
+            self.state_variables    : dict: {('a','b'):NodeDataDef(...)}
             definition of variable : role = RoleStateVariable if variable is
                                      state variable;
                                      role = RoleAlgebraicVariable otherwise.
@@ -299,7 +299,7 @@ class ILTProcessGenerator(object):
                               str(node.name), node.loc)
             #remember: this is a state variable; in definition and in dict
             stateVarDef.role = RoleStateVariable
-            self.stateVariables[node.name] = stateVarDef
+            self.state_variables[node.name] = stateVarDef
 
 
 
@@ -514,7 +514,7 @@ class ILTProcessGenerator(object):
         #init quick reference dicts
         self.processAttributes = {}
         self.astProcessAttributes = {}
-        self.stateVariables = {}
+        self.state_variables = {}
 
         #add some built in attributes to the AST process
         #this will be gone once inheritance is implemented

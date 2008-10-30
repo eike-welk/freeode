@@ -38,8 +38,9 @@ generates some python classes that perform the simulations.
 from __future__ import division
 
 import cStringIO
-#import freeode.ast #necessary for ast.progVersion
 from freeode.ast import *
+#import freeode.interpreter as interpreter
+from  freeode.interpreter import *
 
 
 __version__ = "$Revision: $"
@@ -101,20 +102,26 @@ class FormulaGenerator(Visitor):
 #        retStr += ')'
 #        return retStr
         
-    @Visitor.when_type(NodeFloat, 1)
-    def _createNum(self, iltFormula):
-        #Number: 123.5
-        return str(float(iltFormula.dat))
+    @Visitor.when_type(InstFloat, 1)
+    def _createNum(self, variable):
+        #Number: 123.5 or variable with type float
+        if variable.role is RoleConstant:
+            return str(float(variable.value))
+        else:
+            return variable.target_name
         
-    @Visitor.when_type(NodeString, 1)
-    def _createString(self, iltFormula):
-        #String: 'hello world'
-        return '\'' + iltFormula.dat + '\''
+    @Visitor.when_type(InstString, 1)
+    def _createString(self, variable):
+        #String: 'hello world' or variable with type str
+        if variable.role is RoleConstant:
+            return '\'' + variable.value + '\''
+        else:
+            return variable.target_name
         
     @Visitor.when_type(NodeParentheses, 1)
     def _createParentheses(self, iltFormula):
         #pair of prentheses: ( ... )
-        return '(' + self.dispatch(iltFormula[0]) + ')'
+        return '(' + self.dispatch(iltFormula.arguments[0]) + ')'
         
     @Visitor.when_type(NodeOpInfix2, 1)
     def _createOpInfix2(self, iltFormula):
@@ -124,15 +131,15 @@ class FormulaGenerator(Visitor):
                   '==':' == ', '!=':' != ',
                   'and':' and ', 'or':' or '}
         opStr = opDict[iltFormula.operator]
-        return (self.dispatch(iltFormula.lhs) + opStr +
-                self.dispatch(iltFormula.rhs))
+        return (self.dispatch(iltFormula.arguments[0]) + opStr +
+                self.dispatch(iltFormula.arguments[1]))
         
     @Visitor.when_type(NodeOpPrefix1, 1)
     def _createOpPrefix1(self, iltFormula):
         #Prefix operator: - not
         opDict = {'-':' -', 'not':' not '}
         opStr = opDict[iltFormula.operator]
-        return opStr + self.dispatch(iltFormula.rhs)
+        return opStr + self.dispatch(iltFormula.arguments[0])
         
     @Visitor.when_type(NodeAttrAccess, 1)
     def _createAttrAccess(self, iltFormula):
@@ -163,42 +170,47 @@ class StatementGenerator(Visitor):
         '''
         super(StatementGenerator, self).__init__()
         #File like object, where the Python program will be stored.
-        self.outPy = outPyFile
+        self.out_py = outPyFile
         #Object that creates a formula from an AST sub-tree
         self.genFormula = FormulaGenerator()
 
 
-    def createStatement(self, iltStmt, indent):
+#    def createStatement(self, iltStmt, indent):
+#        '''
+#        Take ILT sub-tree and convert it into one
+#        or several Python statements.
+#        This is the dispatcher function for the statements.
+#
+#        ARGUMENT:
+#            iltStmt : tree of Node objects
+#            indent  : string of whitespace, put in front of each line
+#        RETURN:
+#            None
+#        OUTPUT:
+#            self.out_py - text is written to object
+#        '''
+#        self.dispatch(iltStmt, indent)
+        
+        
+    def create_statements(self, stmt_list, indent):
         '''
-        Take ILT sub-tree and convert it into one
-        or several Python statements.
-        This is the dispatcher function for the statements.
+        Take list of statement nodes. Convert it into one or several 
+        Python statements.
+        
+        Main loop of statement generator
 
         ARGUMENT:
-            iltStmt : tree of Node objects
-            indent  : string of whitespace, put in front of each line
+        stmt_list: list(Node())
+            The statements
+        indent: str() 
+            String of whitespace characters, put in front of each line
         RETURN:
             None
         OUTPUT:
-            self.outPy - text is written to object
+            self.out_py - text is written to object
         '''
-        self.dispatch(iltStmt, indent)
-        
-        
-    def createFuncBody(self, funcDef, indent):
-        '''
-        Take NodeFuncDef and handle it as a list of statement
-        nodes. Convert it into one or several Python statements.
-
-        ARGUMENT:
-            iltStmt : tree of Node objects
-            indent  : string of whitespace, put in front of each line
-        RETURN:
-            None
-        OUTPUT:
-            self.outPy - text is written to object
-        '''
-        self._createStatementList(funcDef, indent)
+        for node in stmt_list:
+            self.dispatch(node, indent)
 
 
     def createFormula(self, iltFormula):
@@ -218,15 +230,15 @@ class StatementGenerator(Visitor):
     @Visitor.when_type(NodeAssignment, 1)
     def _createAssignment(self, iltStmt, indent):
         #Assignment  ---------------------------------------------------------
-        outPy = self.outPy
-        outPy.write(indent + iltStmt.lhs.targetName + ' = ' +
-                    self.createFormula(iltStmt.rhs) + '\n')
+        outPy = self.out_py
+        outPy.write(indent + iltStmt.target.target_name + ' = ' +
+                    self.createFormula(iltStmt.expression) + '\n')
     
         
     @Visitor.when_type(NodeIfStmt, 1)
     def _createIfStmt(self, iltStmt, indent):
         #if statement --------------------------------------------------------
-        outPy = self.outPy
+        outPy = self.out_py
         ind4 = ' '*4
         outPy.write(indent + 'if '
                            + self.createFormula(iltStmt.condition)
@@ -241,7 +253,7 @@ class StatementGenerator(Visitor):
     @Visitor.when_type(NodePrintStmt, 1)
     def _createPrintStmt(self, iltStmt, indent):
         #print statement -----------------------------------------------------
-        outPy = self.outPy
+        outPy = self.out_py
         line = indent + 'print '
         for expr in iltStmt:
             line += self.createFormula(expr) + ', '
@@ -251,76 +263,75 @@ class StatementGenerator(Visitor):
         outPy.write(line + '\n')
 
 
-    @Visitor.when_type(NodeStoreStmt, 1)
-    def _createStoreStmt(self, iltStmt, indent):
-        #save statement -----------------------------------------------------
-        #One optional argument:
-        #    -the file name: string
-        #generated code is a function call:
-        #    self.save('file_name')
-        outPy = self.outPy
-        if len(iltStmt) > 1:               #Number of arguments: 0,1
-            raise UserException('The save statement can have 1 or no arguments.',
-                                iltStmt.loc)
-        outPy.write(indent + 'self.save(') #write start of statement
-        for expr in iltStmt:               #iterate over arguments (max 1)
-            #child is a string
-            if isinstance(expr, NodeString):
-                filename = self.createFormula(expr)   #write filename
-                outPy.write(filename)
-            #anything else is illegal
-            else:
-                raise UserException('Argument of save statement must be a file name.',
-                                    iltStmt.loc)
-        outPy.write(') \n')                #write end of statement
+#    @Visitor.when_type(NodeStoreStmt, 1)
+#    def _createStoreStmt(self, iltStmt, indent):
+#        #save statement -----------------------------------------------------
+#        #One optional argument:
+#        #    -the file name: string
+#        #generated code is a function call:
+#        #    self.save('file_name')
+#        outPy = self.out_py
+#        if len(iltStmt) > 1:               #Number of arguments: 0,1
+#            raise UserException('The save statement can have 1 or no arguments.',
+#                                iltStmt.loc)
+#        outPy.write(indent + 'self.save(') #write start of statement
+#        for expr in iltStmt:               #iterate over arguments (max 1)
+#            #child is a string
+#            if isinstance(expr, NodeString):
+#                filename = self.createFormula(expr)   #write filename
+#                outPy.write(filename)
+#            #anything else is illegal
+#            else:
+#                raise UserException('Argument of save statement must be a file name.',
+#                                    iltStmt.loc)
+#        outPy.write(') \n')                #write end of statement
+#
+#
+#    @Visitor.when_type(NodeGraphStmt, 1)
+#    def _createGraphStmt(self, iltStmt, indent):
+#        #graph statement -----------------------------------------------------
+#        #Any number of arguments. Legal types are:
+#        #    -Variable for inclusion in graph: attribute access
+#        #    -Graph title: string
+#        #generated code is a function call:
+#        #    self.graph(['t.V', 't.h', 't.qOut0', 't.qOut1', ], 'graph title')
+#        outPy = self.out_py
+#        graphTitle = ''
+#        outPy.write(indent + 'self.graph([') #write start of statement
+#        for expr in iltStmt:                 #iterate over arguments
+#            #Argument is variable name
+#            if   isinstance(expr, NodeAttrAccess):
+#                outPy.write("'%s', " % str(expr.attrName)) #write variable name
+#            #Argument is graph title
+#            elif isinstance(expr, NodeString):
+#                graphTitle = expr.dat        #store graph title
+#            #anything else is illegal
+#            else:
+#                raise UserException('Illegal argument in graph statement.',
+#                                    iltStmt.loc)
+#        outPy.write('], ')                   #end list of var names
+#        #A graph title was found
+#        if graphTitle:
+#            outPy.write("'%s'" % graphTitle) #write write grapt title as 2nd argument
+#        outPy.write(') \n')                  #write end of statement
 
 
-    @Visitor.when_type(NodeGraphStmt, 1)
-    def _createGraphStmt(self, iltStmt, indent):
-        #graph statement -----------------------------------------------------
-        #Any number of arguments. Legal types are:
-        #    -Variable for inclusion in graph: attribute access
-        #    -Graph title: string
-        #generated code is a function call:
-        #    self.graph(['t.V', 't.h', 't.qOut0', 't.qOut1', ], 'graph title')
-        outPy = self.outPy
-        graphTitle = ''
-        outPy.write(indent + 'self.graph([') #write start of statement
-        for expr in iltStmt:                 #iterate over arguments
-            #Argument is variable name
-            if   isinstance(expr, NodeAttrAccess):
-                outPy.write("'%s', " % str(expr.attrName)) #write variable name
-            #Argument is graph title
-            elif isinstance(expr, NodeString):
-                graphTitle = expr.dat        #store graph title
-            #anything else is illegal
-            else:
-                raise UserException('Illegal argument in graph statement.',
-                                    iltStmt.loc)
-        outPy.write('], ')                   #end list of var names
-        #A graph title was found
-        if graphTitle:
-            outPy.write("'%s'" % graphTitle) #write write grapt title as 2nd argument
-        outPy.write(') \n')                  #write end of statement
-
-
-    @Visitor.when_type(NodeStmtList, 1)
-    def _createStatementList(self, stmtList, indent):
-        '''
-        Take NodeStmtList and convert
-        into multiple Python statements.
-
-        arguments:
-            stmtList : Node object that contains statements as children
-            indent   : string of whitespace, put in front of each line
-        output:
-            self.outPy - text is written to object
-        '''
-        if len(stmtList) == 0:
-            self.outPy.write(indent + 'pass \n')
-            return
-        for stmt1 in stmtList:
-            self.dispatch(stmt1, indent)
+#    @Visitor.when_type(NodeStmtList, 1)
+#    def _createStatementList(self, node, indent):
+#        '''
+#        Take NodeStmtList and convert
+#        into multiple Python statements.
+#
+#        arguments:
+#            node : Node object that contains statements as children
+#            indent   : string of whitespace, put in front of each line
+#        output:
+#            self.out_py - text is written to object
+#        '''
+#        if len(node.statements) == 0:
+#            self.out_py.write(indent + 'pass \n')
+#            return
+#        self.create_statements(node.statements, indent)
             
             
     @Visitor.default
@@ -334,138 +345,146 @@ class StatementGenerator(Visitor):
 class ProcessGenerator(object):
     '''create python class that simulates a process'''
 
-    def __init__(self, outPyFile):
+    def __init__(self, buffer):
         '''
         Arguments:
-            outPyFile : File where the Python program will be stored.
+            buffer : File where the Python program will be stored.
         '''
         super(ProcessGenerator, self).__init__()
-
-        self.iltProcess = NodeClassDef() #dummy for code completion
-        '''The input: an IL-tree of the process. It has no external dependencies.'''
-        self.outPy = outPyFile
-        '''File where the Python program will be stored.'''
-        self.processPyName = ''
-        '''Python name of the process'''
+        #The input: an IL-tree of the process. It has no external dependencies.
+        self.ilt_process = CompiledClass()
+        #File where the Python program will be stored.
+        self.out_py = buffer
+        #Python name of the process
+        self.process_py_name = ''
+        #The parameters: dict: {DotName: InterpreterObject]
         self.parameters = {}
-        '''The parameters: dict: {('a','b'):NodeDataDef]'''
-        self.algebraicVariables = {}
-        '''The algebraic variables: dict: {('a','b'):NodeDataDef]'''
-        self.stateVariables = {}
-        '''The state variables: dict: {('a','b'):NodeDataDef]'''
+        #The algebraic variables: dict: {DotName: InterpreterObject]
+        self.algebraic_variables = {}
+        #The state variables: dict: {DotName: InterpreterObject]
+        self.state_variables = {}
+        #generated differential variables: dict: {DotName: InterpreterObject]
+        self.time_differentials = {}
 
 
-    def findAttributes(self):
+    def find_attributes(self):
         '''
         Loop over the attribute definitions and classify the attributes into
         parameters, algebraic variables, state variables.
         Results:
-        self.parameters, self.algebraicVariables, self.stateVariables
+        self.parameters, self.algebraic_variables, self.state_variables
         '''
+        time_differentials = set()
         #create dicts to find and classify attributes fast
-        for attrDef in self.iltProcess:
-            if not isinstance(attrDef, NodeDataDef):
+        for name, attr in self.ilt_process.attributes.iteritems():
+            if not isinstance(attr, (InstFloat, InstString)):
                 continue
-            if attrDef.role == RoleParameter:
-                self.parameters[attrDef.attrName] = attrDef
-            elif attrDef.role == RoleAlgebraicVariable:
-                self.algebraicVariables[attrDef.attrName] = attrDef
-            elif attrDef.role == RoleStateVariable:
-                self.stateVariables[attrDef.attrName] = attrDef
+            if attr.role is RoleParameter:
+                self.parameters[name] = attr
+            elif attr.role is RoleStateVariable:
+                self.state_variables[name] = attr
+                time_differentials.add(attr.time_derivative)
+            elif issubclass(attr.role, RoleDataCanVaryAtRuntime) and attr in time_differentials:
+                self.time_differentials[name] = attr
+            elif issubclass(attr.role, RoleDataCanVaryAtRuntime) and attr not in time_differentials:
+                self.algebraic_variables[name] = attr
             else:
-                raise PyGenException('Unknown attribute definition:\n'+ str(attrDef))
+                raise PyGenException('Unknown attribute definition:\n'+ str(attr))
 
 
+    @staticmethod
+    def make_unique_str(base_string, existing_strings):
+        '''
+        Make a unique string that is not in existing_strings.
+        
+        If base_string is already contained in existing_strings a number is appended 
+        to base_string to make it unique.
+        
+        Arguments:
+        base_string: str 
+            The name that should become unique.
+        existing_strings: container that supports the 'in' operation
+            Container with the existing strings.
+            
+        Returns: string
+            Unique name; base_string with number appended if necessary
+            
+        TODO: unify with make_unique_name(...)!!!
+        '''
+        for number in range(1, 100000):
+            if base_string not in existing_strings:
+                return  base_string
+            #append number to last component of DotName
+            base_string = base_string + str(number)
+        raise Exception('Too many similar names')    
+    
+    
     def createAttrPyNames(self):
         '''
         Create python names for all attributes
         The python names are stored in the data attribute:
         self.targetName of NodeDataDef and NodeAttrAccess
         '''
-        paramPrefix = 'self.p'
-        varPrefix = 'v'
-        pyNames = {} #mapping between attribute name and python name: {('a','b'):'v_a_b'}
+        #TODO: prepend variables and parameters with different additional strings?
+#        paramPrefix = 'self.p'
+#        varPrefix = 'v'
+        py_names = set() #mapping between attribute name and python name: {('a','b'):'v_a_b'}
 
         #loop over all attribute definitions and create an unique python name
         #for each attribute
-        for attrDef in self.iltProcess:
-            if not isinstance(attrDef, NodeDataDef):
+        for name, attr in self.ilt_process.attributes.iteritems():
+            if not isinstance(attr, (InstFloat, InstString)):
                 continue
             #create underline separated name string
-            pyName1 = ''
-            for namePart in attrDef.attrName:
-                pyName1 += '_' + namePart
-            #prepend variables and parameters with differnt additional strings
-            if attrDef.attrName in self.parameters:
-                pyName1 = paramPrefix + pyName1
-            else:
-                pyName1 = varPrefix + pyName1
+            py_name1 = '_'.join(name)
             #see if python name is unique; append number to make it unique
-            num, numStr = 0, ''
-            while pyName1 + numStr in pyNames:
-                num += 1
-                numStr = str(num)
-            pyName1 = pyName1 + numStr
+            py_name1 = self.make_unique_str(py_name1, py_names)
+            py_names.add(py_name1)
             #store python name
-            pyNames[attrDef.attrName] = pyName1
-
-        #loop over all attribute definitions and attribute accesses
-        #and put python name there
-        timeDerivSuffix = '_dt'
-        for node in self.iltProcess.iterDepthFirst():
-            if isinstance(node, NodeDataDef):
-                namePy = pyNames[node.attrName]
-                node.targetName = {tuple():namePy}
-                #variables with derivatives have multiple target names
-                if node.attrName in self.stateVariables:
-                    node.targetName[('time',)] = namePy + timeDerivSuffix
-            elif isinstance(node, NodeAttrAccess):
-                #derivatives get an additional ending
-                if node.deriv == ('time',):
-                    node.targetName = pyNames[node.attrName] + timeDerivSuffix
-                else:
-                    node.targetName = pyNames[node.attrName]
+            attr.target_name = py_name1        
 
 
     def writeClassDefStart(self):
         '''Write first few lines of class definition.'''
-        self.outPy.write('class %s(SimulatorBase): \n' % self.processPyName)
-        self.outPy.write('    \'\'\' \n')
-        self.outPy.write('    Object to simulate process %s \n'
-                         % self.iltProcess.className)
-        self.outPy.write('    Definition in\n    file: \'%s\'\n    line: %s \n'
-                         % (self.iltProcess.loc.fileName(),
-                            self.iltProcess.loc.lineNo()))
-        self.outPy.write('    \'\'\' \n')
-        self.outPy.write('    \n')
+        self.out_py.write('class %s(SimulatorBase): \n' % self.process_py_name)
+        self.out_py.write('    \'\'\' \n')
+        self.out_py.write('    Object to simulate process %s \n'
+                         % self.ilt_process.type().name)
+        self.out_py.write('    Definition in\n    file: \'%s\'\n    line: %s \n'
+                         % (self.ilt_process.loc.fileName(), 
+                            self.ilt_process.loc.lineNo()))
+        self.out_py.write('    \'\'\' \n')
+        self.out_py.write('    \n')
 
 
     def writeConstructor(self):
         '''Generate the __init__ function.'''
-        outPy = self.outPy
+        outPy = self.out_py
         ind8 = ' '*8
         outPy.write('    def __init__(self): \n')
-        outPy.write('        super(%s, self).__init__() \n' % self.processPyName)
-        #outPy.write(ind8 + 'self.variableNameMap = {} \n')
+        outPy.write('        super(%s, self).__init__() \n' % self.process_py_name)
+        #out_py.write(ind8 + 'self.variableNameMap = {} \n')
         #create default file name
-        outPy.write(ind8 + 'self.defaultFileName = \'%s.simres\' \n' % self.processPyName)
+        outPy.write(ind8 + 'self.defaultFileName = \'%s.simres\' \n' % self.process_py_name)
         #create the parameters
         outPy.write(ind8 + '#create all parameters with value 0; ' +
                            'to prevent runtime errors. \n')
         for paramDef in self.parameters.values():
-            outPy.write(ind8 + '%s = 0.0 \n' % paramDef.targetName[tuple()])
+            outPy.write(ind8 + '%s = %s \n' % (paramDef.target_name, paramDef.zero_value))
         outPy.write('\n\n')
 
 
     def writeInitializeMethod(self):
         '''Generate method that initializes variables and parameters'''
-        #search the process' init method
-        for initMethod in self.iltProcess:
-            if isinstance(initMethod, NodeFuncDef) and \
-               initMethod.name == ('init',):
-                break
+        #get the process' init method
+        #get the process' dynamic method
+        method_name = DotName('init')
+        if self.ilt_process.has_attribute(method_name):
+            method = self.ilt_process.get_attribute(method_name)
+        else:
+            return
         #write method definition
-        outPy = self.outPy
+        outPy = self.out_py 
         ind8 = ' '*8
         outPy.write('    def initialize(self,  *args, **kwArgs): \n')
         outPy.write(ind8 + '\'\'\' \n')
@@ -473,11 +492,12 @@ class ProcessGenerator(object):
         outPy.write(ind8 + 'compute initial values of state variables \n')
         outPy.write(ind8 + '\'\'\' \n')
         #create all variables
-        outPy.write(ind8 + '#create all variables with value 0; ' +
+        outPy.write(ind8 + '#create all variables with value 0; '
                            'to prevent runtime errors.\n')
-        for varDef in (self.algebraicVariables.values() +
-                       self.stateVariables.values()):
-            outPy.write(ind8 + '%s = 0.0 \n' % varDef.targetName[tuple()])
+        for var in (self.algebraic_variables.values() + 
+                    self.state_variables.values() + 
+                    self.time_differentials.values()):
+            outPy.write(ind8 + '%s = %s \n' % (var.target_name, var.zero_value))
 
         #create dict for parameter override
         outPy.write(ind8 + '#create dict for parameter override \n')
@@ -486,33 +506,33 @@ class ProcessGenerator(object):
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
-        stmtGen.createFuncBody(initMethod, ind8)
+        stmtGen.create_statements(method.statements, ind8) 
         outPy.write(ind8 + '\n')
 
         #put initial values into array and store them
         outPy.write(ind8 + '#assemble initial values to array and store them \n')
-        #sequence of variables in the array is determined by self.stateVariables
+        #sequence of variables in the array is determined by self.state_variables
         #create long lines with 'var_ame11, var_name12, var_name13, ...'
         outPy.write(ind8 + 'self.initialValues = array([')
-        for varDef in self.stateVariables.values():
-            outPy.write('%s, ' % varDef.targetName[tuple()])
+        for var in self.state_variables.values():
+            outPy.write('%s, ' % var.target_name)
         outPy.write('], \'float64\') \n')
         outPy.write(ind8 + 'self.stateVectorLen = len(self.initialValues) \n')
         #assemble vector with algebraic variables to compute their total size
         outPy.write(ind8 + '#put algebraic variables into array, only to compute its size \n')
         outPy.write(ind8 + 'algVars = array([')
-        for varDef in self.algebraicVariables.values():
-            outPy.write('%s, ' % varDef.targetName[tuple()])
+        for var in self.algebraic_variables.values():
+            outPy.write('%s, ' % var.target_name)
         outPy.write('], \'float64\') \n')
         outPy.write(ind8 + 'self.algVectorLen = len(algVars) \n')
         #TODO: compute self.variableNameMap from the actual sizes of the variables
-        outPy.write(ind8 + '#Create maping between variable names and array indices \n')
-        #Create maping between variable names and array indices
+        outPy.write(ind8 + '#Create mapping between variable names and array indices \n')
+        #Create mapping between variable names and array indices
         outPy.write(ind8 + 'self.variableNameMap = {')
-        for i, varName in zip(range(len(self.stateVariables) +
-                                    len(self.algebraicVariables)),
-                              self.stateVariables.keys() +
-                              self.algebraicVariables.keys()):
+        for i, varName in zip(range(len(self.state_variables) +
+                                    len(self.algebraic_variables)),
+                              self.state_variables.keys() +
+                              self.algebraic_variables.keys()):
             outPy.write('\'%s\':%d, ' % (str(varName), i))
         outPy.write('}')
         outPy.write('\n\n')
@@ -520,13 +540,14 @@ class ProcessGenerator(object):
 
     def writeDynamicMethod(self):
         '''Generate the method that contains the differential equations'''
-        #search the process' dynamic method
-        for dynMethod in self.iltProcess:
-            if isinstance(dynMethod, NodeFuncDef) and \
-               dynMethod.name == ('dynamic',):
-                break
+        #get the process' dynamic method
+        method_name = DotName('dynamic')
+        if self.ilt_process.has_attribute(method_name):
+            method = self.ilt_process.get_attribute(method_name)
+        else:
+            return
         #write method definition
-        outPy = self.outPy
+        outPy = self.out_py
         ind8 = ' '*8; ind12 = ' '*12; #ind16 = ' '*16
         outPy.write('    def dynamic(self, time, state, returnAlgVars=False): \n')
         outPy.write(ind8 + '\'\'\' \n')
@@ -534,22 +555,22 @@ class ProcessGenerator(object):
         outPy.write(ind8 + 'This function will be called by the solver repeatedly. \n')
         outPy.write(ind8 + '\'\'\' \n')
         #take the state variables out of the state vector
-        #sequence of variables in the array is determined by self.stateVariables
+        #sequence of variables in the array is determined by self.state_variables
         outPy.write(ind8 + '#take the state variables out of the state vector \n')
-        stateVarNames = self.stateVariables.values()
-        for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-            outPy.write(ind8 + '%s = state[%d] \n' % (varDef.targetName[tuple()], nState))
+        stateVars = self.state_variables.values()
+        for var, n_var in zip(stateVars, range(len(stateVars))):
+            outPy.write(ind8 + '%s = state[%d] \n' % (var.target_name, n_var))
         #Create all algebraic variables
         #TODO: remove this, once proper detection of unused variables exists
         outPy.write(ind8 + '#create all algebraic variables with value 0; ' +
                            'to prevent runtime errors.\n')
-        for varDef in (self.algebraicVariables.values()):
-            outPy.write(ind8 + '%s = 0.0 \n' % varDef.targetName[tuple()])
+        for var in (self.algebraic_variables.values()):
+            outPy.write(ind8 + '%s = %s \n' % (var.target_name, var.zero_value))
 
         #print the method's statements
         outPy.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(outPy)
-        stmtGen.createFuncBody(dynMethod, ind8)
+        stmtGen.create_statements(method.statements, ind8)
         outPy.write(ind8 + '\n')
 
         #return either state variables or algebraic variables
@@ -557,8 +578,8 @@ class ProcessGenerator(object):
         #assemble vector with algebraic variables
         outPy.write(ind12 + '#put algebraic variables into array \n')
         outPy.write(ind12 + 'algVars = array([')
-        for varDef in self.algebraicVariables.values():
-            outPy.write('%s, ' % varDef.targetName[tuple()])
+        for var in self.algebraic_variables.values():
+            outPy.write('%s, ' % var.target_name)
         outPy.write('], \'float64\') \n')
         outPy.write(ind12 + 'return algVars \n')
 
@@ -566,25 +587,25 @@ class ProcessGenerator(object):
         #assemble the time derivatives into the return vector
         outPy.write(ind12 + '#assemble the time derivatives into the return vector \n')
         outPy.write(ind12 + 'stateDt = array([')
-        for varDef, nState in zip(stateVarNames, range(len(stateVarNames))):
-            outPy.write('%s, ' % varDef.targetName[('time',)])
+        for var, n_var in zip(stateVars, range(len(stateVars))):
+            outPy.write('%s, ' % var.target_name)
         outPy.write('], \'float64\') \n')
         outPy.write(ind12 + 'return stateDt \n')
 
         outPy.write('\n\n')
 
 
-
     def writeFinalMethod(self):
         '''Generate the method that dispays/saves results after the simulation.'''
-        #search the process' dynamic method
-        for finMethod in self.iltProcess:
-            if isinstance(finMethod, NodeFuncDef) and \
-               finMethod.name == ('final',):
-                break
+        #get the process' final method
+        method_name = DotName('final')
+        if self.ilt_process.has_attribute(method_name):
+            method = self.ilt_process.get_attribute(method_name)
+        else:
+            return
         #write method definition
-        outPy = self.outPy
-        ind8 = ' '*8; #ind12 = ' '*12; ind16 = ' '*16
+        outPy = self.out_py
+        ind8 = ' '*8 #; ind12 = ' '*12; ind16 = ' '*16
         outPy.write('    def final(self): \n')
         outPy.write(ind8 + '\'\'\' \n')
         outPy.write(ind8 + 'Display and save simulation results. \n')
@@ -595,25 +616,24 @@ class ProcessGenerator(object):
         #generate code for the statements
         outPy.write(ind8 + '#the final method\'s statements \n')
         stmtGen = StatementGenerator(outPy)
-        stmtGen.createFuncBody(finMethod, ind8)
-        outPy.write(ind8 + "print 'simulation %s finished.'\n" % self.processPyName)
+        stmtGen.create_statements(method.statements, ind8)
+        outPy.write(ind8 + "print 'simulation %s finished.'\n" % self.process_py_name)
         outPy.write(ind8 + '\n')
 
 
-
-    def createProcess(self, iltProcess):
+    def create_process(self, ilt_process, name):
         '''
         Take part of ILT tree that defines one procedure and ouput definition
         of python class as string
         '''
-        self.iltProcess = iltProcess.copy()
+        self.ilt_process = ilt_process #.copy()
 
         #collect information about the process
-        self.processPyName = self.iltProcess.className
-        self.findAttributes()
+        self.process_py_name = name
+        self.find_attributes()
         self.createAttrPyNames()
 
-        #print self.iltProcess
+        #print self.ilt_process
         self.writeClassDefStart()
         self.writeConstructor()
         self.writeInitializeMethod()
@@ -621,7 +641,7 @@ class ProcessGenerator(object):
         self.writeFinalMethod()
         #self.writeOutputEquations()
 
-        self.outPy.write('\n\n')
+        self.out_py.write('\n\n')
 
 
 
@@ -634,36 +654,38 @@ class ProgramGenerator(object):
             pyFile : file where the program will be stored,
                      or a StringStream for debuging.
         '''
-        super(ProgramGenerator,self).__init__(self)
-        self.iltRoot = None
-        '''root of intermediate language tree'''
-        self.outPy = cStringIO.StringIO()
-        '''buffer for generated python code; with file interface'''
-        self.processClassNames = []
-        '''names of the generated classes.'''
+        super(ProgramGenerator, self).__init__(self)
+        #root of intermediate language tree
+        self.ilt_root = None
+        #buffer for generated python code; with file interface
+        self.out_py = cStringIO.StringIO()
+        #names of the generated classes.
+        self.process_class_names = []
 
 
     def buffer(self):
-        '''
-        Return the the generated Python text in case self.outPy is a
-        StringStream object.
-        '''
-        return self.outPy.getvalue()
+        '''Return the the generated Python text.'''
+        return self.out_py.getvalue()
+    
+    
+    def write(self, string):
+        '''Put part of program text into buffer'''
+        self.out_py.write(string)
+        
 
-
-    def writeProgramStart(self):
+    def write_program_start(self):
         '''
         Write first few lines of the program.
         Method looks really ugly because of raw string usage.
         '''
-        self.outPy.write(
+        self.write(
 '''#!/usr/bin/env python
 ################################################################################
 #                            Warning: Do not edit!                             #
 #                                                                              #
 # This file is generated, it will be overwritten every time the source file(s) #
 # is/are changed.                                                              #
-# If you want to change the behaviour of a simulation object                   #
+# If you want to change the behavior of a simulation object                    #
 # write a main routine in an other file. Use import or execfile to load        #
 # the objects defined in this file into the Python interpreter.                #
 ################################################################################
@@ -673,16 +695,15 @@ class ProgramGenerator(object):
         date = dt.date().isoformat()
         time = dt.time().strftime('%H:%M:%S')
 
-        self.outPy.write('# Generated by SIML compiler version %s on %s %s. \n'
-                         % (progVersion, date, time))
-        self.outPy.write('# Source file(s): %s' % self.iltRoot.loc.fileName())
-        self.outPy.write(
+        self.write('# Generated by SIML compiler version %s on %s %s. \n'
+                         % (PROGRAM_VERSION, date, time))
+        self.write('# Source file(s): %s' % str(self.ilt_root.file_name))
+        self.write(
 '''
 ################################################################################
 
 
 from numpy import array, pi, sin, cos, tan, sqrt, exp, log, min, max
-#from scipy import *
 from freeode.simulatorbase import SimulatorBase
 from freeode.simulatorbase import simulatorMainFunc
 
@@ -690,9 +711,9 @@ from freeode.simulatorbase import simulatorMainFunc
 '''     )
         return
 
-    def writeProgramEnd(self):
+    def write_program_end(self):
         '''Write last part of program, such as main routine.'''
-        self.outPy.write(
+        self.write(
 '''
 
 #Main function - executed when file (module) runs as an independent program.
@@ -700,10 +721,10 @@ from freeode.simulatorbase import simulatorMainFunc
 if __name__ == '__main__':
     simulatorClasses = ['''     )
         #create list with generated classes
-        for name in self.processClassNames:
-            self.outPy.write(str(name) + ', ')
-        self.outPy.write(']')
-        self.outPy.write(
+        for name in self.process_class_names:
+            self.write(str(name) + ', ')
+        self.write(']')
+        self.write(
 '''
     simulatorMainFunc(simulatorClasses) #in module simulatorbase
 
@@ -711,26 +732,27 @@ if __name__ == '__main__':
         return
 
 
-    def createProgram(self, iltRoot):
+    def create_program(self, ilt_root):
         '''
         Take an ILT and create as python program from it.
-        Write the python program into the file self.outPy
+        Write the python program into the StringIO (file like) object 
+        self.out_py
         '''
-        self.iltRoot = iltRoot
+        self.ilt_root = ilt_root
 
-        self.writeProgramStart()
+        self.write_program_start()
 
         #every class definition in the ILT is a process (currently)
         #create code for it
-        for process in iltRoot:
-            if not isinstance(process, NodeClassDef):
-                continue
-            self.processClassNames.append(process.className)
-            #create process
-            procGen = ProcessGenerator(self.outPy)
-            procGen.createProcess(process)
+        process_names = ilt_root.attributes.keys()
+        process_names.sort()
+        for name in process_names:
+            self.process_class_names.append(name)
+            process = ilt_root.get_attribute(name)
+            procGen = ProcessGenerator(self.out_py)
+            procGen.create_process(process, name)
 
-        self.writeProgramEnd()
+        self.write_program_end()
 
 
 
@@ -740,57 +762,61 @@ if __name__ == '__main__':
     #TODO: add doctest tests.
 
 
-    from simlparser import Parser
-    from intermediate import ILTGenerator
+#    from simlparser import Parser
 #------------ testProg1 -----------------------
     testProg1 = (
 '''
-class Test(Model):
-    data V, h: Real;
-    data A_bott, A_o, mu, q, g: Real parameter;
+class Test:
+    data V, h: Float 
+    data A_bott, A_o, mu, q, g: Float param
 
     func dynamic():
-        h = V/A_bott;
-        $V = q - mu*A_o*sqrt(2*g*h);
-    end
+        h = V/A_bott
+#        $V = q - mu*A_o*sqrt(2*g*h)
+        $V = q + - mu*A_o*(2*g*h)
+#        print 'h: ', h,
 
     func init():
-        V = 0;
-        A_bott = 1; A_o = 0.02; mu = 0.55;
-        q = 0.05;
-    end
-end
-
-class RunTest(process):
-    data g: Real parameter;
-    data test: Test;
+        V = 0
+        A_bott = 1; A_o = 0.02; mu = 0.55; 
+        q = 0.05
+ 
+ 
+class RunTest:
+    data g: Float param
+    data test: Test
 
     func dynamic():
-        call test.dynamic();
-    end
+        test.dynamic()
 
     func init():
-        g = 9.81;
-        call test.init();
-        solutionParameters.simulationTime = 100;
-        solutionParameters.reportingInterval = 1;
-    end
-end
+        g = 9.81
+        test.init()
+#        solutionParameters.simulationTime = 100
+#        solutionParameters.reportingInterval = 1
+
+    func final():
+#        graph test.V, test.h
+        print 'Simulation finished successfully.'
+        
+
+compile RunTest
 ''' )
 
-    parser = Parser()
-    iltGen = ILTGenerator()
+#    parser = Parser()
+    intp = Interpreter()
     progGen = ProgramGenerator()
+#
+#    astTree = parser.parseModuleStr(testProg1)
+#    print 'AST tree:'
+#    print astTree
 
-    astTree = parser.parseModuleStr(testProg1)
-    print 'AST tree:'
-    print astTree
-
-    iltTree = iltGen.createIntermediateTree(astTree)
+    intp.interpret_module_string(testProg1, 'test.siml', 'test')
+    iltTree = intp.compile_module
     print 'ILT tree:'
     print iltTree
 
-    progGen.createProgram(iltTree)
+    progGen.create_program(iltTree)
     progStr = progGen.buffer()
     print 'python program:'
     print progStr

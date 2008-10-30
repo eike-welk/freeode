@@ -132,7 +132,7 @@ class SimlCompilerMain(object):
             #print astTree
             iltTree = iltGen.createIntermediateTree(astTree)
             #print iltTree
-            progGen.createProgram(iltTree)
+            progGen.create_program(iltTree)
             progStr = progGen.buffer()
         #errors from freeode
         except UserException, theError:
