@@ -58,7 +58,9 @@ import pyparsing
 
 #version of the Siml compiler.
 PROGRAM_VERSION = '0.4.0a1'
-
+#How much debug information is printed
+# 0: No debug information; 1: some; ....
+DEBUG_LEVEL = 1
 
 
 class Node(object):
@@ -615,18 +617,21 @@ class NodeAssignment(Node):
 class NodePrintStmt(Node):
     '''
     AST Node for printing something to stdout.
+    
     Data attributes:
-        kids        : the expressions of the argument list
-        loc         : location in input string
-        dat         : None
-
-        newline     : if True: add newline to end of output;
-                      if False: don't add newline.
+        arguments: list(Node())
+            the expressions of the argument list
+        newline: bool
+            if True: add newline to end of output;
+            if False: don't add newline.
+        loc: 
+            Location in input string    
     '''
     def __init__(self):
         super(NodePrintStmt, self).__init__()
         self.arguments = []
         self.newline = None
+        self.loc = None
 
 
 class NodeGraphStmt(Node):

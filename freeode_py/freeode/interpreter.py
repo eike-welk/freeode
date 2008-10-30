@@ -780,12 +780,23 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodePrintStmt)
     def visit_NodePrintStmt(self, node):
         '''Print every expression in the argument list'''
+        #create new print node
+        new_print = NodePrintStmt()
+        new_print.newline = node.newline
+        new_print.loc = node.loc
+        #simplify all expressions in argument list
+        #execute the print statement when debug level is >= 1
         for expr in node.arguments:
             result = self.expression_visitor.dispatch(expr)
-            print result.value,
-        if node.newline:
+            new_print.arguments.append(result)
+            if DEBUG_LEVEL >= 1:
+                print result.value,
+        if DEBUG_LEVEL >= 1 and node.newline:
             print
-        #TODO: emit code for print statement when collecting  code
+        #emit code for print statement when collecting  code 
+        #(and let unit tests without interpreter still run)
+        if self.interpreter and self.interpreter.is_collecting_code():
+            self.interpreter.emit_statement(new_print)
             
     @Visitor.when_type(NodeReturnStmt)
     def visit_NodeReturnStmt(self, node):
@@ -1056,6 +1067,13 @@ class Interpreter(object):
         if self.compile_stmt_collect is None:
             raise UserException('Only operations with constants allowed here!', stmt.loc)
         self.compile_stmt_collect.append(stmt)
+        
+    def is_collecting_code(self):
+        '''Return True if self.emit_statement can be successfully called.'''
+        if self.compile_stmt_collect is None:
+            return False
+        else:
+            return True
         
     def interpret_module_string(self, text, file_name=None, module_name=None):
         '''Interpret the program text of a module.'''
