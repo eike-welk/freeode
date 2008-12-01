@@ -270,14 +270,13 @@ class InstFunction(InterpreterObject):
     '''A Function or Method'''
     def __init__(self):
         InterpreterObject.__init__(self)
-        self.type = None
         self.role = RoleConstant
         self.name = None
         self.arguments = []
         self.keyword_arguments = []
         self.statements = []
         self.return_type = None
-        #save the current global namespace in the function. This otherwise 
+        #save the current global name-space in the function. This otherwise 
         #access to global variables would have surprising results
         self.global_scope = None
         #the scope of the object if applicable
@@ -288,6 +287,21 @@ class InstFunction(InterpreterObject):
 CLASS_FUNCTION = CreateBuiltInType('Function', InstFunction)
 
 
+
+class InstFunctionWrapper(InterpreterObject):
+    '''Represents a function written in Python.'''
+    def __init__(self):
+        InterpreterObject.__init__(self)
+        self.role = RoleConstant
+        self.name = None
+        self.arguments = []
+        self.keyword_arguments = []
+        self.statements = []
+        self.return_type = None
+        #the wrapped function
+        self.wrapped_func = None
+    
+    
 #------- Built In Data --------------------------------------------------
 class InstFloat(InterpreterObject):
     '''Floating point number'''
@@ -399,6 +413,7 @@ class ReturnFromFunctionException(Exception):
     pass
 
 
+#TODO: remove; replace by user defined class.
 class CompiledClass(InterpreterObject):
     '''The compile statement creates this kind of object.'''
     def __init__(self):
@@ -798,7 +813,7 @@ class StatementVisitor(Visitor):
         #emit code for print statement when collecting  code 
         #(and let unit tests without interpreter still run)
         if self.interpreter and self.interpreter.is_collecting_code():
-            self.interpreter.emit_statement(new_print)
+            self.interpreter.collect_statement(new_print)
             
     @Visitor.when_type(NodeReturnStmt)
     def visit_NodeReturnStmt(self, node):
@@ -868,7 +883,7 @@ class StatementVisitor(Visitor):
             new_assign.target = target
             new_assign.expression = value
             new_assign.loc = loc
-            self.interpreter.emit_statement(new_assign)
+            self.interpreter.collect_statement(new_assign)
         return
     
     
@@ -1065,14 +1080,14 @@ class Interpreter(object):
         #list of emitted statements (temporary storage)
         self.compile_stmt_collect = None
         
-    def emit_statement(self, stmt):
+    def collect_statement(self, stmt):
         '''Collect statement for code generation.'''
         if self.compile_stmt_collect is None:
             raise UserException('Only operations with constants allowed here!', stmt.loc)
         self.compile_stmt_collect.append(stmt)
         
     def is_collecting_code(self):
-        '''Return True if self.emit_statement can be successfully called.'''
+        '''Return True if self.collect_statement can be successfully called.'''
         if self.compile_stmt_collect is None:
             return False
         else:
