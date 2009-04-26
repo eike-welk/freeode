@@ -43,7 +43,7 @@ import weakref
 from weakref import ref
 
 from freeode.ast import *
-import simlparser
+import freeode.simlparser as simlparser
 
 
 
