@@ -49,18 +49,20 @@
 
 
 from distutils.core import setup
-from freeode.ast import progVersion
+from freeode.ast import PROGRAM_VERSION
 
 setup(name = 'freeode',
-      version = progVersion,
+      version = PROGRAM_VERSION,
       author = 'Eike Welk',
       author_email = 'Eike.Welk@gmx.net',
       url = 'http://freeode.berlios.de/',
       description = 'Simulation Language for Differential Equations',
       long_description = \
 '''This package contains a compiler for a specialized language (SIML) for the
-simulation of differential equations (ODE). The generated simulation program
-is in the Python programming language, using the Numpy and Scipy libraries.''',
+simulation of differential equations (ODE). The compiler generates a program
+in the Python programming language, which solves the differential equations 
+numerically. The generated program uses the Numpy and Scipy libraries for 
+numerical computations.''',
       license = 'GPL',
       packages = ['freeode'],
       scripts = ['simlc'],
