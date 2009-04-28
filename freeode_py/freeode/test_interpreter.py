@@ -28,34 +28,50 @@ Test code for the interpreter module
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
-from freeode.interpreter import *
+#The py library is not standard. Preserve ability to use some test functions
+# for debugging when the py library, and the py.test testing framework, are 
+# not installed. 
+try:                      
+    import py
+except:
+    print 'No py library, many tests may fail!'
 
 
 
 #TODO: Convert to unit test framework
 #-------- Test expression evaluation (only immediate values) ------------------------------------------------------------------------
-doTest = True
-#    doTest = False
-if doTest:
-    print 'Test expression evaluation (only immediate values) .......................................'
+def test_expression_evaluation_1():
+    #py.test.skip('Test expression evaluation (only immediate values)')
+    print 'Test expression evaluation (only immediate values)'
+    from freeode.interpreter import *
+    
+    #parse the expression
     ps = simlparser.Parser()
     ex = ps.parseExpressionStr('0+1*2')
-#    ex = ps.parseExpressionStr('"a"+"b"')
+    print
+    print 'AST (parser output): -----------------------------------------------------------'
     print ex
     
+    #interpret the expression
     exv = ExpressionVisitor(None)
     res = exv.dispatch(ex)
-    print 'res = ', res 
+    print
+    print 'Result object: --------------------------------------------------------------'
+    print res 
+    assert res.value == 2.0
     
     
 #----------- Test expression evaluation (access to variables) ---------------------------------------------------------------
-doTest = True
-#    doTest = False
-if doTest:
-    print 'Test expression evaluation (access to variables) ...................................'
+def test_expression_evaluation_2():
+    #py.test.skip('Test expression evaluation (access to variables)')
+    print 'Test expression evaluation (access to variables)'
+    from freeode.interpreter import *
+    
+    #parse the expression
     ps = simlparser.Parser()
     ex = ps.parseExpressionStr('1 + a * 2')
-#        ex = ps.parseExpressionStr('"a"+"b"')
+    print
+    print 'AST (parser output): -----------------------------------------------------------'
     print ex
     
     #create module where name lives
@@ -64,50 +80,68 @@ if doTest:
     val_2.value = 2.0
     val_2.role = RoleConstant
     mod.create_attribute(DotName('a'), val_2)
-    
-    env = ExecutionEnvironment()
-    env.global_scope = mod
+    print
+    print 'Module where variable is located: --------------------------------------------'
     print mod
     
+    #create environment for lookup of variables (stack frame)
+    env = ExecutionEnvironment()
+    env.global_scope = mod
+    
+    #interpret the expression
     exv = ExpressionVisitor(None)
     exv.environment = env
     res = exv.dispatch(ex)
-    print 'res = ', res 
+    print
+    print 'Result object: --------------------------------------------------------------'
+    print res 
+    assert res.value == 5.0
     
     
-    #Test expression evaluation (returning of partially evaluated expression when accessing variables)-------------------
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test expression evaluation (returning of partially evaluated expression when accessing variables) ...................................'
-        ps = simlparser.Parser()
-        ex = ps.parseExpressionStr('a + 2*2')
-#        ex = ps.parseExpressionStr('"a"+"b"')
-        print ex
-        
-        #create module where name lives
-        mod = InstModule()
-        #create attribute
-        val_2 = CLASS_FLOAT.construct_instance()
-        val_2.value = None
-        val_2.role = RoleVariable
-        mod.create_attribute(DotName('a'), val_2)
-        
-        env = ExecutionEnvironment()
-        env.global_scope = mod
-        print mod
-        
-        exv = ExpressionVisitor(None)
-        exv.environment = env
-        res = exv.dispatch(ex)
-        print 'res = ', res 
+#Test expression evaluation (returning of partially evaluated expression when accessing variables)-------------------
+def test_expression_evaluation_3():
+    #py.test.skip('Test disabled')
+    print 'Test expression evaluation (returning of partially evaluated expression when accessing variables)'
+    from freeode.interpreter import *
     
+    #parse the expression
+    ps = simlparser.Parser()
+    ex = ps.parseExpressionStr('a + 2*2')
+    print
+    print 'AST (parser output): -----------------------------------------------------------'
+    print ex
     
+    #create module where name lives
+    mod = InstModule()
+    #create attribute 'a' with no value
+    val_2 = CLASS_FLOAT.construct_instance()
+    val_2.value = None
+    val_2.role = RoleVariable
+    mod.create_attribute(DotName('a'), val_2)
+    print
+    print 'Module where variable is located: --------------------------------------------'
+    print mod
+    
+    #create environment for lookup of variables (stack frame)
+    env = ExecutionEnvironment()
+    env.global_scope = mod
+    
+    #interpret the expression
+    exv = ExpressionVisitor(None)
+    exv.environment = env
+    res = exv.dispatch(ex)
+    print
+    print 'Result object - should be an unevaluated expression: --------------------------------------------------------------'
+    print res 
+    assert isinstance(res, NodeOpInfix2)
+    assert res.operator == '+'
+
 #--------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
-doTest = True
-#    doTest = False
-if doTest:
-    print 'Test basic execution of statements (no interpreter object) ...............................................................'
+def test_basic_execution_of_statements():
+    #py.test.skip('Test disabled')
+    print 'Test basic execution of statements (no interpreter object) .................................'
+    from freeode.interpreter import *
+    
     prog_text = \
 '''
 print 'start'
@@ -129,6 +163,8 @@ print 'end'
     mod = CLASS_MODULE.construct_instance()
     mod.create_attribute(DotName('Float'), CLASS_FLOAT)
     mod.create_attribute(DotName('String'), CLASS_STRING)
+    print
+    print 'global namespace - before interpreting statements - built in library: ---------------'
     print mod
            
     #init the interpreter
@@ -138,27 +174,32 @@ print 'end'
     stv = StatementVisitor(None)
     stv.environment = env
     stv.expression_visitor = exv
+    #set up parsing the main module
+    stv.environment.global_scope = mod
+    stv.environment.local_scope = mod
 
     #parse the program text
     ps = simlparser.Parser()
     module_code = ps.parseModuleStr(prog_text)
     
-    #set up parsing the main module
-    stv.environment.global_scope = mod
-    stv.environment.local_scope = mod
     #interpreter main loop
     for stmt in module_code.statements:
         stv.dispatch(stmt)
         
     print
+    print 'global namespace - after interpreting statements: -----------------------------------'
     print mod
+    
+    assert mod.get_attribute(DotName('a')).value == 16
+    assert mod.get_attribute(DotName('b')).value == 2*16
   
   
 #---------- Test interpreter object: function call ------------------------------------------------
-doTest = True
-#    doTest = False
-if doTest:
+def test_interpreter_object_function_call():
+    #py.test.skip('Test disabled')
     print 'Test interpreter object: function call ...............................................................'
+    from freeode.interpreter import *
+
     prog_text = \
 '''
 print 'start'
@@ -175,17 +216,22 @@ print 'end'
 '''
     #create the interpreter
     intp = Interpreter()
+    #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
+    print 'module after interpreter run: ---------------------------------'
     print intp.modules['test']
+    
+    assert intp.modules['test'].get_attribute(DotName('a')).value == 2*2 + (3*4)**2 + 2**2
   
   
 #-------- Test interpreter object: class definition --------------------------------------------------------
-doTest = True
-#    doTest = False
-if doTest:
+def test_interpreter_object_class_definition():
+    #py.test.skip('Test disabled')
     print 'Test interpreter object: class definition ...............................................................'
+    from freeode.interpreter import *
+
     prog_text = \
 '''
 print 'start'
@@ -215,17 +261,28 @@ print 'end'
 
     #create the interpreter
     intp = Interpreter()
+    #interpret the program
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
+    print 'module after interpreter run: ---------------------------------'
     print intp.modules['test']
   
+    assert (intp.modules['test'].get_attribute(DotName('pi')).value == 3.1415)
+    assert (intp.modules['test'].get_attribute(DotName('a'))
+                                .get_attribute(DotName('a1')).value == 1)
+    assert (intp.modules['test'].get_attribute(DotName('a'))
+                                .get_attribute(DotName('a2')).value == 2 * 3.1415)
+    assert (intp.modules['test'].get_attribute(DotName('b'))
+                                .get_attribute(DotName('b1')).value == 3.1415)
+
   
 #--------- Test interpreter object: method call ---------------------------------------
-doTest = True
-#    doTest = False
-if doTest:
+def test_interpreter_object_method_call():
+    #py.test.skip('Test disabled')
     print 'Test interpreter object: method call ...............................................................'
+    from freeode.interpreter import *
+
     prog_text = \
 '''
 print 'start'
@@ -256,18 +313,25 @@ print 'end'
 
     #create the interpreter
     intp = Interpreter()
+    #interpret the program
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
     print intp.modules['test']
   
+    assert (intp.modules['test'].get_attribute(DotName('a'))
+                                .get_attribute(DotName('a1')).value == 3)
+    assert (intp.modules['test'].get_attribute(DotName('a'))
+                                .get_attribute(DotName('a2')).value == 9)
+
       
 #---------------- Test interpreter object: emit code simple ----------------------------------------
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test interpreter object: emit code simple ...............................................................'
-        prog_text = \
+def test_interpreter_object_emit_code_simple():
+    #py.test.skip('Test disabled')
+    print 'Test interpreter object: emit code simple ...............................................................'
+    from freeode.interpreter import *
+
+    prog_text = \
 '''
 print 'start'
 
@@ -282,27 +346,31 @@ print 'a = ', a
 print 'end'
 '''
 
-        #create the interpreter
-        intp = Interpreter()
-        #enable collection of statements for compilation
-        intp.compile_stmt_collect = []
-        #interpret the program
-        intp.interpret_module_string(prog_text, None, 'test')
-      
-        print '--------------- main module ----------------------------------'
-        print intp.modules['test']
-        #put collected statements into Node for pretty printing
-        n = Node(stmts=intp.compile_stmt_collect)
-        print '--------------- collected statements ----------------------------------'
-        print n
+    #create the interpreter
+    intp = Interpreter()
+    #enable collection of statements for compilation
+    intp.compile_stmt_collect = []
+    #interpret the program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    print '--------------- main module ----------------------------------'
+    print intp.modules['test']
+    #put collected statements into Node for pretty printing
+    n = Node(stmts=intp.compile_stmt_collect)
+    print
+    print '--------------- collected statements ----------------------------------'
+    print n
         
+    #TODO: Assertions
       
     #------------- Test interpreter object: compile statement ...............................................................
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test interpreter object: compile statement ...............................................................'
-        prog_text = \
+def test_interpreter_object_compile_statement():
+    #py.test.skip('Test disabled')
+    print 'Test interpreter object: compile statement ...............................................................'
+    from freeode.interpreter import *
+
+    prog_text = \
 '''
 print 'start'
 
@@ -329,21 +397,25 @@ compile A
 print 'end'
 '''
 
-        #create the interpreter
-        intp = Interpreter()
-        intp.interpret_module_string(prog_text, None, 'test')
-      
-        print
-        print intp.modules['test']
-        print intp.compile_module
+    #create the interpreter
+    intp = Interpreter()
+    #run program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    print intp.modules['test']
+    print intp.compile_module
+
+    #TODO: Assertions
       
       
     #------------------------- Test interpreter object: "$" operator ...............................................
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test interpreter object: "$" operator ...............................................................'
-        prog_text = \
+def test_interpreter_object_dollar_operator():
+    #py.test.skip('Test disabled')
+    print 'Test interpreter object: "$" operator ...............................................................'
+    from freeode.interpreter import *
+
+    prog_text = \
 '''
 print 'start'
 
@@ -370,15 +442,20 @@ compile A
 print 'end'
 '''
 
-        #create the interpreter
-        intp = Interpreter()
-        intp.interpret_module_string(prog_text, None, 'test')
-      
-        print
-        print intp.modules['test']
-        print intp.compile_module
-      
-      
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    print intp.modules['test']
+    print intp.compile_module
+  
+    #TODO: Assertions
 
   
-      
+if __name__ == '__main__':
+    # Debugging code may go here.
+    #test_expression_evaluation_1()
+    test_interpreter_object_function_call()
+    pass
+
