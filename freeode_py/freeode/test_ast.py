@@ -28,13 +28,13 @@ Test code for the ast module
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
-#The py library is not standard. Preserve ability to use some test functions
-# for debugging when the py library, and the py.test testing framework, are 
-# not installed. 
-try:                      
-    import py                                       
-except:
-    print 'No py library, many tests may fail!'
+##The py library is not standard. Preserve ability to use some test functions
+## for debugging when the py library, and the py.test testing framework, are 
+## not installed. 
+#try:                      
+#    import py                                       
+#except:
+#    print 'No py library, many tests may fail!'
 
 import unittest
 #tell the py.test framework to recognize traditional unittest tests
