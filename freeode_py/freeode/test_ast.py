@@ -466,7 +466,6 @@ class TestDotName(unittest.TestCase):
 
 
 
-
 if __name__ == '__main__':
     # Debugging code may go here.
     t1 = TestVisitor('test__dispatch')
