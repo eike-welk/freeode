@@ -1267,6 +1267,7 @@ class Visitor(object):
     .....
     .....
 
+    Features:
     - A designated method is called for each type.
     - Single dispatch
     - Switching which method is used is done based on type and
@@ -1279,7 +1280,7 @@ class Visitor(object):
 
     USAGE:
     ------
-        - Define class that inherits from visitor
+        - Define class that inherits from Visitor
         - Use @Visitor.when_type(classObject, priority) to define a handler
           function for a speciffic type.
         - Use @Visitor.default for the default function, which is called when
