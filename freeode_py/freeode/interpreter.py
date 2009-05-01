@@ -47,25 +47,6 @@ import freeode.simlparser as simlparser
 
 
 
-#class Storage(Node):
-#    '''
-#    Represent storage and store metadata for an object (in the symbol table).
-#    
-#    An instance of this class is created with a data statement
-#    
-#    It inherits from Node only to get Ascii-art tree and copying.
-#    '''
-#    def __init__(self):
-#        Node.__init__(self)
-#        #value and default value: InterpreterObject
-#        self.value = None
-##        self.default_value = None
-#        #required type of value and default_value: ref(InstClass)
-#        self.type = None
-#        #role:const, param, variable
-#        self.attribute_role = None
-        
-        
 class DuplicateAttributeError(Exception):
     '''
     Exception raised by InterpreterObject
@@ -88,24 +69,27 @@ class UndefinedAttributeError(Exception):
         self.attr_name = attr_name
         
         
+        
+#TODO: Rename to frame?
 class ExecutionEnvironment(object):
     '''
     Container for name spaces where symbols are looked up.
-    Function findDotName searches the symbol in all name spaces.
+    Function get_attribute(...) searches the symbol in all name spaces.
     '''
     def __init__(self):
         #Name space for global variables. Module where the code was written.
+        # type: InterpreterObject
         self.global_scope = None
         #Name space of the this pointer in a method. None outside methods.
         self.this_scope = None
         #scope for the local variables of a function
         self.local_scope = None
+        
         #return value from function call
         self.return_value = None
 
 
-    #def findDotName(self, dotName, default=None):
-    def get_attribute(self, *posArg):
+    def get_attribute(self, dot_name, default=UndefinedAttributeError()):
         '''
         Find a dot name in this environment.
 
@@ -115,24 +99,13 @@ class ExecutionEnvironment(object):
 
         Arguments
         ---------
-        dotName : DotName
+        dot_name : DotName
             Dotted name that is looked up in the different name spaces.
         default : object
-            Object which is returned when dotName could not be found.
-            If argument is omitted, a UndefinedAttributeError is raised.
+            Object which is returned when dot_name can not be found.
+            When argument is of type UndefinedAttributeError, an 
+            UndefinedAttributeError is raised when dot_name can not be found.
         '''
-        #get arguments from vector
-        if len(posArg) == 1:
-            dotName = posArg[0]
-            default = None
-            raiseErr = True
-        elif len(posArg) == 2:
-            dotName = posArg[0]
-            default = posArg[1]
-            raiseErr = False
-        else:
-            raise Exception('Required number of arguments 1 or 2. '
-                            'Actual number of arguments: ' + str(len(posArg)))
         #try to find name in scope hierarchy:
         # function --> class --> module
         scopeList = [self.local_scope, self.this_scope, self.global_scope]
@@ -141,13 +114,13 @@ class ExecutionEnvironment(object):
             if scope is None:
                 continue
             try:
-                attr = scope.get_attribute(dotName)
+                attr = scope.get_attribute(dot_name)
                 return attr
-            except UndefinedAttributeError:
+            except UndefinedAttributeError: #IGNORE:W0704
                 pass
         #attribute could not be found in the scopes
-        if raiseErr:
-            raise UndefinedAttributeError(attr_name=dotName)
+        if isinstance(default, UndefinedAttributeError):
+            raise UndefinedAttributeError(attr_name=dot_name)
         else:
             return default            
 
@@ -201,6 +174,7 @@ class InterpreterObject(Node):
         '''Return true if object has an attribute with name "name"'''
         return name in self.attributes
     
+  
   
 #---------- Built In Types  ------------------------------------------------*
 #---------- Infrastructure -------------------------------------------------
