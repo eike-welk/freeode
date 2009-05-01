@@ -3,13 +3,6 @@
 #    Copyright (C) 2006 - 2008 by Eike Welk                                *
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
-#    Inspiration and little bits of text and code came from:               *
-#     'fourFn.py', 'simpleArith.py' example programs, by Paul McGuire,     *
-#     the 'Spark' library by John Aycock,                                  *
-#     and the Python Reference Manual by Guido van Rossum.                 *
-#    Many thanks for their excellent contributions to publicly available   *
-#    knowledge.                                                            *
-#                                                                          *
 #    License: GPL                                                          *
 #                                                                          *
 #    This program is free software; you can redistribute it and/or modify  *
