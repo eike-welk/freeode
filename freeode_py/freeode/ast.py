@@ -143,6 +143,7 @@ class Node(object):
                 return 102 # dict(<any>:Node())
         return 0 #not a Node
             
+    #TODO: re-implement this with the visitor class!
     def _aa_make_str_block(self, attr_name_list, indent_str, nesting_level):
         '''
         Convert attributes to a string. 
@@ -1250,6 +1251,7 @@ class TextLocation(object):
 
 
 
+#TODO: make class work with inherited handler methods.
 class Visitor(object):
     '''
     Visitor for the AST
@@ -1268,7 +1270,7 @@ class Visitor(object):
     .....
 
     Features:
-    - A designated method is called for each type.
+    - A designated (handler) method is called for each type.
     - Single dispatch
     - Switching which method is used is done based on type and
       inheritance
@@ -1282,11 +1284,11 @@ class Visitor(object):
     ------
         - Define class that inherits from Visitor
         - Use @Visitor.when_type(classObject, priority) to define a handler
-          function for a speciffic type.
+          method for a speciffic type.
         - Use @Visitor.default for the default function, which is called when
-          no handler functions matches.
-        - In the main loop use self.dispatch(theObject) to call the handler
-          functions.
+          no handler method matches.
+        - In the main loop use self.dispatch(theObject) to call the appropriate 
+          handler method.
 
     >>> class NodeVisitor(Visitor):
     ...     def __init__(self):
@@ -1340,10 +1342,14 @@ class Visitor(object):
     def __init__(self):
         cls = self.__class__
         #Create rule table and cache only once.
+        #TODO: make sure that only '_ruleTable' in most derived class is found.
         if not hasattr(cls, '_ruleTable'):
             #List of types, functions and priorities
             cls._ruleTable = []
             #Dictionary of types and functions, no inheritance is considered
+            #TODO: better self._cache ??? currently:
+            #  - all instances use same cache: OK
+            #  - when new visitor is instanciated the cache is emptied: Bad 
             cls._cache = {}
             #populate the rule table if necessary
             self._createRuleTable()
@@ -1357,7 +1363,7 @@ class Visitor(object):
         objCls = inObject.__class__
         #search handler function in cache
         handlerFunc = cls._cache.get(objCls, None)    #IGNORE:E1101
-        if handlerFunc == None:
+        if handlerFunc is None:
             #Handler function is not in cache
             #search handler function in rule table and store it in cache
             handlerFunc = self._findFuncInRuleTable(objCls)

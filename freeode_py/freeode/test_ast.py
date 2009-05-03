@@ -28,13 +28,13 @@ Test code for the ast module
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
-##The py library is not standard. Preserve ability to use some test functions
-## for debugging when the py library, and the py.test testing framework, are 
-## not installed. 
-#try:                      
-#    import py                                       
-#except:
-#    print 'No py library, many tests may fail!'
+#The py library is not standard. Preserve ability to use some test functions
+# for debugging when the py library, and the py.test testing framework, are 
+# not installed. 
+try:                      
+    import py                                       
+except:
+    print 'No py library, many tests may fail!'
 
 import unittest
 #tell the py.test framework to recognize traditional unittest tests
@@ -375,6 +375,77 @@ class TestVisitor(unittest.TestCase):
 
 
 
+def test_visitor_inherited_handler_methods():
+    '''
+    Test if the visitor calls inherited handler methods correctly.
+       - The priority values dictate what method takes precedence. 
+       - Only when the priority values are the same, then the (new) method
+         of the current class is called. 
+       - When the current class defines a default function, then this default 
+         function is used; the default function of the base class is forgotten. 
+    '''
+    #assert True == False
+#    py.test.skip('Inherited handler functions are currently not implemented.') #IGNORE:E1101
+    
+    #Define class hierarchy
+    class Base(object):
+        pass
+    class Derived1(Base):
+        pass
+    class Derived2(Base):
+        pass
+
+    #define visitor class
+    class TestVisitorClass(Visitor):
+        def __init__(self):
+            Visitor.__init__(self)
+        #Can handle all Base objects but has low priority
+        @Visitor.when_type(Base, 1)
+        def visit_Base(self, _inObject):
+            return 'Base'
+        #Specialized method for Derived1 with high priority
+        @Visitor.when_type(Derived1, 5)
+        def visit_Derived1(self, _inObject):
+            return 'Derived1'
+        @Visitor.when_type(int)
+        def visit_Int(self, _inObject):
+            return 'int'
+        @Visitor.default
+        def default_handler(self, _inObject):
+            return 'default handler'
+
+    #create the visitor
+    visitor = TestVisitorClass()
+    #try the visitor
+    assert visitor.dispatch(Base()) == 'Base'
+    assert visitor.dispatch(Derived1()) == 'Derived1'
+    assert visitor.dispatch(Derived2()) == 'Base'
+    assert visitor.dispatch(2) == 'int'
+    assert visitor.dispatch(2.5) == 'default handler'
+    
+    #define derived visitor
+    class TestVisitorDerived(TestVisitorClass):
+        def __init__(self):
+            TestVisitorClass.__init__(self)
+        #redefine handler for base class (low priority).
+        @Visitor.when_type(Base, 1)
+        def visit_Base(self, _inObject):
+            return 'Base by derived'
+        @Visitor.default
+        def default_handler(self, _inObject):
+            return 'default handler by derived'
+        
+    #create the visitor
+    visitor2 = TestVisitorDerived()
+    #test derived visitor
+    assert visitor2.dispatch(Base()) == 'Base by derived'
+    assert visitor2.dispatch(Derived1()) == 'Derived1'
+    assert visitor2.dispatch(Derived2()) == 'Base'
+    assert visitor2.dispatch(2) == 'int'
+    assert visitor2.dispatch(2.5) == 'default handler by derived'
+
+    
+    
 class TestDotName(unittest.TestCase):
 
     def setUp(self):
@@ -468,7 +539,8 @@ class TestDotName(unittest.TestCase):
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    t1 = TestVisitor('test__dispatch')
-    t1.run()
+#    t1 = TestVisitor('test__dispatch')
+#    t1.run()
+    test_visitor_inherited_handler_methods()
     
     pass
