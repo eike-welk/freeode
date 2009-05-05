@@ -384,8 +384,7 @@ def test_visitor_inherited_handler_methods():
        - When the current class defines a default function, then this default 
          function is used; the default function of the base class is forgotten. 
     '''
-    #assert True == False
-#    py.test.skip('Inherited handler functions are currently not implemented.') #IGNORE:E1101
+    py.test.skip('Inherited handler functions are currently not implemented.') #IGNORE:E1101
     
     #Define class hierarchy
     class Base(object):
