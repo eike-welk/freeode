@@ -205,35 +205,33 @@ class IntArgumentList(Node):
     Contains arguments of a function definition.
     Parses the arguments when the function is called.
     """
-    #TODO: deal with *args, **kwargs
-    #def __init__(self, args_w=None, kwds_w=None, w_stararg=None, w_starstararg=None):
     def __init__(self, arguments, loc=None):
         '''
         arguments: list of ast.NodeFuncArg
         '''
         Node.__init__(self)
 
+        #list of argument definitions    
+        self.arguments = arguments
+        #dict for quick access to argument definitions by name
+        self.argument_dict = {}
+        #arguments with default values (subset of self.arguments)
+        self.default_args = []
+        
         there_was_keyword_argument = False
-        num_positional_args = 0
-        known_argument_names = set()
         for arg in arguments:
             #check that positional arguments come first
             if arg.default_value is not None:
                 there_was_keyword_argument = True
+                self.default_args.append(arg)
             elif there_was_keyword_argument:
                 raise UserException('Positional arguments must come before '
                                     'keyword arguments!', loc)
-            #count positional arguments
-            if not there_was_keyword_argument:
-                num_positional_args += 1
             #test: argument names must be unique
-            if arg.name in known_argument_names:
+            if arg.name in self.argument_dict:
                 raise UserException('Duplicate argument name "%s"!' 
                                     % str(arg.name), loc) 
-            else:
-                known_argument_names.add(arg.name)
-        self.arguments = arguments
-        self.num_positional_args = num_positional_args
+            self.argument_dict[arg.name] = arg
         
     
     def interpret_args(self, interpreter):
@@ -258,22 +256,41 @@ class IntArgumentList(Node):
         dict(DotName(): InterpreterObject(), ...)
         '''
         output_dict = {} #dict(<argument name>: <siml values>, ...)
+        
         #test too many positional arguments
         if len(args_list) > len(self.arguments):
-            raise UserException('Function accepts at most %d arguments'
-                                % len(self.arguments), loc)
-        #associate positional arguments to their name
+            raise UserException('Function accepts at most %d arguments; %d given.'
+                                % (len(self.arguments), len(args_list)), loc)
+        #associate positional arguments to their names
         for arg_def, in_val in zip(self.arguments, args_list):
             output_dict[arg_def.name] = in_val
             #TODO: test for correct type
         
-        #TODO: associate keyword arguments to their name
-        #TODO: test for duplicate keyword arguments
-        #TODO: test for correct type
+        #associate keyword arguments to their name
+        for in_name, in_val in kwargs_dict.iteritems():
+            #test: argument name must exist in function definition
+            if in_name not in self.argument_dict:
+                raise UserException('Unknown argument "%s".' % in_name)
+            #test for duplicate argument assignment (positional + keyword)
+            if in_name in output_dict:
+                raise UserException('Duplicate argument "%s".' % in_name)
+            #TODO: test for correct type, 
+            output_dict[in_name] = in_val
         
-        #TODO: associate default values to the remaining arguments
+        #associate default values to the remaining arguments
+        for arg in self.default_args:
+            if arg.name not in output_dict:
+                output_dict[arg.name] = arg.default_value
         
-        #TODO: check if all arguments were associated to a value
+        #check if all arguments were associated to a value
+        arg_names_call = set(output_dict.keys())
+        arg_names_func_def = set(self.argument_dict.keys())
+        left_over_names = arg_names_func_def - arg_names_call
+        if len(left_over_names) > 0:
+            raise UserException('Too few arguments given. '
+                                'Remaining arguments without value: '
+                                + ', '.join([str(n) for n in left_over_names]), 
+                                loc)
             
         return output_dict
 

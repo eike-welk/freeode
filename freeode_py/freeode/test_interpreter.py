@@ -55,8 +55,9 @@ def test_IntArgumentList_1():
     try:
         IntArgumentList([NodeFuncArg(DotName('a')),
                          NodeFuncArg(DotName('a'))], None)
-    except UserException:
+    except UserException, e:
         print 'Caught expected exception (argument names must be unique)'
+        print e
     else:
         py.test.fail('This code should raise an exception (argument names must be unique).') #IGNORE:E1101
         
@@ -65,10 +66,12 @@ def test_IntArgumentList_1():
         val_1 = CLASS_FLOAT.construct_instance()
         IntArgumentList([NodeFuncArg(DotName('a'), default_value=val_1),
                          NodeFuncArg(DotName('b'))], None)
-    except UserException:
+    except UserException, e:
         print 'Caught expected exception (keyword argument before positional argument)'
+        print e
     else:
         py.test.fail('This code should raise an exception (keyword argument before positional argument).') #IGNORE:E1101
+#    assert 1==0
     
     
     
@@ -90,13 +93,69 @@ def test_IntArgumentList_2():
     assert arg_vals[DotName('a')].value == 1
     assert arg_vals[DotName('b')].value == 2
     
+    #call with correct number of keyword arguments
+    arg_vals = al.parse_function_call_args([], {DotName('a'):val_1,  
+                                                DotName('b'):val_2})
+    assert arg_vals[DotName('a')].value == 1
+    assert arg_vals[DotName('b')].value == 2
+    
     #call with too few arguments
     try:
         al.parse_function_call_args([], {})
-    except UserException:
+    except UserException, e:
         print 'Caught expected exception (too few arguments)'
+        print e
     else:
         py.test.fail('This code should raise an exception (too few arguments).') #IGNORE:E1101
+        
+    #call with too many positional arguments
+    try:
+        al.parse_function_call_args([val_1, val_2, val_2], {})
+    except UserException, e:
+        print 'Caught expected exception (too many positional arguments)'
+        print e
+    else:
+        py.test.fail('This code should raise an exception (too many positional arguments).') #IGNORE:E1101
+       
+    #call with unknown keyword argument
+    try:
+        al.parse_function_call_args([], {DotName('a'):val_1,  
+                                         DotName('c'):val_2})
+    except UserException, e:
+        print 'Caught expected exception (unknown keyword argument)'
+        print e
+    else:
+        py.test.fail('This code should raise an exception (unknown keyword argument).') #IGNORE:E1101
+        
+    #call with duplicate keyword argument
+    try:
+        al.parse_function_call_args([val_1, val_2], {DotName('a'):val_1})
+    except UserException, e:
+        print 'Caught expected exception (duplicate keyword argument)'
+        print e
+    else:
+        py.test.fail('This code should raise an exception (duplicate keyword argument).') #IGNORE:E1101
+       
+    #assert 1==0
+    
+    
+def test_IntArgumentList_3():
+    print 'IntArgumentList: test argument processing at call site'
+    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
+    
+    #some interpreter level values
+    val_1 = CLASS_FLOAT.construct_instance()
+    val_1.value = 1
+    val_2 = CLASS_FLOAT.construct_instance()
+    val_2.value = 2
+    #argument list for testing
+    al = IntArgumentList([NodeFuncArg(DotName('a')),
+                          NodeFuncArg(DotName('b'), default_value=val_2)], None)
+    
+    #call with correct number of positional arguments
+    arg_vals = al.parse_function_call_args([val_1], {})
+    assert arg_vals[DotName('a')].value == 1
+    assert arg_vals[DotName('b')].value == 2
     
     
     
