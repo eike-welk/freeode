@@ -38,7 +38,68 @@ except:
 
 
 
-#TODO: Convert to unit test framework
+#-------- Test IntArgumentList class ------------------------------------------------------------------------
+def test_IntArgumentList_1():
+    print 'IntArgumentList: construction'
+    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
+    
+    #Test normal construction only positional argument: f(a, b)
+    IntArgumentList([NodeFuncArg(DotName('a')),
+                     NodeFuncArg(DotName('b'))], None)
+    #Test normal construction with keyword arguments: f(a, b=1)
+    val_1 = CLASS_FLOAT.construct_instance()
+    IntArgumentList([NodeFuncArg(DotName('a')),
+                     NodeFuncArg(DotName('b'), default_value=val_1)], None)
+    
+    #argument list with two identical argument names: f(a, a)
+    try:
+        IntArgumentList([NodeFuncArg(DotName('a')),
+                         NodeFuncArg(DotName('a'))], None)
+    except UserException:
+        print 'Caught expected exception (argument names must be unique)'
+    else:
+        py.test.fail('This code should raise an exception (argument names must be unique).') #IGNORE:E1101
+        
+    #argument list with keyword argument before positional argument: f(a=1, b)
+    try:
+        val_1 = CLASS_FLOAT.construct_instance()
+        IntArgumentList([NodeFuncArg(DotName('a'), default_value=val_1),
+                         NodeFuncArg(DotName('b'))], None)
+    except UserException:
+        print 'Caught expected exception (keyword argument before positional argument)'
+    else:
+        py.test.fail('This code should raise an exception (keyword argument before positional argument).') #IGNORE:E1101
+    
+    
+    
+def test_IntArgumentList_2():
+    print 'IntArgumentList: test argument processing at call site'
+    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
+    
+    #argument list for testing
+    al = IntArgumentList([NodeFuncArg(DotName('a')),
+                          NodeFuncArg(DotName('b'))], None)
+    #some interpreter level values
+    val_1 = CLASS_FLOAT.construct_instance()
+    val_1.value = 1
+    val_2 = CLASS_FLOAT.construct_instance()
+    val_2.value = 2
+    
+    #call with correct number of positional arguments
+    arg_vals = al.parse_function_call_args([val_1, val_2], {})
+    assert arg_vals[DotName('a')].value == 1
+    assert arg_vals[DotName('b')].value == 2
+    
+    #call with too few arguments
+    try:
+        al.parse_function_call_args([], {})
+    except UserException:
+        print 'Caught expected exception (too few arguments)'
+    else:
+        py.test.fail('This code should raise an exception (too few arguments).') #IGNORE:E1101
+    
+    
+    
 #-------- Test expression evaluation (only immediate values) ------------------------------------------------------------------------
 def test_expression_evaluation_1():
     #py.test.skip('Test expression evaluation (only immediate values)')

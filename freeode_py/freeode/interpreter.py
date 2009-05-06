@@ -130,7 +130,11 @@ class InterpreterObject(Node):
         Call to class that would create the correct object. All classes are
         really templates. 
     '''
+    #let these attributes appear first in the pretty printed tree  
     aa_top = ['name', 'type', 'type_ex']
+    #reference to interpreter - TODO: global variables are bad
+    interpreter = None
+    
     def __init__(self):
         Node.__init__(self)
         #Reference to object one level up in the tree
@@ -167,8 +171,113 @@ class InterpreterObject(Node):
         '''Return true if object has an attribute with name "name"'''
         return name in self.attributes
     
+    
   
-  
+class CallableObject(InterpreterObject):
+    '''Base class of all functions.'''
+    def __init__(self, name):
+        InterpreterObject.__init__(self)
+        self.role = RoleConstant
+        self.name = DotName(name)
+
+    def __call__(self, *args, **kwargs):
+        '''All functions must implement this method'''
+        raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
+    
+    
+    
+class BuiltInFunctionWrapper(CallableObject):
+    '''Represents a function written in Python.'''
+    def __init__(self, name):
+        CallableObject.__init__(self, name)
+        self.arguments = []
+        self.keyword_arguments = []
+        self.statements = []
+        self.return_type = None
+        #the wrapped function
+        self.wrapped_func = None
+
+
+#TODO: part of this class should go into the parser; for function and class parsing
+#class NodeArgumentList(Node):
+class IntArgumentList(Node):
+    """
+    Contains arguments of a function definition.
+    Parses the arguments when the function is called.
+    """
+    #TODO: deal with *args, **kwargs
+    #def __init__(self, args_w=None, kwds_w=None, w_stararg=None, w_starstararg=None):
+    def __init__(self, arguments, loc=None):
+        '''
+        arguments: list of ast.NodeFuncArg
+        '''
+        Node.__init__(self)
+
+        there_was_keyword_argument = False
+        num_positional_args = 0
+        known_argument_names = set()
+        for arg in arguments:
+            #check that positional arguments come first
+            if arg.default_value is not None:
+                there_was_keyword_argument = True
+            elif there_was_keyword_argument:
+                raise UserException('Positional arguments must come before '
+                                    'keyword arguments!', loc)
+            #count positional arguments
+            if not there_was_keyword_argument:
+                num_positional_args += 1
+            #test: argument names must be unique
+            if arg.name in known_argument_names:
+                raise UserException('Duplicate argument name "%s"!' 
+                                    % str(arg.name), loc) 
+            else:
+                known_argument_names.add(arg.name)
+        self.arguments = arguments
+        self.num_positional_args = num_positional_args
+        
+    
+    def interpret_args(self, interpreter):
+        '''
+        Interpret the types and default values of the arguments.
+        - type and type_ex data is looked up
+        - default values are computed and must evaluate to constants
+        '''
+        raise NotImplementedError()
+    
+    
+    def parse_function_call_args(self, args_list, kwargs_dict, loc=None):
+        '''
+        Executed when a function call happens.
+        Fill the arguments of the call site into the arguments of the 
+        function definition. Does type-checking.
+        
+        RETURNS
+        -------
+        Dictionary of argument names and associated values.
+        dict(<argument name>: <siml values>, ...)
+        dict(DotName(): InterpreterObject(), ...)
+        '''
+        output_dict = {} #dict(<argument name>: <siml values>, ...)
+        #test too many positional arguments
+        if len(args_list) > len(self.arguments):
+            raise UserException('Function accepts at most %d arguments'
+                                % len(self.arguments), loc)
+        #associate positional arguments to their name
+        for arg_def, in_val in zip(self.arguments, args_list):
+            output_dict[arg_def.name] = in_val
+            #TODO: test for correct type
+        
+        #TODO: associate keyword arguments to their name
+        #TODO: test for duplicate keyword arguments
+        #TODO: test for correct type
+        
+        #TODO: associate default values to the remaining arguments
+        
+        #TODO: check if all arguments were associated to a value
+            
+        return output_dict
+
+    
 #---------- Built In Types  ------------------------------------------------*
 #---------- Infrastructure -------------------------------------------------
 class CreateBuiltInType(InterpreterObject): 
@@ -252,21 +361,6 @@ class InstFunction(InterpreterObject):
         self.create_attribute(DotName('data'), InterpreterObject())
 #the single object that should be used to create all Functions
 CLASS_FUNCTION = CreateBuiltInType('Function', InstFunction)
-
-
-
-class InstFunctionWrapper(InterpreterObject):
-    '''Represents a function written in Python.'''
-    def __init__(self):
-        InterpreterObject.__init__(self)
-        self.role = RoleConstant
-        self.name = None
-        self.arguments = []
-        self.keyword_arguments = []
-        self.statements = []
-        self.return_type = None
-        #the wrapped function
-        self.wrapped_func = None
     
     
 #------- Built In Data --------------------------------------------------
@@ -322,7 +416,7 @@ def make_proxy(in_obj):
     Return a proxy object.
     
     Will create a weakref.proxy object from normal objects and from 
-    weakref.ref objects. If in_obj is already a projy it will be returned.
+    weakref.ref objects. If in_obj is already a proxy it will be returned.
     '''
     if isinstance(in_obj, weakref.ProxyTypes):
         return in_obj
@@ -377,6 +471,7 @@ def make_unique_name(base_name, existing_names):
     
 class ReturnFromFunctionException(Exception):
     '''Functions return by raising this exception.'''
+    #TODO: Use this exception to transport return value?
     pass
 
 
@@ -388,9 +483,6 @@ class CompiledClass(InterpreterObject):
         self.loc = None
         
     
-##constants to declare whether variables are read or written
-#INTENT_READ = 'read'
-#INTENT_WRITE = 'write'
 
 class ExpressionVisitor(Visitor): 
     '''
@@ -790,6 +882,7 @@ class StatementVisitor(Visitor):
         self.environment.return_value = retval
         #Forcibly end function execution - 
         #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
+        #TODO: transport exception with the exception?
         raise ReturnFromFunctionException()
 
     @Visitor.when_type(NodeExpressionStmt)
@@ -1046,6 +1139,10 @@ class Interpreter(object):
         self.compile_module.name = DotName('compiled_object_namespace')
         #list of emitted statements (temporary storage)
         self.compile_stmt_collect = None
+        
+        #tell the the interpreter objects which is their interpreter
+        InterpreterObject.interpreter = ref(self)
+        
         
     def collect_statement(self, stmt):
         '''Collect statement for code generation.'''

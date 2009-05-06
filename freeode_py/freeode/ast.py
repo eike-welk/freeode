@@ -878,11 +878,11 @@ class NodeFuncArg(Node):
         loc:
             Location in input file
     '''
-    def __init__(self):
+    def __init__(self, name=None, type=None, default_value=None):
         Node.__init__(self)
-        self.name = None
-        self.type = None
-        self.default_value = None
+        self.name = name
+        self.type = type
+        self.default_value = default_value
         self.loc = None
         
         
