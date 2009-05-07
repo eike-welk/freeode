@@ -171,8 +171,8 @@ def test_IntArgumentList_4():
     val_hello = CLASS_STRING.construct_instance()
     val_hello.value = 'hello'
     #argument list for testing: f(a:Float, b:String)
-    al = IntArgumentList([NodeFuncArg(DotName('a'), type=ref(CLASS_FLOAT)),
-                          NodeFuncArg(DotName('b'), type=ref(CLASS_STRING))], None)
+    al = IntArgumentList([NodeFuncArg(DotName('a'), type=CLASS_FLOAT),
+                          NodeFuncArg(DotName('b'), type=CLASS_STRING)], None)
     
     #call with correct positional arguments: f(1, 'hello')
     arg_vals = al.parse_function_call_args([val_1, val_hello], {})
@@ -182,6 +182,11 @@ def test_IntArgumentList_4():
     #call with correct keyword arguments: f(a=1, b='hello')
     arg_vals = al.parse_function_call_args([], {DotName('a'):val_1, 
                                                 DotName('b'):val_hello})
+    assert arg_vals[DotName('a')].value == 1
+    assert arg_vals[DotName('b')].value == 'hello'
+    
+    #call with mixed positional and keyword arguments: f(1, b='hello')
+    arg_vals = al.parse_function_call_args([val_1], {DotName('b'):val_hello})
     assert arg_vals[DotName('a')].value == 1
     assert arg_vals[DotName('b')].value == 'hello'
     

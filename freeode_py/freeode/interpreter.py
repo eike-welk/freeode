@@ -176,7 +176,16 @@ class InterpreterObject(Node):
         return name in self.attributes
     
     
-  
+
+class TypeObject(InterpreterObject):  
+    '''Base class of all classes'''
+    def __init__(self, name):
+        InterpreterObject.__init__(self)
+        self.role = RoleConstant
+        self.name = DotName(name)
+        
+        
+        
 class CallableObject(InterpreterObject):
     '''Base class of all functions.'''
     def __init__(self, name):
@@ -187,22 +196,11 @@ class CallableObject(InterpreterObject):
     def __call__(self, *args, **kwargs):
         '''All functions must implement this method'''
         raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
+  
+#TODO: write siml_callable(...) function. 
+#      Return True if object is can be executed like a function.  
     
     
-    
-class BuiltInFunctionWrapper(CallableObject):
-    '''Represents a function written in Python.'''
-    def __init__(self, name):
-        CallableObject.__init__(self, name)
-        self.arguments = []
-        self.keyword_arguments = []
-        self.statements = []
-        self.return_type = None
-        #the wrapped function
-        self.wrapped_func = None
-
-
-
 #TODO: part of this class should go into the parser; for function and class parsing
 #class NodeArgumentList(Node):
 class IntArgumentList(Node):
@@ -222,9 +220,10 @@ class IntArgumentList(Node):
         '''
         Node.__init__(self)
         self.loc = loc
-        #list of argument definitions    
+        #list of argument definitions {ast.NodeFuncArg}   
         self.arguments = arguments
-        #dict for quick access to argument definitions by name
+        #dictionary for quick access to argument definitions by name
+        #also for testing uniqueness and existence of argument names 
         self.argument_dict = {}
         #arguments with default values (subset of self.arguments)
         self.default_args = []
@@ -244,6 +243,13 @@ class IntArgumentList(Node):
                                     % str(arg.name), loc) 
             self.argument_dict[arg.name] = arg
         
+        #TODO: this must stay in IntArgumentList when the rest of the constructor is moved 
+        #      to a base class in AST module
+        #replace type objects with weak references to them
+        for arg in self.arguments:
+            if isinstance(arg.type, TypeObject):
+                arg.type = ref(arg.type)
+    
     
     def interpret_args(self, interpreter):
         '''
@@ -334,6 +340,7 @@ class IntArgumentList(Node):
         '''
         if arg_def.type is None: 
             return 
+        #TODO: this will break for unevaluated arguments!
         if not siml_isinstance(in_object, arg_def.type()):
             raise IncompatibleTypeError(
                     'Incompatible types. Variable: "%s" '
@@ -343,9 +350,27 @@ class IntArgumentList(Node):
 
 
 
+class BuiltInFunctionWrapper(CallableObject):
+    '''
+    Represents a function written in Python.
+    The function can have multiple signatures and return types.
+    '''
+    def __init__(self, name, argument_definitions, return_types, py_functions):
+        CallableObject.__init__(self, name)
+        self.argument_definitions = argument_definitions
+        self.return_types = return_types
+        self.py_functions = py_functions
+
+    def __call__(self, *args, **kwargs):
+        '''All functions must implement this method'''
+        #TODO: implement me!
+        raise NotImplementedError('__call__ method: implement me!')
+
+
+
 #---------- Built In Types  ------------------------------------------------*
 #---------- Infrastructure -------------------------------------------------
-class CreateBuiltInType(InterpreterObject): 
+class CreateBuiltInType(TypeObject): 
     '''
     Create instances of built in classes. - The class of built in objects.
     
@@ -357,8 +382,8 @@ class CreateBuiltInType(InterpreterObject):
     oriented programming language.    
     '''
     def __init__(self, class_name, python_class):
-        InterpreterObject.__init__(self)
-        self.type = None #TODO: set meaningful type
+        TypeObject.__init__(self, class_name)
+        self.type = None 
         self.name = DotName(class_name)
         self.python_class = python_class
         self.arguments = []
@@ -376,12 +401,11 @@ class CreateBuiltInType(InterpreterObject):
         return new_obj
         
         
-class InstUserDefinedClass(InterpreterObject):
+class InstUserDefinedClass(TypeObject):
     '''Class: generator for instances. Created by class statement.
     This node creates an instance of an user defined class.'''
     def __init__(self):
-        InterpreterObject.__init__(self)
-        #TODO: set meaningful type, type_ex
+        TypeObject.__init__(self, 'dummy_name')
         self.role = RoleConstant
         self.name = None
         self.arguments = []
