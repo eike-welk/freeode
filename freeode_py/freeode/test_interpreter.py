@@ -139,8 +139,9 @@ def test_IntArgumentList_2():
     #assert 1==0
     
     
+    
 def test_IntArgumentList_3():
-    print 'IntArgumentList: test argument processing at call site'
+    print 'IntArgumentList: test calling with default arguments.'
     from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
     
     #some interpreter level values
@@ -148,17 +149,44 @@ def test_IntArgumentList_3():
     val_1.value = 1
     val_2 = CLASS_FLOAT.construct_instance()
     val_2.value = 2
-    #argument list for testing
+    #argument list for testing: def f(a, b=2)
     al = IntArgumentList([NodeFuncArg(DotName('a')),
                           NodeFuncArg(DotName('b'), default_value=val_2)], None)
     
-    #call with correct number of positional arguments
+    #call with one positional argument: f(1). For argument 'b' default value must be used.
     arg_vals = al.parse_function_call_args([val_1], {})
     assert arg_vals[DotName('a')].value == 1
     assert arg_vals[DotName('b')].value == 2
     
     
     
+def test_IntArgumentList_4():
+    print 'IntArgumentList: test type compatibility testing.'
+    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, UserException, 
+                                     ref, CLASS_FLOAT, CLASS_STRING)
+    
+    #some interpreter level values
+    val_1 = CLASS_FLOAT.construct_instance()
+    val_1.value = 1
+    val_hello = CLASS_STRING.construct_instance()
+    val_hello.value = 'hello'
+    #argument list for testing: f(a:Float, b:String)
+    al = IntArgumentList([NodeFuncArg(DotName('a'), type=ref(CLASS_FLOAT)),
+                          NodeFuncArg(DotName('b'), type=ref(CLASS_STRING))], None)
+    
+    #call with correct positional arguments: f(1, 'hello')
+    arg_vals = al.parse_function_call_args([val_1, val_hello], {})
+    assert arg_vals[DotName('a')].value == 1
+    assert arg_vals[DotName('b')].value == 'hello'
+    
+    #call with correct keyword arguments: f(a=1, b='hello')
+    arg_vals = al.parse_function_call_args([], {DotName('a'):val_1, 
+                                                DotName('b'):val_hello})
+    assert arg_vals[DotName('a')].value == 1
+    assert arg_vals[DotName('b')].value == 'hello'
+    
+ 
+                                      
 #-------- Test expression evaluation (only immediate values) ------------------------------------------------------------------------
 def test_expression_evaluation_1():
     #py.test.skip('Test expression evaluation (only immediate values)')

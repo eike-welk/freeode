@@ -881,7 +881,7 @@ class NodeFuncArg(Node):
     def __init__(self, name=None, type=None, default_value=None):
         Node.__init__(self)
         self.name = name
-        self.type = type
+        self.type = type #TODO: create refference if object is a class
         self.default_value = default_value
         self.loc = None
         

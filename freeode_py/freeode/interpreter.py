@@ -61,6 +61,10 @@ class UndefinedAttributeError(Exception):
         Exception.__init__(self, msg)
         self.attr_name = attr_name
         
+class IncompatibleTypeError(Exception):
+    def __init__(self, msg='Incompatible types', loc=None):
+        Exception.__init__(self, msg)
+        self.loc = loc
         
         
 #TODO: Rename to frame?
@@ -198,19 +202,26 @@ class BuiltInFunctionWrapper(CallableObject):
         self.wrapped_func = None
 
 
+
 #TODO: part of this class should go into the parser; for function and class parsing
 #class NodeArgumentList(Node):
 class IntArgumentList(Node):
     """
     Contains arguments of a function definition.
-    Parses the arguments when the function is called.
+    - Evaluates the arguments when the function definition is interpreted
+    - Parses the arguments when the function is called.
     """
     def __init__(self, arguments, loc=None):
         '''
-        arguments: list of ast.NodeFuncArg
+        ARGUMENTS
+        ---------
+        arguments: [ast.NodeFuncArg, ...]
+            The functions arguments
+        loc: ast.TextLocation 
+            Location where the function is defined
         '''
         Node.__init__(self)
-
+        self.loc = loc
         #list of argument definitions    
         self.arguments = arguments
         #dict for quick access to argument definitions by name
@@ -240,6 +251,8 @@ class IntArgumentList(Node):
         - type and type_ex data is looked up
         - default values are computed and must evaluate to constants
         '''
+        #TODO: implement!
+        #TODO: test type compatibility of default arguments
         raise NotImplementedError()
     
     
@@ -249,11 +262,18 @@ class IntArgumentList(Node):
         Fill the arguments of the call site into the arguments of the 
         function definition. Does type-checking.
         
+        ARGUMENTS
+        ---------
+        args_list: [<siml values, AST nodes>, ...]
+            Positional arguments.
+        kwargs_dict: {DotName(): <siml values, AST nodes>, ...}
+            Keyword arguments.
+        
         RETURNS
         -------
         Dictionary of argument names and associated values.
-        dict(<argument name>: <siml values>, ...)
-        dict(DotName(): InterpreterObject(), ...)
+        dict(<argument name>: <siml values, AST nodes>, ...)
+        dict(DotName(): Node(), ...)
         '''
         output_dict = {} #dict(<argument name>: <siml values>, ...)
         
@@ -263,18 +283,22 @@ class IntArgumentList(Node):
                                 % (len(self.arguments), len(args_list)), loc)
         #associate positional arguments to their names
         for arg_def, in_val in zip(self.arguments, args_list):
+            #test for correct type
+            self._test_type_compatible(in_val, arg_def, loc)
+            #associate argument value with name
             output_dict[arg_def.name] = in_val
-            #TODO: test for correct type
         
         #associate keyword arguments to their name
         for in_name, in_val in kwargs_dict.iteritems():
             #test: argument name must exist in function definition
             if in_name not in self.argument_dict:
-                raise UserException('Unknown argument "%s".' % in_name)
+                raise UserException('Unknown argument "%s".' % in_name, loc)
             #test for duplicate argument assignment (positional + keyword)
             if in_name in output_dict:
-                raise UserException('Duplicate argument "%s".' % in_name)
-            #TODO: test for correct type, 
+                raise UserException('Duplicate argument "%s".' % in_name, loc)
+            #test for correct type, 
+            self._test_type_compatible(in_val, self.argument_dict[in_name], loc)
+            #associate argument value with name
             output_dict[in_name] = in_val
         
         #associate default values to the remaining arguments
@@ -291,10 +315,34 @@ class IntArgumentList(Node):
                                 'Remaining arguments without value: '
                                 + ', '.join([str(n) for n in left_over_names]), 
                                 loc)
-            
         return output_dict
 
-    
+
+    def _test_type_compatible(self, in_object, arg_def, loc):
+        '''
+        Test if a given value has the correct type.
+        Raises exception when types are incompatible.
+        
+        ARGUMENTS
+        ---------
+        in_object: Node()
+            The arguments value. May be an unevaluated piece of the AST, with 
+            type annotations.
+        arg_def: ast.NodeFuncArg()
+            Definition object of this argument.
+            If arg_def.type is None: return True; no type checking is performed.
+        '''
+        if arg_def.type is None: 
+            return 
+        if not siml_isinstance(in_object, arg_def.type()):
+            raise IncompatibleTypeError(
+                    'Incompatible types. Variable: "%s" '
+                    'is defined as:\n %s \nHowever, argument type is: \n%s.'
+                    % (arg_def.name, str(arg_def.type()), str(in_object.type())), 
+                    loc)
+
+
+
 #---------- Built In Types  ------------------------------------------------*
 #---------- Infrastructure -------------------------------------------------
 class CreateBuiltInType(InterpreterObject): 
