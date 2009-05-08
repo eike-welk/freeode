@@ -340,8 +340,7 @@ class IntArgumentList(Node):
         '''
         if arg_def.type is None: 
             return 
-        #TODO: this will break for unevaluated arguments!
-        if not siml_isinstance(in_object, arg_def.type()):
+        if not siml_issubclass(in_object.type(), arg_def.type()):
             raise IncompatibleTypeError(
                     'Incompatible types. Variable: "%s" '
                     'is defined as:\n %s \nHowever, argument type is: \n%s.'
@@ -353,18 +352,94 @@ class IntArgumentList(Node):
 class BuiltInFunctionWrapper(CallableObject):
     '''
     Represents a function written in Python.
-    The function can have multiple signatures and return types.
+    The object is callable from Python ans Siml.
+    
+    ARGUMENTS
+    ---------
+    name
+        name of function
+    argument_definition: IntArgumentList
+        Argument definition of the function
+    return_type: TypeObject
+        Return type of the function.
+        When an unevaluated result is returned, this will be assigned to the 
+        type of the ast.Node.
+    py_function:
+        Function that will be called when the result can be computed.
+    is_operator_binary: True/False
+        if True: the function is really a binary operator
+    is_op_unary_prefix: True/False
+        if True: the function is really an unary prefix operator
+    operator_symbol: str
+        The operator's symbol, for example '+'
+    
+    RETURNS
+    -------
+    Function result or unevaluated expression.
+    - adds type annotation
     '''
-    def __init__(self, name, argument_definitions, return_types, py_functions):
+    def __init__(self, name, argument_definition=IntArgumentList([]), 
+                             return_type=None, 
+                             py_function=lambda:None,
+                             is_operator_binary=False, is_op_unary_prefix=False, 
+                             operator_symbol='~'):
         CallableObject.__init__(self, name)
-        self.argument_definitions = argument_definitions
-        self.return_types = return_types
-        self.py_functions = py_functions
+        #IntArgumentList
+        self.argument_definition = argument_definition
+        #TypeObject or None
+        self.return_type = return_type
+        #A Python function
+        self.py_function = py_function
+        #if True: the function is really an operator
+        self.is_operator_binary = is_operator_binary
+        #if True: the function is really an unary prefix operator
+        self.is_op_unary_prefix = is_op_unary_prefix
+        #string: The operator's symbol
+        self.operator_symbol = operator_symbol
+
 
     def __call__(self, *args, **kwargs):
         '''All functions must implement this method'''
-        #TODO: implement me!
-        raise NotImplementedError('__call__ method: implement me!')
+        loc = None
+        #try if argument definition matches
+        parsed_args = self.argument_definition\
+                          .parse_function_call_args(args, kwargs, loc)
+        #Try to get Python values out of the Siml values (unwrap).
+        py_args = {}
+        all_python_values_exist = True
+        for name, siml_val in parsed_args:
+            if not (isinstance(siml_val, InterpreterObject) and hasattr(siml_val, 'value') and
+                    siml_val.value is not None):
+                all_python_values_exist = False
+                break
+            py_args[str(name)] = siml_val.value
+        #call the Python function if all argument values are known
+        if all_python_values_exist:
+            py_retval = self.py_function(**py_args)             #IGNORE:W0142
+            if self.return_type is not None:
+                siml_retval = self.return_type.construct_instance()
+                siml_retval.value = py_retval
+                siml_retval.role = RoleConstant
+                return siml_retval
+            else:
+                return None
+        #create annotated NodeFuncCall/NodeOpInfix2/NodeOpPrefix1 if argument values are unknown
+        else:
+            if self.is_operator_binary:
+                func_call = NodeOpInfix2()
+                func_call.operator = self.operator_symbol
+            elif self.is_op_unary_prefix:
+                func_call = NodeOpPrefix1()
+                func_call.operator = self.operator_symbol
+            else:
+                func_call = NodeFuncCall()
+            func_call.name = self.name
+            func_call.arguments = args
+            func_call.keyword_arguments = kwargs
+            func_call.function_object = self
+            func_call.type = self.return_type
+            func_call.role = RoleDataCanVaryAtRuntime
+            return func_call
 
 
 
@@ -516,20 +591,28 @@ def make_proxy(in_obj):
     
 
 def siml_isinstance(in_object, class_or_type_or_tuple):    
-    '''isinstance(...) but inside the SIML language'''
+    '''isinstance(...) but inside the SIML language. 
+    If in_object is "ast.Node" instance (unevaluated expression), the function returns False.  '''
     #precondition: must be SIML object not AST node
     if not isinstance(in_object, InterpreterObject):
         return False
-    #always create tuple of class objects
-    if not isinstance(class_or_type_or_tuple, tuple):
-        classes = (class_or_type_or_tuple,)
-    else:
-        classes = class_or_type_or_tuple
-    #the test, there is no inheritance, so it is simple
-    if (in_object.type is not None) and (in_object.type() in classes):
-        return True
+    #the test: use siml_issubclass() on type attribute
+    if in_object.type is not None:
+        return siml_issubclass(in_object.type(), class_or_type_or_tuple)
     else:
         return False
+    
+
+def siml_issubclass(in_type, class_or_type_or_tuple):    
+    '''issubclass(...) but inside the SIML language'''
+    #precondition: must be a SIML type
+    if not isinstance(in_type, TypeObject):
+        raise Exception('Argument "in_type" must be TypeObject.')
+    #always create tuple of class objects
+    if not isinstance(class_or_type_or_tuple, tuple):
+        class_or_type_or_tuple = (class_or_type_or_tuple,)
+    #the test, there is no inheritance, so it is simple
+    return (in_type in class_or_type_or_tuple)
     
 
 def make_unique_name(base_name, existing_names):

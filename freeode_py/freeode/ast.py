@@ -509,12 +509,17 @@ class NodeFuncCall(Node):
     into the top level function. Similar to an inline function in C++.
     
     Data attributes:
+    ----------------
         name: typically NodeIdentifier
             expression that yields the function object
         arguments: 
             List of positional arguments
         keyword_arguments: 
             Dictionary of keyword arguments
+        function_object:
+            The Siml function that the interpreter called when the function
+            call was interpreted. (Because not all arguments were known at 
+            compile time, an annotated function call was created.) 
         type: InterpreterObject
             Type of the results of the operation. For decorating the AST.
         type_ex: NodeFuncCall
@@ -530,6 +535,7 @@ class NodeFuncCall(Node):
         self.name = None
         self.arguments = []
         self.keyword_arguments = {}
+        self.function_object = None
         self.type = None
         self.type_ex = None
         self.role = None
