@@ -197,13 +197,10 @@ class CallableObject(InterpreterObject):
         '''All functions must implement this method'''
         raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
   
-#TODO: write siml_callable(...) function. 
-#      Return True if object is can be executed like a function.  
-    
-    
+
 #TODO: part of this class should go into the parser; for function and class parsing
 #class NodeArgumentList(Node):
-class IntArgumentList(Node):
+class ArgumentList(Node):
     """
     Contains arguments of a function definition.
     - Evaluates the arguments when the function definition is interpreted
@@ -366,11 +363,11 @@ class BuiltInFunctionWrapper(CallableObject):
         type of the ast.Node.
     py_function:
         Function that will be called when the result can be computed.
-    is_operator_binary: True/False
+    is_binary_op: True/False
         if True: the function is really a binary operator
-    is_op_unary_prefix: True/False
+    is_prefix_op: True/False
         if True: the function is really an unary prefix operator
-    operator_symbol: str
+    op_symbol: str
         The operator's symbol, for example '+'
     
     RETURNS
@@ -378,11 +375,11 @@ class BuiltInFunctionWrapper(CallableObject):
     Function result or unevaluated expression.
     - adds type annotation
     '''
-    def __init__(self, name, argument_definition=IntArgumentList([]), 
+    def __init__(self, name, argument_definition=ArgumentList([]), 
                              return_type=None, 
                              py_function=lambda:None,
-                             is_operator_binary=False, is_op_unary_prefix=False, 
-                             operator_symbol='~'):
+                             is_binary_op=False, is_prefix_op=False, 
+                             op_symbol='*_*'):
         CallableObject.__init__(self, name)
         #IntArgumentList
         self.argument_definition = argument_definition
@@ -391,11 +388,11 @@ class BuiltInFunctionWrapper(CallableObject):
         #A Python function
         self.py_function = py_function
         #if True: the function is really an operator
-        self.is_operator_binary = is_operator_binary
+        self.is_binary_op = is_binary_op
         #if True: the function is really an unary prefix operator
-        self.is_op_unary_prefix = is_op_unary_prefix
+        self.is_prefix_op = is_prefix_op
         #string: The operator's symbol
-        self.operator_symbol = operator_symbol
+        self.op_symbol = op_symbol
 
 
     def __call__(self, *args, **kwargs):
@@ -426,19 +423,19 @@ class BuiltInFunctionWrapper(CallableObject):
         #create annotated NodeFuncCall/NodeOpInfix2/NodeOpPrefix1 if argument values are unknown
         else:
             #create right Node: NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
-            if self.is_operator_binary:
+            if self.is_binary_op:
                 func_call = NodeOpInfix2()
-                func_call.operator = self.operator_symbol
-            elif self.is_op_unary_prefix:
+                func_call.operator = self.op_symbol
+            elif self.is_prefix_op:
                 func_call = NodeOpPrefix1()
-                func_call.operator = self.operator_symbol
+                func_call.operator = self.op_symbol
             else:
                 func_call = NodeFuncCall()
             #operators get positional arguments (easier for code generation)
-            if self.is_operator_binary or self.is_op_unary_prefix:     
+            if self.is_binary_op or self.is_prefix_op:     
                 func_call.arguments = args
                 func_call.keyword_arguments = kwargs #most likely empty
-            #Regular function calls are generated with keyword arguments only.
+            #Regular function calls get keyword arguments only.
             #Default arguments from this function get to the code generator 
             #this way.
             else:
@@ -447,7 +444,7 @@ class BuiltInFunctionWrapper(CallableObject):
             #put on decoration
             func_call.name = self.name
             func_call.function_object = self
-            func_call.type = self.return_type
+            func_call.type = ref(self.return_type)
             func_call.role = RoleDataCanVaryAtRuntime
             return func_call
 
@@ -625,6 +622,10 @@ def siml_issubclass(in_type, class_or_type_or_tuple):
     return (in_type in class_or_type_or_tuple)
     
 
+#TODO: write siml_callable(...) function. 
+#      Return True if object is can be executed like a function.  
+    
+    
 def make_unique_name(base_name, existing_names):
     '''
     Make a unique name that is not in existing_names.

@@ -41,20 +41,23 @@ except:
 #-------- Test IntArgumentList class ------------------------------------------------------------------------
 def test_IntArgumentList_1():
     print 'IntArgumentList: construction'
-    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
+    from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
     
     #Test normal construction only positional argument: f(a, b)
-    IntArgumentList([NodeFuncArg(DotName('a')),
-                     NodeFuncArg(DotName('b'))], None)
+    ArgumentList([NodeFuncArg(DotName('a')),
+                  NodeFuncArg(DotName('b'))], None)
     #Test normal construction with keyword arguments: f(a, b=1)
     val_1 = CLASS_FLOAT.construct_instance()
-    IntArgumentList([NodeFuncArg(DotName('a')),
-                     NodeFuncArg(DotName('b'), default_value=val_1)], None)
+    ArgumentList([NodeFuncArg(DotName('a')),
+                  NodeFuncArg(DotName('b'), default_value=val_1)], None)
+    #Names are automatically converted to DotName
+    ArgumentList([NodeFuncArg('a'),
+                  NodeFuncArg('b', default_value=val_1)], None)
     
     #argument list with two identical argument names: f(a, a)
     try:
-        IntArgumentList([NodeFuncArg(DotName('a')),
-                         NodeFuncArg(DotName('a'))], None)
+        ArgumentList([NodeFuncArg(DotName('a')),
+                      NodeFuncArg(DotName('a'))], None)
     except UserException, e:
         print 'Caught expected exception (argument names must be unique)'
         print e
@@ -64,8 +67,8 @@ def test_IntArgumentList_1():
     #argument list with keyword argument before positional argument: f(a=1, b)
     try:
         val_1 = CLASS_FLOAT.construct_instance()
-        IntArgumentList([NodeFuncArg(DotName('a'), default_value=val_1),
-                         NodeFuncArg(DotName('b'))], None)
+        ArgumentList([NodeFuncArg(DotName('a'), default_value=val_1),
+                      NodeFuncArg(DotName('b'))], None)
     except UserException, e:
         print 'Caught expected exception (keyword argument before positional argument)'
         print e
@@ -76,12 +79,12 @@ def test_IntArgumentList_1():
     
     
 def test_IntArgumentList_2():
-    print 'IntArgumentList: test argument processing at call site'
-    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
+    print 'ArgumentList: test argument processing at call site'
+    from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
     
     #argument list for testing
-    al = IntArgumentList([NodeFuncArg(DotName('a')),
-                          NodeFuncArg(DotName('b'))], None)
+    al = ArgumentList([NodeFuncArg(DotName('a')),
+                       NodeFuncArg(DotName('b'))], None)
     #some interpreter level values
     val_1 = CLASS_FLOAT.construct_instance()
     val_1.value = 1
@@ -135,14 +138,39 @@ def test_IntArgumentList_2():
         print e
     else:
         py.test.fail('This code should raise an exception (duplicate keyword argument).') #IGNORE:E1101
-       
     #assert 1==0
     
     
     
+def test_IntArgumentList_2_1():
+    print 'ArgumentList: __init__: strings are converted to DotName, default argument for loc'
+    from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
+    
+    #argument list for testing
+    al = ArgumentList([NodeFuncArg('a'),
+                       NodeFuncArg('b')])
+    #some interpreter level values
+    val_1 = CLASS_FLOAT.construct_instance()
+    val_1.value = 1
+    val_2 = CLASS_FLOAT.construct_instance()
+    val_2.value = 2
+    
+    #call with correct number of positional arguments
+    arg_vals = al.parse_function_call_args([val_1, val_2], {})
+    assert arg_vals[DotName('a')].value == 1
+    assert arg_vals[DotName('b')].value == 2
+    
+    #call with correct number of keyword arguments
+    arg_vals = al.parse_function_call_args([], {DotName('a'):val_1,  
+                                                DotName('b'):val_2})
+    assert arg_vals[DotName('a')].value == 1
+    assert arg_vals[DotName('b')].value == 2
+    
+    
+    
 def test_IntArgumentList_3():
-    print 'IntArgumentList: test calling with default arguments.'
-    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, CLASS_FLOAT)
+    print 'ArgumentList: test calling with default arguments.'
+    from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, CLASS_FLOAT)
     
     #some interpreter level values
     val_1 = CLASS_FLOAT.construct_instance()
@@ -150,8 +178,8 @@ def test_IntArgumentList_3():
     val_2 = CLASS_FLOAT.construct_instance()
     val_2.value = 2
     #argument list for testing: def f(a, b=2)
-    al = IntArgumentList([NodeFuncArg(DotName('a')),
-                          NodeFuncArg(DotName('b'), default_value=val_2)], None)
+    al = ArgumentList([NodeFuncArg(DotName('a')),
+                       NodeFuncArg(DotName('b'), default_value=val_2)], None)
     
     #call with one positional argument: f(1). For argument 'b' default value must be used.
     arg_vals = al.parse_function_call_args([val_1], {})
@@ -161,8 +189,8 @@ def test_IntArgumentList_3():
     
     
 def test_IntArgumentList_4():
-    print 'IntArgumentList: test type compatibility testing.'
-    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName,  
+    print 'ArgumentList: test type compatibility testing.'
+    from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName,  
                                      CLASS_FLOAT, CLASS_STRING)
     
     #some interpreter level values
@@ -171,8 +199,8 @@ def test_IntArgumentList_4():
     val_hello = CLASS_STRING.construct_instance()
     val_hello.value = 'hello'
     #argument list for testing: f(a:Float, b:String)
-    al = IntArgumentList([NodeFuncArg(DotName('a'), type=CLASS_FLOAT),
-                          NodeFuncArg(DotName('b'), type=CLASS_STRING)], None)
+    al = ArgumentList([NodeFuncArg(DotName('a'), type=CLASS_FLOAT),
+                       NodeFuncArg(DotName('b'), type=CLASS_STRING)], None)
     
     #call with correct positional arguments: f(1, 'hello')
     arg_vals = al.parse_function_call_args([val_1, val_hello], {})
@@ -194,9 +222,9 @@ def test_IntArgumentList_4():
  
 #-------- Test wrapper object for Python fuctions ------------------------------------------------------------------------
 def test_BuiltInFunctionWrapper_1():
-    print 'BuiltInFunctionWrapper: test simple operation without Interpreter.'
+    print 'BuiltInFunctionWrapper: test function call with known arguments, no Interpreter.'
     from freeode.interpreter import (BuiltInFunctionWrapper,
-                                     IntArgumentList, NodeFuncArg, DotName,  
+                                     ArgumentList, NodeFuncArg,   
                                      CLASS_FLOAT)
     import math
     
@@ -205,19 +233,88 @@ def test_BuiltInFunctionWrapper_1():
     #some interpreter level values
     val_2 = CLASS_FLOAT.construct_instance()
     val_2.value = 2
-    #argument list for testing: f(x:Float)
-    arg_list = IntArgumentList([NodeFuncArg(DotName('x'), type=CLASS_FLOAT)], None)
+
     #create a function object that wraps the sqrt function
-    func = BuiltInFunctionWrapper('sqrt', arg_list, CLASS_FLOAT, sqrt)
-    
+    func = BuiltInFunctionWrapper('sqrt', 
+                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)], None), 
+                                  return_type=CLASS_FLOAT, 
+                                  py_function=sqrt)
     #call function: sqrt(2)
     siml_ret = func(val_2)
     assert siml_ret.value == sqrt(2) #IGNORE:E1103
+    #assert False, 'implement me!'
+    
+    
+                                      
+def test_BuiltInFunctionWrapper_2():
+    print 'BuiltInFunctionWrapper: test function call with unknown arguments, no Interpreter.'
+    from freeode.interpreter import (BuiltInFunctionWrapper,
+                                     ArgumentList, NodeFuncArg, DotName, ref,  
+                                     CLASS_FLOAT, 
+                                     NodeOpPrefix1, NodeOpInfix2, NodeFuncCall)
+    import math
+    
+    #create sqrt function with named arguments
+    sqrt = lambda x: math.sqrt(x) 
+    #create unknown interpreter level values
+    val_x = CLASS_FLOAT.construct_instance()
+    val_y = CLASS_FLOAT.construct_instance()
+    #create fragment of unknown expression
+    binop_u = NodeOpInfix2()
+    binop_u.type = ref(CLASS_FLOAT)
+    #create a function object that wraps the sqrt function
+    func = BuiltInFunctionWrapper('sqrt', 
+                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
+                                  return_type=CLASS_FLOAT, 
+                                  py_function=sqrt)
+    #create a binary operator object - wraps noting
+    binop = BuiltInFunctionWrapper('__add__', 
+                                   ArgumentList([NodeFuncArg('x', CLASS_FLOAT), 
+                                                 NodeFuncArg('y', CLASS_FLOAT)]), 
+                                   return_type=CLASS_FLOAT, 
+                                   py_function=None,
+                                   is_binary_op=True, op_symbol='+')
+    #create a prefix operator object - wraps noting
+    prefix_op = BuiltInFunctionWrapper('__sign__', 
+                                ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
+                                return_type=CLASS_FLOAT, 
+                                py_function=None,
+                                is_prefix_op=True, op_symbol='-')
+    
+    #call function: sqrt( <unknown value> )
+    siml_ret = func(val_x)
+    assert isinstance(siml_ret, NodeFuncCall)
+    assert siml_ret.type() == CLASS_FLOAT
+    assert siml_ret.keyword_arguments[DotName('x')] == val_x
+    assert siml_ret.function_object == func
+    
+    #call function: sqrt( <expression fragment> )
+    siml_ret = func(binop_u)
+    assert isinstance(siml_ret, NodeFuncCall)
+    assert siml_ret.type() == CLASS_FLOAT
+    assert siml_ret.keyword_arguments[DotName('x')] == binop_u
+    assert siml_ret.function_object == func
+    
+    #call binary operator ( <unknown value x>,  <unknown value y>)
+    siml_ret = binop(val_x, val_y)
+    assert isinstance(siml_ret, NodeOpInfix2)
+    assert siml_ret.type() == CLASS_FLOAT
+    assert siml_ret.arguments[0] == val_x
+    assert siml_ret.arguments[1] == val_y
+    assert siml_ret.function_object == binop
+    
+    #call prefix operator ( <unknown value x> )
+    siml_ret = prefix_op(val_x)
+    assert isinstance(siml_ret, NodeOpPrefix1)
+    assert siml_ret.type() == CLASS_FLOAT
+    assert siml_ret.arguments[0] == val_x
+    assert siml_ret.function_object == prefix_op
     
     #assert False, 'implement me!'
     
+    
                                       
-#-------- Test expression evaluation (only immediate values) ------------------------------------------------------------------------
+#-------- Test expression evaluation ------------------------------------------------------------------------
 def test_expression_evaluation_1():
     #py.test.skip('Test expression evaluation (only immediate values)')
     print 'Test expression evaluation (only immediate values)'
@@ -239,7 +336,7 @@ def test_expression_evaluation_1():
     assert res.value == 2.0
     
     
-#----------- Test expression evaluation (access to variables) ---------------------------------------------------------------
+
 def test_expression_evaluation_2():
     #py.test.skip('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (access to variables)'
@@ -276,7 +373,53 @@ def test_expression_evaluation_2():
     assert res.value == 5.0
     
     
-#Test expression evaluation (returning of partially evaluated expression when accessing variables)-------------------
+
+def test_expression_evaluation_2_1():
+    #py.test.skip('Test expression evaluation (access to variables)')
+    print 'Test expression evaluation (calling built in functions)'
+    from freeode.interpreter import (simlparser, InstModule, ExecutionEnvironment,
+                                     ExpressionVisitor, DotName,
+                                     BuiltInFunctionWrapper, ArgumentList, NodeFuncArg,
+                                     CLASS_FLOAT)
+    import math
+    
+    #parse the expression
+    ps = simlparser.Parser()
+    ex = ps.parseExpressionStr('sqrt(2)')
+    print
+    print 'AST (parser output): -----------------------------------------------------------'
+    print ex
+    
+    #create module where names live
+    mod = InstModule()
+    #create sqrt function with named arguments
+    sqrt = lambda x: math.sqrt(x) 
+    #create a function object that wraps the sqrt function
+    func = BuiltInFunctionWrapper('sqrt', 
+                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
+                                  return_type=CLASS_FLOAT, 
+                                  py_function=sqrt)
+    #put function into module
+    mod.create_attribute(DotName('sqrt'), func)
+    print
+    print 'Module where function is located: --------------------------------------------'
+    print mod
+    
+    #create environment for lookup of variables (stack frame)
+    env = ExecutionEnvironment()
+    env.global_scope = mod
+    #create visitor for evaluating the expression
+    exv = ExpressionVisitor(None)
+    exv.environment = env
+    #evaluate the expression
+    res = exv.dispatch(ex)
+    print
+    print 'Result object: --------------------------------------------------------------'
+    print res 
+    assert res.value == sqrt(2)
+    
+    
+
 def test_expression_evaluation_3():
     #py.test.skip('Test disabled')
     print 'Test expression evaluation (returning of partially evaluated expression when accessing variables)'
@@ -313,6 +456,8 @@ def test_expression_evaluation_3():
     print res 
     assert isinstance(res, NodeOpInfix2)
     assert res.operator == '+'
+
+
 
 #--------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
 def test_basic_execution_of_statements():

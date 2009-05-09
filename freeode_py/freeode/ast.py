@@ -451,6 +451,12 @@ class NodeOpInfix2(Node):
             Expression on left and right of operator: 
             left: arguments[0], right: arguments[1]
             Naming is chosen to unify operators and function call
+        keyword_arguments: 
+            Dictionary of keyword arguments - only for uniform handling with functions
+        function_object:
+            The Siml function that the interpreter called when the function
+            call was interpreted. (Because not all arguments were known at 
+            compile time, an annotated function call was created.) 
         type: InterpreterObject
             Type of the results of the operation. For decorating the AST.
         type_ex: NodeFuncCall
@@ -465,6 +471,8 @@ class NodeOpInfix2(Node):
         super(NodeOpInfix2, self).__init__()
         self.operator = None
         self.arguments = []
+        self.keyword_arguments = {}
+        self.function_object = None
         self.type = None
         self.type_ex = None
         self.role = None
@@ -481,6 +489,12 @@ class NodeOpPrefix1(Node):
         arguments:  list(Node())
             Expression on right side of operator
             Naming is chosen to unify operators and function call
+        keyword_arguments: 
+            Dictionary of keyword arguments - only for uniform handling with functions
+        function_object:
+            The Siml function that the interpreter called when the function
+            call was interpreted. (Because not all arguments were known at 
+            compile time, an annotated function call was created.) 
         type: InterpreterObject
             Type of the results of the operation. For decorating the AST.
         type_ex: NodeFuncCall
@@ -495,6 +509,8 @@ class NodeOpPrefix1(Node):
         super(NodeOpPrefix1, self).__init__()
         self.operator = None
         self.arguments = []
+        self.keyword_arguments = {}
+        self.function_object = None
         self.type = None
         self.type_ex = None
         self.role = None
@@ -886,8 +902,8 @@ class NodeFuncArg(Node):
     '''
     def __init__(self, name=None, type=None, default_value=None):
         Node.__init__(self)
-        self.name = name
-        self.type = type #TODO: create refference if object is a class
+        self.name = DotName(name)
+        self.type = type 
         self.default_value = default_value
         self.loc = None
         
