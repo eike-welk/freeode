@@ -341,7 +341,7 @@ class IntArgumentList(Node):
         if arg_def.type is None: 
             return 
         if not siml_issubclass(in_object.type(), arg_def.type()):
-            raise IncompatibleTypeError(
+            raise UserException(
                     'Incompatible types. Variable: "%s" '
                     'is defined as:\n %s \nHowever, argument type is: \n%s.'
                     % (arg_def.name, str(arg_def.type()), str(in_object.type())), 
@@ -407,7 +407,7 @@ class BuiltInFunctionWrapper(CallableObject):
         #Try to get Python values out of the Siml values (unwrap).
         py_args = {}
         all_python_values_exist = True
-        for name, siml_val in parsed_args:
+        for name, siml_val in parsed_args.iteritems():
             if not (isinstance(siml_val, InterpreterObject) and hasattr(siml_val, 'value') and
                     siml_val.value is not None):
                 all_python_values_exist = False
@@ -425,6 +425,7 @@ class BuiltInFunctionWrapper(CallableObject):
                 return None
         #create annotated NodeFuncCall/NodeOpInfix2/NodeOpPrefix1 if argument values are unknown
         else:
+            #create right Node: NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
             if self.is_operator_binary:
                 func_call = NodeOpInfix2()
                 func_call.operator = self.operator_symbol
@@ -433,9 +434,18 @@ class BuiltInFunctionWrapper(CallableObject):
                 func_call.operator = self.operator_symbol
             else:
                 func_call = NodeFuncCall()
+            #operators get positional arguments (easier for code generation)
+            if self.is_operator_binary or self.is_op_unary_prefix:     
+                func_call.arguments = args
+                func_call.keyword_arguments = kwargs #most likely empty
+            #Regular function calls are generated with keyword arguments only.
+            #Default arguments from this function get to the code generator 
+            #this way.
+            else:
+                func_call.arguments = []
+                func_call.keyword_arguments = parsed_args
+            #put on decoration
             func_call.name = self.name
-            func_call.arguments = args
-            func_call.keyword_arguments = kwargs
             func_call.function_object = self
             func_call.type = self.return_type
             func_call.role = RoleDataCanVaryAtRuntime
@@ -900,33 +910,41 @@ class ExpressionVisitor(Visitor):
         #find the right call-able object   
         call_obj = self.dispatch(node.name)
         if not isinstance(call_obj, (InstFunction, InstUserDefinedClass, 
-                                     CreateBuiltInType)):
+                                     CreateBuiltInType, CallableObject)):
             raise UserException('Expecting callable object!', node.loc)
         
         #evaluate all arguments in the callers environment.
         ev_args = []
-        for arg1 in node.arguments:
-            ev_arg1 = self.dispatch(arg1)
-            ev_args.append(ev_arg1)
+        for arg_val in node.arguments:
+            ev_arg_val = self.dispatch(arg_val)
+            ev_args.append(ev_arg_val)
+        ev_kwargs = {}
+        for arg_name, arg_val in node.keyword_arguments:
+            ev_arg_val = self.dispatch(arg_val)
+            ev_kwargs[arg_name] = ev_arg_val
         #call the call-able object
-        return self.call_siml_object(call_obj, ev_args, node.loc)
+        return self.call_siml_object(call_obj, ev_args, ev_kwargs, node.loc)
         
-    def call_siml_object(self, call_obj, args, loc):
+        
+    def call_siml_object(self, call_obj, args, kwargs, loc):
         '''
         Call a call-able object (function, class) from Python code.
         Execute the call-able's code and return the return value.
         
         All arguments must be already evaluated.
         '''
+        #TODO: write general call-able objects (with __call__ method)
+        
+        #Call the new style call-able objects
+        if isinstance(call_obj, CallableObject):
+            return call_obj(*args, **kwargs)     #IGNORE:W0142
+        
         #associate argument values with argument names
         #create dictionary {argument_name:argument_value}
         arg_dict = {}
         for arg_def, arg_val in zip(call_obj.arguments, args):
             arg_dict[arg_def.name] = arg_val
             
-        #TODO: write general call-able objects (with __call__ method)
-        #TODO: write SIML wrapper for Python function
-        
         #different reactions on the different call-able objects
         #execute a function
         if isinstance(call_obj, InstFunction):
@@ -949,7 +967,7 @@ class ExpressionVisitor(Visitor):
                 if arg_val.type_ex is not None:
                     new_arg = self.visit_NodeFuncCall(arg_val.type_ex)
                 else:
-                    new_arg = self.call_siml_object(arg_val.type(), [], loc) #TODO: remove when possible
+                    new_arg = self.call_siml_object(arg_val.type(), [], {}, loc) #TODO: remove when possible
                 new_arg.role = arg_val.role
                 #put object into local name-space and assign value to it 
                 new_env.local_scope.create_attribute(arg_name, new_arg)
@@ -1241,7 +1259,7 @@ class StatementVisitor(Visitor):
             func_tree = tree_object.get_attribute(func_name)
             #call the main functions and collect code
             self.interpreter.compile_stmt_collect = []
-            self.expression_visitor.call_siml_object(func_tree, [], node.loc)
+            self.expression_visitor.call_siml_object(func_tree, [], {}, node.loc)
             #create a new main function with the collected code
             func_flat = CLASS_FUNCTION.construct_instance()
             func_flat.name = func_name

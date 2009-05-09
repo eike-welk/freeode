@@ -142,7 +142,7 @@ def test_IntArgumentList_2():
     
 def test_IntArgumentList_3():
     print 'IntArgumentList: test calling with default arguments.'
-    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
+    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, CLASS_FLOAT)
     
     #some interpreter level values
     val_1 = CLASS_FLOAT.construct_instance()
@@ -162,8 +162,8 @@ def test_IntArgumentList_3():
     
 def test_IntArgumentList_4():
     print 'IntArgumentList: test type compatibility testing.'
-    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName, UserException, 
-                                     ref, CLASS_FLOAT, CLASS_STRING)
+    from freeode.interpreter import (IntArgumentList, NodeFuncArg, DotName,  
+                                     CLASS_FLOAT, CLASS_STRING)
     
     #some interpreter level values
     val_1 = CLASS_FLOAT.construct_instance()
@@ -191,6 +191,31 @@ def test_IntArgumentList_4():
     assert arg_vals[DotName('b')].value == 'hello'
     
  
+ 
+#-------- Test wrapper object for Python fuctions ------------------------------------------------------------------------
+def test_BuiltInFunctionWrapper_1():
+    print 'BuiltInFunctionWrapper: test simple operation without Interpreter.'
+    from freeode.interpreter import (BuiltInFunctionWrapper,
+                                     IntArgumentList, NodeFuncArg, DotName,  
+                                     CLASS_FLOAT)
+    import math
+    
+    #create sqrt function with named arguments
+    sqrt = lambda x: math.sqrt(x) 
+    #some interpreter level values
+    val_2 = CLASS_FLOAT.construct_instance()
+    val_2.value = 2
+    #argument list for testing: f(x:Float)
+    arg_list = IntArgumentList([NodeFuncArg(DotName('x'), type=CLASS_FLOAT)], None)
+    #create a function object that wraps the sqrt function
+    func = BuiltInFunctionWrapper('sqrt', arg_list, CLASS_FLOAT, sqrt)
+    
+    #call function: sqrt(2)
+    siml_ret = func(val_2)
+    assert siml_ret.value == sqrt(2) #IGNORE:E1103
+    
+    #assert False, 'implement me!'
+    
                                       
 #-------- Test expression evaluation (only immediate values) ------------------------------------------------------------------------
 def test_expression_evaluation_1():
@@ -609,6 +634,6 @@ print 'end'
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_object_function_call()
+    test_BuiltInFunctionWrapper_1()
     pass
 
