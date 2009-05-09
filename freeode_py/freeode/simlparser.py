@@ -1002,14 +1002,14 @@ class Parser(object):
 #                                + stmtEnd)                           .setErrMsgStart('Foreign code statement: ')
 #                           )                                         .setParseAction(self._actionForeignCodeStmt)
 
-        #expression list - parse: 2, foo.bar, 3*sin(baz)
-        expression_list = delimitedList(expression, ',')            .setName('exprList')
-        #print something to stdout
-        print_stmt = Group(kw('print')
-                          - Optional(expression_list)               .setResultsName('arg_list')
-                          + Optional(',')                           .setResultsName('trail_comma')                       
-                          )                                         .setParseAction(self._action_print_stmt)\
-                                                                    .setFailAction(ChMsg(prepend='print statement: '))
+#        #expression list - parse: 2, foo.bar, 3*sin(baz)
+#        expression_list = delimitedList(expression, ',')            .setName('exprList')
+#        #print something to stdout
+#        print_stmt = Group(kw('print')
+#                          - Optional(expression_list)               .setResultsName('arg_list')
+#                          + Optional(',')                           .setResultsName('trail_comma')                       
+#                          )                                         .setParseAction(self._action_print_stmt)\
+#                                                                    .setFailAction(ChMsg(prepend='print statement: '))
         #TODO: create built in graph function instead
 #        #show graphs
 #        graph_stmt = Group(kw('graph') - expression_list            .setResultsName('arg_list')
@@ -1060,8 +1060,8 @@ class Parser(object):
                           )                                         .setParseAction(self._action_data_def)\
                                                                     .setFailAction(ChMsg(prepend='data definition: '))
                                                                    
-        simple_stmt = (data_stmt| print_stmt | return_stmt |
-                       pragma_stmt | #store_stmt | graph_stmt |                                    
+        simple_stmt = (data_stmt| #print_stmt | 
+                       return_stmt | pragma_stmt | #store_stmt | graph_stmt |                                    
                        compile_stmt | assign_stmt |expression_stmt ).setName('simple statement')
 
 #------------- Compound statements ............................................................................

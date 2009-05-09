@@ -144,7 +144,7 @@ def test_IntArgumentList_2():
     
 def test_IntArgumentList_2_1():
     print 'ArgumentList: __init__: strings are converted to DotName, default argument for loc'
-    from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
+    from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, CLASS_FLOAT)
     
     #argument list for testing
     al = ArgumentList([NodeFuncArg('a'),
@@ -220,7 +220,7 @@ def test_IntArgumentList_4():
     
  
  
-#-------- Test wrapper object for Python fuctions ------------------------------------------------------------------------
+#-------- Test wrapper object for Python functions ------------------------------------------------------------------------
 def test_BuiltInFunctionWrapper_1():
     print 'BuiltInFunctionWrapper: test function call with known arguments, no Interpreter.'
     from freeode.interpreter import (BuiltInFunctionWrapper,
@@ -318,7 +318,8 @@ def test_BuiltInFunctionWrapper_2():
 def test_expression_evaluation_1():
     #py.test.skip('Test expression evaluation (only immediate values)')
     print 'Test expression evaluation (only immediate values)'
-    from freeode.interpreter import *
+    from freeode.interpreter import ExpressionVisitor
+    import freeode.simlparser as simlparser
     
     #parse the expression
     ps = simlparser.Parser()
@@ -340,7 +341,10 @@ def test_expression_evaluation_1():
 def test_expression_evaluation_2():
     #py.test.skip('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (access to variables)'
-    from freeode.interpreter import *
+    from freeode.interpreter import (InstModule, CLASS_FLOAT, RoleConstant, 
+                                     ExpressionVisitor, DotName, 
+                                     ExecutionEnvironment)
+    import freeode.simlparser as simlparser
     
     #parse the expression
     ps = simlparser.Parser()
@@ -423,8 +427,10 @@ def test_expression_evaluation_2_1():
 def test_expression_evaluation_3():
     #py.test.skip('Test disabled')
     print 'Test expression evaluation (returning of partially evaluated expression when accessing variables)'
-    from freeode.interpreter import *
-    
+    from freeode.interpreter import (InstModule, CLASS_FLOAT, RoleVariable, 
+                                     DotName, ExecutionEnvironment, ExpressionVisitor,
+                                     NodeOpInfix2)
+    import freeode.simlparser as simlparser
     #parse the expression
     ps = simlparser.Parser()
     ex = ps.parseExpressionStr('a + 2*2')
@@ -463,23 +469,20 @@ def test_expression_evaluation_3():
 def test_basic_execution_of_statements():
     #py.test.skip('Test disabled')
     print 'Test basic execution of statements (no interpreter object) .................................'
-    from freeode.interpreter import *
+    from freeode.interpreter import (CLASS_MODULE, CLASS_FLOAT, CLASS_STRING,
+                                     DotName, ExecutionEnvironment,
+                                     ExpressionVisitor, StatementVisitor)
+    import freeode.simlparser as simlparser
     
     prog_text = \
 '''
-print 'start'
-
 data a:Float const 
 data b:Float const 
 a = 2*2 + 3*4
 b = 2 * a
-print 'a = ', a, 'b = ', b
 
 data c:String const
 c = 'Hello ' + 'world!'
-print 'c = ', c
-
-print 'end'
 '''
 
     #create the built in library
@@ -490,7 +493,7 @@ print 'end'
     print 'global namespace - before interpreting statements - built in library: ---------------'
     print mod
            
-    #init the interpreter
+    #initialize the interpreter
     env = ExecutionEnvironment()
     exv = ExpressionVisitor(None)
     exv.environment = env
@@ -517,25 +520,72 @@ print 'end'
     assert mod.get_attribute(DotName('b')).value == 2*16
   
   
-#---------- Test interpreter object: function call ------------------------------------------------
-def test_interpreter_object_function_call():
+  
+#-------- Test interpreter object - basic --------------------------------------------------------  
+def test_interpreter_object_builtin_function_call_1():
     #py.test.skip('Test disabled')
-    print 'Test interpreter object: function call ...............................................................'
-    from freeode.interpreter import *
+    print 'Test interpreter object: call built in function sqrt...............................................................'
+    from freeode.interpreter import Interpreter, DotName
+    import math
+    
+    prog_text = \
+'''
+data a: Float const
+a = sqrt(2)
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    print 'module after interpreter run: ---------------------------------'
+    print intp.modules['test']
+    
+    assert intp.modules['test'].get_attribute(DotName('a')).value == math.sqrt(2)
+  
+  
+
+def test_interpreter_object_builtin_function_call_2():
+    #py.test.skip('Test disabled')
+    print 'Test interpreter object: call built in function print...............................................................'
+    from freeode.interpreter import Interpreter, DotName
+    import math
+    
+    prog_text = \
+'''
+print('test')
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    print 'module after interpreter run: ---------------------------------'
+    print intp.modules['test']
+  
+  
+
+def test_interpreter_object_function_definition_and_call():
+    #py.test.skip('Test disabled')
+    print 'Test interpreter object: function definition and function call ...............................................................'
+    from freeode.interpreter import Interpreter, DotName
 
     prog_text = \
 '''
-print 'start'
+print('start')
 
 func foo(b):
-    print 'in foo. b = ', b
+    print('in foo. b = ', b)
     return b*b
-    print 'after return'
+    print('after return')
 
-data a:Float const
+data a: Float const
 a = 2*2 + foo(3*4) + foo(2)
-print 'a = ', a
-print 'end'
+print('a = ', a)
+
+print('end')
 '''
     #create the interpreter
     intp = Interpreter()
@@ -549,21 +599,21 @@ print 'end'
     assert intp.modules['test'].get_attribute(DotName('a')).value == 2*2 + (3*4)**2 + 2**2
   
   
-#-------- Test interpreter object: class definition --------------------------------------------------------
+
 def test_interpreter_object_class_definition():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: class definition ...............................................................'
-    from freeode.interpreter import *
+    from freeode.interpreter import Interpreter, DotName
 
     prog_text = \
 '''
-print 'start'
+print('start')
 
 data pi: Float const
 pi = 3.1415
 
 class A:
-    print 'in A definition'
+    print('in A definition')
     data a1: Float const
     data a2: Float const
 
@@ -577,9 +627,9 @@ data b: B const
 
 a.a1 = 1
 a.a2 = 2 * b.b1
-print 'a.a1: ', a.a1, ', a.a2: ', a.a2
+print('a.a1: ', a.a1, ', a.a2: ', a.a2)
 
-print 'end'
+print('end')
 '''
 
     #create the interpreter
@@ -600,18 +650,18 @@ print 'end'
                                 .get_attribute(DotName('b1')).value == 3.1415)
 
   
-#--------- Test interpreter object: method call ---------------------------------------
+  
 def test_interpreter_object_method_call():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: method call ...............................................................'
-    from freeode.interpreter import *
+    from freeode.interpreter import Interpreter, DotName
 
     prog_text = \
 '''
-print 'start'
+print('start')
 
 func times_3(x):
-    print 'times_2: x=', x
+    print('times_2: x=', x)
     return 2*x
     
 class A:
@@ -619,19 +669,19 @@ class A:
     data a2: Float const
     
     func compute(x):
-        print 'in compute_a2 x=', x
+        print('in compute_a2 x=', x)
         a1 = x
         a2 = x + times_3(a1)
         return a2
         
 data a: A const
 a.compute(3)
-print 'a.a1 = ', a.a1
-print 'a.a2 = ', a.a2
+print('a.a1 = ', a.a1)
+print('a.a2 = ', a.a2)
 
 #compile test: A
 
-print 'end'
+print('end')
 '''
 
     #create the interpreter
@@ -646,18 +696,18 @@ print 'end'
                                 .get_attribute(DotName('a1')).value == 3)
     assert (intp.modules['test'].get_attribute(DotName('a'))
                                 .get_attribute(DotName('a2')).value == 9)
+#    assert False, 'Test'
 
       
-#---------------- Test interpreter object: emit code simple ----------------------------------------
+#---------------- Test interpreter object - emit code ----------------------------------------
 def test_interpreter_object_emit_code_simple():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: emit code simple ...............................................................'
-    from freeode.interpreter import *
+    from freeode.interpreter import Interpreter, Node
 
     prog_text = \
 '''
-print 'start'
-
+print('start')
 
 data a: Float const
 data b: Float variable
@@ -665,8 +715,9 @@ data c: Float variable
 a = 2*2 #constant no statement emitted
 b = 2*a #compute 2*a at compile time
 c = 2*b #emit everything
-print 'a = ', a
-print 'end'
+print('a = ', a)
+
+print('end')
 '''
 
     #create the interpreter
@@ -687,15 +738,15 @@ print 'end'
         
     #TODO: Assertions
       
-    #------------- Test interpreter object: compile statement ...............................................................
+
 def test_interpreter_object_compile_statement():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: compile statement ...............................................................'
-    from freeode.interpreter import *
+    from freeode.interpreter import Interpreter
 
     prog_text = \
 '''
-print 'start'
+print('start')
 
 class B:
     data b1: Float variable
@@ -717,7 +768,7 @@ class A:
 
 compile A
 
-print 'end'
+print('end')
 '''
 
     #create the interpreter
@@ -732,15 +783,15 @@ print 'end'
     #TODO: Assertions
       
       
-    #------------------------- Test interpreter object: "$" operator ...............................................
+
 def test_interpreter_object_dollar_operator():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: "$" operator ...............................................................'
-    from freeode.interpreter import *
+    from freeode.interpreter import Interpreter
 
     prog_text = \
 '''
-print 'start'
+print('start')
 
 class B:
     data b1: Float variable
@@ -762,7 +813,7 @@ class A:
 
 compile A
 
-print 'end'
+print('end')
 '''
 
     #create the interpreter

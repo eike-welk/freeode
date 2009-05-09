@@ -34,6 +34,7 @@ from __future__ import division
 #import copy
 import weakref
 from weakref import ref
+import math
 
 from freeode.ast import *
 import freeode.simlparser as simlparser
@@ -159,6 +160,7 @@ class InterpreterObject(Node):
         Put name into symbol table. Store newly constructed instance.
         This is called for a data statement.
         '''
+        name = DotName(name)
         if name in self.attributes:
             raise DuplicateAttributeError(attr_name=name)
         self.attributes[name] = newAttr
@@ -348,8 +350,21 @@ class ArgumentList(Node):
 
 class BuiltInFunctionWrapper(CallableObject):
     '''
-    Represents a function written in Python.
-    The object is callable from Python ans Siml.
+    Represents a function written in Python; for functions like 'sqrt' and 'sin'.
+    
+    The object is callable from Python and Siml.
+    
+    When a call is invoked argument parsing is done similarly
+    to Pythons's function call. Optionally function arguments can have 
+    a type that must match too.
+        f(a:Float=2.5)
+    
+    When all arguments are known, the wrapped Python function is executed. The 
+    result of the computation is wrapped in its associated InterpreterObject
+    and returned. 
+    However if any argument is unknown, a decorated (and unevaluated) function 
+    call is returned. For operators NodeOpInfix2, NodeOpPrefix1 can be 
+    created - see arguments is_binary_op, is_prefix_op, op_symbol.
     
     ARGUMENTS
     ---------
@@ -372,8 +387,18 @@ class BuiltInFunctionWrapper(CallableObject):
     
     RETURNS
     -------
-    Function result or unevaluated expression.
-    - adds type annotation
+    Wrapped function result (InterpreterObject) or unevaluated expression.
+    
+    Unevaluated expressions (ast.Node) get the following annotations:
+    - Node.type              : type of function result
+    - Node.function_object   : the function object (self)
+    - Node.role              : ???
+    - Node.name              : function's name; however function_object should 
+                               be used to identify function.
+
+    - Node.arguments         : Operators are returned with positional arguments.
+    - Node.keyword_arguments : For regular functions all arguments are specified
+                               keyword arguments
     '''
     def __init__(self, name, argument_definition=ArgumentList([]), 
                              return_type=None, 
@@ -410,7 +435,7 @@ class BuiltInFunctionWrapper(CallableObject):
                 all_python_values_exist = False
                 break
             py_args[str(name)] = siml_val.value
-        #call the Python function if all argument values are known
+        #call the wrapped Python function if all argument values are known
         if all_python_values_exist:
             py_retval = self.py_function(**py_args)             #IGNORE:W0142
             if self.return_type is not None:
@@ -450,7 +475,40 @@ class BuiltInFunctionWrapper(CallableObject):
 
 
 
-#---------- Built In Types  ------------------------------------------------*
+class SimpleFunctionWrapper(CallableObject):
+    '''
+    Represents a function written in Python; for special functions like 'print'.
+    
+    The object is callable from Python and Siml.
+    
+    No argument parsing or type checking are is done. The wrapped Function
+    is responsible for this.
+    
+    The wrapped function is responsible for handling unevaluated/unknown 
+    arguments, and what object is returned when arguments are unknown.
+    
+    ARGUMENTS
+    ---------
+    name
+        name of function
+    py_function:
+        Wrapped function that will be called.
+    
+    RETURNS
+    -------
+    Anything that the wrapped function returns. 
+    '''
+    def __init__(self, name, py_function=lambda:None):
+        CallableObject.__init__(self, name)
+        self.py_function = py_function
+        
+    def __call__(self, *args, **kwargs):
+        return self.py_function(*args, **kwargs) #IGNORE:W0142
+        
+        
+        
+#---------- Built In Library  ------------------------------------------------*
+
 #---------- Infrastructure -------------------------------------------------
 class CreateBuiltInType(TypeObject): 
     '''
@@ -565,16 +623,65 @@ class InstString(InterpreterObject):
 CLASS_STRING = CreateBuiltInType('String', InstString)
   
   
+  
+#-------------- Service -------------------------------------------------------------------  
+class PrintFunction(CallableObject):
+    '''The print function object.'''
+    def __init__(self):
+        CallableObject.__init__(self, 'print')
+        
+    def __call__(self, *args, **kwargs):
+        #test if all arguments are known
+        unknown_argument = False
+        for siml_arg in args:
+            if (not hasattr(siml_arg, 'value')) or (siml_arg.value is None):
+                unknown_argument = True
+                break
+        #create unevaluated function call
+        if unknown_argument:
+            func_call = NodeFuncCall()
+            func_call.arguments = args
+            func_call.keyword_arguments = kwargs 
+            #put on decoration
+            func_call.name = self.name
+            func_call.function_object = self
+            func_call.type = None
+            func_call.role = None
+            return func_call
+        #print arguments - all arguments are known
+        else:
+            for siml_arg in args:
+                print siml_arg.value,
+            print
+            return None
+     
+     
+     
 def create_built_in_lib():
     '''
     Returns module with objects that are built into interpreter.
     '''  
-    lib = CLASS_MODULE.construct_instance()
+    Arg = NodeFuncArg
+    WFunc = BuiltInFunctionWrapper
+    
+    lib = InstModule()
     lib.name = DotName('__built_in__')
-    lib.create_attribute(DotName('Module'), CLASS_MODULE)
-    lib.create_attribute(DotName('Function'), CLASS_FUNCTION)
-    lib.create_attribute(DotName('Float'), CLASS_FLOAT)
-    lib.create_attribute(DotName('String'), CLASS_STRING)
+
+    #basic data types
+    lib.create_attribute('Float', CLASS_FLOAT)
+    lib.create_attribute('String', CLASS_STRING)
+    #built in functions
+    lib.create_attribute('print', PrintFunction())
+    #math functions
+    sqrt = lambda x: math.sqrt(x)
+    w_sqrt = WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 
+                    return_type=CLASS_FLOAT, py_function=sqrt)
+    lib.create_attribute('sqrt', w_sqrt)
+    sin = lambda x: math.sin(x)
+    w_sin = WFunc('sin', ArgumentList([Arg('x', CLASS_FLOAT)]), 
+                    return_type=CLASS_FLOAT, py_function=sin)
+    lib.create_attribute('sin', w_sin)
+    
     return lib
 #the module of built in objects
 BUILT_IN_LIB = create_built_in_lib()    
@@ -908,6 +1015,9 @@ class ExpressionVisitor(Visitor):
         Evaluate a NodeFuncCall, which calls a call-able object (function, class).
         Execute the callabe's code and return the return value.
         '''
+        #TODO: honor node.function_object, the function to perform the operation is already known:
+        #      if  node.function_object is not None:
+        #          call_obj = node.function_object
         #find the right call-able object   
         call_obj = self.dispatch(node.name)
         if not isinstance(call_obj, (InstFunction, InstUserDefinedClass, 
