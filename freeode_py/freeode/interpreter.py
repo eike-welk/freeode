@@ -143,6 +143,7 @@ class InterpreterObject(Node):
     def __init__(self):
         Node.__init__(self)
         #Reference to object one level up in the tree
+        #type weakref.ref or None
         self.parent = None
         #The symbol table
         self.attributes = {}
@@ -154,6 +155,7 @@ class InterpreterObject(Node):
         self.role = None
         #TODO: self.save ??? True/False attribute is saved to disk as simulation result
         #TODO: self.default_value ??? (or into leaf types?)
+        #TODO: self.auto_created ??? for automatically created variables that should be eliminated
   
     def create_attribute(self, name, newAttr):
         '''
@@ -164,7 +166,9 @@ class InterpreterObject(Node):
         if name in self.attributes:
             raise DuplicateAttributeError(attr_name=name)
         self.attributes[name] = newAttr
-        newAttr.parent = weakref.ref(self)
+        #set parent link for new objects, or when the parent has died.
+        if self.parent is None or self.parent() is None: #IGNORE:E1102
+            newAttr.parent = weakref.ref(self)
         
     def get_attribute(self, name):
         '''Return attribute object'''
@@ -409,7 +413,7 @@ class BuiltInFunctionWrapper(CallableObject):
         #IntArgumentList
         self.argument_definition = argument_definition
         #TypeObject or None
-        self.return_type = return_type
+        self.return_type = ref(return_type) if return_type is not None else None
         #A Python function
         self.py_function = py_function
         #if True: the function is really an operator
@@ -439,7 +443,7 @@ class BuiltInFunctionWrapper(CallableObject):
         if all_python_values_exist:
             py_retval = self.py_function(**py_args)             #IGNORE:W0142
             if self.return_type is not None:
-                siml_retval = self.return_type.construct_instance()
+                siml_retval = self.return_type().construct_instance()
                 siml_retval.value = py_retval
                 siml_retval.role = RoleConstant
                 return siml_retval
@@ -469,13 +473,114 @@ class BuiltInFunctionWrapper(CallableObject):
             #put on decoration
             func_call.name = self.name
             func_call.function_object = self
-            func_call.type = ref(self.return_type)
+            func_call.type = self.return_type
             func_call.role = RoleDataCanVaryAtRuntime
             return func_call
+        
+        
+    def put_into(self, module):
+        '''Put self into a module using self.name'''
+        module.create_attribute(self.name, self)
+        return self
 
 
 
-class SimpleFunctionWrapper(CallableObject):
+class SimlFunction(CallableObject):
+    '''
+    Function written in Siml (user defined function).
+    '''
+    def __init__(self, name, argument_definition=ArgumentList([]), 
+                             return_type=None,
+                             statements=None, global_scope=None):
+        CallableObject.__init__(self, name)
+        #IntArgumentList
+        self.argument_definition = argument_definition
+        #ref(TypeObject) or None
+        self.return_type = ref(return_type) if return_type is not None else None
+        #the statements of the function's body
+        self.statements = statements if statements is not None else []
+        #global namespace, stored when the function was defined
+        self.global_scope = global_scope
+
+
+    def __call__(self, *args, **kwargs):
+        '''All functions must implement this method'''
+        loc = None
+        #parse the argumetnts that we get from the caller, do type checking
+        parsed_args = self.argument_definition\
+                          .parse_function_call_args(args, kwargs, loc)
+
+        #Take 'this' namespace from the 'this' argument. 
+        # 'this' must be constant (known at compile time)
+        this_namespace = parsed_args.get(DotName('this'), None)
+        if ( (this_namespace is not None) and 
+             (not isinstance(this_namespace, InterpreterObject))):
+            raise UserException('The "this" argument (1st argument) '
+                                'must be a known Siml object.')
+        
+        #create local scope (for function arguments and local variables)
+        local_namespace = InterpreterObject()
+        #store local scope so local variables are accessible for code generation
+        #------------------------------------------------------------------------------
+        #TODO: providing a module where local variables can be stored, is a responsibility 
+        #      of the code collection mechanism in the interpreter.
+        #-------------------------------------------------------------------------------
+        #FIXME: The current solution does not work for global functions, 
+        #       or for temporary objects. 
+        #       It only works for member functions of the simulation object.
+#        ls_storage = call_obj.get_attribute(DotName('data'))
+#        ls_name = make_unique_name(DotName('call'), ls_storage.attributes)
+#        ls_storage.create_attribute(ls_name, local_scope)
+        #put the function arguments into the local namespace
+        for arg_name, arg_val in parsed_args.iteritems():
+            #call by reference for existing Siml values
+            if isinstance(arg_val, InterpreterObject):
+                local_namespace.create_attribute(arg_name, arg_val)
+            #for unevaluated expressions a new variable is created,
+            #and the expression is assigned to it
+            else:
+                #create new object. use exact information if available
+                if arg_val.type_ex is not None:
+                    new_arg = self.interpreter.statement_visitor\
+                              .expression_visitor.visit_NodeFuncCall(arg_val.type_ex)
+                else:
+                    new_arg = self.interpreter.statement_visitor\
+                              .expression_visitor.call_siml_object(arg_val.type(), [], {}, loc) 
+                new_arg.role = arg_val.role
+                #put object into local name-space and assign value to it 
+                local_namespace.create_attribute(arg_name, new_arg)
+                self.interpreter.statement_visitor.assign(new_arg, arg_val, loc)
+        
+        #Create new environment for the function. 
+        new_env = ExecutionEnvironment()
+        new_env.global_scope = self.global_scope #global scope from function definition.
+        new_env.this_scope = this_namespace
+        new_env.local_scope = local_namespace
+        self.interpreter.push_environment(new_env)
+
+        #execute the function's code in the new environment.
+        try:
+            self.interpreter.run(self.statements)
+        except ReturnFromFunctionException:           #IGNORE:W0704
+            pass
+        self.interpreter.pop_environment()
+        #the return value is stored in the environment (stack frame)
+        ret_val = new_env.return_value
+        
+        #Test if returned object has the right type.
+        #No return type specification present - no check
+        if self.return_type is None:
+            return ret_val
+        #there is a return type specification - enforce it
+        elif (ret_val.type is not None and 
+              siml_issubclass(ret_val.type(), self.return_type())):
+            return ret_val
+        raise UserException("The function's Return type specification "
+                            "does not match type of returned object.")
+       
+    
+    
+class PrimitiveFunctionWrapper(CallableObject):
     '''
     Represents a function written in Python; for special functions like 'print'.
     
@@ -631,6 +736,7 @@ class PrintFunction(CallableObject):
         CallableObject.__init__(self, 'print')
         
     def __call__(self, *args, **kwargs):
+        #TODO: test for illegal arguments. legal: Float, String, UserDefinedClass?, any InterpreterObject?
         #test if all arguments are known
         unknown_argument = False
         for siml_arg in args:
@@ -673,14 +779,12 @@ def create_built_in_lib():
     #built in functions
     lib.create_attribute('print', PrintFunction())
     #math functions
-    sqrt = lambda x: math.sqrt(x)
-    w_sqrt = WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 
-                    return_type=CLASS_FLOAT, py_function=sqrt)
-    lib.create_attribute('sqrt', w_sqrt)
-    sin = lambda x: math.sin(x)
-    w_sin = WFunc('sin', ArgumentList([Arg('x', CLASS_FLOAT)]), 
-                    return_type=CLASS_FLOAT, py_function=sin)
-    lib.create_attribute('sin', w_sin)
+    WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 
+          return_type=CLASS_FLOAT, 
+          py_function=lambda x: math.sqrt(x)).put_into(lib)
+    WFunc('sin', ArgumentList([Arg('x', CLASS_FLOAT)]), 
+          return_type=CLASS_FLOAT, 
+          py_function=lambda x: math.sin(x)).put_into(lib)
     
     return lib
 #the module of built in objects
@@ -1061,13 +1165,20 @@ class ExpressionVisitor(Visitor):
         if isinstance(call_obj, InstFunction):
             #create local scope (for function arguments and local variables)
             #store local scope so local variables are accessible for code generation
+            #TODO: providing a module where local variables can be stored, is a responsibility 
+            #      of the code collection mechanism in the interpreter.
             local_scope = InterpreterObject()
+            #FIXME: The current solution does not work for global functions, 
+            #       or for temporary objects. 
+            #       It only works for member functions of the simulation object.
             ls_storage = call_obj.get_attribute(DotName('data'))
             ls_name = make_unique_name(DotName('call'), ls_storage.attributes)
             ls_storage.create_attribute(ls_name, local_scope)
             #Create new environment for the function. 
             new_env = ExecutionEnvironment()
             new_env.global_scope = call_obj.global_scope #global scope from function definition.
+            #TODO: take 'this' scope from the 'this' argument. It was declared special for this reason.
+            #      'this' must be constant (known at compile time)
             new_env.this_scope = call_obj.this_scope #object where function is defined
             new_env.local_scope = local_scope
             self.interpreter.push_environment(new_env)
@@ -1433,8 +1544,10 @@ class Interpreter(object):
         self.built_in_lib = BUILT_IN_LIB
         #directory of modules - the symbol table
         self.modules = {}
-        #frame stack
+        #frame stack - should never be empty: top element is automatically 
+        # put into self.statement_visitor
         self.env_stack = []
+        self.push_environment(ExecutionEnvironment())
         #storage for objects generated by the compile statement
         self.compile_module = CLASS_MODULE.construct_instance()
         self.compile_module.name = DotName('compiled_object_namespace')
@@ -1442,7 +1555,7 @@ class Interpreter(object):
         self.compile_stmt_collect = None
         
         #tell the the interpreter objects which is their interpreter
-        InterpreterObject.interpreter = ref(self)
+        InterpreterObject.interpreter = weakref.proxy(self)
         
         
     def collect_statement(self, stmt):
@@ -1476,6 +1589,8 @@ class Interpreter(object):
         ast = prs.parseModuleStr(text, file_name, module_name)
         #execute the statements
         self.run(ast.statements)
+        #remove environment from stack
+        self.pop_environment()
 
     def push_environment(self, new_env):
         '''
@@ -1491,7 +1606,7 @@ class Interpreter(object):
         Change environment in all visitors.
         '''
         old_env = self.env_stack.pop()
-        new_env = self.env_stack[-1]
+        new_env = self.env_stack[-1] 
         self.statement_visitor.set_environment(new_env)
         return old_env
         

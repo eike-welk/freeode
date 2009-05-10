@@ -522,6 +522,58 @@ c = 'Hello ' + 'world!'
   
   
 #-------- Test interpreter object - basic --------------------------------------------------------  
+def test_interpreter_object_siml_function_1():
+    #py.test.skip('Test disabled')
+    print 'Test interpreter object: call built in function sqrt...............................................................'
+    from freeode.interpreter import (Interpreter, DotName, SimlFunction, 
+                                     ArgumentList, CLASS_FLOAT, CLASS_STRING,
+                                     BUILT_IN_LIB, ref)
+    from freeode.ast import (NodeFuncArg, NodeOpInfix2, NodeReturnStmt, 
+                             NodeIdentifier, UserException)
+
+    #create the interpreter - initializes InterpreterObject.interpreter
+    # this way SimlFunction can access the interpreter.
+    intp = Interpreter()
+    #create a Siml value as function argument
+    val_1 = CLASS_FLOAT.construct_instance()
+    val_1.value = 1.
+    #create an unevaluated expression
+    u_ex = NodeOpInfix2()
+    u_ex.type = ref(CLASS_FLOAT)
+    
+    #create a function without statements
+    f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
+                      return_type=None, statements=[], global_scope=BUILT_IN_LIB)
+    #call with existing value
+    f1(val_1)
+    #call with unevaluated expression
+    #f1(u_ex)
+    
+    #create a function with return statement
+    # func test(a:Float) -> Float:
+    #     return a
+    f2 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
+                      return_type=CLASS_FLOAT, 
+                      statements=[NodeReturnStmt([NodeIdentifier('a')])], 
+                      global_scope=BUILT_IN_LIB)
+    #call function and see if value is returned
+    ret_val = f2(val_1)
+    assert ret_val.value == 1.
+
+    #create a function with wrong return type
+    f3= SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
+                      return_type=CLASS_STRING, 
+                      statements=[NodeReturnStmt([NodeIdentifier('a')])], 
+                      global_scope=BUILT_IN_LIB)
+    try:
+        ret_val = f3(val_1)
+    except UserException:
+        print 'Getting expected exception: type mismatch at function return'
+    else:
+        py.test.fail('There was wrong return type, but no exception!') #IGNORE:E1101
+
+
+
 def test_interpreter_object_builtin_function_call_1():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: call built in function sqrt...............................................................'

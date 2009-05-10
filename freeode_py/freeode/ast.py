@@ -365,10 +365,10 @@ class NodeIdentifier(Node):
         loc: 
             Location in input string
     '''
-    def __init__(self):
-        super(NodeIdentifier, self).__init__()
-        self.name = None
-        self.loc = None
+    def __init__(self, name=None, loc=None):
+        Node.__init__(self)
+        self.name = DotName(name) if name is not None else None
+        self.loc = loc
 
 
 class NodeAttrAccess(Node):
@@ -685,14 +685,13 @@ class NodeReturnStmt(Node):
     '''
     AST Node for the return statement
     Data attributes:
-        kids        : the expressions of the argument list
+        arguments   : the expressions of the argument list
         loc         : location in input string
-        dat         : The return value (expression)
     '''
-    def __init__(self):
-        super(NodeReturnStmt, self).__init__()
-        self.arguments = []
-        self.loc = None
+    def __init__(self, arguments=None, loc=None):
+        Node.__init__(self)
+        self.arguments = [] if arguments is None else arguments
+        self.loc = loc
 
 
 class NodePragmaStmt(Node):
