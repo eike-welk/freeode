@@ -1183,8 +1183,9 @@ class Parser(object):
 
         Returns
         -------
-        parse tree : ast.Node
-            The parse tree of the program.
+        AST: ast.Node
+           Abstract Syntax Tree (AST): A tree of ast.Node objects that 
+           represents the program text.
         '''
         self.inputString = inProgram
         if fileName is not None:

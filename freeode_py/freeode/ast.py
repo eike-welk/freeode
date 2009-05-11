@@ -907,6 +907,52 @@ class NodeFuncArg(Node):
         self.loc = None
         
         
+        
+class SimpleArgumentList(Node):
+    """
+    Contains arguments of a function definition.
+    - Checks the arguments when function definition is parsed
+    """
+    def __init__(self, arguments, loc=None):
+        '''
+        ARGUMENTS
+        ---------
+        arguments: [ast.NodeFuncArg, ...] or SimpleArgumentList
+            The functions arguments
+        loc: ast.TextLocation 
+            Location where the function is defined in the program text
+        '''
+        Node.__init__(self)
+        #place in program text where function is defined
+        self.loc = loc
+        #list of argument definitions {ast.NodeFuncArg}   
+        if isinstance(arguments, SimpleArgumentList):
+            self.arguments = arguments.arguments
+        else:
+            self.arguments = arguments
+        #dictionary for quick access to argument definitions by name
+        #also for testing uniqueness and existence of argument names 
+        self.argument_dict = {}
+        #arguments with default values (subset of self.arguments)
+        self.default_args = []
+        
+        there_was_keyword_argument = False
+        for arg in arguments:
+            #check that positional arguments come first
+            if arg.default_value is not None:
+                there_was_keyword_argument = True
+                self.default_args.append(arg)
+            elif there_was_keyword_argument:
+                raise UserException('Positional arguments must come before '
+                                    'keyword arguments!', loc)
+            #test: argument names must be unique
+            if arg.name in self.argument_dict:
+                raise UserException('Duplicate argument name "%s"!' 
+                                    % str(arg.name), loc) 
+            self.argument_dict[arg.name] = arg
+
+
+
 class NodeFuncDef(Node):
     """
     AST node for method/function definition.
