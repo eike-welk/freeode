@@ -172,26 +172,30 @@ class InterpreterObject(Node):
         
     def get_attribute(self, name):
         '''Return attribute object'''
-        if name not in self.attributes:
+        if name in self.attributes:
+            return self.attributes[name]
+        #Search for attribute in the type (class) object
+        elif self.type is not None and self.type().has_attribute(name):
+            #if attribute is a function, put it into a method wrapper
+            attr = self.type().get_attribute(name)
+            if siml_callable(attr):
+                attr = BoundMethod(attr.name, attr, self)
+            return attr
+        else:
             raise UndefinedAttributeError(attr_name=name)
-        attr = self.attributes[name]
-        return attr
     
     def has_attribute(self, name):
         '''Return true if object has an attribute with name "name"'''
-        return name in self.attributes
+        if name in self.attributes:
+            return True
+        #Search for attribute in the type (class) object
+        elif self.type is not None and self.type().has_attribute(name):
+            return True
+        else:
+            return False
     
     
 
-class TypeObject(InterpreterObject):  
-    '''Base class of all classes'''
-    def __init__(self, name):
-        InterpreterObject.__init__(self)
-        self.role = RoleConstant
-        self.name = DotName(name)
-        
-        
-        
 class CallableObject(InterpreterObject):
     '''Base class of all functions.'''
     def __init__(self, name):
@@ -205,6 +209,20 @@ class CallableObject(InterpreterObject):
   
 
 
+class TypeObject(CallableObject):  
+    '''Base class of all classes'''
+    def __init__(self, name):
+        CallableObject.__init__(self, name)
+
+#class TypeObject(InterpreterObject):  
+#    '''Base class of all classes'''
+#    def __init__(self, name):
+#        InterpreterObject.__init__(self)
+#        self.role = RoleConstant
+#        self.name = DotName(name)
+        
+        
+        
 class ArgumentList(SimpleArgumentList):
     """
     Contains arguments of a function definition.
@@ -571,7 +589,7 @@ class SimlFunction(CallableObject):
        
     
     
-class MethodWrapper(CallableObject):
+class BoundMethod(CallableObject):
     '''
     Represents a method of an object. 
     Calls a function with the correct 'this' pointer.
@@ -638,6 +656,50 @@ class PrimitiveFunctionWrapper(CallableObject):
         
     def __call__(self, *args, **kwargs):
         return self.py_function(*args, **kwargs) #IGNORE:W0142
+        
+        
+        
+class SimlClass(TypeObject):
+    '''
+    Represents class written in Siml - usually a user defined class.
+    '''
+    def __init__(self, name, bases, statements, loc=None):
+        TypeObject.__init__(self, name)
+        self.bases = bases
+#        self.statements = statements
+        self.loc = loc
+        
+        #TODO: implement base classes
+        if self.bases is not None:
+            raise Exception('Base classes are not implemented!')
+
+        #Create new environment for object construction. 
+        #Use global scope from class definition.
+        new_env = ExecutionEnvironment()
+        new_env.global_scope = self.interpreter.get_environment().global_scope
+        new_env.this_scope = None
+        new_env.local_scope = self
+        #execute the function's code in the new environment.
+        self.interpreter.push_environment(new_env)
+        try:
+            self.interpreter.run(statements)
+        except ReturnFromFunctionException:           #IGNORE:W0704
+            print 'Warning: return statement in class declaration!'
+#                raise Exception('Return statements are illegal in class bodies!')
+        self.interpreter.pop_environment()
+
+
+    def __call__(self, *args, **kwargs):
+        '''
+        Create a new object.
+        
+        - Copies the data attributes into the new class.
+        - Calls the __init__ function (at compile time) if present. 
+          The arguments are given to the __init__ function.
+        '''
+        #create new instance
+        #copy data attributes from class to instance
+        #run the __init__ compile time constructor
         
         
         
@@ -835,7 +897,12 @@ def make_proxy(in_obj):
         return weakref.proxy(in_obj())
     else:
         return weakref.proxy(in_obj)
-    
+
+
+def siml_callable(siml_object):
+    '''Test if an object is callable'''
+    return isinstance(siml_object, CallableObject)
+
 
 def siml_isinstance(in_object, class_or_type_or_tuple):    
     '''isinstance(...) but inside the SIML language. 
@@ -862,10 +929,6 @@ def siml_issubclass(in_type, class_or_type_or_tuple):
     return (in_type in class_or_type_or_tuple)
     
 
-#TODO: write siml_callable(...) function. 
-#      Return True if object is can be executed like a function.  
-    
-    
 def make_unique_name(base_name, existing_names):
     '''
     Make a unique name that is not in existing_names.
@@ -1177,18 +1240,6 @@ class ExpressionVisitor(Visitor):
         
         All arguments must be already evaluated.
         '''
-        #TODO: write general call-able objects (with __call__ method)
-        
-        #Call the new style call-able objects
-        if isinstance(call_obj, CallableObject):
-            return call_obj(*args, **kwargs)     #IGNORE:W0142
-        
-        #associate argument values with argument names
-        #create dictionary {argument_name:argument_value}
-        arg_dict = {}
-        for arg_def, arg_val in zip(call_obj.arguments, args):
-            arg_dict[arg_def.name] = arg_val
-            
         #different reactions on the different call-able objects
         #execute a function
 #        if isinstance(call_obj, InstFunction):
@@ -1233,6 +1284,11 @@ class ExpressionVisitor(Visitor):
 #            return new_env.return_value
         #instantiate a user defined class. 
         if isinstance(call_obj, InstUserDefinedClass):
+            #associate argument values with argument names
+            #create dictionary {argument_name:argument_value}
+            arg_dict = {}
+            for arg_def, arg_val in zip(call_obj.arguments, args):
+                arg_dict[arg_def.name] = arg_val    
             #TODO: move this into InstUserDefinedClass            
             #create new object
             new_obj = InterpreterObject()
@@ -1265,6 +1321,12 @@ class ExpressionVisitor(Visitor):
         elif isinstance(call_obj, CreateBuiltInType):
             new_obj = call_obj.construct_instance()
             return new_obj
+        #Call the new style call-able objects
+        elif isinstance(call_obj, CallableObject):
+            return call_obj(*args, **kwargs)     #IGNORE:W0142
+        else:
+            raise Exception('Callable object expected! '
+                            'No if clause to handle this object.')
         
         
         
@@ -1409,7 +1471,7 @@ class StatementVisitor(Visitor):
         #if we are in a class definition put the class object into a class wrapper
         #TODO: this code has to go away when the new class infrastructure exists.
         if isinstance(self.environment.local_scope.type(), InstUserDefinedClass):
-            new_func = MethodWrapper(node.name, new_func, self.environment.local_scope)
+            new_func = BoundMethod(node.name, new_func, self.environment.local_scope)
         #function object into the local namespace
         self.environment.local_scope.create_attribute(node.name, new_func)
     
@@ -1638,6 +1700,10 @@ class Interpreter(object):
         new_env = self.env_stack[-1] 
         self.statement_visitor.set_environment(new_env)
         return old_env
+        
+    def get_environment(self):
+        '''Return the current (topmost) environment from the stack.'''
+        return self.env_stack[-1]
         
     def run(self, stmt_list):
         '''Interpret a list of statements'''
