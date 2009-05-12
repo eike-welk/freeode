@@ -708,7 +708,7 @@ print('end')
   
   
 def test_interpreter_method_call():
-    py.test.skip('Method calls do not work! Implement method wrappers!')
+    #py.test.skip('Method calls do not work! Implement method wrappers!')
     print 'Test interpreter: method call ...............................................................'
     from freeode.interpreter import Interpreter, DotName
 
@@ -727,7 +727,7 @@ class A:
 data a: A const
 a.a1 = a.compute(3)
 
-print('a.a1 = ', a.a1)
+#print('a.a1 = ', a.a1)
 
 print('end')
 '''
@@ -738,7 +738,7 @@ print('end')
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
-    print intp.modules['test']
+    #print intp.modules['test']
   
     assert (intp.modules['test'].get_attribute(DotName('a'))
                                 .get_attribute(DotName('a1')).value == 5)
@@ -747,7 +747,7 @@ print('end')
 
 
 def test_interpreter_method_call_this_namespace():
-    py.test.skip('Method calls do not work! Implement method wrappers!')
+    #py.test.skip('Method calls do not work! Implement method wrappers!')
     print 'Test interpreter: method call, this namespace ...............................................................'
     from freeode.interpreter import Interpreter, DotName
 
@@ -828,7 +828,7 @@ print('end')
       
 
 def test_interpreter_object_compile_statement():
-    py.test.skip('Method calls don\'t work!!!')
+    #py.test.skip('Method calls don\'t work!!!')
     print 'Test interpreter object: compile statement ...............................................................'
     from freeode.interpreter import Interpreter
 
@@ -839,18 +839,18 @@ print('start')
 class B:
     data b1: Float variable
     
-    func foo(x):
+    func foo(this, x):
         b1 = b1 * x
     
 class A:
     data a1: Float param
     data b: B variable
     
-    func init():
+    func init(this):
         a1 = 1
         b.b1 = 11
         
-    func dynamic():
+    func dynamic(this):
         a1 = a1 + 2
         b.foo(a1)
 
@@ -873,7 +873,7 @@ print('end')
       
 
 def test_interpreter_object_dollar_operator():
-    py.test.skip('Method calls don\'t work!!!')
+    #py.test.skip('Method calls don\'t work!!!')
     print 'Test interpreter object: "$" operator ...............................................................'
     from freeode.interpreter import Interpreter
 
@@ -884,18 +884,18 @@ print('start')
 class B:
     data b1: Float variable
     
-    func foo(x):
+    func foo(this, x):
         $b1 = b1 * x
     
 class A:
     data a1: Float param
     data b: B variable
     
-    func init():
+    func init(this):
         a1 = 1
         b.b1 = 11
         
-    func dynamic():
+    func dynamic(this):
         a1 = a1 + 2
         b.foo(a1)
 
@@ -918,6 +918,6 @@ print('end')
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_object_dollar_operator()
+    test_interpreter_method_call()
     pass
 

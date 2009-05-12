@@ -562,11 +562,53 @@ class SimlFunction(CallableObject):
         elif (ret_val.type is not None and 
               siml_issubclass(ret_val.type(), self.return_type())):
             return ret_val
-        raise UserException("The function's return type specification "
-                            "does not match type of returned object.")
+        raise UserException("The type of the returned object does not match "
+                            "the function's return type specification.\n"
+                            "Type of returned object: %s \n"
+                            "Specified return type  : %s \n"
+                            % (str(ret_val.type().name), 
+                               str(self.return_type().name)))
        
     
     
+class MethodWrapper(CallableObject):
+    '''
+    Represents a method of an object. 
+    Calls a function with the correct 'this' pointer.
+    
+    The object is callable from Python and Siml.
+    
+    No argument parsing or type checking are is done. The wrapped Function
+    is responsible for this. The handling of unevaluated/unknown arguments, 
+    and unevaluated return values are left to the wrapped function.
+    
+    ARGUMENTS
+    ---------
+    name: DotName
+        name of function
+    function: CallableObject or (Python) function
+        Wrapped function that will be called.
+    this: InterpreterObject
+        The first positional argument, that will be supplied to the wrapped 
+        function.
+    
+    RETURNS
+    -------
+    Anything that the wrapped function returns. 
+    '''
+    def __init__(self, name, function, this):
+        CallableObject.__init__(self, name)
+        #the wrapped function
+        self.function = function
+        #the 'this' argument - put into list for speed reasons
+        self.this = make_proxy(this)
+        
+    def __call__(self, *args, **kwargs):
+        new_args = (self.this,) + args
+        return self.function(*new_args, **kwargs) #IGNORE:W0142
+        
+        
+        
 class PrimitiveFunctionWrapper(CallableObject):
     '''
     Represents a function written in Python; for special functions.
@@ -1196,10 +1238,10 @@ class ExpressionVisitor(Visitor):
             new_obj = InterpreterObject()
             #set up type information
             new_obj.type = ref(call_obj)
-            new_obj.type_ex = NodeFuncCall()
-            new_obj.type_ex.name = make_proxy(call_obj)
-            new_obj.type_ex.arguments = args
-            new_obj.type_ex.keyword_arguments = {}
+#            new_obj.type_ex = NodeFuncCall()
+#            new_obj.type_ex.name = make_proxy(call_obj)
+#            new_obj.type_ex.arguments = args
+#            new_obj.type_ex.keyword_arguments = {}
             #Create new environment for object construction. 
             #Use global scope from class definition.
             new_env = ExecutionEnvironment()
@@ -1361,9 +1403,14 @@ class StatementVisitor(Visitor):
         #access to global variables would have surprising results
         global_scope = make_proxy(self.environment.global_scope)
 
-        #create new function object and put it into the local namespace
+        #create new function object and 
         new_func = SimlFunction(node.name, arguments_ev, return_type_ev, 
                                 node.statements, global_scope)
+        #if we are in a class definition put the class object into a class wrapper
+        #TODO: this code has to go away when the new class infrastructure exists.
+        if isinstance(self.environment.local_scope.type(), InstUserDefinedClass):
+            new_func = MethodWrapper(node.name, new_func, self.environment.local_scope)
+        #function object into the local namespace
         self.environment.local_scope.create_attribute(node.name, new_func)
     
     
