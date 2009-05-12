@@ -923,13 +923,18 @@ class SimpleArgumentList(Node):
             Location where the function is defined in the program text
         '''
         Node.__init__(self)
-        #place in program text where function is defined
-        self.loc = loc
-        #list of argument definitions {ast.NodeFuncArg}   
+        
+        #special case copy construction
         if isinstance(arguments, SimpleArgumentList):
-            self.arguments = arguments.arguments
-        else:
-            self.arguments = arguments
+            loc = arguments.loc
+            arguments = arguments.arguments
+
+        #--- the primary data - the other attributes are convenience ---
+        #place in program text where function is defined
+        self.loc = loc            
+        #list of argument definitions [ast.NodeFuncArg, ...]
+        self.arguments = arguments
+        
         #dictionary for quick access to argument definitions by name
         #also for testing uniqueness and existence of argument names 
         self.argument_dict = {}
@@ -978,9 +983,9 @@ class NodeFuncDef(Node):
     """
     def __init__(self):
         Node.__init__(self)
-        self.name = None
-        self.arguments = []
-        self.keyword_arguments = []
+        self.name = DotName()
+        self.arguments = SimpleArgumentList([])
+        #self.keyword_arguments = []
         self.statements = []
         self.return_type = None
         self.loc = None

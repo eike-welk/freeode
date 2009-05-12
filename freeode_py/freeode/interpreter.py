@@ -229,15 +229,26 @@ class ArgumentList(SimpleArgumentList):
                 arg.type = ref(arg.type)
     
     
-    def interpret_args(self, interpreter):
+    def evaluate_args(self, interpreter):
         '''
         Interpret the types and default values of the arguments.
         - type and type_ex data is looked up
         - default values are computed and must evaluate to constants
         '''
-        #TODO: implement!
-        #TODO: test type compatibility of default arguments
-        raise NotImplementedError()
+        expression_visitor = interpreter.statement_visitor.expression_visitor
+        #evaluate argument type and default arguments
+        for arg in self.arguments:
+            if arg.type is not None:
+                type_ev = expression_visitor.dispatch(arg.type)
+                arg.type = ref(type_ev)
+            if arg.default_value is not None:
+                dval_ev = expression_visitor.dispatch(arg.default_value)
+                arg.default_value = dval_ev
+            #test type compatibility of default value and argument type
+            if arg.type is not None and arg.default_value is not None:
+                self._test_type_compatible(arg.default_value, arg)
+        #raise NotImplementedError()
+        return self
     
     
     def parse_function_call_args(self, args_list, kwargs_dict, loc=None):
@@ -264,11 +275,11 @@ class ArgumentList(SimpleArgumentList):
         #test too many positional arguments
         if len(args_list) > len(self.arguments):
             raise UserException('Function accepts at most %d arguments; %d given.'
-                                % (len(self.arguments), len(args_list)), loc)
+                                % (len(self.arguments), len(args_list)), self.loc)
         #associate positional arguments to their names
         for arg_def, in_val in zip(self.arguments, args_list):
             #test for correct type
-            self._test_type_compatible(in_val, arg_def, loc)
+            self._test_type_compatible(in_val, arg_def)
             #associate argument value with name
             output_dict[arg_def.name] = in_val
         
@@ -276,12 +287,12 @@ class ArgumentList(SimpleArgumentList):
         for in_name, in_val in kwargs_dict.iteritems():
             #test: argument name must exist in function definition
             if in_name not in self.argument_dict:
-                raise UserException('Unknown argument "%s".' % in_name, loc)
+                raise UserException('Unknown argument "%s".' % in_name, self.loc)
             #test for duplicate argument assignment (positional + keyword)
             if in_name in output_dict:
-                raise UserException('Duplicate argument "%s".' % in_name, loc)
+                raise UserException('Duplicate argument "%s".' % in_name, self.loc)
             #test for correct type, 
-            self._test_type_compatible(in_val, self.argument_dict[in_name], loc)
+            self._test_type_compatible(in_val, self.argument_dict[in_name])
             #associate argument value with name
             output_dict[in_name] = in_val
         
@@ -298,11 +309,11 @@ class ArgumentList(SimpleArgumentList):
             raise UserException('Too few arguments given. '
                                 'Remaining arguments without value: '
                                 + ', '.join([str(n) for n in left_over_names]), 
-                                loc)
+                                self.loc)
         return output_dict
 
 
-    def _test_type_compatible(self, in_object, arg_def, loc):
+    def _test_type_compatible(self, in_object, arg_def):
         '''
         Test if a given value has the correct type.
         Raises exception when types are incompatible.
@@ -323,7 +334,7 @@ class ArgumentList(SimpleArgumentList):
                     'Incompatible types. Variable: "%s" '
                     'is defined as:\n %s \nHowever, argument type is: \n%s.'
                     % (arg_def.name, str(arg_def.type()), str(in_object.type())), 
-                    loc)
+                    self.loc)
 
 
 
@@ -516,6 +527,7 @@ class SimlFunction(CallableObject):
             else:
                 #create new object. use exact information if available
                 if arg_val.type_ex is not None:
+                    assert False, "Let's see if this code is executed at all"
                     new_arg = self.interpreter.statement_visitor\
                               .expression_visitor.visit_NodeFuncCall(arg_val.type_ex)
                 else:
@@ -557,7 +569,7 @@ class SimlFunction(CallableObject):
     
 class PrimitiveFunctionWrapper(CallableObject):
     '''
-    Represents a function written in Python; for special functions like 'print'.
+    Represents a function written in Python; for special functions.
     
     The object is callable from Python and Siml.
     
@@ -651,25 +663,25 @@ CLASS_MODULE = CreateBuiltInType('Module', InstModule)
 
         
         
-class InstFunction(InterpreterObject):
-    '''A Function or Method'''
-    def __init__(self):
-        InterpreterObject.__init__(self)
-        self.role = RoleConstant
-        self.name = None
-        self.arguments = []
-        self.keyword_arguments = []
-        self.statements = []
-        self.return_type = None
-        #save the current global name-space in the function. This otherwise 
-        #access to global variables would have surprising results
-        self.global_scope = None
-        #the scope of the object if applicable
-        self.this_scope = None
-        #function's local variables are stored here, for flattening
-        self.create_attribute(DotName('data'), InterpreterObject())
-#the single object that should be used to create all Functions
-CLASS_FUNCTION = CreateBuiltInType('Function', InstFunction)
+#class InstFunction(InterpreterObject):
+#    '''A Function or Method'''
+#    def __init__(self):
+#        InterpreterObject.__init__(self)
+#        self.role = RoleConstant
+#        self.name = None
+#        self.arguments = []
+#        self.keyword_arguments = []
+#        self.statements = []
+#        self.return_type = None
+#        #save the current global name-space in the function. This otherwise 
+#        #access to global variables would have surprising results
+#        self.global_scope = None
+#        #the scope of the object if applicable
+#        self.this_scope = None
+#        #function's local variables are stored here, for flattening
+#        self.create_attribute(DotName('data'), InterpreterObject())
+##the single object that should be used to create all Functions
+#CLASS_FUNCTION = CreateBuiltInType('Function', InstFunction)
     
     
 #------- Built In Data --------------------------------------------------
@@ -1099,7 +1111,7 @@ class ExpressionVisitor(Visitor):
         #          call_obj = node.function_object
         #find the right call-able object   
         call_obj = self.dispatch(node.name)
-        if not isinstance(call_obj, (InstFunction, InstUserDefinedClass, 
+        if not isinstance(call_obj, (InstUserDefinedClass, #InstFunction, 
                                      CreateBuiltInType, CallableObject)):
             raise UserException('Expecting callable object!', node.loc)
         
@@ -1137,48 +1149,48 @@ class ExpressionVisitor(Visitor):
             
         #different reactions on the different call-able objects
         #execute a function
-        if isinstance(call_obj, InstFunction):
-            #create local scope (for function arguments and local variables)
-            #store local scope so local variables are accessible for code generation
-            #TODO: providing a module where local variables can be stored, is a responsibility 
-            #      of the code collection mechanism in the interpreter.
-            local_scope = InterpreterObject()
-            #FIXME: The current solution does not work for global functions, 
-            #       or for temporary objects. 
-            #       It only works for member functions of the simulation object.
-            ls_storage = call_obj.get_attribute(DotName('data'))
-            ls_name = make_unique_name(DotName('call'), ls_storage.attributes)
-            ls_storage.create_attribute(ls_name, local_scope)
-            #Create new environment for the function. 
-            new_env = ExecutionEnvironment()
-            new_env.global_scope = call_obj.global_scope #global scope from function definition.
-            #TODO: take 'this' scope from the 'this' argument. It was declared special for this reason.
-            #      'this' must be constant (known at compile time)
-            new_env.this_scope = call_obj.this_scope #object where function is defined
-            new_env.local_scope = local_scope
-            self.interpreter.push_environment(new_env)
-            #Create local variables for each argument, 
-            #and assign the values to them.
-            for arg_name, arg_val in arg_dict.iteritems():
-                #create new object. use exact information if available
-                if arg_val.type_ex is not None:
-                    new_arg = self.visit_NodeFuncCall(arg_val.type_ex)
-                else:
-                    new_arg = self.call_siml_object(arg_val.type(), [], {}, loc) #TODO: remove when possible
-                new_arg.role = arg_val.role
-                #put object into local name-space and assign value to it 
-                new_env.local_scope.create_attribute(arg_name, new_arg)
-                self.interpreter.statement_visitor.assign(new_arg, arg_val, loc)
-            #execute the function's code in the new environment.
-            try:
-                self.interpreter.run(call_obj.statements)
-            except ReturnFromFunctionException:           #IGNORE:W0704
-                pass
-            self.interpreter.pop_environment()
-            #the return value is stored in the environment (stack frame)
-            return new_env.return_value
+#        if isinstance(call_obj, InstFunction):
+#            #create local scope (for function arguments and local variables)
+#            #store local scope so local variables are accessible for code generation
+#            #TODO: providing a module where local variables can be stored, is a responsibility 
+#            #      of the code collection mechanism in the interpreter.
+#            local_scope = InterpreterObject()
+#            #FIXME: The current solution does not work for global functions, 
+#            #       or for temporary objects. 
+#            #       It only works for member functions of the simulation object.
+#            ls_storage = call_obj.get_attribute(DotName('data'))
+#            ls_name = make_unique_name(DotName('call'), ls_storage.attributes)
+#            ls_storage.create_attribute(ls_name, local_scope)
+#            #Create new environment for the function. 
+#            new_env = ExecutionEnvironment()
+#            new_env.global_scope = call_obj.global_scope #global scope from function definition.
+#            #TODO: take 'this' scope from the 'this' argument. It was declared special for this reason.
+#            #      'this' must be constant (known at compile time)
+#            new_env.this_scope = call_obj.this_scope #object where function is defined
+#            new_env.local_scope = local_scope
+#            self.interpreter.push_environment(new_env)
+#            #Create local variables for each argument, 
+#            #and assign the values to them.
+#            for arg_name, arg_val in arg_dict.iteritems():
+#                #create new object. use exact information if available
+#                if arg_val.type_ex is not None:
+#                    new_arg = self.visit_NodeFuncCall(arg_val.type_ex)
+#                else:
+#                    new_arg = self.call_siml_object(arg_val.type(), [], {}, loc) #TODO: remove when possible
+#                new_arg.role = arg_val.role
+#                #put object into local name-space and assign value to it 
+#                new_env.local_scope.create_attribute(arg_name, new_arg)
+#                self.interpreter.statement_visitor.assign(new_arg, arg_val, loc)
+#            #execute the function's code in the new environment.
+#            try:
+#                self.interpreter.run(call_obj.statements)
+#            except ReturnFromFunctionException:           #IGNORE:W0704
+#                pass
+#            self.interpreter.pop_environment()
+#            #the return value is stored in the environment (stack frame)
+#            return new_env.return_value
         #instantiate a user defined class. 
-        elif isinstance(call_obj, InstUserDefinedClass):
+        if isinstance(call_obj, InstUserDefinedClass):
             #TODO: move this into InstUserDefinedClass            
             #create new object
             new_obj = InterpreterObject()
@@ -1337,28 +1349,23 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeFuncDef)
     def visit_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
-        #create new function object and put it into the local namespace
-        new_func = CLASS_FUNCTION.construct_instance()
-        new_func.name = node.name
-        self.environment.local_scope.create_attribute(node.name, new_func)
+        #ArgumentList does the argument parsing at the function call
+        #evaluate the type specifications and the default arguments
+        arguments_ev = ArgumentList(node.arguments)\
+                       .evaluate_args(self.interpreter)
+        #Evaluate the return type
+        return_type_ev = None
+        if node.return_type is not None:
+            return_type_ev = self.expression_visitor.dispatch(node.return_type)
         #save the current global namespace in the function. Otherwise 
         #access to global variables would have surprising results
-        new_func.global_scope = make_proxy(self.environment.global_scope)
-        #find out if this is a method (member function) or a function,
-        #store the this object if it is a method.
-        if not siml_isinstance(self.environment.local_scope, CLASS_MODULE):
-            new_func.this_scope = make_proxy(self.environment.local_scope)
-        #TODO: if the function is defined inside a class, add the this argument 
-        #      to the front of the argument list. Maybe put right default value in place.
-        #TODO: Evaluate all expressions in default arguments and type specifications
-        #TODO: Put complete argument treatment algorithm into separate function:
-        #      visit_NodeClassDef can use the same algorithm
-        new_func.arguments = node.arguments
-        new_func.keyword_arguments = node.keyword_arguments
-        new_func.return_type = node.return_type
-        #reference the code
-        new_func.statements = node.statements
+        global_scope = make_proxy(self.environment.global_scope)
 
+        #create new function object and put it into the local namespace
+        new_func = SimlFunction(node.name, arguments_ev, return_type_ev, 
+                                node.statements, global_scope)
+        self.environment.local_scope.create_attribute(node.name, new_func)
+    
     
     @Visitor.when_type(NodeClassDef)
     def visit_NodeClassDef(self, node):
@@ -1443,7 +1450,6 @@ class StatementVisitor(Visitor):
         #create flat object
         flat_object = CompiledClass()
         flat_object.type = tree_object.type
-        #TODO: better solution: find loc of class definition.
         flat_object.loc = tree_object.type().loc 
         
         #TODO: Make list of main functions of all child objects for automatic calling 
@@ -1451,19 +1457,20 @@ class StatementVisitor(Visitor):
         #call the main functions of tree_object and collect code
         main_func_names = [DotName('init'), DotName('dynamic'), DotName('final')]
         for func_name in main_func_names:
+            #get one of the main functions of the tree object
             if func_name not in tree_object.attributes:
                 continue
             func_tree = tree_object.get_attribute(func_name)
-            #call the main functions and collect code
+            #call the main function and collect code
             self.interpreter.compile_stmt_collect = []
             self.expression_visitor.call_siml_object(func_tree, [], {}, node.loc)
-            #create a new main function with the collected code
-            func_flat = CLASS_FUNCTION.construct_instance()
-            func_flat.name = func_name
-            func_flat.statements = self.interpreter.compile_stmt_collect
+            #create a new main function for the flat object with the collected code
+            func_flat = SimlFunction(func_name, ArgumentList([]), None, 
+                                     statements=self.interpreter.compile_stmt_collect, 
+                                     global_scope=None)                                 
             #Put new function it into flat object
             flat_object.create_attribute(func_name, func_flat)
-                                             
+
         #flatten tree_object (the data) recursively.
         def flatten(tree_obj, flat_obj, prefix):
             '''

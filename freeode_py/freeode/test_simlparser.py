@@ -91,7 +91,7 @@ func test_1(a, b, c):
 
 
 def test_parse_function_definition_3():
-    py.test.skip() #IGNORE:E1101
+#    py.test.skip() #IGNORE:E1101
     print 'Test to parse a function definition with default values.'
     
     parser = p.Parser()
@@ -112,7 +112,7 @@ func test_1(a=0, b=2, c=5):
 
 
 def test_parse_function_definition_4():
-    py.test.skip() #IGNORE:E1101
+#    py.test.skip() #IGNORE:E1101
     print 'Test to parse a function definition with argument type specifications.'
     
     parser = p.Parser()
@@ -133,7 +133,7 @@ func test_1(a:Float, b:String, c:Float):
 
 
 def test_parse_function_definition_5():
-    py.test.skip() #IGNORE:E1101
+#    py.test.skip() #IGNORE:E1101
     print 'Test to parse a fully featured function definition.'
     
     parser = p.Parser()
@@ -152,6 +152,26 @@ func test_1(a:String, b, c:Float, d:Float=2, e=3, f:Float=4):
     print ast   
     #assert False, 'Test'
     
+    
+    
+def test_parse_function_definition_6():
+    print 'Test to parse a function definition with return type specification.'
+    
+    parser = p.Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+#   Parser.noTreeModification = 1
+
+    test_prog = (
+'''
+func test_1() -> Float:
+    return 1
+''' )
+    print test_prog
+    print
+    ast = parser.parseModuleStr(test_prog)
+    print ast 
+#    assert False, 'Test'
     
     
 def test_parse_complete_program_1():
@@ -207,3 +227,7 @@ compile RunTest
 
 
 
+if __name__ == '__main__':
+    # Debugging code may go here.
+    test_parse_function_definition_4()
+    pass

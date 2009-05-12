@@ -732,23 +732,19 @@ class Parser(object):
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #there always seems to be
-        toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeFuncArg()
-        nCurr.loc = self.createTextLocation(loc) #Store position
+        toks = toks[0]             #Group adds an extra pair of brackets
+        ncurr = NodeFuncArg()
+        ncurr.loc = self.createTextLocation(loc) #Store position
         #store argument name
-        nCurr.name = DotName(toks.name.name)
+        ncurr.name = DotName(toks.name.name)
         #store optional type of argument
         if toks.type:
-            nCurr.type = toks.type
-            raise UserException('Type specifications are not yet supported!', 
-                                nCurr.loc)
+            ncurr.type = toks.type
         #store optional default value
         if toks.default_value:
-            nCurr.default_value = toks.default_value
-            raise UserException('Default values are not yet supported!', 
-                                nCurr.loc)
-        return nCurr
+            ncurr.default_value = toks.default_value
+            
+        return ncurr
 
 
     def _action_func_def(self, s, loc, toks): #IGNORE:W0613
@@ -771,32 +767,21 @@ class Parser(object):
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
-        #tokList = toks.asList()[0] #Group adds
-        toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeFuncDef()
-        nCurr.loc = self.createTextLocation(loc) #Store position
+        toks = toks[0]             #Group adds an extra pair of brackets
+        ncurr = NodeFuncDef()
+        ncurr.loc = self.createTextLocation(loc) #Store position
         #store function name
-        nCurr.name = DotName(toks.func_name)
-        #store function arguments: statement list of 'data' statements
+        ncurr.name = DotName(toks.func_name)
+        #store function arguments: SimpleArgumentList performs some checks
         if toks.arg_list:
-            nCurr.arguments = toks.arg_list.asList()
-        #check argument list - arguments with default values must come last!
-        #TODO: put keyword arguments into keyword_argument list
-        #TODO: put complete algorithm into separate function: it is used in _action_class_def too!
-        thereWasKeywordArgument = False
-        for arg in nCurr.arguments:
-            if arg.default_value is not None:
-                thereWasKeywordArgument = True
-            elif thereWasKeywordArgument:
-                raise UserException('Positional arguments must come first!',
-                                    nCurr.loc)
+            ncurr.arguments = SimpleArgumentList(toks.arg_list.asList(), ncurr.loc)
         #store return type
         if toks.return_type:
-            nCurr.return_type = toks.return_type
+            ncurr.return_type = toks.return_type
         #store function body; take each statement out of its sublist
         for sublist in toks.func_body:
-            nCurr.statements.append(sublist[0])
-        return nCurr
+            ncurr.statements.append(sublist[0])
+        return ncurr
 
 
     def _action_class_def(self, s, loc, toks): #IGNORE:W0613
@@ -1223,154 +1208,6 @@ class Parser(object):
 
 
 
-def doTests():
-    '''Perform various tests.'''
-
-    print 'doing tests ...'
-    #t1 = Node('root', [Node('child1',[]),Node('child2',[])])
-    #print t1
-
-#------------ testProg1 -----------------------
-    testProg1 = (
-'''
-class Test:
-    data V, h: Float
-    data A_bott, A_o, mu, q, g: Float param
-
-    func dynamic():
-        h = V/A_bott
-        $V = q - mu*A_o*sqrt(2*g*h)
-        print 'h: ', h,
-
-    func init():
-        V = 0;
-        A_bott = 1; A_o = 0.02; mu = 0.55;
-        q = 0.05
- 
- 
-class RunTest:
-    data g: Float param
-    data test: Test
-
-    func dynamic():
-        test.dynamic()
-
-    func init():
-        g = 9.81
-        test.init()
-#        solutionParameters.simulationTime = 100
-#        solutionParameters.reportingInterval = 1
-
-    func final():
-#        graph test.V, test.h
-        print 'Simulation finished successfully.'
-        
-
-compile RunTest
-''' )
-
-#------------ testProg2 -----------------------
-    testProg2 = (
-'''
-#data a,b: Float const
-a = 2*(3+4)
-''')
-
-    #test the parser ----------------------------------------------------------------------
-    do_test = True
-#    do_test = False
-    if do_test:
-        parser = Parser()
-#        Parser.noTreeModification = 1
-
-        print 'keywords:'
-        print parser.keywords
-
-#        print parser.parseModuleStr(testProg1)
-        print parser.parseModuleStr(testProg2)
-
-    do_test = True
-    do_test = False
-    if do_test:
-        parser = Parser()
-        #Parser.noTreeModification = 1
-
-        print 'keywords:'
-        print parser.keywords
-
-#        print parser.parseExpressionStr('qwert99')
-#        print parser.parseExpressionStr('\'qwert99\'')
-#        print parser.parseExpressionStr('99')
-#        print parser.parseExpressionStr('0.123e99')
-#        print parser.parseExpressionStr('0*1*2*3*4*99')
-#        print parser.parseExpressionStr('0**1**2**3**4**99')
-#        print parser.parseExpressionStr('a.b.c')
-        print parser.parseExpressionStr('0+1*2+3+4-99')
-#        print parser.parseExpressionStr('-0+1+--2*-3--4')
-#        print parser.parseExpressionStr('0+a1.a2+b1.b2.b3*3+99 #comment')
-#        print parser.parseExpressionStr('a(1, 3, )')
-#        print parser.parseExpressionStr('a.b.c(1, d.e)')
-#        print parser.parseExpressionStr('0.123+1.2e3')
-
-
-    do_test = True
-    do_test = False
-    if do_test:
-        parser = Parser()
-#        Parser.noTreeModification = 1
-
-        print 'keywords:'
-        print parser.keywords
-
-
-#        prog = \
-#'''
-#print 'start'
-#print 'end'
-#'''
-#        print prog
-#        print parser.parseModuleStr(prog)
-#        print 
-        
-        prog = \
-"""
-print 'start'
-
-#class A(a, b):
-#    data a1: Float
-#    data a2: Float
-#    
-#    func foo():
-#        return 'foo'
-#    
-#data a: A
-#a.a1 = 1
-a.foo()
-compile A
-compile aa:A
-
-print 'end'
-"""
-        print prog
-        print parser.parseModuleStr(prog)
-        print 
-
-    print 'tests finished'
-
-
 if __name__ == '__main__':
-    # Self-testing code goes here.
-    #TODO: add unit tests
-    #TODO: add doctest tests. With doctest tests are embedded in the documentation
-        
-    #profile the tests
-#    import cProfile
-#    cProfile.run('doTests()')
-    
-    #run tests normally
-    doTests()
-else:
-    # This will be executed in case the
-    #    source has been imported as a
-    #    module.
+    #TODO: add doctest tests. 
     pass
