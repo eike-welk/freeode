@@ -1069,6 +1069,6 @@ print('end')
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_object_builtin_function_call_2()
+    test_interpreter_method_call()
     pass
 

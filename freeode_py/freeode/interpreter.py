@@ -208,11 +208,7 @@ class CallableObject(InterpreterObject):
         raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
   
 
-
-#TODO: type objects don't need to be siml_callable!
-#TODO: modify 'data' and 'compile' statements to construct the object themselves.
-#TODO: Create a nice syntax for the data/compile statement with arbitrary keywords,
-#      and tree literals
+##In case type objects should be callable nevertheless.
 #class TypeObject(CallableObject):  #IGNORE:W0223 
 #    '''Base class of all classes'''
 #    def __init__(self, name):
@@ -700,12 +696,13 @@ class SimlClass(TypeObject):
         new_env = ExecutionEnvironment()
         new_env.global_scope = self.interpreter.get_environment().global_scope
         new_env.this_scope = None
-        new_env.local_scope = self
+        new_env.local_scope = self #functions and data are created 
+        #                           in the local scope
         #execute the function's code in the new environment.
         self.interpreter.push_environment(new_env)
         try:
             self.interpreter.run(statements)
-        except ReturnFromFunctionException:           #IGNORE:W0704
+        except ReturnFromFunctionException:           
             print 'Warning: return statement in class declaration!'
 #                raise Exception('Return statements are illegal in class bodies!')
         self.interpreter.pop_environment()
@@ -773,23 +770,7 @@ class CreateBuiltInType(TypeObject):
         return new_obj
         
         
-class InstUserDefinedClass(TypeObject):
-    '''Class: generator for instances. Created by class statement.
-    This node creates an instance of an user defined class.'''
-    def __init__(self):
-        TypeObject.__init__(self, 'dummy_name')
-        self.role = RoleConstant
-        self.name = None
-        self.arguments = []
-        self.keyword_arguments = []
-        self.statements = []
-        #save the current global name-space in the class definition. This otherwise 
-        #access to global variables would have surprising results
-        self.global_scope = None 
-        #text location where class was defined
-        self.loc = None
 
-        
 class InstModule(InterpreterObject):
     '''Represent one file'''
     def __init__(self):
@@ -803,27 +784,6 @@ CLASS_MODULE = CreateBuiltInType('Module', InstModule)
 
         
         
-#class InstFunction(InterpreterObject):
-#    '''A Function or Method'''
-#    def __init__(self):
-#        InterpreterObject.__init__(self)
-#        self.role = RoleConstant
-#        self.name = None
-#        self.arguments = []
-#        self.keyword_arguments = []
-#        self.statements = []
-#        self.return_type = None
-#        #save the current global name-space in the function. This otherwise 
-#        #access to global variables would have surprising results
-#        self.global_scope = None
-#        #the scope of the object if applicable
-#        self.this_scope = None
-#        #function's local variables are stored here, for flattening
-#        self.create_attribute(DotName('data'), InterpreterObject())
-##the single object that should be used to create all Functions
-#CLASS_FUNCTION = CreateBuiltInType('Function', InstFunction)
-    
-    
 #------- Built In Data --------------------------------------------------
 class InstFloat(InterpreterObject):
     '''Floating point number'''
@@ -965,6 +925,7 @@ def siml_issubclass(in_type, class_or_type_or_tuple):
     return (in_type in class_or_type_or_tuple)
     
 
+#TODO: remove!
 def make_unique_name(base_name, existing_names):
     '''
     Make a unique name that is not in existing_names.
@@ -1045,6 +1006,7 @@ class ExpressionVisitor(Visitor):
             raise Exception('Broken parent reference! "variable" is not '
                             'in "variable.parent().attributes".')
         #put time derivative in parent, with nice name
+        #TODO: use predictable variable name, that contains special character ($).
         deri_name = DotName(var_name[0] + '__dt')         #IGNORE:W0631
         deri_name = make_unique_name(deri_name, variable.parent().attributes)
         variable.parent().create_attribute(deri_name, deri_var)
@@ -1075,13 +1037,9 @@ class ExpressionVisitor(Visitor):
         return result
         
     @Visitor.when_type(NodeIdentifier)
-    def visit_NodeIdentifier(self, node): #, intent=INTENT_READ):
+    def visit_NodeIdentifier(self, node): 
         '''Lookup Identifier and get attribute'''
         attr = self.environment.get_attribute(node.name)
-#        if (intent is INTENT_READ and attr.role is RoleConstant and 
-#            attr.value is None):
-#            raise UserException('Undefined value: %s!' % str(node.name), 
-#                                node.loc)            
         return attr
     
     @Visitor.when_type(NodeAttrAccess)
@@ -1247,16 +1205,19 @@ class ExpressionVisitor(Visitor):
         Evaluate a NodeFuncCall, which calls a call-able object (function, class).
         Execute the callabe's code and return the return value.
         '''
-        #TODO: honor node.function_object, the function to perform the operation is already known:
+        #TODO: honor node.function_object: 
+        #      the indicator that the function to perform the operation is 
+        #      already known. Generated code could be interpreted for a 2nd 
+        #      time.
+        #   
         #      if  node.function_object is not None:
         #          call_obj = node.function_object
         #find the right call-able object   
         call_obj = self.dispatch(node.name)
-        if not isinstance(call_obj, (InstUserDefinedClass, #InstFunction, 
-                                     CreateBuiltInType, CallableObject)):
+        if not isinstance(call_obj, CallableObject):
             raise UserException('Expecting callable object!', node.loc)
         
-        #evaluate all arguments in the callers environment.
+        #evaluate all arguments in the caller's environment.
         ev_args = []
         for arg_val in node.arguments:
             ev_arg_val = self.dispatch(arg_val)
@@ -1265,106 +1226,11 @@ class ExpressionVisitor(Visitor):
         for arg_name, arg_val in node.keyword_arguments:
             ev_arg_val = self.dispatch(arg_val)
             ev_kwargs[arg_name] = ev_arg_val
+            
         #call the call-able object
-        return self.call_siml_object(call_obj, ev_args, ev_kwargs, node.loc)
-        
-        
-    def call_siml_object(self, call_obj, args, kwargs, loc):
-        '''
-        Call a call-able object (function, class) from Python code.
-        Execute the call-able's code and return the return value.
-        
-        All arguments must be already evaluated.
-        '''
-        #different reactions on the different call-able objects
-        #execute a function
-#        if isinstance(call_obj, InstFunction):
-#            #create local scope (for function arguments and local variables)
-#            #store local scope so local variables are accessible for code generation
-#            #TODO: providing a module where local variables can be stored, is a responsibility 
-#            #      of the code collection mechanism in the interpreter.
-#            local_scope = InterpreterObject()
-#            #FIXME: The current solution does not work for global functions, 
-#            #       or for temporary objects. 
-#            #       It only works for member functions of the simulation object.
-#            ls_storage = call_obj.get_attribute(DotName('data'))
-#            ls_name = make_unique_name(DotName('call'), ls_storage.attributes)
-#            ls_storage.create_attribute(ls_name, local_scope)
-#            #Create new environment for the function. 
-#            new_env = ExecutionEnvironment()
-#            new_env.global_scope = call_obj.global_scope #global scope from function definition.
-#            #TODO: take 'this' scope from the 'this' argument. It was declared special for this reason.
-#            #      'this' must be constant (known at compile time)
-#            new_env.this_scope = call_obj.this_scope #object where function is defined
-#            new_env.local_scope = local_scope
-#            self.interpreter.push_environment(new_env)
-#            #Create local variables for each argument, 
-#            #and assign the values to them.
-#            for arg_name, arg_val in arg_dict.iteritems():
-#                #create new object. use exact information if available
-#                if arg_val.type_ex is not None:
-#                    new_arg = self.visit_NodeFuncCall(arg_val.type_ex)
-#                else:
-#                    new_arg = self.call_siml_object(arg_val.type(), [], {}, loc) #TODO: remove when possible
-#                new_arg.role = arg_val.role
-#                #put object into local name-space and assign value to it 
-#                new_env.local_scope.create_attribute(arg_name, new_arg)
-#                self.interpreter.statement_visitor.assign(new_arg, arg_val, loc)
-#            #execute the function's code in the new environment.
-#            try:
-#                self.interpreter.run(call_obj.statements)
-#            except ReturnFromFunctionException:           #IGNORE:W0704
-#                pass
-#            self.interpreter.pop_environment()
-#            #the return value is stored in the environment (stack frame)
-#            return new_env.return_value
-        #instantiate a user defined class. 
-        if isinstance(call_obj, InstUserDefinedClass):
-            #associate argument values with argument names
-            #create dictionary {argument_name:argument_value}
-            arg_dict = {}
-            for arg_def, arg_val in zip(call_obj.arguments, args):
-                arg_dict[arg_def.name] = arg_val    
-            #TODO: move this into InstUserDefinedClass            
-            #create new object
-            new_obj = InterpreterObject()
-            #set up type information
-            new_obj.type = ref(call_obj)
-#            new_obj.type_ex = NodeFuncCall()
-#            new_obj.type_ex.name = make_proxy(call_obj)
-#            new_obj.type_ex.arguments = args
-#            new_obj.type_ex.keyword_arguments = {}
-            #Create new environment for object construction. 
-            #Use global scope from class definition.
-            new_env = ExecutionEnvironment()
-            new_env.global_scope = call_obj.global_scope
-            new_env.this_scope = None
-            new_env.local_scope = new_obj
-            #Put arguments into local scope. No need to create new objects
-            #because everything must be constant
-            for arg_name, arg_val in arg_dict.iteritems():
-                new_env.local_scope.create_attribute(arg_name, arg_val)
-            #execute the function's code in the new environment.
-            self.interpreter.push_environment(new_env)
-            try:
-                self.interpreter.run(call_obj.statements)
-            except ReturnFromFunctionException:           #IGNORE:W0704
-                pass
-#                raise Exception('Return statements are illegal in class bodies!')
-            self.interpreter.pop_environment()
-            return new_obj
-        #instantiate a built in class. 
-        elif isinstance(call_obj, CreateBuiltInType):
-            new_obj = call_obj.construct_instance()
-            return new_obj
-        #Call the new style call-able objects
-        elif isinstance(call_obj, CallableObject):
-            return call_obj(*args, **kwargs)     #IGNORE:W0142
-        else:
-            raise Exception('Callable object expected! '
-                            'No if clause to handle this object.')
-        
-        
+        return call_obj(*ev_args, **ev_kwargs)     #IGNORE:W0142
+
+
         
 class StatementVisitor(Visitor):
     '''
@@ -1392,27 +1258,6 @@ class StatementVisitor(Visitor):
         self.environment = new_env
         self.expression_visitor.set_environment(new_env)
         
-#    @Visitor.when_type(NodePrintStmt)
-#    def visit_NodePrintStmt(self, node):
-#        '''Emit print statement and/or print expressions in argument list.'''
-#        #create new print node
-#        new_print = NodePrintStmt()
-#        new_print.newline = node.newline
-#        new_print.loc = node.loc
-#        #simplify all expressions in argument list
-#        #execute the print statement when debug level is >= 1
-#        for expr in node.arguments:
-#            result = self.expression_visitor.dispatch(expr)
-#            new_print.arguments.append(result)
-#            if DEBUG_LEVEL >= 1:
-#                print result.value,
-#        if DEBUG_LEVEL >= 1 and node.newline:
-#            print
-#        #emit code for print statement when collecting  code 
-#        #(and let unit tests without interpreter still run)
-#        if self.interpreter and self.interpreter.is_collecting_code():
-#            self.interpreter.collect_statement(new_print)
-#            
     @Visitor.when_type(NodeReturnStmt)
     def visit_NodeReturnStmt(self, node):
         '''Return value from function call'''
@@ -1421,7 +1266,7 @@ class StatementVisitor(Visitor):
         self.environment.return_value = retval
         #Forcibly end function execution - 
         #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
-        #TODO: transport exception with the exception?
+        #TODO: transport return value with the exception?
         raise ReturnFromFunctionException()
 
     @Visitor.when_type(NodeExpressionStmt)
@@ -1504,29 +1349,18 @@ class StatementVisitor(Visitor):
         #create new function object and 
         new_func = SimlFunction(node.name, arguments_ev, return_type_ev, 
                                 node.statements, global_scope)
-        #if we are in a class definition put the class object into a class wrapper
-        #TODO: this code has to go away when the new class infrastructure exists.
-        if isinstance(self.environment.local_scope.type(), InstUserDefinedClass):
-            new_func = BoundMethod(node.name, new_func, self.environment.local_scope)
-        #function object into the local namespace
+        #put function object into the local namespace
         self.environment.local_scope.create_attribute(node.name, new_func)
     
     
     @Visitor.when_type(NodeClassDef)
     def visit_NodeClassDef(self, node):
         '''Define a class - create a class object in local name-space'''
+        #TODO: base classes
         #create new class object and put it into the local name-space
-        new_class = InstUserDefinedClass()
-        new_class.name = node.name
+        new_class = SimlClass(node.name, bases=None, 
+                              statements=node.statements, loc=node.loc)
         self.environment.local_scope.create_attribute(node.name, new_class)
-        #save the current global name-space in the class. Otherwise 
-        #access to global variables would have surprising results
-        new_class.global_scope = make_proxy(self.environment.global_scope)
-        new_class.arguments = node.arguments
-        new_class.keyword_arguments = node.keyword_arguments
-        #reference the code
-        new_class.statements = node.statements
-        new_class.loc = node.loc
         
         
     @Visitor.when_type(NodeStmtList)
@@ -1535,53 +1369,21 @@ class StatementVisitor(Visitor):
         self.interpreter.run(node.statements)
         
         
-    def normalize_class_spec(self, class_spec):
-        '''
-        Bring class specification into standard form (call to class object)
-        Common code for visit_NodeDataDef(...) and visit_NodeCompileStmt(...)
-        
-        Arguments:
-        class_spec: NodeIdentifier or NodeFuncCall
-            Name of new class or call to class object
-        Returns: NodeFuncCall
-            Call to class object
-        '''
-        #only the class name is given e.g.: Foo. Transform: Foo --> Foo()
-        if isinstance(class_spec, NodeIdentifier):
-            new_spec = NodeFuncCall()
-            new_spec.name = class_spec
-            new_spec.loc = class_spec.loc
-            class_spec = new_spec
-        #class name and constructor arguments are given e.g.: Foo(42)
-        elif isinstance(class_spec, NodeFuncCall):
-            pass
-        #anything else is illegal. 
-        else:
-            raise UserException('Expecting class name (for example "Foo") or '
-                                'call to class object (for example "Foo(a)")!',
-                                 class_spec.loc)
-        return class_spec
-        
-        
-    #TODO: type objects don't need to be callable!
-    #TODO: modify 'data' and 'compile' statements to construct the object themselves.
     #TODO: Create a nice syntax for the data/compile statement with arbitrary keywords,
     #      and tree literals
     @Visitor.when_type(NodeDataDef)
     def visit_NodeDataDef(self, node):
         '''Create object and put it into symbol table'''
-        #create a call to the class object.
-        class_spec = self.normalize_class_spec(node.class_spec)
-        #Create the new object - evaluate call to class object
-        new_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
-        
-#        #get the type object - a NodeIdentifier is expected as class_spec
-#        class_obj = self.expression_visitor.dispatch(node.class_spec)
-#        #Create the new object
-#        if isinstance(class_obj, TypeObject):
-#            new_object = class_obj()
-#        elif isinstance(class_obj, CreateBuiltInType):
-#            new_object = class_obj.constuct_instance()
+        #get the type object - a NodeIdentifier is expected as class_spec
+        class_obj = self.expression_visitor.dispatch(node.class_spec)
+        #Create the new object
+        if isinstance(class_obj, CreateBuiltInType):
+            #TODO: remove!
+            new_object = class_obj.construct_instance()
+        elif isinstance(class_obj, TypeObject):
+            new_object = class_obj()
+        else:
+            raise UserException('Class expected.', node.loc)
             
         #store new object in local scope
         new_name = node.name
@@ -1600,11 +1402,21 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeCompileStmt)
     def visit_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
+        #TODO: creatation of the tree-shaped object should be done by 
+        #      self.visit_NodeDataDef(...)
+        #      so there is only one place where data objects are constructed.
         #Create data:
-        #Create a call to the class object
-        class_spec = self.normalize_class_spec(node.class_spec)
-        #Create tree shaped object
-        tree_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
+        #get the type object - a NodeIdentifier is expected as class_spec
+        class_obj = self.expression_visitor.dispatch(node.class_spec)
+        #Create the new object
+        if isinstance(class_obj, CreateBuiltInType):
+            #TODO: remove!
+            tree_object = class_obj.construct_instance()
+        elif isinstance(class_obj, TypeObject):
+            tree_object = class_obj()
+        else:
+            raise UserException('Class expected.', node.loc)
+        
         #create flat object
         flat_object = CompiledClass()
         flat_object.type = tree_object.type
@@ -1621,7 +1433,7 @@ class StatementVisitor(Visitor):
             func_tree = tree_object.get_attribute(func_name)
             #call the main function and collect code
             self.interpreter.compile_stmt_collect = []
-            self.expression_visitor.call_siml_object(func_tree, [], {}, node.loc)
+            func_tree()
             #create a new main function for the flat object with the collected code
             func_flat = SimlFunction(func_name, ArgumentList([]), None, 
                                      statements=self.interpreter.compile_stmt_collect, 
@@ -1664,11 +1476,6 @@ class StatementVisitor(Visitor):
         self.interpreter.compile_module.create_attribute(new_name, flat_object)
         
         
-#    def execute(self, statement):  
-#        '''Execute one statement''' 
-#        self.dispatch(statement)
-            
-            
 
 class Interpreter(object):
     '''
@@ -1793,4 +1600,4 @@ class Interpreter(object):
 if __name__ == '__main__':
     # Self-testing code goes here.
     #TODO: add doctest tests. 
-     pass
+    pass
