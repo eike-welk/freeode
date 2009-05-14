@@ -204,23 +204,31 @@ class CallableObject(InterpreterObject):
         self.name = DotName(name)
 
     def __call__(self, *args, **kwargs):
-        '''All functions must implement this method'''
+        '''All Siml-functions must implement this method'''
         raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
   
 
 
-class TypeObject(CallableObject):  
-    '''Base class of all classes'''
-    def __init__(self, name):
-        CallableObject.__init__(self, name)
-
-#class TypeObject(InterpreterObject):  
+#TODO: type objects don't need to be siml_callable!
+#TODO: modify 'data' and 'compile' statements to construct the object themselves.
+#TODO: Create a nice syntax for the data/compile statement with arbitrary keywords,
+#      and tree literals
+#class TypeObject(CallableObject):  #IGNORE:W0223 
 #    '''Base class of all classes'''
 #    def __init__(self, name):
-#        InterpreterObject.__init__(self)
-#        self.role = RoleConstant
-#        self.name = DotName(name)
+#        CallableObject.__init__(self, name)
+
+class TypeObject(InterpreterObject):  
+    '''Base class of all classes'''
+    def __init__(self, name):
+        InterpreterObject.__init__(self)
+        self.role = RoleConstant
+        self.name = DotName(name)
         
+    def __call__(self, *args, **kwargs):
+        '''All Siml-classes must implement this method'''
+        raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
+  
         
         
 class ArgumentList(SimpleArgumentList):
@@ -386,6 +394,7 @@ class BuiltInFunctionWrapper(CallableObject):
         type of the ast.Node.
     py_function:
         Function that will be called when the result can be computed.
+        
     is_binary_op: True/False
         if True: the function is really a binary operator
     is_prefix_op: True/False
@@ -420,6 +429,14 @@ class BuiltInFunctionWrapper(CallableObject):
         self.return_type = ref(return_type) if return_type is not None else None
         #A Python function
         self.py_function = py_function
+        
+        #--- Handling of unevaluated function calls -------------------------------
+        #TODO: maybe really store a sample ast.NodeFuncCall and copy it, instead 
+        #      of the following attributes. 
+        #      The solution would still need a flag for advising the algorithm 
+        #      to use placement arguments, because operators need placement 
+        #      arguments.
+        
         #if True: the function is really an operator
         self.is_binary_op = is_binary_op
         #if True: the function is really an unary prefix operator
@@ -664,6 +681,11 @@ class SimlClass(TypeObject):
     Represents class written in Siml - usually a user defined class.
     '''
     def __init__(self, name, bases, statements, loc=None):
+        '''
+        Create a new class object. Called for a class statement.
+        
+        The statements inside the class' body are interpreted here.
+        ''' 
         TypeObject.__init__(self, name)
         self.bases = bases
 #        self.statements = statements
@@ -691,16 +713,30 @@ class SimlClass(TypeObject):
 
     def __call__(self, *args, **kwargs):
         '''
-        Create a new object.
+        Create a new instance object.
         
         - Copies the data attributes into the new class.
         - Calls the __init__ function (at compile time) if present. 
           The arguments are given to the __init__ function.
         '''
         #create new instance
+        new_obj = InterpreterObject()
+        new_obj.type = ref(self)
         #copy data attributes from class to instance
+        for attr_name, attr in self.attributes.iteritems():
+            if not siml_callable(attr):
+                new_attr = attr.copy()
+                new_attr.parent = None
+                new_obj.create_attribute(attr_name, new_attr)
         #run the __init__ compile time constructor
-        
+        if new_obj.has_attribute(DotName('__init__')):
+            init_meth = new_obj.get_attribute(DotName('__init__'))
+            if not siml_callable(init_meth):
+                raise UserException('"__init__" attribute must be a method (callable)!')
+            #run the constructor
+            init_meth(*args, **args)  #IGNORE:W0142
+        return new_obj
+            
         
         
 #---------- Built In Library  ------------------------------------------------*
@@ -1356,27 +1392,27 @@ class StatementVisitor(Visitor):
         self.environment = new_env
         self.expression_visitor.set_environment(new_env)
         
-    @Visitor.when_type(NodePrintStmt)
-    def visit_NodePrintStmt(self, node):
-        '''Emit print statement and/or print expressions in argument list.'''
-        #create new print node
-        new_print = NodePrintStmt()
-        new_print.newline = node.newline
-        new_print.loc = node.loc
-        #simplify all expressions in argument list
-        #execute the print statement when debug level is >= 1
-        for expr in node.arguments:
-            result = self.expression_visitor.dispatch(expr)
-            new_print.arguments.append(result)
-            if DEBUG_LEVEL >= 1:
-                print result.value,
-        if DEBUG_LEVEL >= 1 and node.newline:
-            print
-        #emit code for print statement when collecting  code 
-        #(and let unit tests without interpreter still run)
-        if self.interpreter and self.interpreter.is_collecting_code():
-            self.interpreter.collect_statement(new_print)
-            
+#    @Visitor.when_type(NodePrintStmt)
+#    def visit_NodePrintStmt(self, node):
+#        '''Emit print statement and/or print expressions in argument list.'''
+#        #create new print node
+#        new_print = NodePrintStmt()
+#        new_print.newline = node.newline
+#        new_print.loc = node.loc
+#        #simplify all expressions in argument list
+#        #execute the print statement when debug level is >= 1
+#        for expr in node.arguments:
+#            result = self.expression_visitor.dispatch(expr)
+#            new_print.arguments.append(result)
+#            if DEBUG_LEVEL >= 1:
+#                print result.value,
+#        if DEBUG_LEVEL >= 1 and node.newline:
+#            print
+#        #emit code for print statement when collecting  code 
+#        #(and let unit tests without interpreter still run)
+#        if self.interpreter and self.interpreter.is_collecting_code():
+#            self.interpreter.collect_statement(new_print)
+#            
     @Visitor.when_type(NodeReturnStmt)
     def visit_NodeReturnStmt(self, node):
         '''Return value from function call'''
@@ -1527,13 +1563,26 @@ class StatementVisitor(Visitor):
         return class_spec
         
         
+    #TODO: type objects don't need to be callable!
+    #TODO: modify 'data' and 'compile' statements to construct the object themselves.
+    #TODO: Create a nice syntax for the data/compile statement with arbitrary keywords,
+    #      and tree literals
     @Visitor.when_type(NodeDataDef)
     def visit_NodeDataDef(self, node):
         '''Create object and put it into symbol table'''
         #create a call to the class object.
-        class_spec = self.normalize_class_spec(node.class_name)
+        class_spec = self.normalize_class_spec(node.class_spec)
         #Create the new object - evaluate call to class object
         new_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
+        
+#        #get the type object - a NodeIdentifier is expected as class_spec
+#        class_obj = self.expression_visitor.dispatch(node.class_spec)
+#        #Create the new object
+#        if isinstance(class_obj, TypeObject):
+#            new_object = class_obj()
+#        elif isinstance(class_obj, CreateBuiltInType):
+#            new_object = class_obj.constuct_instance()
+            
         #store new object in local scope
         new_name = node.name
         self.environment.local_scope.create_attribute(new_name, new_object)   
@@ -1553,7 +1602,7 @@ class StatementVisitor(Visitor):
         '''Create object and record program code.'''
         #Create data:
         #Create a call to the class object
-        class_spec = self.normalize_class_spec(node.class_name)
+        class_spec = self.normalize_class_spec(node.class_spec)
         #Create tree shaped object
         tree_object =  self.expression_visitor.visit_NodeFuncCall(class_spec)
         #create flat object
@@ -1586,7 +1635,7 @@ class StatementVisitor(Visitor):
             Put all attributes (all data leaf objects) into a new flat 
             name-space. The attributes are not copied, but just placed under
             new (long, dotted) names in a new parent object. Therefore the 
-            references to the objects in the AST stay intact.
+            references to the objects in the Symbol table stay intact.
             
             Arguments:
             tree_obj: InterpreterObject (Tree shaped), source.
@@ -1602,6 +1651,8 @@ class StatementVisitor(Visitor):
                     flatten(data, flat_obj, long_name)
             
         flatten(tree_object, flat_object, DotName())    
+        #TODO: test: the methods of flat object must not use any data from 
+        #      outside of flat_object.
      
         #store new object in interpreter
         new_name = node.name
@@ -1668,19 +1719,21 @@ class Interpreter(object):
         mod = CLASS_MODULE.construct_instance()
         mod.name = module_name
         mod.file_name = file_name
+        #put module into root namespace (symbol table)
         self.modules[module_name] = mod
         mod.attributes.update(self.built_in_lib.attributes)
-        #set up new module's symbol table
+        #set up stack frame (execution environment)
         env = ExecutionEnvironment()
         env.global_scope = make_proxy(mod)
         env.local_scope = make_proxy(mod)
+        #put the frame on the frame stack
         self.push_environment(env)
-        #parse the program
+        #parse the program text
         prs = simlparser.Parser()
         ast = prs.parseModuleStr(text, file_name, module_name)
-        #execute the statements
+        #execute the statements - interpret the AST
         self.run(ast.statements)
-        #remove environment from stack
+        #remove frame from stack
         self.pop_environment()
 
     def push_environment(self, new_env):
@@ -1710,233 +1763,34 @@ class Interpreter(object):
         for node in stmt_list:
             self.statement_visitor.dispatch(node)
             
-            
-            
-#------ Tests ----------------------------------------------------------------*   
-def do_tests():
-    '''Test the module.'''
-    Node.aa_show_ID = True
-    #simple expression ------------------------------------------------------------------------
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test expression evaluation (only immediate values) .......................................'
-        ps = simlparser.Parser()
-        ex = ps.parseExpressionStr('0+1*2')
-    #    ex = ps.parseExpressionStr('"a"+"b"')
-        print ex
+    def create_test_module_with_builtins(self):
+        '''
+        Create a module object and a stack frame for testing.
         
-        exv = ExpressionVisitor(None)
-        res = exv.dispatch(ex)
-        print 'res = ', res 
+        *** This method must only be osed for tests ***
         
-        
-    #expression with attribute access ---------------------------------------------------------------
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test expression evaluation (returning of partially evaluated expression when accessing variables) ...................................'
-        ps = simlparser.Parser()
-        ex = ps.parseExpressionStr('a + 2*2')
-#        ex = ps.parseExpressionStr('"a"+"b"')
-        print ex
-        
-        #create module where name lives
-        mod = InstModule()
-        #create attribute
-        val_2 = CLASS_FLOAT.construct_instance()
-        val_2.value = None
-        val_2.role = RoleVariable
-        mod.create_attribute(DotName('a'), val_2)
-        
-        env = ExecutionEnvironment()
-        env.global_scope = mod
-        print mod
-        
-        exv = ExpressionVisitor(None)
-        exv.environment = env
-        res = exv.dispatch(ex)
-        print 'res = ', res 
-        
-        
-    #interpret some simple statements----------------------------------------------------------------
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test statement execution ...............................................................'
-        prog_text = \
-'''
-print 'start'
-
-data a:Float const 
-data b:Float const 
-a = 2*2 + 3*4
-b = 2 * a
-print 'a = ', a, 'b = ', b
-
-data c:String const
-c = 'Hello ' + 'world!'
-print 'c = ', c
-
-print 'end'
-'''
-
-        #create the built in library
+        The module contains the built in library. After calling this method, 
+        statemnts and expressions can be interpreted like normal program 
+        text.
+        '''
+        print '*** create_test_module_with_builtins: '\
+              'This method must only be used for tests ***'
+        #create the new module and import the built in objects
         mod = CLASS_MODULE.construct_instance()
-        mod.create_attribute(DotName('Float'), CLASS_FLOAT)
-        mod.create_attribute(DotName('String'), CLASS_STRING)
-        print mod
-               
-        #init the interpreter
+        mod.name = DotName('test')
+        #put module into root namespace (symbol table)
+        self.modules[mod.name] = mod
+        mod.attributes.update(self.built_in_lib.attributes)
+        #set up stack frame (execution environment)
         env = ExecutionEnvironment()
-        exv = ExpressionVisitor(None)
-        exv.environment = env
-        stv = StatementVisitor(None)
-        stv.environment = env
-        stv.expression_visitor = exv
-
-        #parse the program text
-        ps = simlparser.Parser()
-        module_code = ps.parseModuleStr(prog_text)
-        
-        #set up parsing the main module
-        stv.environment.global_scope = mod
-        stv.environment.local_scope = mod
-        #interpreter main loop
-        for stmt in module_code.statements:
-            stv.dispatch(stmt)
-            
-        print
-        print mod
-  
-      
-#---------------- Test interpreter object: emit code simple ----------------------------------------
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test interpreter object: emit code simple ...............................................................'
-        prog_text = \
-'''
-print 'start'
+        env.global_scope = make_proxy(mod)
+        env.local_scope = make_proxy(mod)
+        #put the frame on the frame stack
+        self.push_environment(env)
 
 
-data a: Float const
-data b: Float variable
-data c: Float variable
-a = 2*2 #constant no statement emitted
-b = 2*a #compute 2*a at compile time
-c = 2*b #emit everything
-print 'a = ', a
-print 'end'
-'''
 
-        #create the interpreter
-        intp = Interpreter()
-        #enable collection of statements for compilation
-        intp.compile_stmt_collect = []
-        intp.interpret_module_string(prog_text, None, 'test')
-      
-        print '--------------- main module ----------------------------------'
-        print intp.modules['test']
-        #put collected statements into Node for pretty printing
-        n = Node(stmts=intp.compile_stmt_collect)
-        print '--------------- collected statements ----------------------------------'
-        print n
-      
-      
-    #test interpreter object
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test interpreter object: brackets ...............................................................'
-        prog_text = \
-'''
-print 'start'
-
-data a,b: Float const
-
-func foo():
-    a = 2 * (1+2)
-
-foo()
-print 'end'
-'''
-
-        #create the interpreter
-        intp = Interpreter()
-        intp.interpret_module_string(prog_text, None, 'test')
-      
-        print
-        print intp.modules['test']
-        print intp.compile_module
-      
-      
-    #------------- Test interpreter: complete simple program ..................................................
-    doTest = True
-#    doTest = False
-    if doTest:
-        print 'Test interpreter: complete simple program ...............................................................'
-        prog_text = \
-'''
-class Test:
-    data V, h: Float 
-    data A_bott, A_o, mu, q, g: Float param
-
-    func dynamic():
-        h = V/A_bott
-#        $V = q - mu*A_o*sqrt(2*g*h)
-        $V = q + - mu*A_o*(2*g*h)
-#        print 'h: ', h,
-
-    func init():
-        V = 0
-        A_bott = 1; A_o = 0.02; mu = 0.55; 
-        q = 0.05
- 
- 
-class RunTest:
-    data g: Float param
-    data test: Test
-
-    func dynamic():
-        test.dynamic()
-
-    func init():
-        g = 9.81
-        test.init()
-#        solutionParameters.simulationTime = 100
-#        solutionParameters.reportingInterval = 1
-
-    func final():
-#        graph test.V, test.h
-        print 'Simulation finished successfully.'
-        
-
-compile RunTest
-'''
-#-------- Work ----------------------------------------------------------------
-        #create the interpreter
-        intp = Interpreter()
-        intp.interpret_module_string(prog_text, None, 'test')
-      
-        print
-        print intp.modules['test']
-        print intp.compile_module
-      
-      
 if __name__ == '__main__':
     # Self-testing code goes here.
     #TODO: add doctest tests. 
-        
-    #profile the tests
-#    import cProfile
-#    cProfile.run('doTests()')
-    
-    #run tests normally
-    do_tests()
-else:
-    # This will be executed in case the
-    #    source has been imported as a
-    #    module.
-    pass
-  
+     pass

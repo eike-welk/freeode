@@ -545,16 +545,25 @@ class NodeFuncCall(Node):
             Role of the results of the operation. For decorating the AST.
        loc: 
             Location in input string
+            
+    TODO: unify functions and operators and
+    TODO: remove NodeOpInfix2, NodeOpPrefix1
+    TODO:    is_operator: True/False
+    TODO:    operator_placement: prefix/infix/suffix 
     '''
+    #TODO: give NodeFuncCall a nice constructor
     def __init__(self):
         super(NodeFuncCall, self).__init__()
         self.name = None
         self.arguments = []
         self.keyword_arguments = {}
-        self.function_object = None
+        #--- for the type system (treatment of unevaluated calls) -----------#
         self.type = None
         self.type_ex = None
         self.role = None
+        #--- for code generation --------------------------------------------#
+        self.function_object = None
+        #--- for error messages ---------------------------------------------#
         self.loc = None
 
 
@@ -637,24 +646,24 @@ class NodeAssignment(Node):
         self.loc = None
 
 
-class NodePrintStmt(Node):
-    '''
-    AST Node for printing something to stdout.
-    
-    Data attributes:
-        arguments: list(Node())
-            the expressions of the argument list
-        newline: bool
-            if True: add newline to end of output;
-            if False: don't add newline.
-        loc: 
-            Location in input string    
-    '''
-    def __init__(self):
-        super(NodePrintStmt, self).__init__()
-        self.arguments = []
-        self.newline = None
-        self.loc = None
+#class NodePrintStmt(Node):
+#    '''
+#    AST Node for printing something to stdout.
+#    
+#    Data attributes:
+#        arguments: list(Node())
+#            the expressions of the argument list
+#        newline: bool
+#            if True: add newline to end of output;
+#            if False: don't add newline.
+#        loc: 
+#            Location in input string    
+#    '''
+#    def __init__(self):
+#        super(NodePrintStmt, self).__init__()
+#        self.arguments = []
+#        self.newline = None
+#        self.loc = None
 
 
 class NodeGraphStmt(Node):
@@ -860,15 +869,15 @@ class NodeDataDef(Node):
                           (propperty stored in kids[0])
 
         name            : name of the attribute. DotName
-        className       : type of the attribute; possibly dotted name: ('aa', 'bb')
+        class_spec      : type of the new attribute; NodeIdentifier or NodeFuncCall
         role            : Is this attribute a state or algebraic variable, a constant
                           or a parameter? (AttributeRole subclass).
     '''
-    def __init__(self):
+    def __init__(self, name=None, class_spec=None, role=RoleConstant, loc=None):
         Node.__init__(self)
-        self.name = None
-        self.class_name = None #TODO: rename to class_spec this is eiter a NodeIdentifier or a NodeFuncCall
-        self.role = None
+        self.name = DotName(name) if name is not None else None
+        self.class_spec = class_spec 
+        self.role = role
         self.default_value = None
 
 
@@ -929,12 +938,12 @@ class SimpleArgumentList(Node):
             loc = arguments.loc
             arguments = arguments.arguments
 
-        #--- the primary data - the other attributes are convenience ---
+        #--- the primary data ------------------------------------------#
         #place in program text where function is defined
         self.loc = loc            
         #list of argument definitions [ast.NodeFuncArg, ...]
         self.arguments = arguments
-        
+        #--- convenience values -----------------------------------------#
         #dictionary for quick access to argument definitions by name
         #also for testing uniqueness and existence of argument names 
         self.argument_dict = {}

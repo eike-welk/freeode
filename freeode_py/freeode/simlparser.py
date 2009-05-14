@@ -570,7 +570,7 @@ class Parser(object):
             return None #No parse result modifications for debugging
         nCurr = NodeCompileStmt()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.class_name = toks.class_name
+        nCurr.class_spec = toks.class_name
         if toks.name:
             nCurr.name = DotName(toks.name)
         return nCurr
@@ -624,7 +624,7 @@ class Parser(object):
             attrDef = NodeDataDef()
             attrDef.loc = self.createTextLocation(loc)
             attrDef.name = DotName(name) #store attribute name
-            attrDef.class_name = toks.class_name #.name #toks.class_name is NodeIdenifier
+            attrDef.class_spec = toks.class_name #toks.class_name is NodeIdenifier
             #map role string to role object, and store the role
             #If role is not specified RoleVariable is assumed.
             #Submodels will be labeled variables even though these categories don't apply to them.

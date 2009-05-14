@@ -38,6 +38,98 @@ except:
 
 
 
+#-------- Test InterpreterObject class ----------------------------------------------------------------------
+def test_InterpreterObject_1():
+    print 'InterpreterObject: basic operation'
+    from freeode.interpreter import (InterpreterObject, DotName, UndefinedAttributeError,
+                                     DuplicateAttributeError, BoundMethod, CallableObject)
+
+    o1 = InterpreterObject()
+    attr1 = InterpreterObject()
+    attr2 = InterpreterObject()
+    
+    #create small tree of objects:
+    # o1
+    #  +--- attr1
+    #  +--- attr2
+    o1.create_attribute('attr1', attr1)
+    o1.create_attribute(DotName('attr2'), attr2)
+    
+    #test for existence of attributes
+    assert o1.has_attribute(DotName('attr1'))
+    assert o1.has_attribute(DotName('attr2'))
+    assert not o1.has_attribute(DotName('foo')) 
+    
+    #retrieval of attributes
+    assert o1.get_attribute(DotName('attr1')) == attr1
+    assert o1.get_attribute(DotName('attr2')) == attr2
+    
+    #attempt to retrieve non-existing attribute
+    try: 
+        o1.get_attribute(DotName('foo'))
+    except UndefinedAttributeError: 
+        print 'Expected exception: undefined attribute'
+    else:
+        assert False, 'Code should raise exception'
+    
+    #attempt to create attribute with name that already exists
+    try: 
+        o1.create_attribute('attr1', attr1)
+    except DuplicateAttributeError:
+        print 'Expected exception: duplicate attribute'
+    else:
+        assert False, 'Code should raise exception'
+    
+    
+
+def test_InterpreterObject_method_retrieval():
+    print 'InterpreterObject: attributes are also searched in the class object'
+    print 'If the attributes taken from the class are call-able they are wrapped in a bound method.'
+    from freeode.interpreter import (InterpreterObject, DotName, UndefinedAttributeError,
+                                     DuplicateAttributeError, BoundMethod, CallableObject, 
+                                     ref)
+    #the class
+    cls = InterpreterObject()
+    cls_attr1 = InterpreterObject()
+    cls_func1 = CallableObject('cls_func1')
+    cls.create_attribute('cls_attr1', cls_attr1)
+    cls.create_attribute('cls_func1', cls_func1)
+    
+    #the tested object
+    o1 = InterpreterObject()
+    o1.type = ref(cls)
+    o1_attr1 = InterpreterObject()
+    o1_func1 = CallableObject('o1_func1')
+    o1.create_attribute('o1_attr1', o1_attr1)
+    o1.create_attribute('o1_func1', o1_func1)
+    
+    #test for existence of attributes
+    assert o1.has_attribute(DotName('o1_attr1'))
+    assert o1.has_attribute(DotName('o1_func1'))
+    assert o1.has_attribute(DotName('cls_attr1'))
+    assert o1.has_attribute(DotName('cls_func1'))
+    assert not o1.has_attribute(DotName('foo')) 
+
+    #retrieval of attributes 
+    #attributes of the instance are retrieved without modifications
+    assert o1.get_attribute(DotName('o1_attr1')) == o1_attr1
+    assert o1.get_attribute(DotName('o1_func1')) == o1_func1
+    #data attributes of the class are retrieved without modifications
+    assert o1.get_attribute(DotName('cls_attr1')) == cls_attr1
+    #method (callable) attributes are put into a wrapper object 
+    assert o1.get_attribute(DotName('cls_func1')).function == cls_func1
+    assert isinstance(o1.get_attribute(DotName('cls_func1')), BoundMethod)
+
+    #attempt to retrieve non-existing attribute
+    try: 
+        o1.get_attribute(DotName('foo'))
+    except UndefinedAttributeError: 
+        print 'Expected exception: undefined attribute'
+    else:
+        assert False, 'Code should raise exception'
+
+
+
 #-------- Test IntArgumentList class ------------------------------------------------------------------------
 def test_IntArgumentList_1():
     print 'IntArgumentList: construction'
@@ -314,6 +406,65 @@ def test_BuiltInFunctionWrapper_2():
     
     
                                       
+#-------- Test user defined class object ------------------------------------------------------------------------
+def test_SimlClass_1():
+    #py.test.skip('Test expression evaluation (only immediate values)')
+    print 'Test SimlClass: class without statements'
+    from freeode.interpreter import SimlClass, Interpreter
+    
+    #The SimlClass object contains the interpreter as a class variable 
+    #It uses its methods and terefore only functions after the interpreter 
+    #was constructed
+    intp = Interpreter()
+    
+    #construct a class with no statements and no base classes
+    #class Test1:
+    #    <nothing; impossible in Siml>
+    c1=SimlClass('Test1', None, [], None)
+    
+    #create an instance of the class
+    i1 = c1()
+    
+    assert i1.type() == c1
+    
+
+
+def test_SimlClass_2():
+    #py.test.skip('Test expression evaluation (only immediate values)')
+    print 'Test SimlClass: class with one data member'
+    from freeode.interpreter import SimlClass, Interpreter
+    from freeode.ast import NodeDataDef, NodeIdentifier, DotName
+    
+    #The SimlClass object contains the interpreter as a class variable 
+    #It uses its methods and therefore only functions when there is an 
+    #interpreter object.
+    intp = Interpreter()
+    #set up the built in library
+    intp.create_test_module_with_builtins()
+    
+    #construct a class with no statements and no base classes
+    #class Test1:
+    #    Data a:Float
+    #TODO: NodeDataDef needs nice constructor
+    data_stmt = NodeDataDef('a1', NodeIdentifier('Float'))
+    cls=SimlClass('Test1', None, 
+                 [data_stmt], 
+                 None)
+    assert cls.has_attribute(DotName('a1'))
+    
+    #create an instance of the class
+    inst = cls()
+    
+    assert inst.type() == cls
+    assert inst.has_attribute(DotName('a1'))
+    #the attributes must be copied, not identical
+    cls_a1 = cls.get_attribute(DotName('a1'))
+    inst_a1 = inst.get_attribute(DotName('a1'))
+    assert id(cls_a1) != id(inst_a1)
+    assert cls_a1.type() == inst_a1.type()
+    
+
+
 #-------- Test expression evaluation ------------------------------------------------------------------------
 def test_expression_evaluation_1():
     #py.test.skip('Test expression evaluation (only immediate values)')
