@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2006 - 2008 by Eike Welk                                *
+#    Copyright (C) 2006 - 2009 by Eike Welk                                *
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
 #    License: GPL                                                          *
@@ -463,6 +463,128 @@ def test_SimlClass_2():
     assert id(cls_a1) != id(inst_a1)
     assert cls_a1.type() == inst_a1.type()
     
+
+#-------- Test wrapper for built in classes ------------------------------------------------------------------
+def test_BuiltInClassWrapper_1():
+    #py.test.skip('Test BuiltInClassWrapper: construction, put into module')
+    print 'Test BuiltInClassWrapper: construction, put into module'
+    from freeode.interpreter import BuiltInClassWrapper, InterpreterObject
+    from freeode.ast import DotName
+    
+    #test object construction 
+    class Dummy(InterpreterObject):
+        pass
+    siml_dummy_class = BuiltInClassWrapper('Dummy')
+    siml_dummy_class.py_class = Dummy
+    
+    dummy = siml_dummy_class()
+    assert isinstance(dummy, Dummy)
+    
+    #test inclusion in module - convenience function
+    mod = InterpreterObject()
+    siml_dummy_class.put_into(mod)
+    
+    assert mod.get_attribute(DotName('Dummy')) is siml_dummy_class
+    
+    
+
+#-------- Test wrapper for Siml Float classes ------------------------------------------------------------------
+def test_IFloat_1():
+    #py.test.skip('Test IFloatNg: construction from Siml class')
+    print 'Test IFloatNg: construction from Siml class'
+    from freeode.interpreter import IFloatNg, CLASS_FLOATNG, siml_isinstance
+    from freeode.ast import DotName
+    
+    #test construction from Siml class
+    val = CLASS_FLOATNG()
+    assert isinstance(val, IFloatNg)
+    assert siml_isinstance(val, CLASS_FLOATNG)
+    
+    #test construction from Python class - Siml type must still be right
+    val1 = IFloatNg()
+    assert siml_isinstance(val1, CLASS_FLOATNG)
+
+
+
+def test_IFloat_2():
+    #py.test.skip('Test IFloatNg: constructor')
+    print 'Test IFloatNg: constructor'
+    from freeode.interpreter import IFloatNg, CLASS_FLOATNG, siml_isinstance
+    #from freeode.ast import DotName
+    
+    #no arguments
+    val_none = IFloatNg()
+    assert val_none.value is None
+    
+    #int argument
+    val_1 = IFloatNg(1)
+    assert val_1.value == 1.
+    
+    #float argument
+    val_pi = IFloatNg(3.1415)
+    assert val_pi.value == 3.1415
+    
+    #IFloatNg argument
+    val_1_s = IFloatNg(val_1)
+    assert  val_1_s.value == 1.
+
+    try:
+        IFloatNg('hello')
+    except TypeError:
+        print 'expected exception: number can not be constructed from string.'
+    else:
+        assert False, 'object was constructed with wrong init values'
+
+
+
+def test_IFloat_3():
+    py.test.skip('Test IFloatNg: mathematical operators')
+    print 'Test IFloatNg: mathematical operators'
+    from freeode.interpreter import IFloatNg
+    #from freeode.ast import DotName
+    
+    val_2 = IFloatNg(2)
+    val_3 = IFloatNg(3)
+    
+    assert (val_2 + val_3).value == val_2.value + val_3.value
+    assert (val_2 - val_3).value == val_2.value - val_3.value
+    assert (val_2 * val_3).value == val_2.value * val_3.value
+    #for division to work the class needs a __truediv__ function, 
+    #which it does not have 
+    #assert (val_2 / val_3).value == val_2.value / val_3.value
+    assert (val_2 % val_3).value == val_2.value % val_3.value
+    assert (val_2 ** val_3).value == val_2.value ** val_3.value
+    
+    #assert abs(val_2).value == abs(val_2.value)
+    assert (-val_2).value == -val_2.value
+
+
+
+def test_IFloat_4():
+    #py.test.skip('Test IFloatNg: mathematical operators from Siml')
+    print 'Test IFloatNg: mathematical operators'
+    from freeode.interpreter import IFloatNg, CLASS_FLOATNG, siml_isinstance
+    from freeode.ast import DotName
+    
+    val_2 = IFloatNg(2)
+    val_3 = IFloatNg(3)
+    
+    #look the methods up and call them; then assert that the result is correct
+    res = val_2.get_attribute(DotName('__add__'))(val_3)
+    assert res.value == 2 + 3
+    res = val_2.get_attribute(DotName('__sub__'))(val_3)
+    assert res.value == 2 - 3
+    res = val_2.get_attribute(DotName('__mul__'))(val_3)
+    assert res.value == 2 * 3
+    res = val_2.get_attribute(DotName('__div__'))(val_3)
+    assert res.value == 2 / 3
+    res = val_2.get_attribute(DotName('__mod__'))(val_3)
+    assert res.value == 2 % 3
+    res = val_2.get_attribute(DotName('__pow__'))(val_3)
+    assert res.value == 2 ** 3
+    res = val_2.get_attribute(DotName('__neg__'))()
+    assert res.value == -2 
+
 
 
 #-------- Test expression evaluation ------------------------------------------------------------------------
@@ -1069,6 +1191,6 @@ print('end')
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_method_call()
+    test_IFloat_4()
     pass
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2006 - 2008 by Eike Welk                                *
+#    Copyright (C) 2006 - 2009 by Eike Welk                                *
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
 #    License: GPL                                                          *
@@ -460,7 +460,12 @@ class BuiltInFunctionWrapper(CallableObject):
         if all_python_values_exist:
             py_retval = self.py_function(**py_args)             #IGNORE:W0142
             if self.return_type is not None:
-                siml_retval = self.return_type().construct_instance()
+                if siml_issubclass(self.return_type(), (CLASS_FLOAT, CLASS_STRING)):
+                    #TODO:remove when new types are finished
+                    siml_retval = self.return_type().construct_instance()
+                else:
+                    siml_retval = self.return_type()()
+#                siml_retval = self.return_type().construct_instance()
                 siml_retval.value = py_retval
                 siml_retval.role = RoleConstant
                 return siml_retval
@@ -495,9 +500,9 @@ class BuiltInFunctionWrapper(CallableObject):
             return func_call
         
         
-    def put_into(self, module):
-        '''Put self into a module using self.name'''
-        module.create_attribute(self.name, self)
+    def put_into(self, siml_object):
+        '''Put function object into a siml_object using the right name.'''
+        siml_object.create_attribute(self.name, self)
         return self
 
 
@@ -746,9 +751,7 @@ class CreateBuiltInType(TypeObject):
     Instances of this class act as the class/type of built in objects like:
     Float, String, Function, Class, ...
     The built in data objects (Float, String) are mainly wrappers around 
-    Python objects. The infrastructure objects (Function, Class, Module)
-    are a structured symbol table, that creates the illusion of a object 
-    oriented programming language.    
+    Python objects.    
     '''
     def __init__(self, class_name, python_class):
         TypeObject.__init__(self, class_name)
@@ -770,6 +773,35 @@ class CreateBuiltInType(TypeObject):
         return new_obj
         
         
+
+class BuiltInClassWrapper(TypeObject):  
+    '''
+    Siml class (meta-class) for the built in objects.
+    
+    Create instances of built in classes. 
+    
+    Instances of this class create instances of built in objects in Siml.
+    They are the class/type of built in objects like:
+    Float, String, Function, Class, ...
+    The object is s thin wrapper around a Python class.    
+
+    TODO: research how real Pyton classes can be used as classes in Siml 
+    '''
+    def __init__(self, name):
+        TypeObject.__init__(self, name)
+        #the wrapped class will set this 
+        self.py_class = None
+        
+    def __call__(self, *args, **kwargs):
+        '''Create a new Siml object.'''
+        return self.py_class(*args, **kwargs) #IGNORE:W0142
+    
+    def put_into(self, siml_object):
+        '''Put class object into a siml module using the right name.'''
+        siml_object.create_attribute(self.name, self)
+        return self
+
+
 
 class InstModule(InterpreterObject):
     '''Represent one file'''
@@ -800,7 +832,82 @@ class InstFloat(InterpreterObject):
 #the single object that should be used to create all floats
 CLASS_FLOAT = CreateBuiltInType('Float', InstFloat)
 
-  
+
+
+class IFloatNg(InterpreterObject):
+    '''
+    Memory location of a floating point number - new style
+    
+    The variable's value can be known or unknown.
+    The variable can be assigned a (possibly unknown) value, or not. 
+    '''
+    type_object = None
+    
+    def __init__(self, init_val=None):
+        InterpreterObject.__init__(self)
+        self.type = ref(IFloatNg.type_object)
+        self.time_derivative = None
+        self.target_name = None
+        #initialize the value
+        self.value = None
+        if init_val is not None:
+            if isinstance(init_val, (float, int)):
+                self.value = float(init_val)
+            elif isinstance(init_val, IFloatNg) and init_val.value is not None:
+                self.value = init_val.value
+            else:
+                raise TypeError('Expecting float, int or IFloatNg in '
+                                'constructor, but received %s' 
+                                % str(type(init_val)))
+    
+    
+    @staticmethod            
+    def init_funcs_and_class():
+        #create the class object for the Siml class system
+        class_float = BuiltInClassWrapper('FloatNg')
+        class_float.py_class = IFloatNg
+        IFloatNg.type_object = class_float
+        
+        #initialize the mathematical operators, put them into the class
+        W = BuiltInFunctionWrapper
+        #Binary operators
+        binop_args = ArgumentList([NodeFuncArg('a', class_float), 
+                                   NodeFuncArg('b', class_float)])
+        W('__add__', binop_args, class_float, 
+          py_function=lambda a, b: a + b,
+          is_binary_op=True, op_symbol='+').put_into(class_float)
+        W('__sub__', binop_args, class_float, 
+          py_function=lambda a, b: a - b, 
+          is_binary_op=True, op_symbol='-').put_into(class_float) 
+        W('__mul__', binop_args, class_float, 
+          py_function=lambda a, b: a * b, 
+          is_binary_op=True, op_symbol='*').put_into(class_float) 
+        W('__div__', binop_args, class_float, 
+          py_function=lambda a, b: a / b, 
+          is_binary_op=True, op_symbol='/').put_into(class_float) 
+        W('__mod__', binop_args, class_float, 
+          py_function=lambda a, b: a % b, 
+          is_binary_op=True, op_symbol='%').put_into(class_float) 
+        W('__pow__', binop_args, class_float, 
+          py_function=lambda a, b: a ** b, 
+          is_binary_op=True, op_symbol='**').put_into(class_float) 
+        #The prefix operator
+        prefix_args = ArgumentList([NodeFuncArg('a', class_float)])
+        W('__neg__', prefix_args, class_float, 
+          py_function=lambda a: -a, 
+          is_prefix_op=True, op_symbol='-').put_into(class_float)  
+          
+        #return the class object
+        return class_float
+
+    #TODO: def __assign__(self, other): pass
+
+#The class object used in Siml to create instances of IFloatNg
+CLASS_FLOATNG = IFloatNg.init_funcs_and_class()
+    
+
+
+
 class InstString(InterpreterObject):
     '''Character string'''
     #Example object to test if operation is feasible
@@ -863,6 +970,7 @@ def create_built_in_lib():
     #basic data types
     lib.create_attribute('Float', CLASS_FLOAT)
     lib.create_attribute('String', CLASS_STRING)
+    CLASS_FLOATNG.put_into(lib)
     #built in functions
     lib.create_attribute('print', PrintFunction())
     #math functions
@@ -923,7 +1031,21 @@ def siml_issubclass(in_type, class_or_type_or_tuple):
         class_or_type_or_tuple = (class_or_type_or_tuple,)
     #the test, there is no inheritance, so it is simple
     return (in_type in class_or_type_or_tuple)
+
+
+#TODO: implement this!
+#TODO: implement protocol for values: known/unknown, assigned/unassigned
+def siml_isknown(siml_obj):
+    '''
+    Test if an object is a known value, or an unevaluated expression.
     
+    RETURNS
+    -------
+    True:  argument is a known Siml value.
+    False: argument is an unevaluated expression or an unknown variable.
+    '''
+    raise NotImplementedError('Function siml_isknown is not implemented!')
+
 
 #TODO: remove!
 def make_unique_name(base_name, existing_names):
@@ -1150,6 +1272,11 @@ class ExpressionVisitor(Visitor):
             return new_node
     
     
+    #TODO: If the right operand’s type is a subclass of the left operand’s 
+    #      type and that subclass provides the reflected method for the operation, 
+    #      this method will be called before the left operand’s non-reflected 
+    #      method. This behavior allows subclasses to override their ancestors’ 
+    #      operations.
     @Visitor.when_type(NodeOpInfix2)
     def visit_NodeOpInfix2(self, node):
         '''Evaluate binary operator and return result'''
@@ -1202,8 +1329,8 @@ class ExpressionVisitor(Visitor):
     @Visitor.when_type(NodeFuncCall)
     def visit_NodeFuncCall(self, node):
         '''
-        Evaluate a NodeFuncCall, which calls a call-able object (function, class).
-        Execute the callabe's code and return the return value.
+        Evaluate a NodeFuncCall, which calls a call-able object (function).
+        Execute the callable's code and return the return value.
         '''
         #TODO: honor node.function_object: 
         #      the indicator that the function to perform the operation is 
@@ -1217,6 +1344,7 @@ class ExpressionVisitor(Visitor):
         if not isinstance(call_obj, CallableObject):
             raise UserException('Expecting callable object!', node.loc)
         
+        #TODO: maybe a separate function starting here makes sense?
         #evaluate all arguments in the caller's environment.
         ev_args = []
         for arg_val in node.arguments:

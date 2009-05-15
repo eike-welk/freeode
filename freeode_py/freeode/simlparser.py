@@ -55,7 +55,7 @@ from freeode.ast import *
 
 
 
-#Enable a fast parsing mode with caching. May not always work.
+#Enable a fast parsing mode with caching.
 ParserElement.enablePackrat()
 
 
@@ -1109,6 +1109,7 @@ class Parser(object):
         #necessary for statement list (stmt_list) inside of block (stmt_block)        
         stmt_list_1 = stmt_list.copy()                              .setParseAction(self._action_stmt_list)
         #Statement: one line of code, or a compound (if, class, func) statement
+        #TODO: set a fail action that says 'Expected statement here.' ('Expected end of file' is misleading.) 
         statement = (  simple_stmt + newline 
                      | stmt_list_1 + newline 
                      | compound_stmt         )
