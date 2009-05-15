@@ -467,16 +467,18 @@ class NodeOpInfix2(Node):
         loc: TextLocation; None
             Location in input string
     '''
-    def __init__(self):
+    def __init__(self, operator='*_*', arguments=[], loc=None):
         super(NodeOpInfix2, self).__init__()
-        self.operator = None
-        self.arguments = []
-        self.keyword_arguments = {}
+        self.operator = operator
+        self.arguments = arguments[:]
+        self.keyword_arguments = {}  #for uniform handling with functions
+        #decorations
         self.function_object = None
         self.type = None
         self.type_ex = None
         self.role = None
-        self.loc = None
+        #for error messages
+        self.loc = loc
 
 
 class NodeOpPrefix1(Node):

@@ -400,7 +400,8 @@ class BuiltInFunctionWrapper(CallableObject):
     
     RETURNS
     -------
-    Wrapped function result (InterpreterObject) or unevaluated expression.
+    Wrapped function result (InterpreterObject) or unevaluated expression 
+    (NodeFuncCall).
     
     Unevaluated expressions (ast.Node) get the following annotations:
     - Node.type              : type of function result
@@ -504,6 +505,9 @@ class BuiltInFunctionWrapper(CallableObject):
         '''Put function object into a siml_object using the right name.'''
         siml_object.create_attribute(self.name, self)
         return self
+    
+        #TODO: implement method create_python_function(...) that returns 
+        #      a Python function which wraps the BuiltInFunctionWrapper object.
 
 
 
@@ -645,35 +649,35 @@ class BoundMethod(CallableObject):
         
         
         
-class PrimitiveFunctionWrapper(CallableObject):
-    '''
-    Represents a function written in Python; for special functions.
-    
-    The object is callable from Python and Siml.
-    
-    No argument parsing or type checking are is done. The wrapped Function
-    is responsible for this.
-    
-    The wrapped function is responsible for handling unevaluated/unknown 
-    arguments, and what object is returned when arguments are unknown.
-    
-    ARGUMENTS
-    ---------
-    name
-        name of function
-    py_function:
-        Wrapped function that will be called.
-    
-    RETURNS
-    -------
-    Anything that the wrapped function returns. 
-    '''
-    def __init__(self, name, py_function=lambda:None):
-        CallableObject.__init__(self, name)
-        self.py_function = py_function
-        
-    def __call__(self, *args, **kwargs):
-        return self.py_function(*args, **kwargs) #IGNORE:W0142
+#class PrimitiveFunctionWrapper(CallableObject):
+#    '''
+#    Represents a function written in Python; for special functions.
+#    
+#    The object is callable from Python and Siml.
+#    
+#    No argument parsing or type checking is done. The wrapped Function
+#    is responsible for this.
+#    
+#    The wrapped function is responsible for handling unevaluated/unknown 
+#    arguments, and what object is returned when arguments are unknown.
+#    
+#    ARGUMENTS
+#    ---------
+#    name
+#        name of function
+#    py_function:
+#        Wrapped function that will be called.
+#    
+#    RETURNS
+#    -------
+#    Anything that the wrapped function returns. 
+#    '''
+#    def __init__(self, name, py_function=lambda:None):
+#        CallableObject.__init__(self, name)
+#        self.py_function = py_function
+#        
+#    def __call__(self, *args, **kwargs):
+#        return self.py_function(*args, **kwargs) #IGNORE:W0142
         
         
         
@@ -873,6 +877,8 @@ class IFloatNg(InterpreterObject):
         #Binary operators
         binop_args = ArgumentList([NodeFuncArg('a', class_float), 
                                    NodeFuncArg('b', class_float)])
+        #TODO: implement/use method create_python_function(...) that returns 
+        #      a Python function which wraps the BuiltInFunctionWrapper object 
         W('__add__', binop_args, class_float, 
           py_function=lambda a, b: a + b,
           is_binary_op=True, op_symbol='+').put_into(class_float)
@@ -1167,6 +1173,7 @@ class ExpressionVisitor(Visitor):
     @Visitor.when_type(NodeAttrAccess)
     def visit_NodeAttrAccess(self, node):
         '''Evaluate attribute access; ('.') operator'''
+        #TODO: make this work with unevaluated expressions
         #evaluate the object on the left hand side
         inst_lhs = self.dispatch(node.arguments[0])
         #the object on the right hand side must be an identifier
@@ -1277,12 +1284,27 @@ class ExpressionVisitor(Visitor):
     #      this method will be called before the left operand’s non-reflected 
     #      method. This behavior allows subclasses to override their ancestors’ 
     #      operations.
+    
+    binop_table = {'+':  ('__add__','__radd__'),
+                   '-':  ('__sub__','__rsub__'),
+                   '*':  ('__mul__','__rmul__'),
+                   '/':  ('__div__','__rdiv__'),
+                   '%':  ('__mod__','__rmod__'),
+                   '**': ('__exp__','__rexp__'), }
+    
     @Visitor.when_type(NodeOpInfix2)
     def visit_NodeOpInfix2(self, node):
         '''Evaluate binary operator and return result'''
         #compute values on rhs and lhs of operator
         inst_lhs = self.dispatch(node.arguments[0])
         inst_rhs = self.dispatch(node.arguments[1])
+        
+        #TODO: look at the operator symbol and determine the right method name(s)
+        func_name, rfunc_name = ExpressionVisitor.binop_table[node.operator]
+        print 'func: ', func_name, ' rfunc: ', rfunc_name
+        #TODO: get the special method from the LHS and try to call the method.
+        #TODO: if unsuccessful get the right-handed function from the RHS and try to call it
+        
         #see if operation is feasible (for both compiled and interpreted code)
         if not (inst_lhs.type == inst_rhs.type):
             raise UserException('Type mismatch!', node.loc)

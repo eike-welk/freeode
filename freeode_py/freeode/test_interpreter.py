@@ -38,7 +38,7 @@ except:
 
 
 
-#-------- Test InterpreterObject class ----------------------------------------------------------------------
+# -------- Test InterpreterObject class ----------------------------------------------------------------------
 def test_InterpreterObject_1():
     print 'InterpreterObject: basic operation'
     from freeode.interpreter import (InterpreterObject, DotName, UndefinedAttributeError,
@@ -130,7 +130,7 @@ def test_InterpreterObject_method_retrieval():
 
 
 
-#-------- Test IntArgumentList class ------------------------------------------------------------------------
+# -------- Test IntArgumentList class ------------------------------------------------------------------------
 def test_IntArgumentList_1():
     print 'IntArgumentList: construction'
     from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
@@ -312,7 +312,7 @@ def test_IntArgumentList_4():
     
  
  
-#-------- Test wrapper object for Python functions ------------------------------------------------------------------------
+# -------- Test wrapper object for Python functions ------------------------------------------------------------------------
 def test_BuiltInFunctionWrapper_1():
     print 'BuiltInFunctionWrapper: test function call with known arguments, no Interpreter.'
     from freeode.interpreter import (BuiltInFunctionWrapper,
@@ -406,7 +406,7 @@ def test_BuiltInFunctionWrapper_2():
     
     
                                       
-#-------- Test user defined class object ------------------------------------------------------------------------
+# -------- Test user defined class object ------------------------------------------------------------------------
 def test_SimlClass_1():
     #py.test.skip('Test expression evaluation (only immediate values)')
     print 'Test SimlClass: class without statements'
@@ -464,7 +464,7 @@ def test_SimlClass_2():
     assert cls_a1.type() == inst_a1.type()
     
 
-#-------- Test wrapper for built in classes ------------------------------------------------------------------
+# -------- Test wrapper for built in classes ------------------------------------------------------------------
 def test_BuiltInClassWrapper_1():
     #py.test.skip('Test BuiltInClassWrapper: construction, put into module')
     print 'Test BuiltInClassWrapper: construction, put into module'
@@ -488,7 +488,7 @@ def test_BuiltInClassWrapper_1():
     
     
 
-#-------- Test wrapper for Siml Float classes ------------------------------------------------------------------
+# -------- Test wrapper for Siml Float classes ------------------------------------------------------------------
 def test_IFloat_1():
     #py.test.skip('Test IFloatNg: construction from Siml class')
     print 'Test IFloatNg: construction from Siml class'
@@ -538,8 +538,8 @@ def test_IFloat_2():
 
 
 def test_IFloat_3():
-    py.test.skip('Test IFloatNg: mathematical operators')
-    print 'Test IFloatNg: mathematical operators'
+    py.test.skip('Test IFloatNg: mathematical operators from Python') #IGNORE:E1101
+    print 'Test IFloatNg: mathematical operators from Python'
     from freeode.interpreter import IFloatNg
     #from freeode.ast import DotName
     
@@ -561,9 +561,9 @@ def test_IFloat_3():
 
 
 def test_IFloat_4():
-    #py.test.skip('Test IFloatNg: mathematical operators from Siml')
-    print 'Test IFloatNg: mathematical operators'
-    from freeode.interpreter import IFloatNg, CLASS_FLOATNG, siml_isinstance
+    #py.test.skip('Test IFloatNg: special functions for mathematical operators from Siml')
+    print 'Test IFloatNg: special functions for mathematical operators from Siml'
+    from freeode.interpreter import IFloatNg
     from freeode.ast import DotName
     
     val_2 = IFloatNg(2)
@@ -587,7 +587,28 @@ def test_IFloat_4():
 
 
 
-#-------- Test expression evaluation ------------------------------------------------------------------------
+# -------- Test expression evaluation ------------------------------------------------------------------------
+def test_operator_dispatch_1():
+    #py.test.skip('Test IFloatNg: mathematical operators from Siml')
+    print 'Test ExpressionVisitor: handling of binary operators'
+    from freeode.interpreter import (IFloatNg, CLASS_FLOATNG, siml_isinstance, 
+                                     ExpressionVisitor, Interpreter)
+    from freeode.ast import DotName, NodeOpInfix2
+    
+    #interpreter = Interpreter()
+    expr_visit = ExpressionVisitor(None)
+    
+    val_2 = IFloatNg(2)
+    val_3 = IFloatNg(3)
+    
+    op_sub = NodeOpInfix2('-', [val_2, val_3])
+    
+    res = expr_visit.dispatch(op_sub)
+    print res
+    #assert res.value == -1 
+    
+
+
 def test_expression_evaluation_1():
     #py.test.skip('Test expression evaluation (only immediate values)')
     print 'Test expression evaluation (only immediate values)'
@@ -738,7 +759,7 @@ def test_expression_evaluation_3():
 
 
 
-#--------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
+# --------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
 def test_basic_execution_of_statements():
     #py.test.skip('Test disabled')
     print 'Test basic execution of statements (no interpreter object) .................................'
@@ -794,7 +815,7 @@ c = 'Hello ' + 'world!'
   
   
   
-#-------- Test interpreter object - basic --------------------------------------------------------  
+# -------- Test interpreter object - basic --------------------------------------------------------  
 def test_interpreter_object_siml_function_1():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: call user defined function ...............................................................'
@@ -1060,7 +1081,7 @@ print('end')
 #    assert False, 'Test'
 
       
-#---------------- Test interpreter object - emit code ----------------------------------------
+# -------- Test interpreter object - emit code ----------------------------------------
 def test_interpreter_object_emit_code_simple():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: emit code simple ...............................................................'
@@ -1191,6 +1212,6 @@ print('end')
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_IFloat_4()
+    test_operator_dispatch_1()
     pass
 
