@@ -945,7 +945,7 @@ class Parser(object):
              
         #arithmetic, logtical, and comparison operators; the top level parser
         expression << operatorPrecedence(u_expr, 
-            [(oneOf('* /'), 2, opAssoc.LEFT,             self._action_op_infix_left),
+            [(oneOf('* / %'), 2, opAssoc.LEFT,           self._action_op_infix_left),
              (oneOf('+ -'), 2, opAssoc.LEFT,             self._action_op_infix_left),
              (oneOf('< > <= >= == !='), 2, opAssoc.LEFT, self._action_op_infix_left),
              (kw('not'),    1, opAssoc.RIGHT,            self._action_op_prefix),
