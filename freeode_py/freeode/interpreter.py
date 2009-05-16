@@ -3,6 +3,14 @@
 #    Copyright (C) 2006 - 2009 by Eike Welk                                *
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
+#    Credits:                                                              *
+#    Much of the semantics of this language were taken from the Python     *
+#    programming language. Most information and little bits of text were   *
+#    taken from the Python Reference Manual by Guido van Rossum.           *
+#    Many thanks to Guido and the Python team, for their excellent         *
+#    contributions to free software and free documentation.                *
+#                                                                          *
+#                                                                          *
 #    License: GPL                                                          *
 #                                                                          *
 #    This program is free software; you can redistribute it and/or modify  *
@@ -24,8 +32,9 @@
 """
 Interpreter, that is run at compile time, for the SIML language.
 
-The interpreter reads the AST from the parser. It generates constant 
-objects (the symbol table) and changes (simplifies) the code.
+The interpreter reads the AST from the parser. It generates  
+objects (the symbol table), it executes statements that configure the program,
+and it collects the statements that will be part of the compiled program.
 """
 
 from __future__ import division
@@ -388,6 +397,7 @@ class BuiltInFunctionWrapper(CallableObject):
         Return type of the function.
         When an unevaluated result is returned, this will be assigned to the 
         type of the ast.Node.
+        If the return type is None, the function has no return value.
     py_function:
         Function that will be called when the result can be computed.
         
@@ -401,7 +411,7 @@ class BuiltInFunctionWrapper(CallableObject):
     RETURNS
     -------
     Wrapped function result (InterpreterObject) or unevaluated expression 
-    (NodeFuncCall).
+    (NodeFuncCall), or None
     
     Unevaluated expressions (ast.Node) get the following annotations:
     - Node.type              : type of function result
@@ -443,7 +453,23 @@ class BuiltInFunctionWrapper(CallableObject):
 
 
     def __call__(self, *args, **kwargs):
-        '''All functions must implement this method'''
+        '''
+        Execute the wrapped function. 
+        
+        - Checks the arguments, incuding type checking. 
+        - If all arguments are known this function unpacks the values, and 
+        calls the wrapped function with regular Python objects as arguments. 
+        The return value is again wrapped into a Siml object.
+        - If any argument is unknown, an unevaluated function call or operator 
+        node is returned.
+        
+        ARGUMENTS
+        ---------
+        args: [InterpreterObject]
+            Positional arguments for the wrapped function
+        kwargs: {str: InterpreterObject}
+            Keyword arguments for the wrapped function
+        '''
         loc = None
         #try if argument definition matches
         parsed_args = self.argument_definition\
@@ -461,7 +487,7 @@ class BuiltInFunctionWrapper(CallableObject):
         if all_python_values_exist:
             py_retval = self.py_function(**py_args)             #IGNORE:W0142
             if self.return_type is not None:
-                if siml_issubclass(self.return_type(), (CLASS_FLOAT, CLASS_STRING)):
+                if siml_issubclass(self.return_type(), (CLASS_STRING)):
                     #TODO:remove when new types are finished
                     siml_retval = self.return_type().construct_instance()
                 else:
@@ -821,24 +847,24 @@ CLASS_MODULE = CreateBuiltInType('Module', InstModule)
         
         
 #------- Built In Data --------------------------------------------------
-class InstFloat(InterpreterObject):
-    '''Floating point number'''
-    #Example object to test if two operands are compatible
-    #and if the operation is feasible
-    type_compat_example = 1
-    zero_value = 0
-    def __init__(self):
-        InterpreterObject.__init__(self)
-        self.type = None
-        self.value = None
-        self.time_derivative = None
-        self.target_name = None
-#the single object that should be used to create all floats
-CLASS_FLOAT = CreateBuiltInType('Float', InstFloat)
+#class InstFloat(InterpreterObject):
+#    '''Floating point number'''
+#    #Example object to test if two operands are compatible
+#    #and if the operation is feasible
+#    type_compat_example = 1
+#    zero_value = 0
+#    def __init__(self):
+#        InterpreterObject.__init__(self)
+#        self.type = None
+#        self.value = None
+#        self.time_derivative = None
+#        self.target_name = None
+##the single object that should be used to create all floats
+#CLASS_FLOAT = CreateBuiltInType('Float', InstFloat)
 
 
 
-class IFloatNg(InterpreterObject):
+class IFloat(InterpreterObject):
     '''
     Memory location of a floating point number - new style
     
@@ -849,7 +875,7 @@ class IFloatNg(InterpreterObject):
     
     def __init__(self, init_val=None):
         InterpreterObject.__init__(self)
-        self.type = ref(IFloatNg.type_object)
+        self.type = ref(IFloat.type_object)
         self.time_derivative = None
         self.target_name = None
         #initialize the value
@@ -857,20 +883,24 @@ class IFloatNg(InterpreterObject):
         if init_val is not None:
             if isinstance(init_val, (float, int)):
                 self.value = float(init_val)
-            elif isinstance(init_val, IFloatNg) and init_val.value is not None:
+            elif isinstance(init_val, IFloat) and init_val.value is not None:
                 self.value = init_val.value
             else:
-                raise TypeError('Expecting float, int or IFloatNg in '
+                raise TypeError('Expecting float, int or IFloat in '
                                 'constructor, but received %s' 
                                 % str(type(init_val)))
     
     
     @staticmethod            
     def init_funcs_and_class():
+        '''
+        Create the class object for Siml and create the special methods for 
+        operators (+ - * / % **).
+        '''
         #create the class object for the Siml class system
         class_float = BuiltInClassWrapper('FloatNg')
-        class_float.py_class = IFloatNg
-        IFloatNg.type_object = class_float
+        class_float.py_class = IFloat
+        IFloat.type_object = class_float
         
         #initialize the mathematical operators, put them into the class
         W = BuiltInFunctionWrapper
@@ -908,10 +938,9 @@ class IFloatNg(InterpreterObject):
 
     #TODO: def __assign__(self, other): pass
 
-#The class object used in Siml to create instances of IFloatNg
-CLASS_FLOATNG = IFloatNg.init_funcs_and_class()
+#The class object used in Siml to create instances of IFloat
+CLASS_FLOAT = IFloat.init_funcs_and_class()
     
-
 
 
 class InstString(InterpreterObject):
@@ -976,7 +1005,7 @@ def create_built_in_lib():
     #basic data types
     lib.create_attribute('Float', CLASS_FLOAT)
     lib.create_attribute('String', CLASS_STRING)
-    CLASS_FLOATNG.put_into(lib)
+    CLASS_FLOAT.put_into(lib)
     #built in functions
     lib.create_attribute('print', PrintFunction())
     #math functions
@@ -1151,7 +1180,7 @@ class ExpressionVisitor(Visitor):
     @Visitor.when_type(NodeFloat)
     def visit_NodeFloat(self, node):
         '''Create floating point number'''
-        result = CLASS_FLOAT.construct_instance()
+        result = CLASS_FLOAT()
         result.value = float(node.value)
         result.role = RoleConstant
         return result
@@ -1209,143 +1238,148 @@ class ExpressionVisitor(Visitor):
         '''Evaluate pair of parentheses: return expression between parentheses.'''
         #compute values of expression
         val_expr = self.dispatch(node.arguments[0])
-        #TODO: see if operation is feasible (for both compiled and interpreted code)
-        result_type = val_expr.type
         #TODO: determine result type better
         #TODO: determine result role
-        #see if operand is constant, number or string
-        #if true compute the operation in the interpreter (at compile time)
-        if   (siml_isinstance(val_expr, (CLASS_FLOAT, CLASS_STRING)) 
-              and val_expr.role == RoleConstant                     ):
-            #see if values exist
-            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
-            #      maybe with intent: write / read
-            if val_expr.value is None:
-                raise UserException('Value is used before it was computed!', node.loc)
-            #return the constant
+
+        #see if there is an object between the brackets, that can potentially 
+        #have a value. No matter wether known or unknown.
+        if isinstance(val_expr, InterpreterObject):
+            #return the object
             return val_expr
-        #generate code to compute the code between the brackets after compiling (at runtime)
+        #otherwise there is an unevaluated expression between the brackets. 
         else:
-            #create unevaluated operator as the return value 
+            #create unevaluated parentheses node as the return value 
             new_node = NodeParentheses()
             new_node.arguments = [val_expr]
-            new_node.type = result_type
+            new_node.type = val_expr.type
             new_node.loc = node.loc
             new_node.role = RoleDataCanVaryAtRuntime
             return new_node
 
+    
+    _prefopt_table = {'-':'__neg__'}
 
     @Visitor.when_type(NodeOpPrefix1)
     def visit_NodeOpPrefix1(self, node):
         '''Evaluate unary operator and return result'''
         #compute values on rhs of operator
         inst_rhs = self.dispatch(node.arguments[0])
-        #TODO: see if operation is feasible (for both compiled and interpreted code)
-        result_type = inst_rhs.type
-        #TODO: determine result type better
-        #TODO: determine result role
-        #see if operand is constant, number or string
-        #if true compute the operation in the interpreter (at compile time)
-        if   (siml_isinstance(inst_rhs, (CLASS_FLOAT, CLASS_STRING)) 
-              and inst_rhs.role == RoleConstant                     ):
-            #see if values exist
-            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
-            #      maybe with intent: write / read
-            if inst_rhs.value is None:
-                raise UserException('Value is used before it was computed!', node.loc)
-            #Compute the operation
-            #let the Python interpreter perform the operation on the value
-            result = eval(node.operator + ' inst_rhs.value')
-            #Wrap the python result type in the Interpreter's instance types
-            if isinstance(result, float):
-                resultInst = CLASS_FLOAT.construct_instance()
-            else:
-                resultInst = CLASS_STRING.construct_instance()
-            resultInst.value = result
-            resultInst.role = RoleConstant
-            #see if predicted result is identical to real outcome (sanity check)
-            if resultInst.type != result_type:
-                raise UserException('Unexpected result type!', node.loc)
-            return resultInst
-        #generate code to compute the operation after compiling (at runtime)
-        else:
-            #create unevaluated operator as the return value 
-            new_node = NodeOpPrefix1()
-            new_node.operator = node.operator
-            new_node.arguments = [inst_rhs]
-            new_node.type = result_type
-            new_node.loc = node.loc
-            new_node.role = RoleDataCanVaryAtRuntime
-            return new_node
+        #look at the operator symbol and determine the right method name(s)
+        func_name = ExpressionVisitor._prefopt_table[node.operator]
+        #get the special method from the operand's class and try to call the method.
+        func = inst_rhs.type().get_attribute(DotName(func_name))
+        result = func(inst_rhs)
+        return result
+
+#        #TODO: see if operation is feasible (for both compiled and interpreted code)
+#        result_type = inst_rhs.type
+#        #TODO: determine result type better
+#        #TODO: determine result role
+#        #see if operand is constant, number or string
+#        #if true compute the operation in the interpreter (at compile time)
+#        if   (siml_isinstance(inst_rhs, (CLASS_FLOAT, CLASS_STRING)) 
+#              and inst_rhs.role == RoleConstant                     ):
+#            #see if values exist
+#            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
+#            #      maybe with intent: write / read
+#            if inst_rhs.value is None:
+#                raise UserException('Value is used before it was computed!', node.loc)
+#            #Compute the operation
+#            #let the Python interpreter perform the operation on the value
+#            result = eval(node.operator + ' inst_rhs.value')
+#            #Wrap the python result type in the Interpreter's instance types
+#            if isinstance(result, float):
+#                resultInst = CLASS_FLOAT.construct_instance()
+#            else:
+#                resultInst = CLASS_STRING.construct_instance()
+#            resultInst.value = result
+#            resultInst.role = RoleConstant
+#            #see if predicted result is identical to real outcome (sanity check)
+#            if resultInst.type != result_type:
+#                raise UserException('Unexpected result type!', node.loc)
+#            return resultInst
+#        #generate code to compute the operation after compiling (at runtime)
+#        else:
+#            #create unevaluated operator as the return value 
+#            new_node = NodeOpPrefix1()
+#            new_node.operator = node.operator
+#            new_node.arguments = [inst_rhs]
+#            new_node.type = result_type
+#            new_node.loc = node.loc
+#            new_node.role = RoleDataCanVaryAtRuntime
+#            return new_node
     
     
-    #TODO: If the right operand’s type is a subclass of the left operand’s 
-    #      type and that subclass provides the reflected method for the operation, 
-    #      this method will be called before the left operand’s non-reflected 
-    #      method. This behavior allows subclasses to override their ancestors’ 
-    #      operations.
     
-    binop_table = {'+':  ('__add__','__radd__'),
-                   '-':  ('__sub__','__rsub__'),
-                   '*':  ('__mul__','__rmul__'),
-                   '/':  ('__div__','__rdiv__'),
-                   '%':  ('__mod__','__rmod__'),
-                   '**': ('__exp__','__rexp__'), }
+    _binop_table = {'+': ('__add__','__radd__'),
+                    '-': ('__sub__','__rsub__'),
+                    '*': ('__mul__','__rmul__'),
+                    '/': ('__div__','__rdiv__'),
+                    '%': ('__mod__','__rmod__'),
+                    '**':('__exp__','__rexp__'), }
     
     @Visitor.when_type(NodeOpInfix2)
     def visit_NodeOpInfix2(self, node):
         '''Evaluate binary operator and return result'''
         #compute values on rhs and lhs of operator
         inst_lhs = self.dispatch(node.arguments[0])
-        inst_rhs = self.dispatch(node.arguments[1])
-        
-        #TODO: look at the operator symbol and determine the right method name(s)
-        func_name, rfunc_name = ExpressionVisitor.binop_table[node.operator]
-        print 'func: ', func_name, ' rfunc: ', rfunc_name
-        #TODO: get the special method from the LHS and try to call the method.
+        inst_rhs = self.dispatch(node.arguments[1])       
+        #look at the operator symbol and determine the right method name(s)
+        lfunc_name, rfunc_name = ExpressionVisitor._binop_table[node.operator]
+        #get the special method from the LHS's class and try to call the method.
+        func = inst_lhs.type().get_attribute(DotName(lfunc_name))
+        result = func(inst_lhs, inst_rhs)
+        return result
         #TODO: if unsuccessful get the right-handed function from the RHS and try to call it
+        #      float.__sub__(a, b) == float.__rsub__(b, a)
+        #TODO: *** Dispatching Binary Operators of Derived Classes ***
+        #      If the right operand’s type is a subclass of the left operand’s
+        #      type and that subclass provides the reflected method for the operation, 
+        #      this method will be called before the left operand’s non-reflected 
+        #      method. This behavior allows subclasses to override their ancestors’ 
+        #      operations.
         
-        #see if operation is feasible (for both compiled and interpreted code)
-        if not (inst_lhs.type == inst_rhs.type):
-            raise UserException('Type mismatch!', node.loc)
-        result_type = inst_lhs.type
-        #TODO: determine result type better
-        #TODO: determine result role
-        #see if operands are constant numbers or strings
-        #if true compute the operation in the interpreter (at compile time)
-        if   (    siml_isinstance(inst_lhs, (CLASS_FLOAT, CLASS_STRING))
-              and inst_lhs.role == RoleConstant 
-              and siml_isinstance(inst_rhs, (CLASS_FLOAT, CLASS_STRING)) 
-              and inst_rhs.role == RoleConstant                     ):
-            #see if values exist
-            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
-            #      maybe with intent: write / read
-            if inst_lhs.value is None or inst_rhs.value is None:
-                raise UserException('Value is used before it was computed!', node.loc)
-            #Compute the operation
-            #let the Python interpreter perform the operation on the value
-            result = eval('inst_lhs.value ' + node.operator + ' inst_rhs.value')
-            #Wrap the python result type in the Interpreter's instance types
-            if isinstance(result, float):
-                resultInst = CLASS_FLOAT.construct_instance()
-            else:
-                resultInst = CLASS_STRING.construct_instance()
-            resultInst.value = result
-            resultInst.role = RoleConstant
-            #see if predicted result is identical to real outcome (sanity check)
-            if resultInst.type != result_type:
-                raise UserException('Unexpected result type!', node.loc)
-            return resultInst
-        #generate code to compute the operation after compiling (at runtime)
-        else:
-            #create unevaluated operator as the return value 
-            new_node = NodeOpInfix2()
-            new_node.operator = node.operator
-            new_node.arguments = [inst_lhs, inst_rhs]
-            new_node.type = result_type
-            new_node.loc = node.loc
-            new_node.role = RoleDataCanVaryAtRuntime
-            return new_node
+#        #see if operation is feasible (for both compiled and interpreted code)
+#        if not (inst_lhs.type == inst_rhs.type):
+#            raise UserException('Type mismatch!', node.loc)
+#        result_type = inst_lhs.type
+#        #TODO: determine result type better
+#        #TODO: determine result role
+#        #see if operands are constant numbers or strings
+#        #if true compute the operation in the interpreter (at compile time)
+#        if   (    siml_isinstance(inst_lhs, (CLASS_FLOAT, CLASS_STRING))
+#              and inst_lhs.role == RoleConstant 
+#              and siml_isinstance(inst_rhs, (CLASS_FLOAT, CLASS_STRING)) 
+#              and inst_rhs.role == RoleConstant                     ):
+#            #see if values exist
+#            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
+#            #      maybe with intent: write / read
+#            if inst_lhs.value is None or inst_rhs.value is None:
+#                raise UserException('Value is used before it was computed!', node.loc)
+#            #Compute the operation
+#            #let the Python interpreter perform the operation on the value
+#            result = eval('inst_lhs.value ' + node.operator + ' inst_rhs.value')
+#            #Wrap the python result type in the Interpreter's instance types
+#            if isinstance(result, float):
+#                resultInst = CLASS_FLOAT.construct_instance()
+#            else:
+#                resultInst = CLASS_STRING.construct_instance()
+#            resultInst.value = result
+#            resultInst.role = RoleConstant
+#            #see if predicted result is identical to real outcome (sanity check)
+#            if resultInst.type != result_type:
+#                raise UserException('Unexpected result type!', node.loc)
+#            return resultInst
+#        #generate code to compute the operation after compiling (at runtime)
+#        else:
+#            #create unevaluated operator as the return value 
+#            new_node = NodeOpInfix2()
+#            new_node.operator = node.operator
+#            new_node.arguments = [inst_lhs, inst_rhs]
+#            new_node.type = result_type
+#            new_node.loc = node.loc
+#            new_node.role = RoleDataCanVaryAtRuntime
+#            return new_node
     
     
     @Visitor.when_type(NodeFuncCall)

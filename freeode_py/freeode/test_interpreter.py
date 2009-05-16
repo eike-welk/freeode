@@ -139,7 +139,7 @@ def test_IntArgumentList_1():
     ArgumentList([NodeFuncArg(DotName('a')),
                   NodeFuncArg(DotName('b'))], None)
     #Test normal construction with keyword arguments: f(a, b=1)
-    val_1 = CLASS_FLOAT.construct_instance()
+    val_1 = CLASS_FLOAT()
     ArgumentList([NodeFuncArg(DotName('a')),
                   NodeFuncArg(DotName('b'), default_value=val_1)], None)
     #Names are automatically converted to DotName
@@ -158,7 +158,7 @@ def test_IntArgumentList_1():
         
     #argument list with keyword argument before positional argument: f(a=1, b)
     try:
-        val_1 = CLASS_FLOAT.construct_instance()
+        val_1 = CLASS_FLOAT()
         ArgumentList([NodeFuncArg(DotName('a'), default_value=val_1),
                       NodeFuncArg(DotName('b'))], None)
     except UserException, e:
@@ -178,9 +178,9 @@ def test_IntArgumentList_2():
     al = ArgumentList([NodeFuncArg(DotName('a')),
                        NodeFuncArg(DotName('b'))], None)
     #some interpreter level values
-    val_1 = CLASS_FLOAT.construct_instance()
+    val_1 = CLASS_FLOAT()
     val_1.value = 1
-    val_2 = CLASS_FLOAT.construct_instance()
+    val_2 = CLASS_FLOAT()
     val_2.value = 2
     
     #call with correct number of positional arguments
@@ -242,9 +242,9 @@ def test_IntArgumentList_2_1():
     al = ArgumentList([NodeFuncArg('a'),
                        NodeFuncArg('b')])
     #some interpreter level values
-    val_1 = CLASS_FLOAT.construct_instance()
+    val_1 = CLASS_FLOAT()
     val_1.value = 1
-    val_2 = CLASS_FLOAT.construct_instance()
+    val_2 = CLASS_FLOAT()
     val_2.value = 2
     
     #call with correct number of positional arguments
@@ -265,9 +265,9 @@ def test_IntArgumentList_3():
     from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, CLASS_FLOAT)
     
     #some interpreter level values
-    val_1 = CLASS_FLOAT.construct_instance()
+    val_1 = CLASS_FLOAT()
     val_1.value = 1
-    val_2 = CLASS_FLOAT.construct_instance()
+    val_2 = CLASS_FLOAT()
     val_2.value = 2
     #argument list for testing: def f(a, b=2)
     al = ArgumentList([NodeFuncArg(DotName('a')),
@@ -286,7 +286,7 @@ def test_IntArgumentList_4():
                                      CLASS_FLOAT, CLASS_STRING)
     
     #some interpreter level values
-    val_1 = CLASS_FLOAT.construct_instance()
+    val_1 = CLASS_FLOAT()
     val_1.value = 1
     val_hello = CLASS_STRING.construct_instance()
     val_hello.value = 'hello'
@@ -323,7 +323,7 @@ def test_BuiltInFunctionWrapper_1():
     #create sqrt function with named arguments
     sqrt = lambda x: math.sqrt(x) 
     #some interpreter level values
-    val_2 = CLASS_FLOAT.construct_instance()
+    val_2 = CLASS_FLOAT()
     val_2.value = 2
 
     #create a function object that wraps the sqrt function
@@ -349,8 +349,8 @@ def test_BuiltInFunctionWrapper_2():
     #create sqrt function with named arguments
     sqrt = lambda x: math.sqrt(x) 
     #create unknown interpreter level values
-    val_x = CLASS_FLOAT.construct_instance()
-    val_y = CLASS_FLOAT.construct_instance()
+    val_x = CLASS_FLOAT()
+    val_y = CLASS_FLOAT()
     #create fragment of unknown expression
     binop_u = NodeOpInfix2()
     binop_u.type = ref(CLASS_FLOAT)
@@ -490,46 +490,46 @@ def test_BuiltInClassWrapper_1():
 
 # -------- Test wrapper for Siml Float classes ------------------------------------------------------------------
 def test_IFloat_1():
-    #py.test.skip('Test IFloatNg: construction from Siml class')
-    print 'Test IFloatNg: construction from Siml class'
-    from freeode.interpreter import IFloatNg, CLASS_FLOATNG, siml_isinstance
+    #py.test.skip('Test IFloat: construction from Siml class')
+    print 'Test IFloat: construction from Siml class'
+    from freeode.interpreter import IFloat, CLASS_FLOAT, siml_isinstance
     from freeode.ast import DotName
     
     #test construction from Siml class
-    val = CLASS_FLOATNG()
-    assert isinstance(val, IFloatNg)
-    assert siml_isinstance(val, CLASS_FLOATNG)
+    val = CLASS_FLOAT()
+    assert isinstance(val, IFloat)
+    assert siml_isinstance(val, CLASS_FLOAT)
     
     #test construction from Python class - Siml type must still be right
-    val1 = IFloatNg()
-    assert siml_isinstance(val1, CLASS_FLOATNG)
+    val1 = IFloat()
+    assert siml_isinstance(val1, CLASS_FLOAT)
 
 
 
 def test_IFloat_2():
-    #py.test.skip('Test IFloatNg: constructor')
-    print 'Test IFloatNg: constructor'
-    from freeode.interpreter import IFloatNg, CLASS_FLOATNG, siml_isinstance
+    #py.test.skip('Test IFloat: constructor')
+    print 'Test IFloat: constructor'
+    from freeode.interpreter import IFloat, CLASS_FLOAT, siml_isinstance
     #from freeode.ast import DotName
     
     #no arguments
-    val_none = IFloatNg()
+    val_none = IFloat()
     assert val_none.value is None
     
     #int argument
-    val_1 = IFloatNg(1)
+    val_1 = IFloat(1)
     assert val_1.value == 1.
     
     #float argument
-    val_pi = IFloatNg(3.1415)
+    val_pi = IFloat(3.1415)
     assert val_pi.value == 3.1415
     
-    #IFloatNg argument
-    val_1_s = IFloatNg(val_1)
+    #IFloat argument
+    val_1_s = IFloat(val_1)
     assert  val_1_s.value == 1.
 
     try:
-        IFloatNg('hello')
+        IFloat('hello')
     except TypeError:
         print 'expected exception: number can not be constructed from string.'
     else:
@@ -538,13 +538,13 @@ def test_IFloat_2():
 
 
 def test_IFloat_3():
-    py.test.skip('Test IFloatNg: mathematical operators from Python') #IGNORE:E1101
-    print 'Test IFloatNg: mathematical operators from Python'
-    from freeode.interpreter import IFloatNg
+    py.test.skip('Test IFloat: mathematical operators from Python') #IGNORE:E1101
+    print 'Test IFloat: mathematical operators from Python'
+    from freeode.interpreter import IFloat
     #from freeode.ast import DotName
     
-    val_2 = IFloatNg(2)
-    val_3 = IFloatNg(3)
+    val_2 = IFloat(2)
+    val_3 = IFloat(3)
     
     assert (val_2 + val_3).value == val_2.value + val_3.value
     assert (val_2 - val_3).value == val_2.value - val_3.value
@@ -561,13 +561,13 @@ def test_IFloat_3():
 
 
 def test_IFloat_4():
-    #py.test.skip('Test IFloatNg: special functions for mathematical operators from Siml')
-    print 'Test IFloatNg: special functions for mathematical operators from Siml'
-    from freeode.interpreter import IFloatNg
+    #py.test.skip('Test IFloat: special functions for mathematical operators from Siml')
+    print 'Test IFloat: special functions for mathematical operators from Siml'
+    from freeode.interpreter import IFloat
     from freeode.ast import DotName
     
-    val_2 = IFloatNg(2)
-    val_3 = IFloatNg(3)
+    val_2 = IFloat(2)
+    val_3 = IFloat(3)
     
     #look the methods up and call them; then assert that the result is correct
     res = val_2.get_attribute(DotName('__add__'))(val_3)
@@ -589,23 +589,53 @@ def test_IFloat_4():
 
 # -------- Test expression evaluation ------------------------------------------------------------------------
 def test_operator_dispatch_1():
-    #py.test.skip('Test IFloatNg: mathematical operators from Siml')
-    print 'Test ExpressionVisitor: handling of binary operators'
-    from freeode.interpreter import (IFloatNg, CLASS_FLOATNG, siml_isinstance, 
+    #py.test.skip('Test ExpressionVisitor: handling of binary operators with Float values.')
+    print 'Test ExpressionVisitor: handling of binary operators with Float values.'
+    from freeode.interpreter import (IFloat, CLASS_FLOAT, siml_isinstance, 
                                      ExpressionVisitor, Interpreter)
-    from freeode.ast import DotName, NodeOpInfix2
+    from freeode.ast import DotName, NodeOpInfix2, NodeOpPrefix1
     
     #interpreter = Interpreter()
     expr_visit = ExpressionVisitor(None)
     
-    val_2 = IFloatNg(2)
-    val_3 = IFloatNg(3)
+    val_2 = IFloat(2)
+    val_3 = IFloat(3)
     
     op_sub = NodeOpInfix2('-', [val_2, val_3])
-    
     res = expr_visit.dispatch(op_sub)
     print res
-    #assert res.value == -1 
+    assert res.value == -1 
+    
+    op_neg = NodeOpPrefix1('-', [val_2])
+    res = expr_visit.dispatch(op_neg)
+    print res
+    assert res.value == -2 
+    
+
+
+# -------- Test expression evaluation ------------------------------------------------------------------------
+def test_operator_dispatch_2():
+    #py.test.skip('Test ExpressionVisitor: handling of binary operators with unknown Float values.')
+    print 'Test ExpressionVisitor: handling of binary operators with unknown Float values.'
+    from freeode.interpreter import (IFloat, CLASS_FLOAT, siml_isinstance, 
+                                     ExpressionVisitor, Interpreter)
+    from freeode.ast import DotName, NodeOpInfix2, NodeOpPrefix1
+    
+    #interpreter = Interpreter()
+    expr_visit = ExpressionVisitor(None)
+    
+    val_2 = IFloat()
+    val_3 = IFloat()
+    
+    op_sub = NodeOpInfix2('-', [val_2, val_3])
+    res = expr_visit.dispatch(op_sub)
+    print res
+    assert isinstance(res, NodeOpInfix2)
+    
+    op_neg = NodeOpPrefix1('-', [val_2])
+    res = expr_visit.dispatch(op_neg)
+    print res
+    assert isinstance(res, NodeOpPrefix1)
     
 
 
@@ -649,7 +679,7 @@ def test_expression_evaluation_2():
     
     #create module where name lives
     mod = InstModule()
-    val_2 = CLASS_FLOAT.construct_instance()
+    val_2 = CLASS_FLOAT()
     val_2.value = 2.0
     val_2.role = RoleConstant
     mod.create_attribute(DotName('a'), val_2)
@@ -735,7 +765,7 @@ def test_expression_evaluation_3():
     #create module where name lives
     mod = InstModule()
     #create attribute 'a' with no value
-    val_2 = CLASS_FLOAT.construct_instance()
+    val_2 = CLASS_FLOAT()
     val_2.value = None
     val_2.role = RoleVariable
     mod.create_attribute(DotName('a'), val_2)
@@ -776,7 +806,8 @@ a = 2*2 + 3*4
 b = 2 * a
 
 data c:String const
-c = 'Hello ' + 'world!'
+#TODO: do strings need an addition operator?
+#c = 'Hello ' + 'world!'
 '''
 
     #create the built in library
@@ -830,7 +861,7 @@ def test_interpreter_object_siml_function_1():
     # this way SimlFunction can access the interpreter.
     intp = Interpreter()
     #create a Siml value as function argument
-    val_1 = CLASS_FLOAT.construct_instance()
+    val_1 = CLASS_FLOAT()
     val_1.value = 1.
     #TODO: test function calling mechanism with unevaluated expressions too!
 #    #create an unevaluated expression
@@ -1212,6 +1243,6 @@ print('end')
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_operator_dispatch_1()
+    test_expression_evaluation_1()
     pass
 
