@@ -487,13 +487,8 @@ class BuiltInFunctionWrapper(CallableObject):
         if all_python_values_exist:
             py_retval = self.py_function(**py_args)             #IGNORE:W0142
             if self.return_type is not None:
-                if siml_issubclass(self.return_type(), (CLASS_STRING)):
-                    #TODO:remove when new types are finished
-                    siml_retval = self.return_type().construct_instance()
-                else:
-                    siml_retval = self.return_type()()
-#                siml_retval = self.return_type().construct_instance()
-                siml_retval.value = py_retval
+                #wrap return value in appropriate Siml object
+                siml_retval = self.return_type()(py_retval)
                 siml_retval.role = RoleConstant
                 return siml_retval
             else:
@@ -774,36 +769,6 @@ class SimlClass(TypeObject):
 #---------- Built In Library  ------------------------------------------------*
 
 #---------- Infrastructure -------------------------------------------------
-class CreateBuiltInType(TypeObject): 
-    '''
-    Create instances of built in classes. - The class of built in objects.
-    
-    Instances of this class act as the class/type of built in objects like:
-    Float, String, Function, Class, ...
-    The built in data objects (Float, String) are mainly wrappers around 
-    Python objects.    
-    '''
-    def __init__(self, class_name, python_class):
-        TypeObject.__init__(self, class_name)
-        self.type = None 
-        self.name = DotName(class_name)
-        self.python_class = python_class
-        self.arguments = []
-   
-    def construct_instance(self):
-        '''Return the new object'''
-        #create object
-        new_obj = self.python_class()
-        #set up type information
-        new_obj.type = ref(self)
-        new_obj.type_ex = NodeFuncCall()
-        new_obj.type_ex.name = weakref.proxy(self)
-        new_obj.type_ex.arguments = []
-        new_obj.type_ex.keyword_arguments = {}
-        return new_obj
-        
-        
-
 class BuiltInClassWrapper(TypeObject):  
     '''
     Siml class (meta-class) for the built in objects.
@@ -833,40 +798,22 @@ class BuiltInClassWrapper(TypeObject):
 
 
 
-class InstModule(InterpreterObject):
+class IModule(InterpreterObject):
     '''Represent one file'''
     def __init__(self):
         InterpreterObject.__init__(self)
         self.name = None
         self.file_name = None
         self.role = RoleConstant
-#        self.statements = None
 #the single object that should be used to create all Modules
-CLASS_MODULE = CreateBuiltInType('Module', InstModule)
+#CLASS_MODULE = IModule.init_funcs_and_class()
 
         
         
 #------- Built In Data --------------------------------------------------
-#class InstFloat(InterpreterObject):
-#    '''Floating point number'''
-#    #Example object to test if two operands are compatible
-#    #and if the operation is feasible
-#    type_compat_example = 1
-#    zero_value = 0
-#    def __init__(self):
-#        InterpreterObject.__init__(self)
-#        self.type = None
-#        self.value = None
-#        self.time_derivative = None
-#        self.target_name = None
-##the single object that should be used to create all floats
-#CLASS_FLOAT = CreateBuiltInType('Float', InstFloat)
-
-
-
 class IFloat(InterpreterObject):
     '''
-    Memory location of a floating point number - new style
+    Memory location of a floating point number
     
     The variable's value can be known or unknown.
     The variable can be assigned a (possibly unknown) value, or not. 
@@ -886,7 +833,7 @@ class IFloat(InterpreterObject):
             elif isinstance(init_val, IFloat) and init_val.value is not None:
                 self.value = init_val.value
             else:
-                raise TypeError('Expecting float, int or IFloat in '
+                raise TypeError('Expecting None, float, int or known IFloat in '
                                 'constructor, but received %s' 
                                 % str(type(init_val)))
     
@@ -898,7 +845,7 @@ class IFloat(InterpreterObject):
         operators (+ - * / % **).
         '''
         #create the class object for the Siml class system
-        class_float = BuiltInClassWrapper('FloatNg')
+        class_float = BuiltInClassWrapper('Float')
         class_float.py_class = IFloat
         IFloat.type_object = class_float
         
@@ -943,21 +890,65 @@ CLASS_FLOAT = IFloat.init_funcs_and_class()
     
 
 
-class InstString(InterpreterObject):
-    '''Character string'''
-    #Example object to test if operation is feasible
-    type_compat_example = 'aa'
-    zero_value = ''
-    def __init__(self):
+class IString(InterpreterObject):
+    '''
+    Memory location of a string
+    
+    The variable's value can be known or unknown.
+    The variable can be assigned a (possibly unknown) value, or not. 
+    '''
+    type_object = None
+    
+    def __init__(self, init_val=None):
         InterpreterObject.__init__(self)
-        self.type = None
-        self.value = None
+        self.type = ref(IString.type_object)
+        self.time_derivative = None
         self.target_name = None
-#the single object that should be used to create all strings
-CLASS_STRING = CreateBuiltInType('String', InstString)
-  
-  
-  
+        #initialize the value
+        self.value = None
+        if init_val is not None:
+            if isinstance(init_val, (str, float, int)):
+                self.value = str(init_val)
+            elif isinstance(init_val, IString) and init_val.value is not None:
+                self.value = init_val.value
+            else:
+                raise TypeError('Expecting None, str, float, int or known IString in '
+                                'constructor, but received %s' 
+                                % str(type(init_val)))
+    
+    
+    @staticmethod            
+    def init_funcs_and_class():
+        '''
+        Create the class object for Siml and create the special methods for 
+        operators (+).
+        '''
+        #create the class object for the Siml class system
+        class_string = BuiltInClassWrapper('String')
+        class_string.py_class = IString
+        IString.type_object = class_string
+        
+        #initialize the mathematical operators, put them into the class
+        W = BuiltInFunctionWrapper
+        #Binary operators
+        binop_args = ArgumentList([NodeFuncArg('a', class_string), 
+                                   NodeFuncArg('b', class_string)])
+        #TODO: implement/use method create_python_function(...) that returns 
+        #      a Python function which wraps the BuiltInFunctionWrapper object 
+        W('__add__', binop_args, class_string, 
+          py_function=lambda a, b: a + b,
+          is_binary_op=True, op_symbol='+').put_into(class_string)
+          
+        #return the class object
+        return class_string
+
+    #TODO: def __assign__(self, other): pass
+
+#The class object used in Siml to create instances of IFloat
+CLASS_STRING = IString.init_funcs_and_class()
+    
+
+
 #-------------- Service -------------------------------------------------------------------  
 class PrintFunction(CallableObject):
     '''The print function object.'''
@@ -999,13 +990,12 @@ def create_built_in_lib():
     Arg = NodeFuncArg
     WFunc = BuiltInFunctionWrapper
     
-    lib = InstModule()
+    lib = IModule()
     lib.name = DotName('__built_in__')
 
     #basic data types
     lib.create_attribute('Float', CLASS_FLOAT)
     lib.create_attribute('String', CLASS_STRING)
-    CLASS_FLOAT.put_into(lib)
     #built in functions
     lib.create_attribute('print', PrintFunction())
     #math functions
@@ -1188,7 +1178,7 @@ class ExpressionVisitor(Visitor):
     @Visitor.when_type(NodeString)
     def visit_NodeString(self, node):
         '''Create string'''
-        result = CLASS_STRING.construct_instance()
+        result = CLASS_STRING()
         result.value = str(node.value)
         result.role = RoleConstant
         return result
@@ -1561,10 +1551,7 @@ class StatementVisitor(Visitor):
         #get the type object - a NodeIdentifier is expected as class_spec
         class_obj = self.expression_visitor.dispatch(node.class_spec)
         #Create the new object
-        if isinstance(class_obj, CreateBuiltInType):
-            #TODO: remove!
-            new_object = class_obj.construct_instance()
-        elif isinstance(class_obj, TypeObject):
+        if isinstance(class_obj, TypeObject):
             new_object = class_obj()
         else:
             raise UserException('Class expected.', node.loc)
@@ -1593,10 +1580,7 @@ class StatementVisitor(Visitor):
         #get the type object - a NodeIdentifier is expected as class_spec
         class_obj = self.expression_visitor.dispatch(node.class_spec)
         #Create the new object
-        if isinstance(class_obj, CreateBuiltInType):
-            #TODO: remove!
-            tree_object = class_obj.construct_instance()
-        elif isinstance(class_obj, TypeObject):
+        if isinstance(class_obj, TypeObject):
             tree_object = class_obj()
         else:
             raise UserException('Class expected.', node.loc)
@@ -1682,7 +1666,7 @@ class Interpreter(object):
         self.env_stack = []
         self.push_environment(ExecutionEnvironment())
         #storage for objects generated by the compile statement
-        self.compile_module = CLASS_MODULE.construct_instance()
+        self.compile_module = IModule()
         self.compile_module.name = DotName('compiled_object_namespace')
         #list of emitted statements (temporary storage)
         self.compile_stmt_collect = None
@@ -1707,7 +1691,7 @@ class Interpreter(object):
     def interpret_module_string(self, text, file_name=None, module_name=None):
         '''Interpret the program text of a module.'''
         #create the new module and import the built in objects
-        mod = CLASS_MODULE.construct_instance()
+        mod = IModule()
         mod.name = module_name
         mod.file_name = file_name
         #put module into root namespace (symbol table)
@@ -1767,7 +1751,7 @@ class Interpreter(object):
         print '*** create_test_module_with_builtins: '\
               'This method must only be used for tests ***'
         #create the new module and import the built in objects
-        mod = CLASS_MODULE.construct_instance()
+        mod = IModule()
         mod.name = DotName('test')
         #put module into root namespace (symbol table)
         self.modules[mod.name] = mod

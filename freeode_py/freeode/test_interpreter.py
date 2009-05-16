@@ -286,10 +286,8 @@ def test_IntArgumentList_4():
                                      CLASS_FLOAT, CLASS_STRING)
     
     #some interpreter level values
-    val_1 = CLASS_FLOAT()
-    val_1.value = 1
-    val_hello = CLASS_STRING.construct_instance()
-    val_hello.value = 'hello'
+    val_1 = CLASS_FLOAT(1)
+    val_hello = CLASS_STRING('hello')
     #argument list for testing: f(a:Float, b:String)
     al = ArgumentList([NodeFuncArg(DotName('a'), type=CLASS_FLOAT),
                        NodeFuncArg(DotName('b'), type=CLASS_STRING)], None)
@@ -488,12 +486,12 @@ def test_BuiltInClassWrapper_1():
     
     
 
-# -------- Test wrapper for Siml Float classes ------------------------------------------------------------------
+# -------- Test Siml wrapper for float classes ------------------------------------------------------------------
 def test_IFloat_1():
     #py.test.skip('Test IFloat: construction from Siml class')
     print 'Test IFloat: construction from Siml class'
     from freeode.interpreter import IFloat, CLASS_FLOAT, siml_isinstance
-    from freeode.ast import DotName
+    #from freeode.ast import DotName
     
     #test construction from Siml class
     val = CLASS_FLOAT()
@@ -509,7 +507,7 @@ def test_IFloat_1():
 def test_IFloat_2():
     #py.test.skip('Test IFloat: constructor')
     print 'Test IFloat: constructor'
-    from freeode.interpreter import IFloat, CLASS_FLOAT, siml_isinstance
+    from freeode.interpreter import IFloat
     #from freeode.ast import DotName
     
     #no arguments
@@ -587,15 +585,94 @@ def test_IFloat_4():
 
 
 
+# -------- Test Siml wrapper for str classes ------------------------------------------------------------------
+def test_IString_1():
+    #py.test.skip('Test IString: construction from Siml class')
+    print 'Test IString: construction from Siml class'
+    from freeode.interpreter import IString, CLASS_STRING, siml_isinstance
+    #from freeode.ast import DotName
+    
+    #test construction from Siml class
+    val = CLASS_STRING()
+    assert isinstance(val, IString)
+    assert siml_isinstance(val, CLASS_STRING)
+    
+    #test construction from Python class - Siml type must still be right
+    val1 = IString()
+    assert siml_isinstance(val1, CLASS_STRING)
+
+
+
+def test_IString_2():
+    #py.test.skip('Test IString: constructor')
+    print 'Test IString: constructor'
+    from freeode.interpreter import IString
+    #from freeode.ast import DotName
+    
+    #no arguments
+    val_none = IString()
+    assert val_none.value is None
+    
+    #int argument
+    val_1 = IString(1)
+    assert val_1.value == '1'
+    
+    #float argument
+    val_pi = IString(3.1415)
+    assert val_pi.value == '3.1415'
+    
+    #str argument
+    val_a = IString('a')
+    assert val_a.value == 'a'
+    
+    #IString argument
+    val_a_s = IString(val_a)
+    assert  val_a_s.value == 'a'
+
+    try:
+        IString([])
+    except TypeError:
+        print 'expected exception: wrong argument type.'
+    else:
+        assert False, 'object was constructed with wrong initial values'
+
+
+
+def test_IString_3():
+    py.test.skip('Test IString: mathematical operators from Python') #IGNORE:E1101
+    print 'Test IString: mathematical operators from Python'
+    from freeode.interpreter import IString
+    #from freeode.ast import DotName
+    
+    val_a = IString('a')
+    val_b = IString('b')
+    
+    assert (val_a + val_a).value == val_a.value + val_b.value
+
+
+
+def test_IString_4():
+    #py.test.skip('Test IString: special functions for mathematical operators from Siml')
+    print 'Test IString: special functions for mathematical operators from Siml'
+    from freeode.interpreter import IString
+    from freeode.ast import DotName
+    
+    val_a = IString('a')
+    val_b = IString('b')
+    
+    #look the methods up and call them; then assert that the result is correct
+    res = val_a.get_attribute(DotName('__add__'))(val_b)
+    assert res.value == 'ab'
+
+
+
 # -------- Test expression evaluation ------------------------------------------------------------------------
 def test_operator_dispatch_1():
     #py.test.skip('Test ExpressionVisitor: handling of binary operators with Float values.')
     print 'Test ExpressionVisitor: handling of binary operators with Float values.'
-    from freeode.interpreter import (IFloat, CLASS_FLOAT, siml_isinstance, 
-                                     ExpressionVisitor, Interpreter)
-    from freeode.ast import DotName, NodeOpInfix2, NodeOpPrefix1
+    from freeode.interpreter import (IFloat, ExpressionVisitor)
+    from freeode.ast import NodeOpInfix2, NodeOpPrefix1
     
-    #interpreter = Interpreter()
     expr_visit = ExpressionVisitor(None)
     
     val_2 = IFloat(2)
@@ -617,11 +694,9 @@ def test_operator_dispatch_1():
 def test_operator_dispatch_2():
     #py.test.skip('Test ExpressionVisitor: handling of binary operators with unknown Float values.')
     print 'Test ExpressionVisitor: handling of binary operators with unknown Float values.'
-    from freeode.interpreter import (IFloat, CLASS_FLOAT, siml_isinstance, 
-                                     ExpressionVisitor, Interpreter)
-    from freeode.ast import DotName, NodeOpInfix2, NodeOpPrefix1
-    
-    #interpreter = Interpreter()
+    from freeode.interpreter import (IFloat, ExpressionVisitor)
+    from freeode.ast import NodeOpInfix2, NodeOpPrefix1
+
     expr_visit = ExpressionVisitor(None)
     
     val_2 = IFloat()
@@ -665,7 +740,7 @@ def test_expression_evaluation_1():
 def test_expression_evaluation_2():
     #py.test.skip('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (access to variables)'
-    from freeode.interpreter import (InstModule, CLASS_FLOAT, RoleConstant, 
+    from freeode.interpreter import (IModule, CLASS_FLOAT, RoleConstant, 
                                      ExpressionVisitor, DotName, 
                                      ExecutionEnvironment)
     import freeode.simlparser as simlparser
@@ -678,9 +753,8 @@ def test_expression_evaluation_2():
     print ex
     
     #create module where name lives
-    mod = InstModule()
-    val_2 = CLASS_FLOAT()
-    val_2.value = 2.0
+    mod = IModule()
+    val_2 = CLASS_FLOAT(2.0)
     val_2.role = RoleConstant
     mod.create_attribute(DotName('a'), val_2)
     print
@@ -705,7 +779,7 @@ def test_expression_evaluation_2():
 def test_expression_evaluation_2_1():
     #py.test.skip('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (calling built in functions)'
-    from freeode.interpreter import (simlparser, InstModule, ExecutionEnvironment,
+    from freeode.interpreter import (simlparser, IModule, ExecutionEnvironment,
                                      ExpressionVisitor, DotName,
                                      BuiltInFunctionWrapper, ArgumentList, NodeFuncArg,
                                      CLASS_FLOAT)
@@ -719,7 +793,7 @@ def test_expression_evaluation_2_1():
     print ex
     
     #create module where names live
-    mod = InstModule()
+    mod = IModule()
     #create sqrt function with named arguments
     sqrt = lambda x: math.sqrt(x) 
     #create a function object that wraps the sqrt function
@@ -751,7 +825,7 @@ def test_expression_evaluation_2_1():
 def test_expression_evaluation_3():
     #py.test.skip('Test disabled')
     print 'Test expression evaluation (returning of partially evaluated expression when accessing variables)'
-    from freeode.interpreter import (InstModule, CLASS_FLOAT, RoleVariable, 
+    from freeode.interpreter import (IModule, CLASS_FLOAT, RoleVariable, 
                                      DotName, ExecutionEnvironment, ExpressionVisitor,
                                      NodeOpInfix2)
     import freeode.simlparser as simlparser
@@ -763,7 +837,7 @@ def test_expression_evaluation_3():
     print ex
     
     #create module where name lives
-    mod = InstModule()
+    mod = IModule()
     #create attribute 'a' with no value
     val_2 = CLASS_FLOAT()
     val_2.value = None
@@ -791,9 +865,9 @@ def test_expression_evaluation_3():
 
 # --------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
 def test_basic_execution_of_statements():
-    #py.test.skip('Test disabled')
+    #py.test.skip('Test basic execution of statements (no interpreter object)')
     print 'Test basic execution of statements (no interpreter object) .................................'
-    from freeode.interpreter import (CLASS_MODULE, CLASS_FLOAT, CLASS_STRING,
+    from freeode.interpreter import (IModule, CLASS_FLOAT, CLASS_STRING,
                                      DotName, ExecutionEnvironment,
                                      ExpressionVisitor, StatementVisitor)
     import freeode.simlparser as simlparser
@@ -806,17 +880,16 @@ a = 2*2 + 3*4
 b = 2 * a
 
 data c:String const
-#TODO: do strings need an addition operator?
-#c = 'Hello ' + 'world!'
+c = 'Hello ' + 'world!'
 '''
 
     #create the built in library
-    mod = CLASS_MODULE.construct_instance()
+    mod = IModule()
     mod.create_attribute(DotName('Float'), CLASS_FLOAT)
     mod.create_attribute(DotName('String'), CLASS_STRING)
-    print
-    print 'global namespace - before interpreting statements - built in library: ---------------'
-    print mod
+#    print
+#    print 'global namespace - before interpreting statements - built in library: ---------------'
+#    print mod
            
     #initialize the interpreter
     env = ExecutionEnvironment()
@@ -837,12 +910,13 @@ data c:String const
     for stmt in module_code.statements:
         stv.dispatch(stmt)
         
-    print
-    print 'global namespace - after interpreting statements: -----------------------------------'
-    print mod
+#    print
+#    print 'global namespace - after interpreting statements: -----------------------------------'
+#    print mod
     
-    assert mod.get_attribute(DotName('a')).value == 16
-    assert mod.get_attribute(DotName('b')).value == 2*16
+    assert mod.get_attribute(DotName('a')).value == 16             #IGNORE:E1103
+    assert mod.get_attribute(DotName('b')).value == 2*16           #IGNORE:E1103
+    assert mod.get_attribute(DotName('c')).value == 'Hello world!' #IGNORE:E1103
   
   
   
@@ -851,15 +925,15 @@ def test_interpreter_object_siml_function_1():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: call user defined function ...............................................................'
     print 'User defined functions are created without parser.'
-    from freeode.interpreter import (Interpreter, DotName, SimlFunction, 
+    from freeode.interpreter import (Interpreter, SimlFunction, 
                                      ArgumentList, CLASS_FLOAT, CLASS_STRING,
-                                     BUILT_IN_LIB, ref)
-    from freeode.ast import (NodeFuncArg, NodeOpInfix2, NodeReturnStmt, 
+                                     BUILT_IN_LIB)
+    from freeode.ast import (NodeFuncArg, NodeReturnStmt, 
                              NodeIdentifier, UserException)
 
     #create the interpreter - initializes InterpreterObject.interpreter
     # this way SimlFunction can access the interpreter.
-    intp = Interpreter()
+    intp = Interpreter()    #IGNORE:W0612
     #create a Siml value as function argument
     val_1 = CLASS_FLOAT()
     val_1.value = 1.
