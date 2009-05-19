@@ -321,8 +321,7 @@ def test_BuiltInFunctionWrapper_1():
     #create sqrt function with named arguments
     sqrt = lambda x: math.sqrt(x) 
     #some interpreter level values
-    val_2 = CLASS_FLOAT()
-    val_2.value = 2
+    val_2 = CLASS_FLOAT(2)
 
     #create a function object that wraps the sqrt function
     func = BuiltInFunctionWrapper('sqrt', 
@@ -357,14 +356,14 @@ def test_BuiltInFunctionWrapper_2():
                                   ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
                                   return_type=CLASS_FLOAT, 
                                   py_function=sqrt)
-    #create a binary operator object - wraps noting
+    #create a binary operator object - wraps nothing
     binop = BuiltInFunctionWrapper('__add__', 
                                    ArgumentList([NodeFuncArg('x', CLASS_FLOAT), 
                                                  NodeFuncArg('y', CLASS_FLOAT)]), 
                                    return_type=CLASS_FLOAT, 
                                    py_function=None,
                                    is_binary_op=True, op_symbol='+')
-    #create a prefix operator object - wraps noting
+    #create a prefix operator object - wraps nothing
     prefix_op = BuiltInFunctionWrapper('__sign__', 
                                 ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
                                 return_type=CLASS_FLOAT, 
@@ -400,6 +399,31 @@ def test_BuiltInFunctionWrapper_2():
     assert siml_ret.arguments[0] == val_x
     assert siml_ret.function_object == prefix_op
     
+    #assert False, 'implement me!'
+    
+    
+                                      
+# -------- Test 2nd version of wrapper object for Python functions ------------------------------------------------------------------------
+def test_BuiltInFunctionWrapper2_1():
+    print 'BuiltInFunctionWrapper2: test 2nd version of function call with known arguments, no Interpreter.'
+    from freeode.interpreter import (BuiltInFunctionWrapper2,
+                                     ArgumentList, NodeFuncArg,   
+                                     CLASS_FLOAT, )
+    import math
+    
+    #create sqrt function with named arguments
+    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
+    #some interpreter level values
+    val_2 = CLASS_FLOAT(2)
+
+    #create a function object that wraps the sqrt function
+    func = BuiltInFunctionWrapper2('sqrt', 
+                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)], None), 
+                                  return_type=CLASS_FLOAT, 
+                                  py_function=sqrt)
+    #call function: sqrt(2)
+    siml_ret = func(val_2)
+    assert siml_ret.value == math.sqrt(2) #IGNORE:E1103
     #assert False, 'implement me!'
     
     
@@ -536,7 +560,7 @@ def test_IFloat_2():
 
 
 def test_IFloat_3():
-    py.test.skip('Test IFloat: mathematical operators from Python') #IGNORE:E1101
+    #py.test.skip('Test IFloat: mathematical operators from Python') #IGNORE:E1101
     print 'Test IFloat: mathematical operators from Python'
     from freeode.interpreter import IFloat
     #from freeode.ast import DotName
@@ -639,7 +663,7 @@ def test_IString_2():
 
 
 def test_IString_3():
-    py.test.skip('Test IString: mathematical operators from Python') #IGNORE:E1101
+    #py.test.skip('Test IString: mathematical operators from Python') #IGNORE:E1101
     print 'Test IString: mathematical operators from Python'
     from freeode.interpreter import IString
     #from freeode.ast import DotName
@@ -647,7 +671,7 @@ def test_IString_3():
     val_a = IString('a')
     val_b = IString('b')
     
-    assert (val_a + val_a).value == val_a.value + val_b.value
+    assert (val_a + val_b).value == val_a.value + val_b.value
 
 
 
@@ -664,6 +688,39 @@ def test_IString_4():
     res = val_a.get_attribute(DotName('__add__'))(val_b)
     assert res.value == 'ab'
 
+
+
+# -------- Test administrative functions ------------------------------------------------------------------------
+def test_determine_result_role_1():
+    #py.test.skip('Test IString: special functions for mathematical operators from Siml')
+    print 'Test determine_result_role: '
+    from freeode.interpreter import IFloat, determine_result_role
+    from freeode.ast import RoleConstant, RoleParameter, RoleVariable
+    
+    #some constants
+    c_1 = IFloat()
+    c_1.role = RoleConstant
+    c_2 = IFloat()
+    c_2.role = RoleConstant
+    #some parameters
+    p_1 = IFloat()
+    p_1.role = RoleParameter
+    p_2 = IFloat()
+    p_2.role = RoleParameter
+    #some variables
+    v_1 = IFloat()
+    v_1.role = RoleVariable
+    v_2 = IFloat()
+    v_2.role = RoleVariable
+    
+    #determine the most variable role among the arguments
+    assert determine_result_role((c_1, p_1, v_1), 
+                                 {'a':c_2, 'b':p_2, 'c':v_2, }) == RoleVariable
+    assert determine_result_role((c_1, p_1), 
+                                 {'a':c_2, 'b':p_2}) == RoleParameter
+    assert determine_result_role((c_1,), 
+                                 {'a':c_2}) == RoleConstant
+    
 
 
 # -------- Test expression evaluation ------------------------------------------------------------------------
@@ -921,6 +978,30 @@ c = 'Hello ' + 'world!'
   
   
 # -------- Test interpreter object - basic --------------------------------------------------------  
+def test_interpreter_assignment_1():
+    #py.test.skip('Test disabled')
+    print 'Test interpreter object: assignment. needs working data statement and number ...............................................................'
+    from freeode.interpreter import Interpreter, DotName
+    import math
+    
+    prog_text = \
+'''
+data a: Float const
+a = 2
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    print 'module after interpreter run: ---------------------------------'
+    print intp.modules['test']
+    
+    assert intp.modules['test'].get_attribute(DotName('a')).value == 2
+  
+  
+
 def test_interpreter_object_siml_function_1():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: call user defined function ...............................................................'
@@ -1317,6 +1398,6 @@ print('end')
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_expression_evaluation_1()
+    test_basic_execution_of_statements()
     pass
 

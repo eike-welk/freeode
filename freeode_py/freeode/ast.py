@@ -437,7 +437,7 @@ class NodeParentheses(Node):
         self.type = None
         self.type = None
         self.type_ex = None
-        self.role = None
+        self.role = RoleUnkown
         self.loc = None
 
 
@@ -476,7 +476,8 @@ class NodeOpInfix2(Node):
         self.function_object = None
         self.type = None
         self.type_ex = None
-        self.role = None
+        self.role = RoleUnkown
+        self.is_assigned = None
         #for error messages
         self.loc = loc
 
@@ -516,7 +517,8 @@ class NodeOpPrefix1(Node):
         self.function_object = None
         self.type = None
         self.type_ex = None
-        self.role = None
+        self.role = RoleUnkown
+        self.is_assigned = None
         #for error messages
         self.loc = loc
 
@@ -556,19 +558,20 @@ class NodeFuncCall(Node):
     TODO:    operator_placement: prefix/infix/suffix 
     '''
     #TODO: give NodeFuncCall a nice constructor
-    def __init__(self):
+    def __init__(self, name=None, arguments=[], keyword_arguments = {}, lok=None):
         super(NodeFuncCall, self).__init__()
-        self.name = None
-        self.arguments = []
-        self.keyword_arguments = {}
+        self.name = name
+        self.arguments = arguments[:]
+        self.keyword_arguments = keyword_arguments.copy()
         #--- for the type system (treatment of unevaluated calls) -----------#
         self.type = None
         self.type_ex = None
-        self.role = None
+        self.role = RoleUnkown
+        self.is_assigned = None
         #--- for code generation --------------------------------------------#
         self.function_object = None
         #--- for error messages ---------------------------------------------#
-        self.loc = None
+        self.loc = lok
 
 
 #-------------- Statements --------------------------------------------------
@@ -812,9 +815,9 @@ class AttributeRole(object):
     shaped relationship between the roles.
     '''
     pass
-#class RoleCompiledObject(AttributeRole):
-#    '''Mark objects that are compiled. TODO: seems to be no good solution.'''
-#    pass
+class RoleUnkown(AttributeRole):
+    '''Role has not been determined yet.'''
+    pass
 class RoleConstant(AttributeRole):
     '''The attribute is a constant; it can only be changed at compile time.'''
 #    userStr = 'const'

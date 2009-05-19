@@ -76,6 +76,11 @@ class IncompatibleTypeError(Exception):
         Exception.__init__(self, msg)
         self.loc = loc
         
+class UnknownArgumentsException(Exception):
+    def __init__(self, msg='Unknown arguments.', loc=None):
+        Exception.__init__(self, msg)
+        self.loc = loc
+        
         
 #TODO: Rename to frame?
 class ExecutionEnvironment(object):
@@ -161,7 +166,9 @@ class InterpreterObject(Node):
         #Call to class that would create the correct object.
         self.type_ex = None
         #const, param, variable, ... (Comparable to storage class in C++)
-        self.role = None
+        self.role = RoleUnkown
+        #True/False was this object already assigned to
+        self.is_assigned = False
         #TODO: self.save ??? True/False attribute is saved to disk as simulation result
         #TODO: self.default_value ??? (or into leaf types?)
         #TODO: self.auto_created ??? for automatically created variables that should be eliminated
@@ -202,7 +209,7 @@ class InterpreterObject(Node):
             return True
         else:
             return False
-    
+
     
 
 class CallableObject(InterpreterObject):
@@ -210,6 +217,7 @@ class CallableObject(InterpreterObject):
     def __init__(self, name):
         InterpreterObject.__init__(self)
         self.role = RoleConstant
+        self.is_assigned = True
         self.name = DotName(name)
 
     def __call__(self, *args, **kwargs):
@@ -228,6 +236,7 @@ class TypeObject(InterpreterObject):
     def __init__(self, name):
         InterpreterObject.__init__(self)
         self.role = RoleConstant
+        self.is_assigned = True
         self.name = DotName(name)
         
     def __call__(self, *args, **kwargs):
@@ -490,6 +499,7 @@ class BuiltInFunctionWrapper(CallableObject):
                 #wrap return value in appropriate Siml object
                 siml_retval = self.return_type()(py_retval)
                 siml_retval.role = RoleConstant
+                siml_retval.is_assigned = True
                 return siml_retval
             else:
                 return None
@@ -512,13 +522,16 @@ class BuiltInFunctionWrapper(CallableObject):
             #Default arguments from this function get to the code generator 
             #this way.
             else:
-                func_call.arguments = []
+                func_call.arguments = tuple()
                 func_call.keyword_arguments = parsed_args
             #put on decoration
             func_call.name = self.name
             func_call.function_object = self
             func_call.type = self.return_type
-            func_call.role = RoleDataCanVaryAtRuntime
+            #Choose most variable role: const -> param -> variable
+            func_call.role = determine_result_role(func_call.arguments, 
+                                                   func_call.keyword_arguments)
+            func_call.is_assigned = True
             return func_call
         
         
@@ -530,6 +543,127 @@ class BuiltInFunctionWrapper(CallableObject):
         #TODO: implement method create_python_function(...) that returns 
         #      a Python function which wraps the BuiltInFunctionWrapper object.
 
+
+
+class BuiltInFunctionWrapper2(CallableObject):
+    '''
+    Represents a function written in Python; for functions like 'sqrt' and 'sin'.
+    
+    The object is callable from Python and Siml.
+    
+    When a call is invoked argument parsing is done similarly
+    to Pythons's function call. Optionally function arguments can have 
+    a type that must match too.
+        f(a:Float=2.5)
+    
+    When all arguments are known, the wrapped Python function is executed. The 
+    result of the computation is wrapped in its associated InterpreterObject
+    and returned. 
+    However if any argument is unknown, a decorated (and unevaluated) function 
+    call is returned. For operators NodeOpInfix2, NodeOpPrefix1 can be 
+    created - see arguments is_binary_op, is_prefix_op, op_symbol.
+    
+    ARGUMENTS
+    ---------
+    name
+        name of function
+    argument_definition: IntArgumentList
+        Argument definition of the function
+    return_type: TypeObject
+        Return type of the function.
+        When an unevaluated result is returned, this will be assigned to the 
+        type of the ast.Node.
+        If the return type is None, the function has no return value.
+    py_function:
+        Function that will be called when the result can be computed.
+    accept_unknown_values: True/False
+        If True: call wrapped function also when arguments are unknown values.
+        If False: raise UnknownArgumentsException when an unknown argument is 
+        encountered.
+    
+    RETURNS
+    -------
+    Wrapped function result (InterpreterObject) or None
+    '''
+    def __init__(self, name, argument_definition=ArgumentList([]), 
+                             return_type=None, 
+                             py_function=lambda:None,
+                             accept_unknown_values = False):
+        CallableObject.__init__(self, name)
+        #IntArgumentList
+        self.argument_definition = argument_definition
+        #TypeObject or None
+        self.return_type = ref(return_type) if return_type is not None else None
+        #A Python function
+        self.py_function = py_function
+        #Call wrapped function also when arguments are unknown values
+        self.accept_unknown_values = accept_unknown_values
+
+
+    def __call__(self, *args, **kwargs):
+        '''
+        Execute the wrapped function. 
+        
+        - Checks the arguments, incuding type checking. 
+        - If all arguments are known this function unpacks the values, and 
+        calls the wrapped function with regular Python objects as arguments. 
+        The return value is again wrapped into a Siml object.
+        - If any argument is unknown, an unevaluated function call or operator 
+        node is returned.
+        
+        ARGUMENTS
+        ---------
+        args: [InterpreterObject]
+            Positional arguments for the wrapped function
+        kwargs: {str: InterpreterObject}
+            Keyword arguments for the wrapped function
+        '''
+        loc = None
+        #try if argument definition matches
+        parsed_args = self.argument_definition\
+                          .parse_function_call_args(args, kwargs, loc)
+        #Test if all arguments are known values.
+        parsed_args_2 = {}
+        all_python_values_exist = True
+        for name, siml_val in parsed_args.iteritems():
+            if not (isinstance(siml_val, InterpreterObject) and 
+                    hasattr(siml_val, 'value') and
+                    siml_val.value is not None):
+                all_python_values_exist = False
+            #convert the names to regular strings
+            parsed_args_2[str(name)] = siml_val
+        #call the wrapped Python function if all argument values are known,
+        #or if we don't care about unknown values.
+        if all_python_values_exist or self.accept_unknown_values:
+            #bad hack for Python implementation detail
+            if 'self' in parsed_args_2:
+                func_self = parsed_args_2['self']
+                del parsed_args_2['self']
+                retval = self.py_function(func_self, **parsed_args_2) #IGNORE:W0142
+            else:
+                retval = self.py_function(**parsed_args_2)            #IGNORE:W0142
+            #add administrative data - known values at compile time are constants
+            if retval is not None:
+                retval.role = RoleConstant
+                retval.is_assigned = True
+            #Test return value.type
+            if(self.return_type is not None and 
+               not siml_issubclass(retval.type(), self.return_type())):
+                raise Exception('Wrong return type in wrapped function.')
+            
+            return retval
+        #Some argument values are unknown!
+        #The expression visitor will create an annotated 
+        #NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
+        else:
+            raise UnknownArgumentsException()
+        
+        
+    def put_into(self, siml_object):
+        '''Put function object into a siml_object using the right name.'''
+        siml_object.create_attribute(self.name, self)
+        return self
+     
 
 
 class SimlFunction(CallableObject):
@@ -850,40 +984,57 @@ class IFloat(InterpreterObject):
         IFloat.type_object = class_float
         
         #initialize the mathematical operators, put them into the class
-        W = BuiltInFunctionWrapper
+        W = BuiltInFunctionWrapper2
         #Binary operators
-        binop_args = ArgumentList([NodeFuncArg('a', class_float), 
-                                   NodeFuncArg('b', class_float)])
-        #TODO: implement/use method create_python_function(...) that returns 
-        #      a Python function which wraps the BuiltInFunctionWrapper object 
+        binop_args = ArgumentList([NodeFuncArg('self', class_float), 
+                                   NodeFuncArg('other', class_float)])
         W('__add__', binop_args, class_float, 
-          py_function=lambda a, b: a + b,
-          is_binary_op=True, op_symbol='+').put_into(class_float)
+          py_function=IFloat.__add__).put_into(class_float)
         W('__sub__', binop_args, class_float, 
-          py_function=lambda a, b: a - b, 
-          is_binary_op=True, op_symbol='-').put_into(class_float) 
+          py_function=IFloat.__sub__).put_into(class_float) 
         W('__mul__', binop_args, class_float, 
-          py_function=lambda a, b: a * b, 
-          is_binary_op=True, op_symbol='*').put_into(class_float) 
+          py_function=IFloat.__mul__).put_into(class_float) 
         W('__div__', binop_args, class_float, 
-          py_function=lambda a, b: a / b, 
-          is_binary_op=True, op_symbol='/').put_into(class_float) 
+          py_function=IFloat.__div__).put_into(class_float) 
         W('__mod__', binop_args, class_float, 
-          py_function=lambda a, b: a % b, 
-          is_binary_op=True, op_symbol='%').put_into(class_float) 
+          py_function=IFloat.__mod__).put_into(class_float) 
         W('__pow__', binop_args, class_float, 
-          py_function=lambda a, b: a ** b, 
-          is_binary_op=True, op_symbol='**').put_into(class_float) 
+          py_function=IFloat.__pow__).put_into(class_float) 
         #The prefix operator
-        prefix_args = ArgumentList([NodeFuncArg('a', class_float)])
+        prefix_args = ArgumentList([NodeFuncArg('self', class_float)])
         W('__neg__', prefix_args, class_float, 
-          py_function=lambda a: -a, 
-          is_prefix_op=True, op_symbol='-').put_into(class_float)  
+          py_function=IFloat.__neg__).put_into(class_float)  
+        #Special function for assignment
+        W('__assign__', binop_args, None, 
+          py_function=IFloat.__assign__,
+          accept_unknown_values=True).put_into(class_float) 
           
         #return the class object
         return class_float
 
-    #TODO: def __assign__(self, other): pass
+
+    def __add__(self, other):
+        return IFloat(self.value + other.value)
+    def __sub__(self, other):
+        return IFloat(self.value - other.value)
+    def __mul__(self, other):
+        return IFloat(self.value * other.value)
+    def __div__(self, other):
+        return IFloat(self.value / other.value)
+    __truediv__ = __div__ #for division from Python
+    def __mod__(self, other):
+        return IFloat(self.value % other.value)
+    def __pow__(self, other):
+        return IFloat(self.value ** other.value)
+    def __neg__(self):
+        return IFloat(-self.value)
+    
+    def __assign__(self, other): 
+        if isinstance(other, IFloat) and other.value is not None:
+            self.value = other.value
+        else:
+            raise UnknownArgumentsException()
+        
 
 #The class object used in Siml to create instances of IFloat
 CLASS_FLOAT = IFloat.init_funcs_and_class()
@@ -929,20 +1080,30 @@ class IString(InterpreterObject):
         IString.type_object = class_string
         
         #initialize the mathematical operators, put them into the class
-        W = BuiltInFunctionWrapper
+        W = BuiltInFunctionWrapper2
         #Binary operators
-        binop_args = ArgumentList([NodeFuncArg('a', class_string), 
-                                   NodeFuncArg('b', class_string)])
-        #TODO: implement/use method create_python_function(...) that returns 
-        #      a Python function which wraps the BuiltInFunctionWrapper object 
+        binop_args = ArgumentList([NodeFuncArg('self', class_string), 
+                                    NodeFuncArg('other', class_string)])
         W('__add__', binop_args, class_string, 
-          py_function=lambda a, b: a + b,
-          is_binary_op=True, op_symbol='+').put_into(class_string)
-          
+          py_function=IString.__add__).put_into(class_string)
+        #Special function for assignment
+        W('__assign__', binop_args, None, 
+          py_function=IString.__assign__,
+          accept_unknown_values=True).put_into(class_string) 
+  
         #return the class object
         return class_string
 
-    #TODO: def __assign__(self, other): pass
+
+    def __add__(self, other):
+        return IString(self.value + other.value)
+    
+    def __assign__(self, other): 
+        if isinstance(other, IString) and other.value is not None:
+            self.value = other.value
+        else:
+            raise UnknownArgumentsException()
+
 
 #The class object used in Siml to create instances of IFloat
 CLASS_STRING = IString.init_funcs_and_class()
@@ -1057,6 +1218,40 @@ def siml_issubclass(in_type, class_or_type_or_tuple):
     #the test, there is no inheritance, so it is simple
     return (in_type in class_or_type_or_tuple)
 
+
+def determine_result_role(arguments, keyword_arguments={}):
+    '''
+    Determine the most variable role among function arguments.
+    
+    The result's role is the most variable role from any argument.
+    const -> param -> variable
+    
+    ARGUMENTS
+    ---------
+    arguments: [InterpreterObject, ...]
+    keyword_arguments: {str: InterpreterObject, ...}
+    
+    RETURNS
+    -------
+    RoleConstant/RoleParameter/RoleParameter
+    '''
+    all_args = tuple(arguments) + tuple(keyword_arguments.values())
+    is_const_role = lambda obj: issubclass(obj.role, RoleConstant)
+    is_param_role = lambda obj: issubclass(obj.role, RoleParameter)
+    is_varia_role = lambda obj: issubclass(obj.role, RoleVariable)
+    const_role = map(is_const_role, all_args)
+    param_role = map(is_param_role, all_args)
+    varia_role = map(is_varia_role, all_args)
+    
+    if any(varia_role):
+        return RoleVariable
+    elif any(param_role):
+        return RoleParameter
+    elif all(const_role):
+        return RoleConstant
+    else:
+        return RoleUnkown
+    
 
 #TODO: implement this!
 #TODO: implement protocol for values: known/unknown, assigned/unassigned
@@ -1225,7 +1420,21 @@ class ExpressionVisitor(Visitor):
 
     @Visitor.when_type(NodeParentheses)
     def visit_NodeParentheses(self, node):
-        '''Evaluate pair of parentheses: return expression between parentheses.'''
+        '''
+        Evaluate pair of parentheses: return expression between parentheses.
+        
+        TODO:
+        Unevaluated expressions (ast.Node) get the following annotations:
+        - Node.type              : type of function result
+        - Node.function_object   : the function object (self)
+        - Node.role              : ???
+        - Node.name              : function's name; however function_object should 
+                                   be used to identify function.
+    
+        - Node.arguments         : [ast.Node] 
+            List with unevaluated expression as first element.
+        - Node.keyword_arguments : {} Empty dict
+        '''
         #compute values of expression
         val_expr = self.dispatch(node.arguments[0])
         #TODO: determine result type better
@@ -1243,7 +1452,7 @@ class ExpressionVisitor(Visitor):
             new_node.arguments = [val_expr]
             new_node.type = val_expr.type
             new_node.loc = node.loc
-            new_node.role = RoleDataCanVaryAtRuntime
+            new_node.role = node.role
             return new_node
 
     
@@ -1251,54 +1460,43 @@ class ExpressionVisitor(Visitor):
 
     @Visitor.when_type(NodeOpPrefix1)
     def visit_NodeOpPrefix1(self, node):
-        '''Evaluate unary operator and return result'''
+        '''
+        Evaluate unary operator and return result
+        
+        TODO:
+        Unevaluated expressions (ast.Node) get the following annotations:
+        - Node.type              : type of function result
+        - Node.function_object   : the function object (self)
+        - Node.role              : ???
+        - Node.name              : function's name; however function_object should 
+                                   be used to identify function.
+    
+        - Node.arguments         : Operators are returned with positional arguments.
+        - Node.keyword_arguments : For regular functions all arguments are specified
+                                   keyword arguments
+        '''
         #compute values on rhs of operator
         inst_rhs = self.dispatch(node.arguments[0])
         #look at the operator symbol and determine the right method name(s)
         func_name = ExpressionVisitor._prefopt_table[node.operator]
         #get the special method from the operand's class and try to call the method.
         func = inst_rhs.type().get_attribute(DotName(func_name))
-        result = func(inst_rhs)
-        return result
-
-#        #TODO: see if operation is feasible (for both compiled and interpreted code)
-#        result_type = inst_rhs.type
-#        #TODO: determine result type better
-#        #TODO: determine result role
-#        #see if operand is constant, number or string
-#        #if true compute the operation in the interpreter (at compile time)
-#        if   (siml_isinstance(inst_rhs, (CLASS_FLOAT, CLASS_STRING)) 
-#              and inst_rhs.role == RoleConstant                     ):
-#            #see if values exist
-#            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
-#            #      maybe with intent: write / read
-#            if inst_rhs.value is None:
-#                raise UserException('Value is used before it was computed!', node.loc)
-#            #Compute the operation
-#            #let the Python interpreter perform the operation on the value
-#            result = eval(node.operator + ' inst_rhs.value')
-#            #Wrap the python result type in the Interpreter's instance types
-#            if isinstance(result, float):
-#                resultInst = CLASS_FLOAT.construct_instance()
-#            else:
-#                resultInst = CLASS_STRING.construct_instance()
-#            resultInst.value = result
-#            resultInst.role = RoleConstant
-#            #see if predicted result is identical to real outcome (sanity check)
-#            if resultInst.type != result_type:
-#                raise UserException('Unexpected result type!', node.loc)
-#            return resultInst
-#        #generate code to compute the operation after compiling (at runtime)
-#        else:
-#            #create unevaluated operator as the return value 
-#            new_node = NodeOpPrefix1()
-#            new_node.operator = node.operator
-#            new_node.arguments = [inst_rhs]
-#            new_node.type = result_type
-#            new_node.loc = node.loc
-#            new_node.role = RoleDataCanVaryAtRuntime
-#            return new_node
-    
+        try:
+            result = func(inst_rhs)
+            return result
+        except UnknownArgumentsException:
+            #Some arguments were unknown create an unevaluated expression
+            new_oper = NodeOpPrefix1()
+            new_oper.operator = node.operator
+            new_oper.arguments = [inst_rhs]
+            new_oper.keyword_arguments = {}
+            #put on decoration
+            new_oper.function_object = func
+            new_oper.type = func.return_type
+            new_oper.is_assigned = True
+            #Choose most variable role: const -> param -> variable
+            new_oper.role = inst_rhs.role
+            return new_oper
     
     
     _binop_table = {'+': ('__add__','__radd__'),
@@ -1310,7 +1508,19 @@ class ExpressionVisitor(Visitor):
     
     @Visitor.when_type(NodeOpInfix2)
     def visit_NodeOpInfix2(self, node):
-        '''Evaluate binary operator and return result'''
+        '''
+        Evaluate binary operator and return result
+        
+        TODO:
+        Unevaluated expressions (ast.Node) get the following annotations:
+        - Node.type              : type of function result
+        - Node.function_object   : the function object (self)
+        - Node.role              : Role taken from the argument with the most variable role
+    
+        - Node.arguments         : Operators are returned with positional arguments.
+        - Node.keyword_arguments : For regular functions all arguments are specified
+                                   keyword arguments
+        '''
         #compute values on rhs and lhs of operator
         inst_lhs = self.dispatch(node.arguments[0])
         inst_rhs = self.dispatch(node.arguments[1])       
@@ -1318,9 +1528,25 @@ class ExpressionVisitor(Visitor):
         lfunc_name, rfunc_name = ExpressionVisitor._binop_table[node.operator]
         #get the special method from the LHS's class and try to call the method.
         func = inst_lhs.type().get_attribute(DotName(lfunc_name))
-        result = func(inst_lhs, inst_rhs)
-        return result
-        #TODO: if unsuccessful get the right-handed function from the RHS and try to call it
+        try:
+            result = func(inst_lhs, inst_rhs)
+            return result
+        except UnknownArgumentsException:
+            #Some arguments were unknown create an unevaluated expression
+            new_oper = NodeOpInfix2()
+            new_oper.operator = node.operator
+            new_oper.arguments = [inst_lhs, inst_rhs]
+            new_oper.keyword_arguments = {}
+            #put on decoration
+            new_oper.function_object = func
+            new_oper.type = func.return_type
+            new_oper.is_assigned = True
+            #Choose most variable role: const -> param -> variable
+            new_oper.role = determine_result_role([inst_lhs, inst_rhs])
+            return new_oper
+
+        #TODO: if unsuccessful in finding a suitable function get the 
+        #      right-handed function from the RHS and try to call it.
         #      float.__sub__(a, b) == float.__rsub__(b, a)
         #TODO: *** Dispatching Binary Operators of Derived Classes ***
         #      If the right operand’s type is a subclass of the left operand’s
@@ -1329,47 +1555,6 @@ class ExpressionVisitor(Visitor):
         #      method. This behavior allows subclasses to override their ancestors’ 
         #      operations.
         
-#        #see if operation is feasible (for both compiled and interpreted code)
-#        if not (inst_lhs.type == inst_rhs.type):
-#            raise UserException('Type mismatch!', node.loc)
-#        result_type = inst_lhs.type
-#        #TODO: determine result type better
-#        #TODO: determine result role
-#        #see if operands are constant numbers or strings
-#        #if true compute the operation in the interpreter (at compile time)
-#        if   (    siml_isinstance(inst_lhs, (CLASS_FLOAT, CLASS_STRING))
-#              and inst_lhs.role == RoleConstant 
-#              and siml_isinstance(inst_rhs, (CLASS_FLOAT, CLASS_STRING)) 
-#              and inst_rhs.role == RoleConstant                     ):
-#            #see if values exist
-#            #TODO: put this into identifier access, so error message can be 'Undefined value: "foo"!' 
-#            #      maybe with intent: write / read
-#            if inst_lhs.value is None or inst_rhs.value is None:
-#                raise UserException('Value is used before it was computed!', node.loc)
-#            #Compute the operation
-#            #let the Python interpreter perform the operation on the value
-#            result = eval('inst_lhs.value ' + node.operator + ' inst_rhs.value')
-#            #Wrap the python result type in the Interpreter's instance types
-#            if isinstance(result, float):
-#                resultInst = CLASS_FLOAT.construct_instance()
-#            else:
-#                resultInst = CLASS_STRING.construct_instance()
-#            resultInst.value = result
-#            resultInst.role = RoleConstant
-#            #see if predicted result is identical to real outcome (sanity check)
-#            if resultInst.type != result_type:
-#                raise UserException('Unexpected result type!', node.loc)
-#            return resultInst
-#        #generate code to compute the operation after compiling (at runtime)
-#        else:
-#            #create unevaluated operator as the return value 
-#            new_node = NodeOpInfix2()
-#            new_node.operator = node.operator
-#            new_node.arguments = [inst_lhs, inst_rhs]
-#            new_node.type = result_type
-#            new_node.loc = node.loc
-#            new_node.role = RoleDataCanVaryAtRuntime
-#            return new_node
     
     
     @Visitor.when_type(NodeFuncCall)
@@ -1377,7 +1562,19 @@ class ExpressionVisitor(Visitor):
         '''
         Evaluate a NodeFuncCall, which calls a call-able object (function).
         Execute the callable's code and return the return value.
-        '''
+ 
+        TODO:
+        Unevaluated expressions (ast.Node) get the following annotations:
+        - Node.type              : type of function result
+        - Node.function_object   : the function object (self)
+        - Node.role              : ???
+        - Node.name              : function's name; however function_object should 
+                                   be used to identify function.
+    
+        - Node.arguments         : Operators are returned with positional arguments.
+        - Node.keyword_arguments : For regular functions all arguments are specified
+                                   keyword arguments
+       '''
         #TODO: honor node.function_object: 
         #      the indicator that the function to perform the operation is 
         #      already known. Generated code could be interpreted for a 2nd 
@@ -1460,6 +1657,7 @@ class StatementVisitor(Visitor):
         #perform the assignment
         self.assign(target_obj, expr_val, node.loc)
         
+    
     def assign(self, target, value, loc):
         '''
         Assign value to target.
@@ -1477,34 +1675,46 @@ class StatementVisitor(Visitor):
         '''
         #TODO: assignment without defining the variable first (no data statement.)
         #      This would also be useful for function call
-        #TODO: storing class, function, module, proxy 
-        #TODO: storing user defined types requires a loop
-        #find out if value can be stored in target (compile time or run time)
-        if target.type != value.type:
-            raise UserException('Type mismatch!', loc)
-        #if RHS and LHS are constant values try to write LHS into RHS
-        if   (    siml_isinstance(value, (CLASS_FLOAT, CLASS_STRING))
-              and value.role == RoleConstant 
-              and siml_isinstance(target, (CLASS_FLOAT, CLASS_STRING))
-              and target.role == RoleConstant 
-              ):
-            #Test is RHS is known and LHS is empty
-            if value.value is None:
-                raise UserException('Value is used before it was computed!', loc)
-            if target.value is not None:
-                raise UserException('Trying to compute value twice!', loc)
-            target.value = value.value
-        #emit code for an assignment statement.
-        else:
-            #TODO: find out if value is an unevaluated expression and target variable at runtime
+        #TODO: In different parts of code only variables with speciffic roles 
+        #      are valid targets of an assign statement.
+        #      outside compile: only RoleConstant
+        #      in "initial":    only RoleParameter, RoleStateVariable 
+        #      in "dynamic":    only RoleVariable
+        #      in "final":      only RoleVariable
+        
+        #Test if value has been assigned already.
+        #TODO: What are the semantics for user defined classes?
+        if target.is_assigned:
+            raise UserException('Duplicate assignment.', loc)
+        target.is_assigned = True
+        #Test if assignment is possible according to the role.
+        #TODO: What are the semantics for user defined classes?
+        assign_role_hierarchy = {
+            RoleConstant:  (RoleConstant,),
+            RoleParameter: (RoleConstant, RoleParameter),
+            RoleVariable:  (RoleConstant, RoleParameter, RoleVariable),
+            RoleUnkown:    (AttributeRole,)} #RoleUnkown matches anything
+        for target_role, value_roles in assign_role_hierarchy.iteritems():
+            if issubclass(target.role, target_role):
+                if issubclass(value.role, value_roles):
+                    break
+                raise UserException('Incompatible roles in assignment.', loc)
+        
+        #Find the '__assign__' function in the object.
+        assign_func = target.get_attribute(DotName('__assign__'))
+        
+        #Call the assign function
+        try:
+            assign_func(value)
+        #Generate code if value is an unknown variable or an unevaluated expression
+        except UnknownArgumentsException:
             new_assign = NodeAssignment()
             new_assign.target = target
             new_assign.expression = value
             new_assign.loc = loc
             self.interpreter.collect_statement(new_assign)
-        return
-    
-    
+        
+
     @Visitor.when_type(NodeFuncDef)
     def visit_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
@@ -1518,6 +1728,9 @@ class StatementVisitor(Visitor):
             return_type_ev = self.expression_visitor.dispatch(node.return_type)
         #save the current global namespace in the function. Otherwise 
         #access to global variables would have surprising results
+        #TODO: Implement closures, for nested functions:
+        #      Copy the global dictionary and update it with the current
+        #      local dictionary.
         global_scope = make_proxy(self.environment.global_scope)
 
         #create new function object and 
