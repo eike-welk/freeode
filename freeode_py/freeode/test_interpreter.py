@@ -319,7 +319,7 @@ def test_BuiltInFunctionWrapper_1():
     import math
     
     #create sqrt function with named arguments
-    sqrt = lambda x: math.sqrt(x) 
+    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value)) 
     #some interpreter level values
     val_2 = CLASS_FLOAT(2)
 
@@ -330,7 +330,7 @@ def test_BuiltInFunctionWrapper_1():
                                   py_function=sqrt)
     #call function: sqrt(2)
     siml_ret = func(val_2)
-    assert siml_ret.value == sqrt(2) #IGNORE:E1103
+    assert siml_ret.value == math.sqrt(2) #IGNORE:E1103
     #assert False, 'implement me!'
     
     
@@ -338,16 +338,15 @@ def test_BuiltInFunctionWrapper_1():
 def test_BuiltInFunctionWrapper_2():
     print 'BuiltInFunctionWrapper: test function call with unknown arguments, no Interpreter.'
     from freeode.interpreter import (BuiltInFunctionWrapper,
-                                     ArgumentList, NodeFuncArg, DotName, ref,  
-                                     CLASS_FLOAT, 
-                                     NodeOpPrefix1, NodeOpInfix2, NodeFuncCall)
+                                     ArgumentList, NodeFuncArg, ref,  
+                                     CLASS_FLOAT,UnknownArgumentsException, 
+                                     NodeOpInfix2,)
     import math
     
     #create sqrt function with named arguments
-    sqrt = lambda x: math.sqrt(x) 
+    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value)) 
     #create unknown interpreter level values
     val_x = CLASS_FLOAT()
-    val_y = CLASS_FLOAT()
     #create fragment of unknown expression
     binop_u = NodeOpInfix2()
     binop_u.type = ref(CLASS_FLOAT)
@@ -356,75 +355,49 @@ def test_BuiltInFunctionWrapper_2():
                                   ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
                                   return_type=CLASS_FLOAT, 
                                   py_function=sqrt)
-    #create a binary operator object - wraps nothing
-    binop = BuiltInFunctionWrapper('__add__', 
-                                   ArgumentList([NodeFuncArg('x', CLASS_FLOAT), 
-                                                 NodeFuncArg('y', CLASS_FLOAT)]), 
-                                   return_type=CLASS_FLOAT, 
-                                   py_function=None,
-                                   is_binary_op=True, op_symbol='+')
-    #create a prefix operator object - wraps nothing
-    prefix_op = BuiltInFunctionWrapper('__sign__', 
-                                ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
-                                return_type=CLASS_FLOAT, 
-                                py_function=None,
-                                is_prefix_op=True, op_symbol='-')
     
     #call function: sqrt( <unknown value> )
-    siml_ret = func(val_x)
-    assert isinstance(siml_ret, NodeFuncCall)
-    assert siml_ret.type() == CLASS_FLOAT
-    assert siml_ret.keyword_arguments[DotName('x')] == val_x
-    assert siml_ret.function_object == func
+    try:
+        siml_ret = func(val_x)
+    except UnknownArgumentsException:
+        print 'Expected exception recieved: unknown arguments.'
+    else:
+        assert False, 'Expected exception: unknown arguments.'
     
     #call function: sqrt( <expression fragment> )
-    siml_ret = func(binop_u)
-    assert isinstance(siml_ret, NodeFuncCall)
-    assert siml_ret.type() == CLASS_FLOAT
-    assert siml_ret.keyword_arguments[DotName('x')] == binop_u
-    assert siml_ret.function_object == func
-    
-    #call binary operator ( <unknown value x>,  <unknown value y>)
-    siml_ret = binop(val_x, val_y)
-    assert isinstance(siml_ret, NodeOpInfix2)
-    assert siml_ret.type() == CLASS_FLOAT
-    assert siml_ret.arguments[0] == val_x
-    assert siml_ret.arguments[1] == val_y
-    assert siml_ret.function_object == binop
-    
-    #call prefix operator ( <unknown value x> )
-    siml_ret = prefix_op(val_x)
-    assert isinstance(siml_ret, NodeOpPrefix1)
-    assert siml_ret.type() == CLASS_FLOAT
-    assert siml_ret.arguments[0] == val_x
-    assert siml_ret.function_object == prefix_op
+    try:
+        siml_ret = func(binop_u)
+    except UnknownArgumentsException:
+        print 'Expected exception recieved: unknown arguments.'
+    else:
+        assert False, 'Expected exception: unknown arguments.'
     
     #assert False, 'implement me!'
     
     
                                       
-# -------- Test 2nd version of wrapper object for Python functions ------------------------------------------------------------------------
-def test_BuiltInFunctionWrapper2_1():
-    print 'BuiltInFunctionWrapper2: test 2nd version of function call with known arguments, no Interpreter.'
-    from freeode.interpreter import (BuiltInFunctionWrapper2,
-                                     ArgumentList, NodeFuncArg,   
-                                     CLASS_FLOAT, )
-    import math
-    
-    #create sqrt function with named arguments
-    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
-    #some interpreter level values
-    val_2 = CLASS_FLOAT(2)
-
-    #create a function object that wraps the sqrt function
-    func = BuiltInFunctionWrapper2('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)], None), 
-                                  return_type=CLASS_FLOAT, 
-                                  py_function=sqrt)
-    #call function: sqrt(2)
-    siml_ret = func(val_2)
-    assert siml_ret.value == math.sqrt(2) #IGNORE:E1103
-    #assert False, 'implement me!'
+## -------- Test 2nd version of wrapper object for Python functions ------------------------------------------------------------------------
+#def test_BuiltInFunctionWrapper2_1():
+#    print 'BuiltInFunctionWrapper2: test 2nd version of function call with known arguments, no Interpreter.'
+#    from freeode.interpreter import (BuiltInFunctionWrapper2,
+#                                     ArgumentList, NodeFuncArg,   
+#                                     CLASS_FLOAT, )
+#    import math
+#    
+#    #create sqrt function with named arguments
+#    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
+#    #some interpreter level values
+#    val_2 = CLASS_FLOAT(2)
+#
+#    #create a function object that wraps the sqrt function
+#    func = BuiltInFunctionWrapper2('sqrt', 
+#                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)], None), 
+#                                  return_type=CLASS_FLOAT, 
+#                                  py_function=sqrt)
+#    #call function: sqrt(2)
+#    siml_ret = func(val_2)
+#    assert siml_ret.value == math.sqrt(2) #IGNORE:E1103
+#    #assert False, 'implement me!'
     
     
                                       
@@ -852,7 +825,7 @@ def test_expression_evaluation_2_1():
     #create module where names live
     mod = IModule()
     #create sqrt function with named arguments
-    sqrt = lambda x: math.sqrt(x) 
+    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
     #create a function object that wraps the sqrt function
     func = BuiltInFunctionWrapper('sqrt', 
                                   ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
@@ -875,7 +848,7 @@ def test_expression_evaluation_2_1():
     print
     print 'Result object: --------------------------------------------------------------'
     print res 
-    assert res.value == sqrt(2)
+    assert res.value == math.sqrt(2)
     
     
 

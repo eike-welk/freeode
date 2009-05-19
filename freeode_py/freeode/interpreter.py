@@ -378,174 +378,174 @@ class ArgumentList(SimpleArgumentList):
 
 
 
+#class BuiltInFunctionWrapper1(CallableObject):
+#    '''
+#    Represents a function written in Python; for functions like 'sqrt' and 'sin'.
+#    
+#    The object is callable from Python and Siml.
+#    
+#    When a call is invoked argument parsing is done similarly
+#    to Pythons's function call. Optionally function arguments can have 
+#    a type that must match too.
+#        f(a:Float=2.5)
+#    
+#    When all arguments are known, the wrapped Python function is executed. The 
+#    result of the computation is wrapped in its associated InterpreterObject
+#    and returned. 
+#    However if any argument is unknown, a decorated (and unevaluated) function 
+#    call is returned. For operators NodeOpInfix2, NodeOpPrefix1 can be 
+#    created - see arguments is_binary_op, is_prefix_op, op_symbol.
+#    
+#    ARGUMENTS
+#    ---------
+#    name
+#        name of function
+#    argument_definition: IntArgumentList
+#        Argument definition of the function
+#    return_type: TypeObject
+#        Return type of the function.
+#        When an unevaluated result is returned, this will be assigned to the 
+#        type of the ast.Node.
+#        If the return type is None, the function has no return value.
+#    py_function:
+#        Function that will be called when the result can be computed.
+#        
+#    is_binary_op: True/False
+#        if True: the function is really a binary operator
+#    is_prefix_op: True/False
+#        if True: the function is really an unary prefix operator
+#    op_symbol: str
+#        The operator's symbol, for example '+'
+#    
+#    RETURNS
+#    -------
+#    Wrapped function result (InterpreterObject) or unevaluated expression 
+#    (NodeFuncCall), or None
+#    
+#    Unevaluated expressions (ast.Node) get the following annotations:
+#    - Node.type              : type of function result
+#    - Node.function_object   : the function object (self)
+#    - Node.role              : ???
+#    - Node.name              : function's name; however function_object should 
+#                               be used to identify function.
+#
+#    - Node.arguments         : Operators are returned with positional arguments.
+#    - Node.keyword_arguments : For regular functions all arguments are specified
+#                               keyword arguments
+#    '''
+#    def __init__(self, name, argument_definition=ArgumentList([]), 
+#                             return_type=None, 
+#                             py_function=lambda:None,
+#                             is_binary_op=False, is_prefix_op=False, 
+#                             op_symbol='*_*'):
+#        CallableObject.__init__(self, name)
+#        #IntArgumentList
+#        self.argument_definition = argument_definition
+#        #TypeObject or None
+#        self.return_type = ref(return_type) if return_type is not None else None
+#        #A Python function
+#        self.py_function = py_function
+#        
+#        #--- Handling of unevaluated function calls -------------------------------
+#        #TODO: maybe really store a sample ast.NodeFuncCall and copy it, instead 
+#        #      of the following attributes. 
+#        #      The solution would still need a flag for advising the algorithm 
+#        #      to use placement arguments, because operators need placement 
+#        #      arguments.
+#        
+#        #if True: the function is really an operator
+#        self.is_binary_op = is_binary_op
+#        #if True: the function is really an unary prefix operator
+#        self.is_prefix_op = is_prefix_op
+#        #string: The operator's symbol
+#        self.op_symbol = op_symbol
+#
+#
+#    def __call__(self, *args, **kwargs):
+#        '''
+#        Execute the wrapped function. 
+#        
+#        - Checks the arguments, incuding type checking. 
+#        - If all arguments are known this function unpacks the values, and 
+#        calls the wrapped function with regular Python objects as arguments. 
+#        The return value is again wrapped into a Siml object.
+#        - If any argument is unknown, an unevaluated function call or operator 
+#        node is returned.
+#        
+#        ARGUMENTS
+#        ---------
+#        args: [InterpreterObject]
+#            Positional arguments for the wrapped function
+#        kwargs: {str: InterpreterObject}
+#            Keyword arguments for the wrapped function
+#        '''
+#        loc = None
+#        #try if argument definition matches
+#        parsed_args = self.argument_definition\
+#                          .parse_function_call_args(args, kwargs, loc)
+#        #Try to get Python values out of the Siml values (unwrap).
+#        py_args = {}
+#        all_python_values_exist = True
+#        for name, siml_val in parsed_args.iteritems():
+#            if not (isinstance(siml_val, InterpreterObject) and hasattr(siml_val, 'value') and
+#                    siml_val.value is not None):
+#                all_python_values_exist = False
+#                break
+#            py_args[str(name)] = siml_val.value
+#        #call the wrapped Python function if all argument values are known
+#        if all_python_values_exist:
+#            py_retval = self.py_function(**py_args)             #IGNORE:W0142
+#            if self.return_type is not None:
+#                #wrap return value in appropriate Siml object
+#                siml_retval = self.return_type()(py_retval)
+#                siml_retval.role = RoleConstant
+#                siml_retval.is_assigned = True
+#                return siml_retval
+#            else:
+#                return None
+#        #create annotated NodeFuncCall/NodeOpInfix2/NodeOpPrefix1 if argument values are unknown
+#        else:
+#            #create right Node: NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
+#            if self.is_binary_op:
+#                func_call = NodeOpInfix2()
+#                func_call.operator = self.op_symbol
+#            elif self.is_prefix_op:
+#                func_call = NodeOpPrefix1()
+#                func_call.operator = self.op_symbol
+#            else:
+#                func_call = NodeFuncCall()
+#            #operators get positional arguments (easier for code generation)
+#            if self.is_binary_op or self.is_prefix_op:     
+#                func_call.arguments = args
+#                func_call.keyword_arguments = kwargs #most likely empty
+#            #Regular function calls get keyword arguments only.
+#            #Default arguments from this function get to the code generator 
+#            #this way.
+#            else:
+#                func_call.arguments = tuple()
+#                func_call.keyword_arguments = parsed_args
+#            #put on decoration
+#            func_call.name = self.name
+#            func_call.function_object = self
+#            func_call.type = self.return_type
+#            #Choose most variable role: const -> param -> variable
+#            func_call.role = determine_result_role(func_call.arguments, 
+#                                                   func_call.keyword_arguments)
+#            func_call.is_assigned = True
+#            return func_call
+#        
+#        
+#    def put_into(self, siml_object):
+#        '''Put function object into a siml_object using the right name.'''
+#        siml_object.create_attribute(self.name, self)
+#        return self
+#    
+#        #TODO: implement method create_python_function(...) that returns 
+#        #      a Python function which wraps the BuiltInFunctionWrapper object.
+
+
+
 class BuiltInFunctionWrapper(CallableObject):
-    '''
-    Represents a function written in Python; for functions like 'sqrt' and 'sin'.
-    
-    The object is callable from Python and Siml.
-    
-    When a call is invoked argument parsing is done similarly
-    to Pythons's function call. Optionally function arguments can have 
-    a type that must match too.
-        f(a:Float=2.5)
-    
-    When all arguments are known, the wrapped Python function is executed. The 
-    result of the computation is wrapped in its associated InterpreterObject
-    and returned. 
-    However if any argument is unknown, a decorated (and unevaluated) function 
-    call is returned. For operators NodeOpInfix2, NodeOpPrefix1 can be 
-    created - see arguments is_binary_op, is_prefix_op, op_symbol.
-    
-    ARGUMENTS
-    ---------
-    name
-        name of function
-    argument_definition: IntArgumentList
-        Argument definition of the function
-    return_type: TypeObject
-        Return type of the function.
-        When an unevaluated result is returned, this will be assigned to the 
-        type of the ast.Node.
-        If the return type is None, the function has no return value.
-    py_function:
-        Function that will be called when the result can be computed.
-        
-    is_binary_op: True/False
-        if True: the function is really a binary operator
-    is_prefix_op: True/False
-        if True: the function is really an unary prefix operator
-    op_symbol: str
-        The operator's symbol, for example '+'
-    
-    RETURNS
-    -------
-    Wrapped function result (InterpreterObject) or unevaluated expression 
-    (NodeFuncCall), or None
-    
-    Unevaluated expressions (ast.Node) get the following annotations:
-    - Node.type              : type of function result
-    - Node.function_object   : the function object (self)
-    - Node.role              : ???
-    - Node.name              : function's name; however function_object should 
-                               be used to identify function.
-
-    - Node.arguments         : Operators are returned with positional arguments.
-    - Node.keyword_arguments : For regular functions all arguments are specified
-                               keyword arguments
-    '''
-    def __init__(self, name, argument_definition=ArgumentList([]), 
-                             return_type=None, 
-                             py_function=lambda:None,
-                             is_binary_op=False, is_prefix_op=False, 
-                             op_symbol='*_*'):
-        CallableObject.__init__(self, name)
-        #IntArgumentList
-        self.argument_definition = argument_definition
-        #TypeObject or None
-        self.return_type = ref(return_type) if return_type is not None else None
-        #A Python function
-        self.py_function = py_function
-        
-        #--- Handling of unevaluated function calls -------------------------------
-        #TODO: maybe really store a sample ast.NodeFuncCall and copy it, instead 
-        #      of the following attributes. 
-        #      The solution would still need a flag for advising the algorithm 
-        #      to use placement arguments, because operators need placement 
-        #      arguments.
-        
-        #if True: the function is really an operator
-        self.is_binary_op = is_binary_op
-        #if True: the function is really an unary prefix operator
-        self.is_prefix_op = is_prefix_op
-        #string: The operator's symbol
-        self.op_symbol = op_symbol
-
-
-    def __call__(self, *args, **kwargs):
-        '''
-        Execute the wrapped function. 
-        
-        - Checks the arguments, incuding type checking. 
-        - If all arguments are known this function unpacks the values, and 
-        calls the wrapped function with regular Python objects as arguments. 
-        The return value is again wrapped into a Siml object.
-        - If any argument is unknown, an unevaluated function call or operator 
-        node is returned.
-        
-        ARGUMENTS
-        ---------
-        args: [InterpreterObject]
-            Positional arguments for the wrapped function
-        kwargs: {str: InterpreterObject}
-            Keyword arguments for the wrapped function
-        '''
-        loc = None
-        #try if argument definition matches
-        parsed_args = self.argument_definition\
-                          .parse_function_call_args(args, kwargs, loc)
-        #Try to get Python values out of the Siml values (unwrap).
-        py_args = {}
-        all_python_values_exist = True
-        for name, siml_val in parsed_args.iteritems():
-            if not (isinstance(siml_val, InterpreterObject) and hasattr(siml_val, 'value') and
-                    siml_val.value is not None):
-                all_python_values_exist = False
-                break
-            py_args[str(name)] = siml_val.value
-        #call the wrapped Python function if all argument values are known
-        if all_python_values_exist:
-            py_retval = self.py_function(**py_args)             #IGNORE:W0142
-            if self.return_type is not None:
-                #wrap return value in appropriate Siml object
-                siml_retval = self.return_type()(py_retval)
-                siml_retval.role = RoleConstant
-                siml_retval.is_assigned = True
-                return siml_retval
-            else:
-                return None
-        #create annotated NodeFuncCall/NodeOpInfix2/NodeOpPrefix1 if argument values are unknown
-        else:
-            #create right Node: NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
-            if self.is_binary_op:
-                func_call = NodeOpInfix2()
-                func_call.operator = self.op_symbol
-            elif self.is_prefix_op:
-                func_call = NodeOpPrefix1()
-                func_call.operator = self.op_symbol
-            else:
-                func_call = NodeFuncCall()
-            #operators get positional arguments (easier for code generation)
-            if self.is_binary_op or self.is_prefix_op:     
-                func_call.arguments = args
-                func_call.keyword_arguments = kwargs #most likely empty
-            #Regular function calls get keyword arguments only.
-            #Default arguments from this function get to the code generator 
-            #this way.
-            else:
-                func_call.arguments = tuple()
-                func_call.keyword_arguments = parsed_args
-            #put on decoration
-            func_call.name = self.name
-            func_call.function_object = self
-            func_call.type = self.return_type
-            #Choose most variable role: const -> param -> variable
-            func_call.role = determine_result_role(func_call.arguments, 
-                                                   func_call.keyword_arguments)
-            func_call.is_assigned = True
-            return func_call
-        
-        
-    def put_into(self, siml_object):
-        '''Put function object into a siml_object using the right name.'''
-        siml_object.create_attribute(self.name, self)
-        return self
-    
-        #TODO: implement method create_python_function(...) that returns 
-        #      a Python function which wraps the BuiltInFunctionWrapper object.
-
-
-
-class BuiltInFunctionWrapper2(CallableObject):
     '''
     Represents a function written in Python; for functions like 'sqrt' and 'sin'.
     
@@ -984,7 +984,7 @@ class IFloat(InterpreterObject):
         IFloat.type_object = class_float
         
         #initialize the mathematical operators, put them into the class
-        W = BuiltInFunctionWrapper2
+        W = BuiltInFunctionWrapper
         #Binary operators
         binop_args = ArgumentList([NodeFuncArg('self', class_float), 
                                    NodeFuncArg('other', class_float)])
@@ -1080,7 +1080,7 @@ class IString(InterpreterObject):
         IString.type_object = class_string
         
         #initialize the mathematical operators, put them into the class
-        W = BuiltInFunctionWrapper2
+        W = BuiltInFunctionWrapper
         #Binary operators
         binop_args = ArgumentList([NodeFuncArg('self', class_string), 
                                     NodeFuncArg('other', class_string)])
@@ -1162,10 +1162,10 @@ def create_built_in_lib():
     #math functions
     WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 
           return_type=CLASS_FLOAT, 
-          py_function=lambda x: math.sqrt(x)).put_into(lib)
+          py_function=lambda x: IFloat(math.sqrt(x.value))).put_into(lib)
     WFunc('sin', ArgumentList([Arg('x', CLASS_FLOAT)]), 
           return_type=CLASS_FLOAT, 
-          py_function=lambda x: math.sin(x)).put_into(lib)
+          py_function=lambda x: IFloat(math.sin(x.value))).put_into(lib)
     
     return lib
 #the module of built in objects
