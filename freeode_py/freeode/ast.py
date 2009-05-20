@@ -244,6 +244,9 @@ class Node(object):
             Attributes that should be viewed last, like 'loc'.
             Attribute names are in Node.aa_bottom, or in self.aa_bottom.
         '''
+        #TODO: new pretty printer mechanism to prevent duplicate printing
+        #      currently the weak types are used. As they are not Node instances
+        #      the pretty printer does not recurse into them 
         #catch infinite recursion
         if nesting_level > Node.aa_max_nesting_level:
             msg = 'Nesting of nodes too deep! (Infinite recursion?):' \
@@ -300,6 +303,7 @@ class Node(object):
         copy - weakref interaction problems:
         http://coding.derkeiler.com/Archive/Python/comp.lang.python/2008-02/msg01873.html
         '''
+        #TODO: new ast.Node.copy mechanism for shallow copy, just referencing
         #create empty instance of self.__class__
         new_obj = Node.__new__(self.__class__)
         for name, attr in self.__dict__.iteritems():

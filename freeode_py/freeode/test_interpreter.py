@@ -130,7 +130,50 @@ def test_InterpreterObject_method_retrieval():
 
 
 
-# -------- Test IntArgumentList class ------------------------------------------------------------------------
+def test_InterpreterObject_create_path_1():
+    print 'InterpreterObject: create_path method: create non-existing path.'
+    from freeode.interpreter import (InterpreterObject, DotName)
+    
+    #the root object where the long name will be created
+    root = InterpreterObject()
+    #create all attributes so that this dotname can be looked up
+    #o_name_1 should be the object representing the rightmost element (name)
+    o_name_1 = root.create_path(DotName('this.is.a.long.dotted.name'))
+    
+    #see if all attributes have been created
+    o_this = root.get_attribute(DotName('this'))
+    o_is = o_this.get_attribute(DotName('is'))
+    o_a = o_is.get_attribute(DotName('a'))
+    o_long = o_a.get_attribute(DotName('long'))
+    o_dotted = o_long.get_attribute(DotName('dotted'))
+    o_name_2 = o_dotted.get_attribute(DotName('name'))
+    #the function must return the final element
+    assert o_name_1 is o_name_2
+
+
+
+def test_InterpreterObject_create_path_2():
+    print 'InterpreterObject: create_path method: return existing path, extend path'
+    from freeode.interpreter import (InterpreterObject, DotName)
+    
+    #the root object where the long name will be created
+    root = InterpreterObject()
+    #create all attributes so that this dotname can be looked up
+    #o_name_1 should be the object representing the rightmost element (name)
+    o_name_1 = root.create_path(DotName('this.is.a.long.dotted.name'))
+    
+    #access existing path, don't try to create it twice
+    o_name_2 = root.create_path(DotName('this.is.a.long.dotted.name'))
+    assert o_name_1 is o_name_2
+    
+    #extend existing path
+    o_indeed = root.create_path(DotName('this.is.a.long.dotted.name.indeed'))
+    o_name_3 = o_indeed.parent()
+    assert o_name_1 is o_name_3
+
+
+
+#-------- Test IntArgumentList class ------------------------------------------------------------------------#
 def test_IntArgumentList_1():
     print 'IntArgumentList: construction'
     from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
@@ -975,7 +1018,7 @@ a = 2
   
   
 
-def test_interpreter_object_siml_function_1():
+def test_interpreter_siml_function_1():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: call user defined function ...............................................................'
     print 'User defined functions are created without parser.'
@@ -1028,6 +1071,26 @@ def test_interpreter_object_siml_function_1():
         print 'Getting expected exception: type mismatch at function return'
     else:
         py.test.fail('There was wrong return type, but no exception!') #IGNORE:E1101
+
+
+
+def test_SimlFunction_4():
+    print 'SimlFunction: get_complete_path method'
+    from freeode.interpreter import (SimlFunction, DotName)
+    
+    #the root object where the long name will be created
+    root = SimlFunction('root')
+    sub1 = SimlFunction('sub1')
+    sub2 = SimlFunction('sub2')
+
+    root.create_attribute('sub1', sub1)
+    sub1.create_attribute('sub2', sub2)
+    
+    print root
+    
+    long_name = sub2.get_complete_path()
+    
+    assert long_name == DotName('root.sub1.sub2')
 
 
 
@@ -1371,6 +1434,6 @@ print('end')
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_basic_execution_of_statements()
+    test_InterpreterObject_create_path_2()
     pass
 

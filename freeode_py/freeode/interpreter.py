@@ -183,7 +183,7 @@ class InterpreterObject(Node):
             raise DuplicateAttributeError(attr_name=name)
         self.attributes[name] = newAttr
         #set parent link for new objects, or when the parent has died.
-        if self.parent is None or self.parent() is None: #IGNORE:E1102
+        if newAttr.parent is None or newAttr.parent() is None: #IGNORE:E1102
             newAttr.parent = weakref.ref(self)
         
     def get_attribute(self, name):
@@ -209,9 +209,36 @@ class InterpreterObject(Node):
             return True
         else:
             return False
-
+        
+    
+    def create_path(self, path):
+        '''
+        Create an attribute and sub-attributes so that 'path' can be looked 
+        up in self. Attributes that don't exist will be created.
+        
+        ARGUMENTS
+        ---------
+        self: InterpreterObject
+            Path will become attribute of this object
+        path: DotName
+            The path that will be created
+            
+        RETURNS
+        -------
+        The attribute represented by the rightmost element of the path.
+        '''
+        curr_object = self
+        for name1 in path:
+            if not curr_object.has_attribute(DotName(name1)):
+                new_obj = InterpreterObject()
+                curr_object.create_attribute(name1, new_obj)
+                curr_object = new_obj
+            else:
+                curr_object = curr_object.get_attribute(DotName(name1))
+        return curr_object
     
 
+    
 class CallableObject(InterpreterObject):
     '''Base class of all functions.'''
     def __init__(self, name):
@@ -682,17 +709,21 @@ class SimlFunction(CallableObject):
         self.statements = statements if statements is not None else []
         #global namespace, stored when the function was defined
         self.global_scope = global_scope
+        #count how often the function was called (to create unique names 
+        #for the local variables)
+        self.invocation_count = 0
 
 
     def __call__(self, *args, **kwargs):
         '''All functions must implement this method'''
         loc = None
+        self.invocation_count += 1
         #parse the argumetnts that we get from the caller, do type checking
         parsed_args = self.argument_definition\
                           .parse_function_call_args(args, kwargs, loc)
 
         #Take 'this' namespace from the 'this' argument. 
-        # 'this' must be constant (known at compile time)
+        # 'this' must be a Siml object, no unevaluated expression
         this_namespace = parsed_args.get(DotName('this'), None)
         if ( (this_namespace is not None) and 
              (not isinstance(this_namespace, InterpreterObject))):
@@ -702,16 +733,9 @@ class SimlFunction(CallableObject):
         #create local scope (for function arguments and local variables)
         local_namespace = InterpreterObject()
         #store local scope so local variables are accessible for code generation
-        #------------------------------------------------------------------------------
-        #TODO: providing a module where local variables can be stored, is a responsibility 
-        #      of the code collection mechanism in the interpreter.
-        #-------------------------------------------------------------------------------
-        #FIXME: The current solution does not work for global functions, 
-        #       or for temporary objects. 
-        #       It only works for member functions of the simulation object.
-#        ls_storage = call_obj.get_attribute(DotName('data'))
-#        ls_name = make_unique_name(DotName('call'), ls_storage.attributes)
-#        ls_storage.create_attribute(ls_name, local_scope)
+        if self.interpreter.is_collecting_code():
+            self.store_locals_unique(local_namespace)
+        
         #put the function arguments into the local namespace
         for arg_name, arg_val in parsed_args.iteritems():
             #call by reference for existing Siml values
@@ -763,8 +787,51 @@ class SimlFunction(CallableObject):
                             "Specified return type  : %s \n"
                             % (str(ret_val.type().name), 
                                str(self.return_type().name)))
-       
     
+    
+    def get_complete_path(self):
+        '''
+        Get complete dotted name of the function.
+        
+        Goes recursively to all parents, asks them for their names, and 
+        creates a DotName out of the names. This will usually produce a 
+        three component DotName structured like this: module.class.function
+        
+        RETURNS
+        -------
+        DotName
+        '''
+        curr_object = self
+        path = DotName(self.name)
+        while curr_object.parent is not None:
+            curr_object = curr_object.parent()      #IGNORE:E1102
+            path = DotName(curr_object.name) + path
+        return path    
+    
+    
+    def store_locals_unique(self, local_namespace):
+        '''
+        Store local variables in a special namespace.
+        
+        When collecting code a function's local variables must be placed 
+        as algebraic variables in the simulation object. The code of all
+        functions is inlined into the main functions, and the local variables 
+        of each function invocation must get unique names. 
+        
+        The special namespace where the local variables are stored is supplied 
+        by the interpreter.
+        '''
+        #long name of function. like: bioreactor.conti.bacterial_growth
+        func_path = self.get_complete_path()
+        #namespace where all local variables go into
+        all_locals_storage = self.interpreter.get_locals_storage()
+        #create namespace with long name of this function
+        func_locals_storage = all_locals_storage.create_path(func_path)
+        #store the local variables individually by the invocation number
+        func_locals_storage.create_attribute(str(self.invocation_count), 
+                                             local_namespace)
+        
+        
     
 class BoundMethod(CallableObject):
     '''
@@ -1731,6 +1798,9 @@ class StatementVisitor(Visitor):
         #TODO: Implement closures, for nested functions:
         #      Copy the global dictionary and update it with the current
         #      local dictionary.
+        #TODO: make copy of global namespace. needs:
+        #      - new ast.Node.copy mechanism for shallow copy, referencing
+        #      - new pretty printer mechanism to prevent duplicate printing
         global_scope = make_proxy(self.environment.global_scope)
 
         #create new function object and 
@@ -1802,7 +1872,11 @@ class StatementVisitor(Visitor):
         flat_object = CompiledClass()
         flat_object.type = tree_object.type
         flat_object.loc = tree_object.type().loc 
-        
+        #------------------------------------------------------------------------------
+        #TODO: providing a module where local variables can be stored, is a responsibility 
+        #      of the code collection mechanism in the interpreter.
+        #-------------------------------------------------------------------------------
+       
         #TODO: Make list of main functions of all child objects for automatic calling 
         #Create code: 
         #call the main functions of tree_object and collect code
@@ -1888,6 +1962,13 @@ class Interpreter(object):
         InterpreterObject.interpreter = weakref.proxy(self)
         
         
+    def get_locals_storage(self):
+        '''
+        Return special storage namespace for local variables of functions.
+        '''
+        #TODO: implement this
+        return InterpreterObject()
+    
     def collect_statement(self, stmt):
         '''Collect statement for code generation.'''
         if self.compile_stmt_collect is None:
