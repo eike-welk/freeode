@@ -1019,9 +1019,9 @@ a = 2
   
   
 
-def test_interpreter_siml_function_1():
+def test_SimlFunction_1():
     #py.test.skip('Test disabled')
-    print 'Test interpreter object: call user defined function ...............................................................'
+    print 'Test SimlFunction: call user defined function ...............................................................'
     print 'User defined functions are created without parser.'
     from freeode.interpreter import (Interpreter, SimlFunction, 
                                      ArgumentList, CLASS_FLOAT, CLASS_STRING,
@@ -1048,7 +1048,7 @@ def test_interpreter_siml_function_1():
     #call with existing value
     f1(val_1)
     
-    #create a function with return statement
+    #create a function with return statement - uses interpreter for executing the statement
     # func test(a:Float) -> Float:
     #     return a
     f2 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
@@ -1075,7 +1075,7 @@ def test_interpreter_siml_function_1():
 
 
 
-def test_SimlFunction_4():
+def test_SimlFunction_2():
     print 'SimlFunction: get_complete_path method'
     from freeode.interpreter import (SimlFunction, DotName)
     
@@ -1092,6 +1092,48 @@ def test_SimlFunction_4():
     long_name = sub2.get_complete_path()
     
     assert long_name == DotName('root.sub1.sub2')
+
+
+
+def test_SimlFunction_3():
+    #py.test.skip('Test disabled')
+    print 'Test SimlFunction: storage of local variables during code collection.'
+    print 'User defined functions are created without parser.'
+    from freeode.interpreter import (Interpreter, SimlFunction, 
+                                     ArgumentList, CLASS_FLOAT, BUILT_IN_LIB)
+    from freeode.ast import (NodeFuncArg, DotName)
+
+    #create the interpreter - initializes InterpreterObject.interpreter
+    # and set it up to collect code. In this mode local variables of all 
+    # functions must become algebraic variables of the simulation object.
+    intp = Interpreter()    #IGNORE:W0612
+    intp.start_collect_code()
+    
+    #create a Siml value as function argument
+    val_1 = CLASS_FLOAT()
+    val_1.value = 1.
+
+    #create a function without statements (impossible in Siml)
+    # func test(a:Float):
+    #     ** nothing **
+    f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
+                      return_type=None, statements=[], global_scope=BUILT_IN_LIB)
+    #call with existing value
+    f1(val_1)
+    
+    stmts, fn_locals = intp.stop_collect_code()
+    
+    print fn_locals
+    
+    #there must be one element in the locals storage, some base namespace for 
+    # the function argument 'a'
+    assert len(fn_locals.attributes) > 0
+    
+    #get the local variable 'a' 
+    ns_test = fn_locals.get_attribute(DotName('test'))
+    ns_1    = ns_test.  get_attribute(DotName('1'))
+    float_a = ns_1.     get_attribute(DotName('a'))
+    assert float_a is val_1
 
 
 
