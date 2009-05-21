@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ############################################################################
-#    Copyright (C) 2008 by Eike Welk                                       #
+#    Copyright (C) 2009 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
 #    License: GPL                                                          #
