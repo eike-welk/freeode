@@ -711,18 +711,18 @@ class SimlFunction(CallableObject):
         self.global_scope = global_scope
         #count how often the function was called (to create unique names 
         #for the local variables)
-        self.invocation_count = 0
+        self.call_count = 0
 
 
     def __call__(self, *args, **kwargs):
         '''All functions must implement this method'''
         loc = None
-        self.invocation_count += 1
-        #parse the argumetnts that we get from the caller, do type checking
+        self.call_count += 1
+        #parse the arguments that we get from the caller, do type checking
         parsed_args = self.argument_definition\
                           .parse_function_call_args(args, kwargs, loc)
 
-        #Take 'this' namespace from the 'this' argument. 
+        #Take 'this' name-space from the 'this' argument. 
         # 'this' must be a Siml object, no unevaluated expression
         this_namespace = parsed_args.get(DotName('this'), None)
         if ( (this_namespace is not None) and 
@@ -731,12 +731,13 @@ class SimlFunction(CallableObject):
                                 'must be a known Siml object.')
         
         #create local scope (for function arguments and local variables)
-        local_namespace = InterpreterObject()
-        #store local scope so local variables are accessible for code generation
         if self.interpreter.is_collecting_code():
-            self.store_locals_unique(local_namespace)
-        
-        #put the function arguments into the local namespace
+            #store local scope so local variables are accessible for 
+            #code generation
+            local_namespace = self.create_persistent_locals_ns()
+        else:
+            local_namespace = InterpreterObject()
+        #put the function arguments into the local name-space
         for arg_name, arg_val in parsed_args.iteritems():
             #call by reference for existing Siml values
             if isinstance(arg_val, InterpreterObject):
@@ -744,14 +745,16 @@ class SimlFunction(CallableObject):
             #for unevaluated expressions a new variable is created,
             #and the expression is assigned to it
             else:
-                #create new object. use exact information if available
-                if arg_val.type_ex is not None:
-                    assert False, "Let's see if this code is executed at all"
-                    new_arg = self.interpreter.statement_visitor\
-                              .expression_visitor.visit_NodeFuncCall(arg_val.type_ex)
-                else:
-                    new_arg = self.interpreter.statement_visitor\
-                              .expression_visitor.call_siml_object(arg_val.type(), [], {}, loc) 
+#                #create new object. use exact information if available
+#                if arg_val.type_ex is not None:
+#                    assert False, "Let's see if this code is executed at all"
+#                    new_arg = self.interpreter.statement_visitor\
+#                              .expression_visitor.visit_NodeFuncCall(arg_val.type_ex)
+#                else:
+#                    new_arg = self.interpreter.statement_visitor\
+#                              .expression_visitor.call_siml_object(arg_val.type(), [], {}, loc) 
+                arg_class = arg_val.type()
+                new_arg = arg_class()
                 new_arg.role = arg_val.role
                 #put object into local name-space and assign value to it 
                 local_namespace.create_attribute(arg_name, new_arg)
@@ -809,7 +812,7 @@ class SimlFunction(CallableObject):
         return path    
     
     
-    def store_locals_unique(self, local_namespace):
+    def create_persistent_locals_ns(self):
         '''
         Store local variables in a special namespace.
         
@@ -823,14 +826,13 @@ class SimlFunction(CallableObject):
         '''
         #long name of function. like: bioreactor.conti.bacterial_growth
         func_path = self.get_complete_path()
-        #namespace where all local variables go into
-        all_locals_storage = self.interpreter.get_locals_storage()
+        #name-space where all local variables go into
+        locals_root = self.interpreter.get_locals_storage()
         #create namespace with long name of this function
-        func_locals_storage = all_locals_storage.create_path(func_path)
-        #store the local variables individually by the invocation number
-        func_locals_storage.create_attribute(str(self.invocation_count), 
-                                             local_namespace)
-        
+        locals_ns = locals_root.create_path(func_path + 
+                                            DotName(str(self.call_count)))
+        return locals_ns
+    
         
     
 class BoundMethod(CallableObject):
@@ -1334,7 +1336,6 @@ def siml_isknown(siml_obj):
     raise NotImplementedError('Function siml_isknown is not implemented!')
 
 
-#TODO: remove!
 def make_unique_name(base_name, existing_names):
     '''
     Make a unique name that is not in existing_names.
@@ -1859,6 +1860,7 @@ class StatementVisitor(Visitor):
         #TODO: creatation of the tree-shaped object should be done by 
         #      self.visit_NodeDataDef(...)
         #      so there is only one place where data objects are constructed.
+        
         #Create data:
         #get the type object - a NodeIdentifier is expected as class_spec
         class_obj = self.expression_visitor.dispatch(node.class_spec)
@@ -1867,33 +1869,34 @@ class StatementVisitor(Visitor):
             tree_object = class_obj()
         else:
             raise UserException('Class expected.', node.loc)
+        #TODO: put new object also into module namespace?
         
         #create flat object
         flat_object = CompiledClass()
         flat_object.type = tree_object.type
         flat_object.loc = tree_object.type().loc 
-        #------------------------------------------------------------------------------
-        #TODO: providing a module where local variables can be stored, is a responsibility 
-        #      of the code collection mechanism in the interpreter.
-        #-------------------------------------------------------------------------------
-       
-        #TODO: Make list of main functions of all child objects for automatic calling 
+        #provide a module where local variables can be stored,
+        func_locals = InterpreterObject()
+        flat_object.create_attribute('__func_locals__', func_locals)
+        
         #Create code: 
+        #TODO: Implement automatic calling of main functions in child objects.
         #call the main functions of tree_object and collect code
         main_func_names = [DotName('init'), DotName('dynamic'), DotName('final')]
         for func_name in main_func_names:
             #get one of the main functions of the tree object
             if func_name not in tree_object.attributes:
                 continue
-            func_tree = tree_object.get_attribute(func_name)
             #call the main function and collect code
-            self.interpreter.compile_stmt_collect = []
+            self.interpreter.start_collect_code(func_locals=func_locals)
+            func_tree = tree_object.get_attribute(func_name)
             func_tree()
+            stmt_list, dummy = self.interpreter.stop_collect_code()
             #create a new main function for the flat object with the collected code
-            func_flat = SimlFunction(func_name, ArgumentList([]), None, 
-                                     statements=self.interpreter.compile_stmt_collect, 
+            func_flat = SimlFunction(func_name, ArgumentList([NodeFuncArg('this')]), 
+                                     None, statements=stmt_list, 
                                      global_scope=None)                                 
-            #Put new function it into flat object
+            #Put new main function into flat object
             flat_object.create_attribute(func_name, func_flat)
 
         #flatten tree_object (the data) recursively.
@@ -1929,14 +1932,17 @@ class StatementVisitor(Visitor):
             new_name = make_unique_name(new_name, 
                                         self.interpreter.compile_module.attributes)
         self.interpreter.compile_module.create_attribute(new_name, flat_object)
-        
+
         
 
 class Interpreter(object):
     '''
     Interpret the constant parts of the program
     
-    Contains some high-level entry points for the interpreter algorithm.
+    Contains some high-level entry points for the interpreter algorithm; 
+    and also data that is shared between different components of the 
+    interpreter. (Example: Frame stack)
+    
     These methods are used from outside (to start the interpreter) as 
     well as from inside the interpreter (to coordinate between StatementVisitor
     and expression visitor).
@@ -1952,36 +1958,69 @@ class Interpreter(object):
         # put into self.statement_visitor
         self.env_stack = []
         self.push_environment(ExecutionEnvironment())
+        
         #storage for objects generated by the compile statement
         self.compile_module = IModule()
         self.compile_module.name = DotName('compiled_object_namespace')
-        #list of emitted statements (temporary storage)
+        #list of emitted statements (temporary storage) - needed for compile 
+        #statement
         self.compile_stmt_collect = None
+        #namespace (InterpreterObject) for storage of a function's local 
+        #variables - needed for compile statement
+        self.locals_storage = None
         
-        #tell the the interpreter objects which is their interpreter
+        #tell all InterpreterObject instances which is their interpreter
+        #TODO: this global variable should go away some day
         InterpreterObject.interpreter = weakref.proxy(self)
         
+        
+    # --- code collection - compile statement ------------------------------------------------------
+    def start_collect_code(self, stmt_list=None, func_locals=None):
+        '''Set up everything for the code collection process'''
+        self.compile_stmt_collect = [] if stmt_list is None \
+                                       else stmt_list
+        self.locals_storage = InterpreterObject() if func_locals is None \
+                                                  else func_locals
+        
+    def stop_collect_code(self):
+        '''
+        End the code collection process
+        
+        RETURNS
+        -------
+        stmt_list: [ast.Node]
+            List of statements that were generated by the code collection
+            process. (Mainly assignments)
+        func_locals: InterpreterObject
+            Namespace where the local variables from each function invocation 
+            are stored
+        '''
+        stmt_list, func_locals = self.compile_stmt_collect, self.locals_storage
+        self.compile_stmt_collect = None
+        self.locals_storage = None
+        return stmt_list, func_locals
         
     def get_locals_storage(self):
         '''
         Return special storage namespace for local variables of functions.
+        Only availlable when collecting code.
         '''
-        #TODO: implement this
-        return InterpreterObject()
+        if not self.is_collecting_code():
+            raise Exception('Collecting statements (compilation) has not been enabled!')
+        return self.locals_storage
     
     def collect_statement(self, stmt):
         '''Collect statement for code generation.'''
-        if self.compile_stmt_collect is None:
-            raise UserException('Only operations with constants allowed here!', stmt.loc)
+        if not self.is_collecting_code():
+            raise Exception('Collecting statements (compilation) has not been enabled!')
         self.compile_stmt_collect.append(stmt)
         
     def is_collecting_code(self):
         '''Return True if self.collect_statement can be successfully called.'''
-        if self.compile_stmt_collect is None:
-            return False
-        else:
-            return True
-        
+        return self.compile_stmt_collect is not None
+    
+    
+    # --- run code ---------------------------------------------------------------    
     def interpret_module_string(self, text, file_name=None, module_name=None):
         '''Interpret the program text of a module.'''
         #create the new module and import the built in objects
@@ -2005,6 +2044,13 @@ class Interpreter(object):
         #remove frame from stack
         self.pop_environment()
 
+    def run(self, stmt_list):
+        '''Interpret a list of statements'''
+        for node in stmt_list:
+            self.statement_visitor.dispatch(node)
+    
+    
+    # --- manage frame stack --------------------------------------------------------------        
     def push_environment(self, new_env):
         '''
         Put new stack frame on stack. 
@@ -2026,12 +2072,9 @@ class Interpreter(object):
     def get_environment(self):
         '''Return the current (topmost) environment from the stack.'''
         return self.env_stack[-1]
+    
         
-    def run(self, stmt_list):
-        '''Interpret a list of statements'''
-        for node in stmt_list:
-            self.statement_visitor.dispatch(node)
-            
+    # --- test --------------------------------------------------------------------
     def create_test_module_with_builtins(self):
         '''
         Create a module object and a stack frame for testing.
