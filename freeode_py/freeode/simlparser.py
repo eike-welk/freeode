@@ -440,63 +440,63 @@ class Parser(object):
         nCurr.expression = tokList[2]   
         return nCurr
 
-    def _action_print_stmt(self, s, loc, toks): #IGNORE:W0613
-        '''
-        Create node for print statement:
-            print 'hello', foo.x
-        BNF:
-        expression_list = delimitedList(expression, ',')            .setName('exprList')
-        print_stmt = Group(kw('print')
-                          - Optional(expression_list)               .setResultsName('arg_list')
-                          + Optional(',')                           .setResultsName('trail_comma')                       
-                          )                                         .setParseAction(self._action_print_stmt)\
-        '''
-        if Parser.noTreeModification:
-            return None #No parse result modifications for debugging
-        #tokList = toks.asList()[0] #Group adds 
-        toks = toks[0]             #an extra pair of brackets
-        nCurr = NodePrintStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.arguments = toks.arg_list.asList()
-        if toks.trailComma:
-            nCurr.newline = False
-        else:
-            nCurr.newline = True
-        return nCurr
+#    def _action_print_stmt(self, s, loc, toks): #IGNORE:W0613
+#        '''
+#        Create node for print statement:
+#            print 'hello', foo.x
+#        BNF:
+#        expression_list = delimitedList(expression, ',')            .setName('exprList')
+#        print_stmt = Group(kw('print')
+#                          - Optional(expression_list)               .setResultsName('arg_list')
+#                          + Optional(',')                           .setResultsName('trail_comma')                       
+#                          )                                         .setParseAction(self._action_print_stmt)\
+#        '''
+#        if Parser.noTreeModification:
+#            return None #No parse result modifications for debugging
+#        #tokList = toks.asList()[0] #Group adds 
+#        toks = toks[0]             #an extra pair of brackets
+#        nCurr = NodePrintStmt()
+#        nCurr.loc = self.createTextLocation(loc) #Store position
+#        nCurr.arguments = toks.arg_list.asList()
+#        if toks.trailComma:
+#            nCurr.newline = False
+#        else:
+#            nCurr.newline = True
+#        return nCurr
 
-    def _actionGraphStmt(self, s, loc, toks): #IGNORE:W0613
-        '''
-        Create node for graph statement:
-            graph foo.x, foo.p
-        BNF:
-        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
-                          + ';')                  .setParseAction(self._actionDebug)\
-        '''
-        if Parser.noTreeModification:
-            return None #No parse result modifications for debugging
-        #tokList = toks.asList()[0] #there always seems to be
-        toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeGraphStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.kids = toks.argList.asList()[0]
-        return nCurr
+#    def _actionGraphStmt(self, s, loc, toks): #IGNORE:W0613
+#        '''
+#        Create node for graph statement:
+#            graph foo.x, foo.p
+#        BNF:
+#        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
+#                          + ';')                  .setParseAction(self._actionDebug)\
+#        '''
+#        if Parser.noTreeModification:
+#            return None #No parse result modifications for debugging
+#        #tokList = toks.asList()[0] #there always seems to be
+#        toks = toks[0]             #an extra pair of brackets
+#        nCurr = NodeGraphStmt()
+#        nCurr.loc = self.createTextLocation(loc) #Store position
+#        nCurr.kids = toks.argList.asList()[0]
+#        return nCurr
 
-    def _actionStoreStmt(self, s, loc, toks): #IGNORE:W0613
-        '''
-        Create node for graph statement:
-            graph foo.x, foo.p
-        BNF:
-        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
-                          + ';')                  .setParseAction(self._actionDebug)\
-        '''
-        if Parser.noTreeModification:
-            return None #No parse result modifications for debugging
-        #tokList = toks.asList()[0] #there always seems to be
-        toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeStoreStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.kids = toks.argList.asList()
-        return nCurr
+#    def _actionStoreStmt(self, s, loc, toks): #IGNORE:W0613
+#        '''
+#        Create node for graph statement:
+#            graph foo.x, foo.p
+#        BNF:
+#        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
+#                          + ';')                  .setParseAction(self._actionDebug)\
+#        '''
+#        if Parser.noTreeModification:
+#            return None #No parse result modifications for debugging
+#        #tokList = toks.asList()[0] #there always seems to be
+#        toks = toks[0]             #an extra pair of brackets
+#        nCurr = NodeStoreStmt()
+#        nCurr.loc = self.createTextLocation(loc) #Store position
+#        nCurr.kids = toks.argList.asList()
+#        return nCurr
 
     def _action_return_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -957,13 +957,6 @@ class Parser(object):
 
 #------------------- STATEMEMTS -------------------------------------------------------------------------*
 #------------------- Simple statements ..................................................................
-
-#        #execute a class method (or a function) -
-#        #usually inserts the function bodie's code into the current method.
-#        #This code insertion (inlinig) is done recursively and leaves only
-#        #a few big top level methods
-#        funcCall = Forward() #TODO: REMOVE!!!
-#        funcCallStmt = funcCall + ES(stmtEnd)                        .setErrMsgStart('call statement: ')
 
         #Return values from a function 
         return_stmt = (kw('return') - Optional(expression           .setResultsName('ret_val'))

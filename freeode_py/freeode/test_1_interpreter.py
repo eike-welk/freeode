@@ -995,30 +995,6 @@ c = 'Hello ' + 'world!'
   
   
 # -------- Test interpreter object - basic --------------------------------------------------------  
-def test_interpreter_assignment_1():
-    #py.test.skip('Test disabled')
-    print 'Test interpreter object: assignment. needs working data statement and number ...............................................................'
-    from freeode.interpreter import Interpreter, DotName
-    import math
-    
-    prog_text = \
-'''
-data a: Float const
-a = 2
-'''
-    #create the interpreter
-    intp = Interpreter()
-    #run mini program
-    intp.interpret_module_string(prog_text, None, 'test')
-  
-    print
-    print 'module after interpreter run: ---------------------------------'
-    print intp.modules['test']
-    
-    assert intp.modules['test'].get_attribute(DotName('a')).value == 2
-  
-  
-
 def test_SimlFunction_1():
     #py.test.skip('Test disabled')
     print 'Test SimlFunction: call user defined function ...............................................................'

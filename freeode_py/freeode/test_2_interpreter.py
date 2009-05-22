@@ -248,11 +248,80 @@ print('end')
 #    assert False, 'Test'
 
       
-# -------- Test interpreter object - emit code ----------------------------------------
-def test_interpreter_object_emit_code_simple():
+      
+def test_StatementVisitor_assign_const_1():
     #py.test.skip('Test disabled')
-    print 'Test interpreter object: emit code simple ...............................................................'
-    from freeode.interpreter import Interpreter, Node
+    print 'Test interpreter object: assignment. needs working data statement and number ...............................................................'
+    from freeode.interpreter import Interpreter, DotName
+    
+    prog_text = \
+'''
+data a: Float const
+a = 2
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    print 'module after interpreter run: ---------------------------------'
+    print intp.modules['test']
+    
+    assert intp.modules['test'].get_attribute(DotName('a')).value == 2
+  
+  
+
+# -------- Test interpreter object - emit code ----------------------------------------
+def test_StatementVisitor_assign_emit_code_1():
+    #py.test.skip('Test disabled')
+    print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
+    from freeode.interpreter import (Interpreter, IFloat)
+    from freeode.ast import (Node, NodeAssignment, NodeOpInfix2)
+
+    prog_text = \
+'''
+data a: Float variable
+data b: Float variable
+b = 2*a #emit this statement
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    #enable collection of statements for compilation
+    intp.start_collect_code()
+    #interpret the program
+    intp.interpret_module_string(prog_text, None, 'test')
+    #get the results of the collection process
+    stmts, func_locals = intp.stop_collect_code()
+  
+    print
+    print '--------------- main module ----------------------------------'
+    #print intp.modules['test']
+    #put collected statements into Node for pretty printing
+    n = Node(statements=stmts)
+    print
+    print '--------------- collected statements ----------------------------------'
+    #print n
+        
+    #one statement: b = 2*a    
+    assert len(stmts) == 1
+    assert isinstance(stmts[0], NodeAssignment)                #  b = 2 * a
+    assert isinstance(stmts[0].target, IFloat)           #  b
+    assert stmts[0].target.value is None
+    assert isinstance(stmts[0].expression, NodeOpInfix2)       #  2*a
+    assert isinstance(stmts[0].expression.arguments[0], IFloat)#  2
+    assert stmts[0].expression.arguments[0].value == 2
+    assert isinstance(stmts[0].expression.arguments[1], IFloat)#  a
+    assert stmts[0].expression.arguments[1].value is None
+      
+
+
+def test_StatementVisitor_assign_emit_code_2():
+    #py.test.skip('Test interpreter object: emit code without the usual infrastructure.')
+    print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
+    from freeode.interpreter import (Interpreter, IFloat)
+    from freeode.ast import (Node, NodeAssignment, NodeOpInfix2)
 
     prog_text = \
 '''
@@ -265,6 +334,8 @@ a = 2*2 #constant no statement emitted
 b = 2*a #compute 2*a at compile time
 c = 2*b #emit everything
 print('a = ', a)
+#print('b = ', b)
+#print('c = ', c)
 
 print('end')
 '''
@@ -272,22 +343,73 @@ print('end')
     #create the interpreter
     intp = Interpreter()
     #enable collection of statements for compilation
-    intp.compile_stmt_collect = []
+    intp.start_collect_code()
     #interpret the program
     intp.interpret_module_string(prog_text, None, 'test')
-  
+    #get the results of the collection process
+    stmts, func_locals = intp.stop_collect_code()
+ 
     print
     print '--------------- main module ----------------------------------'
-    print intp.modules['test']
+    #print intp.modules['test']
     #put collected statements into Node for pretty printing
-    n = Node(stmts=intp.compile_stmt_collect)
+    n = Node(statements=stmts)
     print
     print '--------------- collected statements ----------------------------------'
-    print n
+    #print n
         
-    #TODO: Assertions
+    assert len(stmts) == 2
+    # b = 4
+    assert isinstance(stmts[0], NodeAssignment)
+    assert isinstance(stmts[0].expression, IFloat) # 8
+    assert stmts[0].expression.value == 8
+    # c = 2*b
+    assert isinstance(stmts[1], NodeAssignment)
+    assert isinstance(stmts[1].expression, NodeOpInfix2)        # 2 * b
+    assert isinstance(stmts[1].expression.arguments[0], IFloat) # 2
+    assert stmts[1].expression.arguments[0].value == 2
+    assert isinstance(stmts[1].expression.arguments[1], IFloat) # b
+    assert stmts[1].expression.arguments[1].value is None      
       
 
+
+def test_StatementVisitor__visit_NodeCompileStmt__code_generation_1():
+    #py.test.skip('Test StatementVisitor.visit_NodeCompileStmt')
+    print 'Test StatementVisitor.visit_NodeCompileStmt:'
+    from freeode.interpreter import (Interpreter, IFloat, SimlFunction)
+    from freeode.ast import (DotName)
+
+    prog_text = \
+'''
+class A:
+    data b: Float
+     
+    func dynamic(this):
+        b = 2
+
+compile A
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    #run program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    #print intp.modules['test']
+    #print intp.get_compiled_objects()[0] 
+
+    #there must be one compiled object present
+    assert len(intp.get_compiled_objects()) == 1
+    
+    comp_obj = intp.get_compiled_objects()[0]
+    #the attributes b and dynamic must exist
+    assert isinstance(comp_obj.get_attribute(DotName('b')), IFloat)
+    assert isinstance(comp_obj.get_attribute(DotName('dynamic')), SimlFunction)
+    assert len(comp_obj.get_attribute(DotName('dynamic')).statements) == 1
+    
+    
+    
+    
 def test_interpreter_object_compile_statement():
     #py.test.skip('Method calls don\'t work!!!')
     print 'Test interpreter object: compile statement ...............................................................'
@@ -327,9 +449,10 @@ print('end')
   
     print
     print intp.modules['test']
-    print intp.compile_module
+    print intp.get_compiled_objects() 
 
     #TODO: Assertions
+    #assert False
       
       
 
@@ -371,7 +494,64 @@ print('end')
   
     print
     print intp.modules['test']
-    print intp.compile_module
+    print intp.get_compiled_objects() 
+  
+    #TODO: Assertions
+
+
+
+def test_interpreter_small_simulation_program():
+    #py.test.skip('Method calls don\'t work!!!')
+    print 'Test interpreter: small simulation program.'
+    from freeode.interpreter import Interpreter
+
+    prog_text = \
+'''
+data g: Float const
+g = 9.81
+
+
+class BarrelWithHole:
+    data V, h: Float
+    data A_bott, A_o, mu, q, g: Float param
+
+    func dynamic():
+        h = V/A_bott
+        $V = q - mu*A_o*sqrt(2*g*h)
+#        print('h: ', h)
+
+    func init(q_in):
+        V = 0;
+        A_bott = 1; A_o = 0.02; mu = 0.55;
+        q = q_in #0.05
+ 
+ 
+class RunTest:
+    data system: BarrelWithHole
+
+    func dynamic():
+        system.dynamic()
+
+    func init():
+        system.init(0.55)
+#        solutionParameters.simulationTime = 100
+#        solutionParameters.reportingInterval = 1
+
+    func final():
+#        graph system.V, system.h
+        print('Simulation finished successfully.')
+        
+
+compile RunTest
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    print intp.modules['test']
+    print intp.get_compiled_objects() 
   
     #TODO: Assertions
 
@@ -379,6 +559,6 @@ print('end')
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_object_dollar_operator()
+    test_interpreter_object_compile_statement()
     pass
 

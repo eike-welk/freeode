@@ -677,28 +677,28 @@ class NodeAssignment(Node):
 #        self.loc = None
 
 
-class NodeGraphStmt(Node):
-    '''
-    AST Node for creating a graph.
-    Data attributes:
-        kids        : the expressions of the argument list
-        loc         : location in input string
-        dat         : None
-    '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeGraphStmt, self).__init__(kids, loc, dat)
+#class NodeGraphStmt(Node):
+#    '''
+#    AST Node for creating a graph.
+#    Data attributes:
+#        kids        : the expressions of the argument list
+#        loc         : location in input string
+#        dat         : None
+#    '''
+#    def __init__(self, kids=None, loc=None, dat=None):
+#        super(NodeGraphStmt, self).__init__(kids, loc, dat)
 
 
-class NodeStoreStmt(Node):
-    '''
-    AST Node for storing variables
-    Data attributes:
-        kids        : the expressions of the argument list
-        loc         : location in input string
-        dat         : None
-    '''
-    def __init__(self, kids=None, loc=None, dat=None):
-        super(NodeStoreStmt, self).__init__(kids, loc, dat)
+#class NodeStoreStmt(Node):
+#    '''
+#    AST Node for storing variables
+#    Data attributes:
+#        kids        : the expressions of the argument list
+#        loc         : location in input string
+#        dat         : None
+#    '''
+#    def __init__(self, kids=None, loc=None, dat=None):
+#        super(NodeStoreStmt, self).__init__(kids, loc, dat)
 
 
 class NodeReturnStmt(Node):
@@ -902,7 +902,6 @@ class NodeCompileStmt(NodeDataDef):
     '''
     def __init__(self):
         NodeDataDef.__init__(self)
-#        self.role = RoleCompiledObject
 
 
 class NodeFuncArg(Node):

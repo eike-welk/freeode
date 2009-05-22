@@ -817,7 +817,7 @@ compile RunTest
 #    print astTree
 
     intp.interpret_module_string(testProg1, 'test.siml', 'test')
-    iltTree = intp.compile_module
+    iltTree = intp.compiled_object_list
     print 'ILT tree:'
     print iltTree
 

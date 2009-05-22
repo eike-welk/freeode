@@ -143,7 +143,7 @@ def test_parse_function_definition_5():
 
     test_prog = (
 '''
-func test_1(a:String, b, c:Float, d:Float=2, e=3, f:Float=4):
+func test_1(a:String, b, c:Float, d:Float=2, e=3, f:Float=4) -> Float:
     return
 ''' )
     print test_prog
