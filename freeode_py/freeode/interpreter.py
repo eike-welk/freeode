@@ -1728,10 +1728,12 @@ class StatementVisitor(Visitor):
         #TODO: transport return value with the exception?
         raise ReturnFromFunctionException()
 
+
     @Visitor.when_type(NodeExpressionStmt)
     def visit_NodeExpressionStmt(self, node):
         '''Intened to call functions. Compute expression and forget result'''
         self.expression_visitor.dispatch(node.expression)
+        #TODO: Implement code collection when unevaluated function call is returned.
     
     
     @Visitor.when_type(NodeAssignment)

@@ -893,8 +893,79 @@ def test_expression_evaluation_2_1():
     print 'Result object: --------------------------------------------------------------'
     print res 
     assert res.value == math.sqrt(2)
+
+
+
+def test_ExpressionVisitor_unknown_arguments_1():
+    #py.test.skip('Test expression evaluation (calling built in functions), unknown arguments')
+    print 'Test expression evaluation (calling built in functions), unknown arguments'
+    from freeode.interpreter import (IModule, ExecutionEnvironment,
+                                     ExpressionVisitor, DotName,
+                                     BuiltInFunctionWrapper, ArgumentList,
+                                     CLASS_FLOAT)
+    from freeode.ast import (NodeFuncCall, NodeIdentifier, NodeFuncArg)
+    import math
+    
+    #create module where the function lives
+    mod = IModule()
+    #create sqrt function with named arguments
+    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
+    #create a function object that wraps the sqrt function
+    func = BuiltInFunctionWrapper('sqrt', 
+                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
+                                  return_type=CLASS_FLOAT, 
+                                  py_function=sqrt)
+    #put function into module
+    mod.create_attribute(DotName('sqrt'), func)
+    print
+    print 'Module where function is located: --------------------------------------------'
+    #print mod
+    
+    #create environment for lookup of variables (stack frame)
+    env = ExecutionEnvironment()
+    env.global_scope = mod
+    #create visitor for evaluating the expression
+    exv = ExpressionVisitor(None)
+    exv.environment = env
+    
+    #create a Siml value as function argument
+    val_1 = CLASS_FLOAT()    
+    #create function call with unkown argument
+    call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
+    
+    #evaluate the function call
+    ret_val = exv.dispatch(call)
+    print
+    print 'Result object: --------------------------------------------------------------'
+    print ret_val 
+    #evaluating a function call with unknown arguments must return a function call
+    assert isinstance(ret_val, NodeFuncCall)
+    assert ret_val.type() is CLASS_FLOAT
     
     
+
+def test_ExpressionVisitor_unknown_arguments_2():
+    #py.test.skip('Test ExpressionVisitor: call library function with unknown argument')
+    print 'Test ExpressionVisitor: call library function with unknown argument'
+    from freeode.interpreter import (Interpreter, CLASS_FLOAT, )
+    from freeode.ast import (NodeFuncCall, NodeIdentifier, )
+
+    #create the interpreter - initializes InterpreterObject.interpreter
+    # this way SimlFunction can access the interpreter.
+    intp = Interpreter()    #IGNORE:W0612
+    intp.create_test_module_with_builtins()
+    #create a Siml value as function argument
+    val_1 = CLASS_FLOAT()    
+
+    #create function call with unkown argument
+    call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
+    #interpret call
+    ret_val = intp.statement_visitor.expression_visitor.dispatch(call)
+    #evaluating a function call with unknown arguments must return a function call
+    assert isinstance(ret_val, NodeFuncCall)
+    assert ret_val.type() is CLASS_FLOAT
+    
+
 
 def test_expression_evaluation_3():
     #py.test.skip('Test disabled')
@@ -1009,8 +1080,7 @@ def test_SimlFunction_1():
     # this way SimlFunction can access the interpreter.
     intp = Interpreter()    #IGNORE:W0612
     #create a Siml value as function argument
-    val_1 = CLASS_FLOAT()
-    val_1.value = 1.
+    val_1 = CLASS_FLOAT(1)
     #TODO: test function calling mechanism with unevaluated expressions too!
 #    #create an unevaluated expression
 #    u_ex = NodeOpInfix2()
@@ -1086,8 +1156,7 @@ def test_SimlFunction_3():
     intp.start_collect_code()
     
     #create a Siml value as function argument
-    val_1 = CLASS_FLOAT()
-    val_1.value = 1.
+    val_1 = CLASS_FLOAT(1)
 
     #create a function without statements (impossible in Siml)
     # func test(a:Float):
