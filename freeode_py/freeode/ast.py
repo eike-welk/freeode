@@ -562,7 +562,7 @@ class NodeFuncCall(Node):
     TODO:    operator_placement: prefix/infix/suffix 
     '''
     #TODO: give NodeFuncCall a nice constructor
-    def __init__(self, name=None, arguments=[], keyword_arguments = {}, lok=None):
+    def __init__(self, name=None, arguments=[], keyword_arguments = {}, loc=None):
         super(NodeFuncCall, self).__init__()
         self.name = name
         self.arguments = arguments[:]
@@ -575,7 +575,7 @@ class NodeFuncCall(Node):
         #--- for code generation --------------------------------------------#
         self.function_object = None
         #--- for error messages ---------------------------------------------#
-        self.loc = lok
+        self.loc = loc
 
 
 #-------------- Statements --------------------------------------------------

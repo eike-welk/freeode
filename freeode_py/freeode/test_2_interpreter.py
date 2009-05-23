@@ -411,8 +411,8 @@ compile A
     
     
 def test_interpreter_object_compile_statement():
-    #py.test.skip('Method calls don\'t work!!!')
-    print 'Test interpreter object: compile statement ...............................................................'
+    py.test.skip('Test interpreter object: compile statement!!!')
+    print 'Test interpreter object: compile statement'
     from freeode.interpreter import Interpreter
 
     prog_text = \
@@ -457,8 +457,8 @@ print('end')
       
 
 def test_interpreter_object_dollar_operator():
-    #py.test.skip('Method calls don\'t work!!!')
-    print 'Test interpreter object: "$" operator ...............................................................'
+    py.test.skip('Test interpreter object: "$" operator!!!')
+    print 'Test interpreter object: "$" operator'
     from freeode.interpreter import Interpreter
 
     prog_text = \
@@ -501,7 +501,7 @@ print('end')
 
 
 def test_interpreter_small_simulation_program():
-    #py.test.skip('Method calls don\'t work!!!')
+    py.test.skip('Test interpreter: small simulation program.!!!')
     print 'Test interpreter: small simulation program.'
     from freeode.interpreter import Interpreter
 
@@ -515,12 +515,12 @@ class BarrelWithHole:
     data V, h: Float
     data A_bott, A_o, mu, q, g: Float param
 
-    func dynamic():
+    func dynamic(this):
         h = V/A_bott
         $V = q - mu*A_o*sqrt(2*g*h)
 #        print('h: ', h)
 
-    func init(q_in):
+    func init(this, q_in):
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
         q = q_in #0.05
@@ -529,15 +529,15 @@ class BarrelWithHole:
 class RunTest:
     data system: BarrelWithHole
 
-    func dynamic():
+    func dynamic(this):
         system.dynamic()
 
-    func init():
+    func init(this):
         system.init(0.55)
 #        solutionParameters.simulationTime = 100
 #        solutionParameters.reportingInterval = 1
 
-    func final():
+    func final(this):
 #        graph system.V, system.h
         print('Simulation finished successfully.')
         
@@ -559,6 +559,6 @@ compile RunTest
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_object_compile_statement()
+    test_interpreter_small_simulation_program()
     pass
 

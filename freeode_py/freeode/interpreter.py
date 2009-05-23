@@ -1415,9 +1415,10 @@ class ExpressionVisitor(Visitor):
 #        #mark attribute as state variable
 #        variable.role = RoleStateVariable
         #create the associated derived variable
-        deri_var = self.dispatch(variable.type_ex)
+        deri_var_class = variable.type()
+        deri_var = deri_var_class()
         deri_var.role = RoleAlgebraicVariable
-        #find state variable's name in parent
+        #find state variable in parent
         for var_name, var in variable.parent().attributes.iteritems():
             if var is variable: 
                 break
@@ -1426,8 +1427,8 @@ class ExpressionVisitor(Visitor):
                             'in "variable.parent().attributes".')
         #put time derivative in parent, with nice name
         #TODO: use predictable variable name, that contains special character ($).
-        deri_name = DotName(var_name[0] + '__dt')         #IGNORE:W0631
-        deri_name = make_unique_name(deri_name, variable.parent().attributes)
+        deri_name = DotName(var_name[0] + '$time')         #IGNORE:W0631
+        #deri_name = make_unique_name(deri_name, variable.parent().attributes)
         variable.parent().create_attribute(deri_name, deri_var)
         #remember time derivative also in state variable
         variable.time_derivative = weakref.ref(deri_var)
@@ -1658,13 +1659,12 @@ class ExpressionVisitor(Visitor):
         #      time.
         #   
         #      if  node.function_object is not None:
-        #          call_obj = node.function_object
+        #          func_obj = node.function_object
         #find the right call-able object   
-        call_obj = self.dispatch(node.name)
-        if not isinstance(call_obj, CallableObject):
+        func_obj = self.dispatch(node.name)
+        if not isinstance(func_obj, CallableObject):
             raise UserException('Expecting callable object!', node.loc)
         
-        #TODO: maybe a separate function starting here makes sense?
         #evaluate all arguments in the caller's environment.
         ev_args = []
         for arg_val in node.arguments:
@@ -1675,8 +1675,19 @@ class ExpressionVisitor(Visitor):
             ev_arg_val = self.dispatch(arg_val)
             ev_kwargs[arg_name] = ev_arg_val
             
-        #call the call-able object
-        return call_obj(*ev_args, **ev_kwargs)     #IGNORE:W0142
+        try:
+            #call the call-able object
+            return func_obj(*ev_args, **ev_kwargs)     #IGNORE:W0142
+        except UnknownArgumentsException:
+            #Some arguments were unknown create an unevaluated function call
+            new_call = NodeFuncCall(node.name, ev_args, ev_kwargs, node.loc)
+            #put on decoration
+            new_call.function_object = func_obj
+            new_call.type = func_obj.return_type
+            new_call.is_assigned = True
+            #Choose most variable role: const -> param -> variable
+            new_call.role = determine_result_role(ev_args, ev_kwargs)
+            return new_call
 
 
         
