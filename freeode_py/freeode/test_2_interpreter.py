@@ -117,7 +117,7 @@ print('end')
   
   
 
-def test_interpreter_object_class_definition():
+def test_interpreter_class_definition_1():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: class definition ...............................................................'
     from freeode.interpreter import Interpreter, DotName
@@ -165,9 +165,58 @@ print('end')
                                 .get_attribute(DotName('a2')).value == 2 * 3.1415)
     assert (intp.modules['test'].get_attribute(DotName('b'))
                                 .get_attribute(DotName('b1')).value == 3.1415)
+  
+  
+  
+def test_interpreter_class_definition_2():
+    '''
+    Test user defined classes - correctness of parent attribute.
+    
+    Data attributes are copied when a class is instantiated. (All attributes
+    are constructed when the class is defined.) The parent pointers, which 
+    point back to the object that contains each object, must be updated 
+    by the copy algorithm.  Otherwise they point to the old parents before the 
+    copy.
+    
+    Interpreter Object has a __deepcopy__ function that takes care of this.
+    '''
+    #py.test.skip('Test user defined classes - correctness of parent attribute.')
+    print 'Test user defined classes - correctness of parent attribute.'
+    from freeode.interpreter import (Interpreter, IFloat)
+    from freeode.ast import (DotName)
 
+    prog_text = \
+'''
+class A:
+    data z: Float const
+
+class B:
+    data a: A const
+
+
+data b:B const
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
   
-  
+    print
+    #print intp.modules['test']
+    
+    #get the instance objects defined in this program
+    mod = intp.modules['test']
+    b = mod.get_attribute(DotName('b'))
+    a = b.get_attribute(DotName('a'))
+    z = a.get_attribute(DotName('z'))
+    
+    #check the correctness of the parent attributes
+    assert b.parent() is mod
+    assert a.parent() is b
+    assert z.parent() is a
+
+
+
 def test_interpreter_method_call():
     #py.test.skip('Method calls do not work! Implement method wrappers!')
     print 'Test interpreter: method call ...............................................................'
@@ -207,7 +256,7 @@ print('end')
 
 
 
-def test_interpreter_method_call_this_namespace():
+def test_method_call_this_namespace_1():
     #py.test.skip('Method calls do not work! Implement method wrappers!')
     print 'Test interpreter: method call, this namespace ...............................................................'
     from freeode.interpreter import Interpreter, DotName
@@ -223,7 +272,7 @@ class A:
     func compute(this, x):
         print('in compute_a2 x=', x)
         a1 = x
-        a2 = x + 2
+        a2 = a1 + 2
         
 data a: A const
 a.compute(3)
@@ -244,6 +293,52 @@ print('end')
     assert (intp.modules['test'].get_attribute(DotName('a'))
                                 .get_attribute(DotName('a1')).value == 3)
     assert (intp.modules['test'].get_attribute(DotName('a'))
+                                .get_attribute(DotName('a2')).value == 5)
+#    assert False, 'Test'
+
+      
+      
+def test_method_call_this_namespace_2():
+    #py.test.skip('Test interpreter: method call, this namespace')
+    print 'Test interpreter: method call, this namespace'
+    from freeode.interpreter import Interpreter, DotName
+
+    prog_text = \
+'''
+class A:
+    data a1: Float const
+    data a2: Float const
+    
+    func compute(this, x):
+        print('in compute_a2 x=', x)
+        a1 = x
+        a2 = a1 + 2
+        
+class B:
+    data a: A
+    
+    func compute(this, x):
+        a.compute(x)
+    
+data b: B const
+b.compute(3)
+print('b.a.a1 = ', b.a.a1)
+print('b.a.a2 = ', b.a.a2)
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    #interpret the program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    print intp.modules['test']
+  
+    assert (intp.modules['test'].get_attribute(DotName('b'))
+                                .get_attribute(DotName('a'))
+                                .get_attribute(DotName('a1')).value == 3)
+    assert (intp.modules['test'].get_attribute(DotName('b'))
+                                .get_attribute(DotName('a'))
                                 .get_attribute(DotName('a2')).value == 5)
 #    assert False, 'Test'
 
@@ -456,36 +551,56 @@ print('end')
       
       
 
-def test_interpreter_object_dollar_operator():
-    py.test.skip('Test interpreter object: "$" operator!!!')
-    print 'Test interpreter object: "$" operator'
+def test_interpreter_dollar_operator_1():
+    #py.test.skip('Test interpreter: "$" operator.')
+    print 'Test interpreter: "$" operator.'
     from freeode.interpreter import Interpreter
 
     prog_text = \
 '''
-print('start')
-
-class B:
-    data b1: Float variable
-    
-    func foo(this, x):
-        $b1 = b1 * x
-    
 class A:
-    data a1: Float param
-    data b: B variable
-    
-    func init(this):
-        a1 = 1
-        b.b1 = 11
-        
+    data a1: Float 
+
     func dynamic(this):
-        a1 = a1 + 2
-        b.foo(a1)
+        $a1 = 2
 
 compile A
+'''
 
-print('end')
+
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    #print intp.modules['test']
+    print intp.get_compiled_objects()[0] 
+  
+    #TODO: Assertions
+
+
+
+def test_interpreter_dollar_operator_2():
+    #py.test.skip('Test interpreter: "$" operator. - Problem with user defined classes.')
+    print 'Test interpreter: "$" operator. - Problem with user defined classes.'
+    from freeode.interpreter import Interpreter
+
+    prog_text = \
+'''
+class A:
+    data z: Float
+    
+    func dynamic(this):
+        $z = 2
+
+class B:
+    data a: A
+
+    func dynamic(this):
+        a.dynamic()
+
+compile B #this crashes
+#compile A #this works
 '''
 
     #create the interpreter
@@ -493,15 +608,14 @@ print('end')
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
-    print intp.modules['test']
-    print intp.get_compiled_objects() 
+    #print intp.modules['test']
+    print intp.get_compiled_objects()[0] 
   
     #TODO: Assertions
 
-
-
+  
 def test_interpreter_small_simulation_program():
-    py.test.skip('Test interpreter: small simulation program.!!!')
+    #py.test.skip('Test interpreter: small simulation program.!!!')
     print 'Test interpreter: small simulation program.'
     from freeode.interpreter import Interpreter
 
@@ -559,6 +673,6 @@ compile RunTest
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_small_simulation_program()
+    test_interpreter_class_definition_2()
     pass
 

@@ -173,17 +173,43 @@ class InterpreterObject(Node):
         #TODO: self.default_value ??? (or into leaf types?)
         #TODO: self.auto_created ??? for automatically created variables that should be eliminated
   
-    def create_attribute(self, name, newAttr):
+    #TODO: get_name_from_parent() for ExpressionVisitor.make_derivative
+    
+    def __deepcopy__(self, memo_dict):
+        '''deepcopy that gets the parent right'''
+        copied_self = super(InterpreterObject, self).__deepcopy__(memo_dict)
+        for name, copied_attr in copied_self.attributes.iteritems():
+            copied_attr.parent = ref(copied_self)
+        return copied_self
+    
+    def create_attribute(self, name, newAttr, reparent=False):
         '''
-        Put name into symbol table. Store newly constructed instance.
-        This is called for a data statement.
+        Put attribute into parent object. - Put name into symbol table.
+        
+        This method is called for a data statement.
+        - When an attribute with the same name already exists a 
+        DuplicateAttributeError is raised.
+        - This object (self) becomes the parent of newAttr, when newAttr 
+        does not already have a parent. However setting argument 
+        reparent=True forces changing newAttr's parent.
+        
+        ARGUMENTS
+        ---------
+        name: DotName, str
+            Name of the new attribute
+        newAttr: InterpreterObject
+            The new attribute that will be put into this object.
+        reparent: True/False
+            - if True: set parent attribute of newAttr in any case.
+            - if False (default): set parent attribute only if newAttr has no
+            parent.
         '''
         name = DotName(name)
         if name in self.attributes:
             raise DuplicateAttributeError(attr_name=name)
         self.attributes[name] = newAttr
         #set parent link for new objects, or when the parent has died.
-        if newAttr.parent is None or newAttr.parent() is None: #IGNORE:E1102
+        if newAttr.parent is None or newAttr.parent() is None or reparent: #IGNORE:E1102
             newAttr.parent = weakref.ref(self)
         
     def get_attribute(self, name):
@@ -829,7 +855,7 @@ class SimlFunction(CallableObject):
         #name-space where all local variables go into
         locals_root = self.interpreter.get_locals_storage()
         #create namespace with long name of this function
-        locals_ns = locals_root.create_path(func_path + 
+        locals_ns = locals_root.create_path(func_path[1:] + 
                                             DotName(str(self.call_count)))
         return locals_ns
     
@@ -956,8 +982,7 @@ class SimlClass(TypeObject):
         for attr_name, attr in self.attributes.iteritems():
             if not siml_callable(attr):
                 new_attr = attr.copy()
-                new_attr.parent = None
-                new_obj.create_attribute(attr_name, new_attr)
+                new_obj.create_attribute(attr_name, new_attr, reparent=True)
         #run the __init__ compile time constructor
         if new_obj.has_attribute(DotName('__init__')):
             init_meth = new_obj.get_attribute(DotName('__init__'))
@@ -1003,10 +1028,10 @@ class BuiltInClassWrapper(TypeObject):
 
 class IModule(InterpreterObject):
     '''Represent one file'''
-    def __init__(self):
+    def __init__(self, name=None, file_name=None):
         InterpreterObject.__init__(self)
-        self.name = None
-        self.file_name = None
+        self.name = name
+        self.file_name = file_name
         self.role = RoleConstant
 #the single object that should be used to create all Modules
 #CLASS_MODULE = IModule.init_funcs_and_class()
@@ -1418,6 +1443,7 @@ class ExpressionVisitor(Visitor):
         deri_var_class = variable.type()
         deri_var = deri_var_class()
         deri_var.role = RoleAlgebraicVariable
+        
         #find state variable in parent
         for var_name, var in variable.parent().attributes.iteritems():
             if var is variable: 
@@ -1485,7 +1511,7 @@ class ExpressionVisitor(Visitor):
         variable = self.dispatch(node.arguments[0])
         #Precondition: $ acts upon a variable
         if not (siml_isinstance(variable, CLASS_FLOAT) and 
-                issubclass(variable.role, RoleDataCanVaryAtRuntime)):
+                issubclass(variable.role, RoleVariable)):
             raise UserException('Expecting variable after "$" operator.', 
                                 node.loc)
         #change variable into state variable if necessary
@@ -1732,8 +1758,10 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeExpressionStmt)
     def visit_NodeExpressionStmt(self, node):
         '''Intened to call functions. Compute expression and forget result'''
-        self.expression_visitor.dispatch(node.expression)
+        ret_val = self.expression_visitor.dispatch(node.expression)
         #TODO: Implement code collection when unevaluated function call is returned.
+        if isinstance(ret_val, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1)):
+            pass
     
     
     @Visitor.when_type(NodeAssignment)
@@ -1789,6 +1817,7 @@ class StatementVisitor(Visitor):
                 if issubclass(value.role, value_roles):
                     break
                 raise UserException('Incompatible roles in assignment.', loc)
+        #TODO: this is still broken! Only assignments to leaf types must get to the code generator.
         #if target is constant try to perform the assignment
         if target.role is RoleConstant:
             #Find the '__assign__' function in the object.
@@ -1858,11 +1887,10 @@ class StatementVisitor(Visitor):
         '''Create object and put it into symbol table'''
         #get the type object - a NodeIdentifier is expected as class_spec
         class_obj = self.expression_visitor.dispatch(node.class_spec)
-        #Create the new object
-        if isinstance(class_obj, TypeObject):
-            new_object = class_obj()
-        else:
+        if not isinstance(class_obj, TypeObject):
             raise UserException('Class expected.', node.loc)
+        #Create the new object
+        new_object = class_obj()
             
         #store new object in local scope
         new_name = node.name
@@ -1888,24 +1916,25 @@ class StatementVisitor(Visitor):
         #Create data:
         #get the type object - a NodeIdentifier is expected as class_spec
         class_obj = self.expression_visitor.dispatch(node.class_spec)
-        #Create the new object
-        if isinstance(class_obj, TypeObject):
-            tree_object = class_obj()
-        else:
+        if not isinstance(class_obj, TypeObject):
             raise UserException('Class expected in compile statement.', node.loc)
+        #Create the new object
+        tree_object = class_obj()
+        #provide a module where local variables can be stored,
+        func_locals = InterpreterObject()
+        tree_object.create_attribute('__func_locals__', func_locals)
         #put new object also into module namespace, if name given
         if node.name is not None:
             self.environment.local_scope.create_attribute(node.name, tree_object)
-            
+#        print 'tree_object ------------------------------------------------------'
+#        print tree_object
+           
         #create flat object
         flat_object = CompiledClass()
         flat_object.instance_name = node.name
         flat_object.class_name = class_obj.name
         #flat_object.type = tree_object.type
         flat_object.loc = tree_object.type().loc 
-        #provide a module where local variables can be stored,
-        func_locals = InterpreterObject()
-        flat_object.create_attribute('__func_locals__', func_locals)
         
         #Create code: 
         #TODO: Implement automatic calling of main functions in child objects.
@@ -1928,6 +1957,10 @@ class StatementVisitor(Visitor):
             #Put new main function into flat object
             flat_object.create_attribute(func_name, func_flat)
 
+        #print 'func_locals -----------------------------------------------------'
+        #print func_locals
+        #return
+    
         #flatten tree_object (the data) recursively.
         def flatten(tree_obj, flat_obj, prefix):
             '''
@@ -1943,6 +1976,10 @@ class StatementVisitor(Visitor):
                 Prefix for attribute names, to create the long names.
             '''
             for name, data in tree_obj.attributes.iteritems():
+                #on top level 'this' is a reference to the simulation object 
+                #and leads to infinite recursion
+                if name == DotName('this'):
+                    continue
                 long_name = prefix + name
                 if siml_isinstance(data, (CLASS_FLOAT, CLASS_STRING)):
                     flat_obj.create_attribute(long_name, data)

@@ -1145,15 +1145,14 @@ def test_SimlFunction_3():
     #py.test.skip('Test disabled')
     print 'Test SimlFunction: storage of local variables during code collection.'
     print 'User defined functions are created without parser.'
-    from freeode.interpreter import (Interpreter, SimlFunction, 
+    from freeode.interpreter import (Interpreter, SimlFunction, IModule,
                                      ArgumentList, CLASS_FLOAT, BUILT_IN_LIB)
     from freeode.ast import (NodeFuncArg, DotName)
 
     #create the interpreter - initializes InterpreterObject.interpreter
-    # and set it up to collect code. In this mode local variables of all 
-    # functions must become algebraic variables of the simulation object.
+    
     intp = Interpreter()    #IGNORE:W0612
-    intp.start_collect_code()
+    
     
     #create a Siml value as function argument
     val_1 = CLASS_FLOAT(1)
@@ -1163,9 +1162,15 @@ def test_SimlFunction_3():
     #     ** nothing **
     f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
                       return_type=None, statements=[], global_scope=BUILT_IN_LIB)
-    #call with existing value
-    f1(val_1)
+    #create module where the function lives
+    mod1 = IModule('test-module')
+    mod1.create_attribute('test', f1)
     
+    #call with existing value
+    # and set interpreter up to collect code. In this mode local variables of all 
+    # functions must become algebraic variables of the simulation object.
+    intp.start_collect_code()
+    f1(val_1)
     stmts, fn_locals = intp.stop_collect_code()
     
     print fn_locals
