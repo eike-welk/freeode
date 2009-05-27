@@ -173,8 +173,6 @@ class InterpreterObject(Node):
         #TODO: self.default_value ??? (or into leaf types?)
         #TODO: self.auto_created ??? for automatically created variables that should be eliminated
   
-    #TODO: get_name_from_parent() for ExpressionVisitor.make_derivative
-    
     def __deepcopy__(self, memo_dict):
         '''deepcopy that gets the parent right'''
         copied_self = super(InterpreterObject, self).__deepcopy__(memo_dict)
@@ -262,16 +260,33 @@ class InterpreterObject(Node):
             else:
                 curr_object = curr_object.get_attribute(DotName(name1))
         return curr_object
+  
+  
+        #TODO: get_name_from_parent() for ExpressionVisitor.make_derivative
     
-
+  
     
 class CallableObject(InterpreterObject):
-    '''Base class of all functions.'''
-    def __init__(self, name):
+    '''
+    Base class of all functions.
+    
+    CONSTRUCTOR ARGUMENTS
+    ---------------------
+    name: DotName, str
+        The function's name. 
+    is_fundamental_function: True/False - default:False
+        If True: the function is a basic building block of the language. 
+        The code generator can emit code for this function. The flattened 
+        simulation object must only contain calls to these functions.
+        If False: This function must be replaced with a series of calls
+        to fundamental functions.
+    '''
+    def __init__(self, name, is_fundamental_function=False):
         InterpreterObject.__init__(self)
         self.role = RoleConstant
         self.is_assigned = True
         self.name = DotName(name)
+        self.is_fundamental_function = is_fundamental_function
 
     def __call__(self, *args, **kwargs):
         '''All Siml-functions must implement this method'''
@@ -296,8 +311,20 @@ class TypeObject(InterpreterObject):
         '''All Siml-classes must implement this method'''
         raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
   
+
         
-        
+class FundamentalObject(InterpreterObject):  
+    '''
+    Objects that represent data in the code that the compiler generates.
+    
+    Only these objects, and operations with these objects, should remain in a 
+    flattened simulation.
+    '''
+    def __init__(self):
+        InterpreterObject.__init__(self)
+
+
+
 class ArgumentList(SimpleArgumentList):
     """
     Contains arguments of a function definition.
@@ -616,8 +643,8 @@ class BuiltInFunctionWrapper(CallableObject):
     call is returned. For operators NodeOpInfix2, NodeOpPrefix1 can be 
     created - see arguments is_binary_op, is_prefix_op, op_symbol.
     
-    ARGUMENTS
-    ---------
+    CONSTRUCTOR ARGUMENTS
+    ---------------------
     name
         name of function
     argument_definition: IntArgumentList
@@ -629,11 +656,17 @@ class BuiltInFunctionWrapper(CallableObject):
         If the return type is None, the function has no return value.
     py_function:
         Function that will be called when the result can be computed.
-    accept_unknown_values: True/False
+    accept_unknown_values: True/False - default: False
         If True: call wrapped function also when arguments are unknown values.
         If False: raise UnknownArgumentsException when an unknown argument is 
         encountered.
-    
+    is_fundamental_function: True/False - default: True
+        If True: the function is a basic building block of the language. 
+        The code generator can emit code for this function. The flattened 
+        simulation object must only contain calls to these functions.
+        If False: This function must be replaced with a series of calls
+        to fundamental functions.
+   
     RETURNS
     -------
     Wrapped function result (InterpreterObject) or None
@@ -641,8 +674,9 @@ class BuiltInFunctionWrapper(CallableObject):
     def __init__(self, name, argument_definition=ArgumentList([]), 
                              return_type=None, 
                              py_function=lambda:None,
-                             accept_unknown_values = False):
-        CallableObject.__init__(self, name)
+                             accept_unknown_values = False,
+                             is_fundamental_function = True):
+        CallableObject.__init__(self, name, is_fundamental_function)
         #IntArgumentList
         self.argument_definition = argument_definition
         #TypeObject or None
@@ -688,7 +722,8 @@ class BuiltInFunctionWrapper(CallableObject):
         #call the wrapped Python function if all argument values are known,
         #or if we don't care about unknown values.
         if all_python_values_exist or self.accept_unknown_values:
-            #bad hack for Python implementation detail
+            #bad hack for Python implementation detail:
+            #'self' must be positional argument.
             if 'self' in parsed_args_2:
                 func_self = parsed_args_2['self']
                 del parsed_args_2['self']
@@ -892,6 +927,8 @@ class BoundMethod(CallableObject):
         self.function = function
         #the 'this' argument - put into list for speed reasons
         self.this = make_proxy(this)
+        #if the wrapped function is fundamental, this method is fundamental too.
+        self.is_fundamental_function = function.is_fundamental_function
         
     def __call__(self, *args, **kwargs):
         new_args = (self.this,) + args
@@ -999,11 +1036,10 @@ class SimlClass(TypeObject):
 #---------- Infrastructure -------------------------------------------------
 class BuiltInClassWrapper(TypeObject):  
     '''
-    Siml class (meta-class) for the built in objects.
+    Siml class for built in objects. - Create instances of built in objects.
     
-    Create instances of built in classes. 
-    
-    Instances of this class create instances of built in objects in Siml.
+    Instances of this class create instances of built in objects in Siml. 
+    (This Python object is therefore a metaclass.)
     They are the class/type of built in objects like:
     Float, String, Function, Class, ...
     The object is s thin wrapper around a Python class.    
@@ -1039,7 +1075,7 @@ class IModule(InterpreterObject):
         
         
 #------- Built In Data --------------------------------------------------
-class IFloat(InterpreterObject):
+class IFloat(FundamentalObject):
     '''
     Memory location of a floating point number
     
@@ -1049,7 +1085,7 @@ class IFloat(InterpreterObject):
     type_object = None
     
     def __init__(self, init_val=None):
-        InterpreterObject.__init__(self)
+        FundamentalObject.__init__(self)
         self.type = ref(IFloat.type_object)
         self.time_derivative = None
         self.target_name = None
@@ -1102,7 +1138,9 @@ class IFloat(InterpreterObject):
         W('__assign__', binop_args, None, 
           py_function=IFloat.__assign__,
           accept_unknown_values=True).put_into(class_float) 
-          
+        #Printing
+        W('__str__', prefix_args, class_float, 
+          py_function=IFloat.__str__).put_into(class_float)
         #return the class object
         return class_float
 
@@ -1129,13 +1167,16 @@ class IFloat(InterpreterObject):
         else:
             raise UnknownArgumentsException()
         
+    def __str__(self):
+        return str(self.value)
+        
 
 #The class object used in Siml to create instances of IFloat
 CLASS_FLOAT = IFloat.init_funcs_and_class()
     
 
 
-class IString(InterpreterObject):
+class IString(FundamentalObject):
     '''
     Memory location of a string
     
@@ -1145,7 +1186,7 @@ class IString(InterpreterObject):
     type_object = None
     
     def __init__(self, init_val=None):
-        InterpreterObject.__init__(self)
+        FundamentalObject.__init__(self)
         self.type = ref(IString.type_object)
         self.time_derivative = None
         self.target_name = None
@@ -1184,7 +1225,10 @@ class IString(InterpreterObject):
         W('__assign__', binop_args, None, 
           py_function=IString.__assign__,
           accept_unknown_values=True).put_into(class_string) 
-  
+        #Printing
+        single_args = ArgumentList([NodeFuncArg('self', class_string)])
+        W('__str__', single_args, class_string, 
+          py_function=IFloat.__str__).put_into(class_string)  
         #return the class object
         return class_string
 
@@ -1197,6 +1241,9 @@ class IString(InterpreterObject):
             self.value = other.value
         else:
             raise UnknownArgumentsException()
+        
+    def __str__(self):
+        return str(self.value)
 
 
 #The class object used in Siml to create instances of IFloat
@@ -1219,6 +1266,12 @@ class PrintFunction(CallableObject):
         #TODO: if self.interpreter.is_collecting_code(): 
         #          generate print statement, but also print
         
+        if self.interpreter.is_collecting_code():
+            #create code that prints at runtime
+            pass
+        else:
+            #execute the print statement.
+            pass
         #test if all arguments are known
         unknown_argument = False
         for siml_arg in args:
@@ -1555,8 +1608,8 @@ class ExpressionVisitor(Visitor):
             new_node = NodeParentheses()
             new_node.arguments = [val_expr]
             new_node.type = val_expr.type
+            new_node.role = val_expr.role
             new_node.loc = node.loc
-            new_node.role = node.role
             return new_node
 
     
@@ -1595,7 +1648,7 @@ class ExpressionVisitor(Visitor):
             new_oper.arguments = [inst_rhs]
             new_oper.keyword_arguments = {}
             #put on decoration
-            new_oper.function_object = func
+            #new_oper.function_object = func
             new_oper.type = func.return_type
             new_oper.is_assigned = True
             #Choose most variable role: const -> param -> variable
@@ -1642,7 +1695,7 @@ class ExpressionVisitor(Visitor):
             new_oper.arguments = [inst_lhs, inst_rhs]
             new_oper.keyword_arguments = {}
             #put on decoration
-            new_oper.function_object = func
+            #new_oper.function_object = func
             new_oper.type = func.return_type
             new_oper.is_assigned = True
             #Choose most variable role: const -> param -> variable
@@ -1708,7 +1761,7 @@ class ExpressionVisitor(Visitor):
             #Some arguments were unknown create an unevaluated function call
             new_call = NodeFuncCall(node.name, ev_args, ev_kwargs, node.loc)
             #put on decoration
-            new_call.function_object = func_obj
+            #new_call.function_object = func_obj
             new_call.type = func_obj.return_type
             new_call.is_assigned = True
             #Choose most variable role: const -> param -> variable
@@ -1760,8 +1813,20 @@ class StatementVisitor(Visitor):
         '''Intened to call functions. Compute expression and forget result'''
         ret_val = self.expression_visitor.dispatch(node.expression)
         #TODO: Implement code collection when unevaluated function call is returned.
-        if isinstance(ret_val, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1)):
-            pass
+        if ret_val is None or isinstance(ret_val, InterpreterObject):
+            #function was evaluated at comile tiome, forget result it
+            return
+        elif isinstance(ret_val, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1, 
+                                  NodeParentheses)):
+            #there is an unevaluated expression - create some code that 
+            #evaluates it at runtime
+            if not self.interpreter.is_collecting_code():
+                raise UserException('Computations with unknown values are '
+                                    'illegal here.', node.loc)
+            new_stmt = NodeExpressionStmt(ret_val, node.loc)
+            self.interpreter.collect_statement(new_stmt)
+        else:
+            raise UserException('Illegal expression.', node.loc)
     
     
     @Visitor.when_type(NodeAssignment)
@@ -1786,7 +1851,7 @@ class StatementVisitor(Visitor):
         Arguments:
             target: InterpreterObject
                 Object where the information should be stored
-            value: InterpreterObject
+            value: InterpreterObject, ast.Node
                 Object that contains the information, that should be stored.
             loc: TextLocation, None
                 Location in program text for error messages
@@ -1817,24 +1882,34 @@ class StatementVisitor(Visitor):
                 if issubclass(value.role, value_roles):
                     break
                 raise UserException('Incompatible roles in assignment.', loc)
-        #TODO: this is still broken! Only assignments to leaf types must get to the code generator.
-        #if target is constant try to perform the assignment
-        if target.role is RoleConstant:
-            #Find the '__assign__' function in the object.
-            assign_func = target.get_attribute(DotName('__assign__'))
-            #Call the assign function 
+        #Targets with RoleUnkown are converted to the role of value 
+        #(for local variables of functions)
+        if target.role is RoleUnkown:
+            target.role = value.role
+        
+        #get the assignment function
+        assign_func = target.get_attribute(DotName('__assign__'))
+        #Only assignments to leaf types must get to the code generator.
+        if assign_func.is_fundamental_function and target.role is RoleConstant:
+            #function is fundamental and target is constant: 
+            #perform the assignment
             try:
                 assign_func(value)
             except UnknownArgumentsException:
                 UserException('Unknown value in assignment to constant.', loc)
-        #Generate code if target is a parameter or a variable
-        else:
+        elif assign_func.is_fundamental_function:
+            #Generate code if target is a parameter or a variable
             new_assign = NodeAssignment()
             new_assign.target = target
             new_assign.expression = value
+            #new_assign.function_object = assign_func
             new_assign.loc = loc
             self.interpreter.collect_statement(new_assign)
-        
+        else:
+            #function is not fundamental: execute, will generate statements 
+            #with fundamental functions. 
+            assign_func(value)
+
 
     @Visitor.when_type(NodeFuncDef)
     def visit_NodeFuncDef(self, node):

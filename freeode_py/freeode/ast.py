@@ -591,10 +591,10 @@ class NodeExpressionStmt(Node):
         loc: 
             Location in input string
     '''
-    def __init__(self):
+    def __init__(self, expression=None, loc=None):
         super(NodeExpressionStmt, self).__init__()
-        self.expression = None
-        self.loc = None
+        self.expression = expression
+        self.loc = loc
         
 
 class NodeIfStmt(Node):
@@ -655,6 +655,7 @@ class NodeAssignment(Node):
         self.target = None
         self.expression = None
         self.loc = None
+        self.function_object = None
 
 
 #class NodePrintStmt(Node):

@@ -202,7 +202,7 @@ data b:B const
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
-    #print intp.modules['test']
+    print intp.modules['test']
     
     #get the instance objects defined in this program
     mod = intp.modules['test']
@@ -505,6 +505,124 @@ compile A
     
     
     
+def test_interpreter_user_defined_operators_1():
+    '''
+    User defined operators must be converted into multiple statements,
+    that contain only operations on fundamental types. Intermediate results
+    are kept in function local variables, that are stored by the compile 
+    statement.
+    '''
+    #py.test.skip('Test user defined operators - code generation.')
+    print 'Test user defined operators - code generation.'
+    from freeode.interpreter import Interpreter, IFloat, CallableObject
+    from freeode.ast import DotName
+
+    prog_text = \
+'''
+class Time2:
+    data x: Float 
+
+    func __add__(this, other):
+        data res: Time2
+        res.x = 2*(x + other.x)
+        return res
+        
+    func __assign__(this, other):
+        x = other.x
+
+
+class A:
+    data a,b,c: Time2
+    
+    func dynamic(this):
+        c=a+b
+
+compile A
+'''
+
+    #create the interpreter and interpret the mini-program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    #print intp.modules['test']
+    #print intp.get_compiled_objects()[0] 
+    
+    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+    #get the attributes that we have defined
+    a_x = sim.get_attribute(DotName('a.x'))
+    b_x = sim.get_attribute(DotName('b.x'))
+    c_x = sim.get_attribute(DotName('c.x'))
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    #test some facts about the attributes
+    assert isinstance(a_x, IFloat)
+    assert isinstance(b_x, IFloat)
+    assert isinstance(c_x, IFloat)
+    assert isinstance(dynamic, CallableObject)
+    
+    assert len(dynamic.statements) == 2
+    stmt0 = dynamic.statements[0]
+    stmt1 = dynamic.statements[1]
+    #first statement (res.x = 2*(x + other.x)) assigns to function local variable
+    assert stmt0.target not in [a_x, b_x, c_x]
+    assert stmt0.expression.operator == '*'
+    #second statement (c=a+b) assigns to c.x
+    assert stmt1.target is c_x
+    #second statement assigns temporary result of previous computation to attribute c.x
+    assert stmt0.target is stmt1.expression
+    #assert False
+
+
+
+def test_interpreter_expression_statement_1():
+    '''
+    Unevaluated expressions also generate code.
+    '''
+    #py.test.skip('Test expression statement - code generation.')
+    print 'Test expression statement - code generation.'
+    from freeode.interpreter import Interpreter, IFloat, CallableObject
+    from freeode.ast import DotName, NodeExpressionStmt
+
+    prog_text = \
+'''
+class A:
+    data a,b: Float
+    
+    func dynamic(this):
+        1+2
+        a+b
+
+compile A
+'''
+
+    #create the interpreter and interpret the mini-program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    #print intp.modules['test']
+    #print intp.get_compiled_objects()[0] 
+    
+    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+    #get the attributes that we have defined
+    a = sim.get_attribute(DotName('a'))
+    b = sim.get_attribute(DotName('b'))
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    #test some facts about the attributes
+    assert isinstance(a, IFloat)
+    assert isinstance(b, IFloat)
+    assert isinstance(dynamic, CallableObject)
+    #only one statement is collected (a+b)
+    assert len(dynamic.statements) == 1
+    stmt0 = dynamic.statements[0]
+    assert isinstance(stmt0, NodeExpressionStmt)
+    assert stmt0.expression.operator == '+'
+    #assert False
+
+
+
 def test_interpreter_object_compile_statement():
     py.test.skip('Test interpreter object: compile statement!!!')
     print 'Test interpreter object: compile statement'
@@ -554,7 +672,8 @@ print('end')
 def test_interpreter_dollar_operator_1():
     #py.test.skip('Test interpreter: "$" operator.')
     print 'Test interpreter: "$" operator.'
-    from freeode.interpreter import Interpreter
+    from freeode.interpreter import Interpreter, IFloat, CallableObject
+    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -575,8 +694,18 @@ compile A
     print
     #print intp.modules['test']
     print intp.get_compiled_objects()[0] 
-  
-    #TODO: Assertions
+    
+    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+    #get the attributes that we have defined
+    a1 = sim.get_attribute(DotName('a1'))
+    a1_dt = sim.get_attribute(DotName('a1$time'))
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    #test some facts about the attributes
+    assert isinstance(a1, IFloat)
+    assert isinstance(a1_dt, IFloat)
+    assert isinstance(dynamic, CallableObject)
+    #assert False
 
 
 
@@ -673,6 +802,6 @@ compile RunTest
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_class_definition_2()
+    test_interpreter_user_defined_operators_1()
     pass
 
