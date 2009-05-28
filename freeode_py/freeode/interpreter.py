@@ -274,19 +274,21 @@ class CallableObject(InterpreterObject):
     ---------------------
     name: DotName, str
         The function's name. 
-    is_fundamental_function: True/False - default:False
+    '''
+    def __init__(self, name):
+        InterpreterObject.__init__(self)
+        self.role = RoleConstant
+        self.is_assigned = True
+        self.name = DotName(name)
+        self.is_fundamental_function = False
+        '''
         If True: the function is a basic building block of the language. 
         The code generator can emit code for this function. The flattened 
         simulation object must only contain calls to these functions.
         If False: This function must be replaced with a series of calls
         to fundamental functions.
-    '''
-    def __init__(self, name, is_fundamental_function=False):
-        InterpreterObject.__init__(self)
-        self.role = RoleConstant
-        self.is_assigned = True
-        self.name = DotName(name)
-        self.is_fundamental_function = is_fundamental_function
+        '''
+        self.return_type = None
 
     def __call__(self, *args, **kwargs):
         '''All Siml-functions must implement this method'''
@@ -676,7 +678,7 @@ class BuiltInFunctionWrapper(CallableObject):
                              py_function=lambda:None,
                              accept_unknown_values = False,
                              is_fundamental_function = True):
-        CallableObject.__init__(self, name, is_fundamental_function)
+        CallableObject.__init__(self, name)
         #IntArgumentList
         self.argument_definition = argument_definition
         #TypeObject or None
@@ -685,6 +687,8 @@ class BuiltInFunctionWrapper(CallableObject):
         self.py_function = py_function
         #Call wrapped function also when arguments are unknown values
         self.accept_unknown_values = accept_unknown_values
+        #If true, this function is a basic building block of the simulation
+        self.is_fundamental_function = is_fundamental_function
 
 
     def __call__(self, *args, **kwargs):
@@ -773,6 +777,8 @@ class SimlFunction(CallableObject):
         #count how often the function was called (to create unique names 
         #for the local variables)
         self.call_count = 0
+        #this function is no basic building block, because it must be interpreted.
+        self.is_fundamental_function = False
 
 
     def __call__(self, *args, **kwargs):
@@ -929,6 +935,8 @@ class BoundMethod(CallableObject):
         self.this = make_proxy(this)
         #if the wrapped function is fundamental, this method is fundamental too.
         self.is_fundamental_function = function.is_fundamental_function
+        #the bound method has the same return type as the wrapped function
+        self.return_type = function.return_type
         
     def __call__(self, *args, **kwargs):
         new_args = (self.this,) + args
@@ -1075,6 +1083,87 @@ class IModule(InterpreterObject):
         
         
 #------- Built In Data --------------------------------------------------
+class IString(FundamentalObject):
+    '''
+    Memory location of a string
+    
+    The variable's value can be known or unknown.
+    The variable can be assigned a (possibly unknown) value, or not. 
+    '''
+    type_object = None
+    
+    def __init__(self, init_val=None):
+        FundamentalObject.__init__(self)
+        self.type = ref(IString.type_object)
+        self.time_derivative = None
+        self.target_name = None
+        #initialize the value
+        self.value = None
+        if init_val is not None:
+            if isinstance(init_val, (str, float, int)):
+                self.value = str(init_val)
+            elif isinstance(init_val, IString) and init_val.value is not None:
+                self.value = init_val.value
+            else:
+                raise TypeError('Expecting None, str, float, int or known IString in '
+                                'constructor, but received %s' 
+                                % str(type(init_val)))
+    
+    
+    @staticmethod            
+    def init_funcs_and_class():
+        '''
+        Create the class object for Siml and create the special methods for 
+        operators (+).
+        '''
+        #create the class object for the Siml class system
+        class_string = BuiltInClassWrapper('String')
+        class_string.py_class = IString
+        IString.type_object = class_string
+        
+        #initialize the mathematical operators, put them into the class
+        W = BuiltInFunctionWrapper
+        #Binary operators
+        binop_args = ArgumentList([NodeFuncArg('self', class_string), 
+                                    NodeFuncArg('other', class_string)])
+        W('__add__', binop_args, class_string, 
+          py_function=IString.__add__).put_into(class_string)
+        #Special function for assignment
+        W('__assign__', binop_args, None, 
+          py_function=IString.__assign__,
+          accept_unknown_values=True).put_into(class_string) 
+        #Printing
+        single_args = ArgumentList([NodeFuncArg('self', class_string)])
+        W('__str__', single_args, class_string, 
+          py_function=IString._str).put_into(class_string)  
+        #return the class object
+        return class_string
+
+
+    def __add__(self, other):
+        return IString(self.value + other.value)
+    
+    def __assign__(self, other): 
+        if isinstance(other, IString) and other.value is not None:
+            self.value = other.value
+        else:
+            raise UnknownArgumentsException()
+        
+    def __str__(self):#convenience for sane behavior from Python
+        if self.value is None:
+            return '<unknown String>'
+        else:
+            return self.value
+    #called from Siml
+    def _str(self):
+        return self
+
+
+#The class object used in Siml to create instances of IFloat
+CLASS_STRING = IString.init_funcs_and_class()
+    
+
+
 class IFloat(FundamentalObject):
     '''
     Memory location of a floating point number
@@ -1139,8 +1228,8 @@ class IFloat(FundamentalObject):
           py_function=IFloat.__assign__,
           accept_unknown_values=True).put_into(class_float) 
         #Printing
-        W('__str__', prefix_args, class_float, 
-          py_function=IFloat.__str__).put_into(class_float)
+        W('__str__', prefix_args, CLASS_STRING, 
+          py_function=IFloat._str).put_into(class_float)
         #return the class object
         return class_float
 
@@ -1167,8 +1256,16 @@ class IFloat(FundamentalObject):
         else:
             raise UnknownArgumentsException()
         
-    def __str__(self):
-        return str(self.value)
+    def __str__(self): #convenience for sane behavior from Python
+        if self.value is None:
+            return '<unknown Float>'
+        else:
+            return str(self.value)
+    #called from Siml
+    def _str(self):
+        istr = IString(self.value)
+        istr.role = RoleConstant
+        return istr
         
 
 #The class object used in Siml to create instances of IFloat
@@ -1176,125 +1273,41 @@ CLASS_FLOAT = IFloat.init_funcs_and_class()
     
 
 
-class IString(FundamentalObject):
-    '''
-    Memory location of a string
-    
-    The variable's value can be known or unknown.
-    The variable can be assigned a (possibly unknown) value, or not. 
-    '''
-    type_object = None
-    
-    def __init__(self, init_val=None):
-        FundamentalObject.__init__(self)
-        self.type = ref(IString.type_object)
-        self.time_derivative = None
-        self.target_name = None
-        #initialize the value
-        self.value = None
-        if init_val is not None:
-            if isinstance(init_val, (str, float, int)):
-                self.value = str(init_val)
-            elif isinstance(init_val, IString) and init_val.value is not None:
-                self.value = init_val.value
-            else:
-                raise TypeError('Expecting None, str, float, int or known IString in '
-                                'constructor, but received %s' 
-                                % str(type(init_val)))
-    
-    
-    @staticmethod            
-    def init_funcs_and_class():
-        '''
-        Create the class object for Siml and create the special methods for 
-        operators (+).
-        '''
-        #create the class object for the Siml class system
-        class_string = BuiltInClassWrapper('String')
-        class_string.py_class = IString
-        IString.type_object = class_string
-        
-        #initialize the mathematical operators, put them into the class
-        W = BuiltInFunctionWrapper
-        #Binary operators
-        binop_args = ArgumentList([NodeFuncArg('self', class_string), 
-                                    NodeFuncArg('other', class_string)])
-        W('__add__', binop_args, class_string, 
-          py_function=IString.__add__).put_into(class_string)
-        #Special function for assignment
-        W('__assign__', binop_args, None, 
-          py_function=IString.__assign__,
-          accept_unknown_values=True).put_into(class_string) 
-        #Printing
-        single_args = ArgumentList([NodeFuncArg('self', class_string)])
-        W('__str__', single_args, class_string, 
-          py_function=IFloat.__str__).put_into(class_string)  
-        #return the class object
-        return class_string
-
-
-    def __add__(self, other):
-        return IString(self.value + other.value)
-    
-    def __assign__(self, other): 
-        if isinstance(other, IString) and other.value is not None:
-            self.value = other.value
-        else:
-            raise UnknownArgumentsException()
-        
-    def __str__(self):
-        return str(self.value)
-
-
-#The class object used in Siml to create instances of IFloat
-CLASS_STRING = IString.init_funcs_and_class()
-    
-
-
 #-------------- Service -------------------------------------------------------------------  
 class PrintFunction(CallableObject):
-    '''The print function object.'''
+    '''
+    The print function object.
+    '''
     def __init__(self):
         CallableObject.__init__(self, 'print')
         
     def __call__(self, *args, **kwargs):
-        #TODO: Maybe split into 'print' and 'debug' functions
-        #TODO: Print all: all ast.Node
-        #TODO: call Siml __str__ method if it exists
-        #      else call Python __str__ method
-        #TODO: Print unevaluated arguments
-        #TODO: if self.interpreter.is_collecting_code(): 
-        #          generate print statement, but also print
-        
         if self.interpreter.is_collecting_code():
             #create code that prints at runtime
-            pass
+            new_args = []
+            for arg1 in args:
+                str_func = arg1.type().get_attribute(DotName('__str__'))
+                str_call = NodeFuncCall(str_func, [arg1], {}, None)
+                str_expr = self.interpreter.statement_visitor\
+                           .expression_visitor.dispatch(str_call)
+                new_args.append(str_expr)
+            print_func = NodeFuncCall(DotName('print'), new_args, {}, None)
+            print_stmt = NodeExpressionStmt(print_func, None)
+            self.interpreter.collect_statement(print_stmt)
         else:
             #execute the print statement.
-            pass
-        #test if all arguments are known
-        unknown_argument = False
-        for siml_arg in args:
-            if (not hasattr(siml_arg, 'value')) or (siml_arg.value is None):
-                unknown_argument = True
-                break
-        #create unevaluated function call
-        if unknown_argument:
-            func_call = NodeFuncCall()
-            func_call.arguments = args
-            func_call.keyword_arguments = kwargs 
-            #put on decoration
-            func_call.name = self.name
-            func_call.function_object = self
-            func_call.type = None
-            func_call.role = None
-            return func_call
-        #print arguments - all arguments are known
-        else:
-            for siml_arg in args:
-                print siml_arg.value,
-            print
-            return None
+            line = ''
+            for arg1 in args:
+                try:
+                    #Try to call the Siml '__str__' function
+                    str_func = arg1.get_attribute(DotName('__str__'))
+                    arg1_str = str_func().value 
+                except (UndefinedAttributeError, AttributeError, 
+                        UnknownArgumentsException):
+                    #Convert to string Python way (this should always work)
+                    arg1_str = str(arg1)
+                line += arg1_str
+            print line
      
      
      
@@ -1758,6 +1771,7 @@ class ExpressionVisitor(Visitor):
             #call the call-able object
             return func_obj(*ev_args, **ev_kwargs)     #IGNORE:W0142
         except UnknownArgumentsException:
+            #TODO: maybe special actions for bound methods necessary
             #Some arguments were unknown create an unevaluated function call
             new_call = NodeFuncCall(node.name, ev_args, ev_kwargs, node.loc)
             #put on decoration
@@ -1812,7 +1826,6 @@ class StatementVisitor(Visitor):
     def visit_NodeExpressionStmt(self, node):
         '''Intened to call functions. Compute expression and forget result'''
         ret_val = self.expression_visitor.dispatch(node.expression)
-        #TODO: Implement code collection when unevaluated function call is returned.
         if ret_val is None or isinstance(ret_val, InterpreterObject):
             #function was evaluated at comile tiome, forget result it
             return

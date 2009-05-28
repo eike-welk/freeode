@@ -66,8 +66,7 @@ a = sqrt(2)
 def test_interpreter_object_builtin_function_call_2():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: call built in function print...............................................................'
-    from freeode.interpreter import Interpreter, DotName
-    import math
+    from freeode.interpreter import Interpreter
     
     prog_text = \
 '''
@@ -114,6 +113,159 @@ print('end')
     print intp.modules['test']
     
     assert intp.modules['test'].get_attribute(DotName('a')).value == 2*2 + (3*4)**2 + 2**2
+  
+  
+
+def test_print_function_1():
+    #py.test.skip('Test the print function. - actual printing, built in objects.')
+    print 'Test the print function. - actual printing: Float, String, expression.'
+    from freeode.interpreter import Interpreter
+    
+    prog_text = \
+'''
+#print known constants
+print(23)
+print('hello ',2, ' the world!')
+
+#print unknown value
+data foo: Float
+data bar: String
+print(foo)
+print(bar)
+
+#print unevaluated expression
+data a,b: Float
+print(a+b)
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
+#TODO: assertions
+
+
+
+def test_print_function_2():
+    #py.test.skip('Test the print function. - actual printing, user defined class.')
+    print 'Test the print function. - actual printing, user defined class.'
+    from freeode.interpreter import Interpreter
+    
+    prog_text = \
+'''
+#print user defined class
+class C:
+    data a: Float const
+    data b: String const
+    
+    func __str__(this):
+        return a.__str__() + ' and ' + b.__str__()
+    
+data c: C
+c.a = 5
+c.b = 'hello'
+print(c)
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
+#TODO: assertions
+  
+  
+
+def test_print_function_3():
+    #py.test.skip('Test the print function. - code generation for: Float, String')
+    print 'Test the print function. - code generation for: Float, String'
+    from freeode.interpreter import Interpreter
+    from freeode.ast import DotName
+    
+    prog_text = \
+'''
+class A:
+    data a,b,foo: Float
+    data bar: String
+    
+    func dynamic(this):
+        #print known constants
+        print(23)
+        print('hello ',2, ' the world!')
+        
+        #print unknown value
+        print(foo)
+        print(bar)
+        
+        #print unevaluated expression
+        print(a+b)
+        
+compile A
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
+
+    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+    #print sim
+    #get the dynamic function with the generated code
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    assert len(dynamic.statements) == 5
+
+
+
+def test_print_function_4():
+    #py.test.skip('Test the print function. - code generation for: user defined class.')
+    print 'Test the print function. - code generation for: user defined class.'
+    from freeode.interpreter import Interpreter
+    from freeode.ast import DotName
+    
+    prog_text = \
+'''
+#print user defined class
+class C:
+    data a: Float 
+    data b: String
+    
+    func __str__(this):
+        return a.__str__() + ' and ' + b.__str__()
+        #return ' and ' + b.__str__()
+
+
+class A:
+    data c: C
+    
+    func dynamic(this):
+        print(c)
+        
+compile A
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
+
+    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+    print sim
+    #get the dynamic function with the generated code
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    assert len(dynamic.statements) == 1
   
   
 
@@ -420,19 +572,15 @@ def test_StatementVisitor_assign_emit_code_2():
 
     prog_text = \
 '''
-print('start')
-
 data a: Float const
 data b: Float variable
 data c: Float variable
 a = 2*2 #constant no statement emitted
-b = 2*a #compute 2*a at compile time
+b = 2*a #emit b = 8; compute 2*a at compile time
 c = 2*b #emit everything
-print('a = ', a)
+#print('a = ', a)
 #print('b = ', b)
 #print('c = ', c)
-
-print('end')
 '''
 
     #create the interpreter
@@ -802,6 +950,6 @@ compile RunTest
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_user_defined_operators_1()
+    test_print_function_4()
     pass
 
