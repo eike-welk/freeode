@@ -667,12 +667,12 @@ def test_interpreter_user_defined_operators_1():
 
     prog_text = \
 '''
-class Time2:
-    data x: Float 
+class Vec1D:
+    data x: Float role_unknown
 
     func __add__(this, other):
-        data res: Time2
-        res.x = 2*(x + other.x)
+        data res: Vec1D
+        res.x = x + other.x
         return res
         
     func __assign__(this, other):
@@ -680,10 +680,11 @@ class Time2:
 
 
 class A:
-    data a,b,c: Time2
+    data a,b,c: Vec1D
     
     func dynamic(this):
         c=a+b
+
 
 compile A
 '''
@@ -714,12 +715,86 @@ compile A
     stmt1 = dynamic.statements[1]
     #first statement (res.x = 2*(x + other.x)) assigns to function local variable
     assert stmt0.target not in [a_x, b_x, c_x]
-    assert stmt0.expression.operator == '*'
+    assert stmt0.expression.operator == '+'
     #second statement (c=a+b) assigns to c.x
     assert stmt1.target is c_x
     #second statement assigns temporary result of previous computation to attribute c.x
     assert stmt0.target is stmt1.expression
     #assert False
+
+
+
+def test_interpreter_user_defined_operators_2():
+    '''
+    User defined operators must work as constants too. 
+    Same class as in precioust test, but all variables are constant.
+    '''
+    #py.test.skip('Test user defined operators - code generation.')
+    print 'Test user defined operators - code generation.'
+    from freeode.interpreter import Interpreter, IFloat, CallableObject
+    from freeode.ast import DotName, RoleConstant
+
+    prog_text = \
+'''
+class Vec1D:
+    data x: Float role_unknown
+
+    func __add__(this, other):
+        data res: Vec1D
+        res.x = x + other.x
+        #print(res)
+        return res
+        
+    func __assign__(this, other):
+        x = other.x
+
+
+data a,b,c: Vec1D const
+a.x = 2
+b.x = 3
+
+#the test ----------
+c=a+b
+'''
+
+    #create the interpreter and interpret the mini-program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    mod = intp.modules['test']
+    #print mod
+    #print intp.get_compiled_objects()[0] 
+    
+    #get the attributes that we have defined
+    a = mod.get_attribute(DotName('a'))
+    a_x = a.get_attribute(DotName('x'))
+    assert a_x.role == RoleConstant
+    b = mod.get_attribute(DotName('b'))
+    b_x = b.get_attribute(DotName('x'))
+    assert b_x.role == RoleConstant
+    c = mod.get_attribute(DotName('c'))
+    c_x = c.get_attribute(DotName('x'))
+    assert c_x.role == RoleConstant
+    
+#    dynamic = sim.get_attribute(DotName('dynamic'))
+#    #test some facts about the attributes
+#    assert isinstance(a_x, IFloat)
+#    assert isinstance(b_x, IFloat)
+#    assert isinstance(c_x, IFloat)
+#    assert isinstance(dynamic, CallableObject)
+#    
+#    assert len(dynamic.statements) == 2
+#    stmt0 = dynamic.statements[0]
+#    stmt1 = dynamic.statements[1]
+#    #first statement (res.x = 2*(x + other.x)) assigns to function local variable
+#    assert stmt0.target not in [a_x, b_x, c_x]
+#    assert stmt0.expression.operator == '+'
+#    #second statement (c=a+b) assigns to c.x
+#    assert stmt1.target is c_x
+#    #second statement assigns temporary result of previous computation to attribute c.x
+#    assert stmt0.target is stmt1.expression
+#    #assert False
 
 
 
@@ -779,7 +854,7 @@ def test_user_defined_class_roles_1():
     #py.test.skip('Test user defined classes with different roles.')
     print 'Test user defined classes with different roles.'
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
+    from freeode.ast import (DotName, RoleConstant, RoleVariable)
     
     prog_text = \
 '''
@@ -806,16 +881,76 @@ compile B
     intp.interpret_module_string(prog_text, None, 'test')
   
 #    print
+    mod = intp.modules['test']
 #    print 'module after interpreter run: ---------------------------------'
-#    print intp.modules['test']
+#    print mod
+    ac = mod.get_attribute(DotName('ac'))
+    a = ac.get_attribute(DotName('a'))
+    assert a.role == RoleConstant
 
 #    #get flattened object
-#    sim = intp.get_compiled_objects()[0] 
+    sim = intp.get_compiled_objects()[0] 
+#    print 'Flattened object: ---------------------------------'
 #    print sim
-#    #get the dynamic function with the generated code
-#    dynamic = sim.get_attribute(DotName('dynamic'))
-#    assert len(dynamic.statements) == 1
-    #TODO: assertions
+    av_a = sim.get_attribute(DotName('av.a'))
+    assert av_a.role == RoleVariable
+  
+  
+
+def test_function_return_value_roles_1():
+    '''
+    User defined functions can be called from constant and from variable 
+    environments. Test the roles of their return values.
+    This test only involves fundamental types.
+    '''
+    #py.test.skip('Test roles of return values of user defined functions.')
+    print 'Test roles of return values of user defined functions.'
+    from freeode.interpreter import Interpreter
+    from freeode.ast import (DotName, RoleConstant, RoleVariable)
+    
+    prog_text = \
+'''
+func plus2(x):
+    data r: Float
+    r = x + 2
+    return r
+
+data ac,bc: Float const
+ac = 3
+bc = plus2(ac)
+
+
+class B:
+    data av,bv: Float
+    
+    func dynamic(this):
+        bv = plus2(av)
+        
+compile B
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+#    print
+    mod = intp.modules['test']
+#    print 'module after interpreter run: ---------------------------------'
+#    print mod
+    ac = mod.get_attribute(DotName('ac'))
+    bc = mod.get_attribute(DotName('bc'))
+    assert ac.role == RoleConstant
+    assert bc.role == RoleConstant
+    assert ac.value == 3
+    assert bc.value == 5
+
+#    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+#    print 'Flattened object: ---------------------------------'
+#    print sim
+    av = sim.get_attribute(DotName('av'))
+    bv = sim.get_attribute(DotName('bv'))
+    assert av.role == RoleVariable
+    assert bv.role == RoleVariable
   
   
 
@@ -952,6 +1087,6 @@ compile RunTest
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_print_function_4()
+    test_interpreter_user_defined_operators_1()
     pass
 

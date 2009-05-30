@@ -1264,7 +1264,6 @@ def test_set_role_recursive_2():
     #set the roles in the whole tree
     ########## This line varies ############
     set_role_recursive(root, RoleVariable) 
-    ########################################
     #test the new roles
     assert root.role == RoleVariable
     assert c1.role == RoleConstant
@@ -1290,7 +1289,6 @@ def test_set_role_recursive_2():
     #set the roles in the whole tree
     ########## This line varies ############
     set_role_recursive(root, RoleParameter) 
-    ########################################
     #test the new roles
     assert root.role == RoleParameter
     assert c1.role == RoleConstant
@@ -1316,7 +1314,6 @@ def test_set_role_recursive_2():
     #set the roles in the whole tree
     ########## This line varies ############
     set_role_recursive(root, RoleConstant) 
-    ########################################
     #test the new roles
     assert root.role == RoleConstant
     assert c1.role == RoleConstant
@@ -1325,7 +1322,6 @@ def test_set_role_recursive_2():
     assert u1.role == RoleConstant
     
     
-
 
 if __name__ == '__main__':
     # Debugging code may go here.

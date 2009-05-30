@@ -87,6 +87,8 @@ class ExecutionEnvironment(object):
     '''
     Container for name spaces where symbols are looked up.
     Function get_attribute(...) searches the symbol in all name spaces.
+    
+    Other languages call such objects stack frame.
     '''
     def __init__(self):
         #Name space for global variables. Module where the code was written.
@@ -99,6 +101,8 @@ class ExecutionEnvironment(object):
         
         #return value from function call
         self.return_value = None
+        #default role for the data statement.
+        self.default_data_role = RoleUnkown
 
 
     def get_attribute(self, dot_name, default=UndefinedAttributeError()):
@@ -113,10 +117,10 @@ class ExecutionEnvironment(object):
         ---------
         dot_name : DotName
             Dotted name that is looked up in the different name spaces.
-        default : object
+        default : object (default value: UndefinedAttributeError())
             Object which is returned when dot_name can not be found.
             When argument is of type UndefinedAttributeError, an 
-            UndefinedAttributeError is raised when dot_name can not be found.
+            UndefinedAttributeError is raised instead (default behavior).
         '''
         #try to find name in scope hierarchy:
         # function --> class --> module
@@ -832,6 +836,8 @@ class SimlFunction(CallableObject):
         new_env.global_scope = self.global_scope #global scope from function definition.
         new_env.this_scope = this_namespace
         new_env.local_scope = local_namespace
+        #local variables in functions can take any role
+        new_env.default_data_role = RoleUnkown
 
         #execute the function's code in the new environment.
         self.interpreter.push_environment(new_env)
@@ -1001,7 +1007,10 @@ class SimlClass(TypeObject):
         new_env.global_scope = self.interpreter.get_environment().global_scope
         new_env.this_scope = None
         new_env.local_scope = self #functions and data are created 
-        #                           in the local scope
+        #                           in the local scope - this class object
+        #Data attributes of user defined objects are by default variables
+        new_env.default_data_role = RoleVariable
+        
         #execute the function's code in the new environment.
         self.interpreter.push_environment(new_env)
         try:
@@ -1898,10 +1907,11 @@ class StatementVisitor(Visitor):
         '''Intened to call functions. Compute expression and forget result'''
         ret_val = self.expression_visitor.dispatch(node.expression)
         if ret_val is None or isinstance(ret_val, InterpreterObject):
-            #function was evaluated at comile tiome, forget result it
+            #function was evaluated at compile time, forget result
             return
         elif isinstance(ret_val, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1, 
                                   NodeParentheses)):
+            #TODO: remove all statements that have no effect, and warn about it
             #there is an unevaluated expression - create some code that 
             #evaluates it at runtime
             if not self.interpreter.is_collecting_code():
@@ -1941,7 +1951,8 @@ class StatementVisitor(Visitor):
                 Location in program text for error messages
         '''
         #TODO: assignment without defining the variable first (no data statement.)
-        #      This would also be useful for function call
+        #      This is very useful inside a function. Putting function arguments 
+        #      into the function's namespace could be handled this way too.
         #TODO: In different parts of code only variables with speciffic roles 
         #      are valid targets of an assign statement.
         #      outside compile: only RoleConstant
@@ -1954,8 +1965,13 @@ class StatementVisitor(Visitor):
         if target.is_assigned:
             raise UserException('Duplicate assignment.', loc)
         target.is_assigned = True
+        #Targets with RoleUnkown are converted to the role of value.
+        #(for local variables of functions)
+        if target.role is RoleUnkown:
+            target.role = value.role
         #Test if assignment is possible according to the role.
-        #TODO: What are the semantics for user defined classes?
+        #TODO: What are the semantics for user defined classes? !!!!!!!!!!!!!!!
+        #TODO: special handling of RoleUnknown on LHS. 
         assign_role_hierarchy = {
             RoleConstant:  (RoleConstant,),
             RoleParameter: (RoleConstant, RoleParameter),
@@ -1965,11 +1981,9 @@ class StatementVisitor(Visitor):
             if issubclass(target.role, target_role):
                 if issubclass(value.role, value_roles):
                     break
-                raise UserException('Incompatible roles in assignment.', loc)
-        #Targets with RoleUnkown are converted to the role of value 
-        #(for local variables of functions)
-        if target.role is RoleUnkown:
-            target.role = value.role
+                raise UserException('Incompatible roles in assignment. '
+                                    'LHS: %s RHS: %s' % (str(target.role), 
+                                                         str(value.role)), loc)
         
         #get the assignment function
         assign_func = target.get_attribute(DotName('__assign__'))
@@ -2052,10 +2066,10 @@ class StatementVisitor(Visitor):
             
         #Set role
         role = node.role
-        #The default role is variable
-        #TODO: implement flexible default roles
+        #The default role is set at beginning of: 
+        #module, class definition, function execution
         if role is None:
-            role = RoleVariable
+            role = self.environment.default_data_role
         #Set the role recursively for user defined classes
         set_role_recursive(new_object, role)
            
@@ -2106,6 +2120,7 @@ class StatementVisitor(Visitor):
             if not tree_object.has_attribute(func_name):
                 print 'Warning: main function %s is not defined.' % str(func_name)
                 continue
+            #TODO: create new environment with correct default role, dynamic:RoleVariable, init:RoleParameter
             #call the main function and collect code
             self.interpreter.start_collect_code(func_locals=func_locals)
             func_tree = tree_object.get_attribute(func_name)
@@ -2270,6 +2285,8 @@ class Interpreter(object):
         env = ExecutionEnvironment()
         env.global_scope = make_proxy(mod)
         env.local_scope = make_proxy(mod)
+        #Data attributes on module level are by default constants
+        env.default_data_role = RoleConstant
         #put the frame on the frame stack
         self.push_environment(env)
         #parse the program text

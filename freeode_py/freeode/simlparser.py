@@ -632,7 +632,8 @@ class Parser(object):
             #Submodels will be labeled variables even though these categories don't apply to them.
             roleDict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleVariable,
                         'algebraic_variable':RoleAlgebraicVariable,
-                        'state_variable':RoleStateVariable}
+                        'state_variable':RoleStateVariable,
+                        'role_unknown':RoleUnkown}
             attrDef.role = roleDict.get(toks.attr_role, None)
             #store the default value
             if isinstance(toks.default_value, Node):
@@ -1027,6 +1028,7 @@ class Parser(object):
         #             the compiler may generate special code depending on the value.
         #TODO: maybe add role for automatically created variables
         attrRole = (  kw('state_variable') | kw('algebraic_variable') 
+                    | kw('role_unknown') 
                     | kw('variable') | kw('param') | kw('const')      )
         #parse: 'foo, bar, baz
         newAttrList = delimitedList(newIdentifier)         
