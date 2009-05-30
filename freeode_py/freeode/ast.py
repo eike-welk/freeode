@@ -903,6 +903,7 @@ class NodeCompileStmt(NodeDataDef):
     '''
     def __init__(self):
         NodeDataDef.__init__(self)
+        self.role = RoleVariable
 
 
 class NodeFuncArg(Node):

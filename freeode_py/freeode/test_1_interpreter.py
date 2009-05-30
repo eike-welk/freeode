@@ -1187,8 +1187,148 @@ def test_SimlFunction_3():
 
 
 
+def test_role_more_variable_1():
+    #py.test.skip('Test role_more_variable: compare the variablenes of two roles.')
+    print 'Test role_more_variable: compare the variablenes of two roles.'
+    from freeode.interpreter import (role_more_variable)
+    from freeode.ast import (RoleConstant, RoleParameter, RoleVariable, RoleUnkown)
+
+    assert role_more_variable(RoleConstant, RoleParameter) is False
+    assert role_more_variable(RoleParameter, RoleConstant) is True
+    assert role_more_variable(RoleParameter, RoleVariable) is False
+    assert role_more_variable(RoleVariable, RoleParameter) is True
+    assert role_more_variable(RoleVariable, RoleUnkown) is False
+    assert role_more_variable(RoleUnkown, RoleVariable) is True
+    
+    assert role_more_variable(RoleConstant, RoleConstant) is False
+    assert role_more_variable(RoleParameter, RoleParameter) is False
+    assert role_more_variable(RoleVariable, RoleVariable) is False
+    assert role_more_variable(RoleUnkown, RoleUnkown) is False
+    
+    
+
+def test_role_more_variable_2():
+    #py.test.skip('Test role_more_variable: exceptions for wrong types.')
+    print 'Test role_more_variable: exceptions for wrong types.'
+    from freeode.interpreter import (role_more_variable)
+    from freeode.ast import (RoleConstant, RoleParameter)
+    
+    try: 
+        role_more_variable(float, RoleConstant)
+    except ValueError, e:
+        print 'Exception is OK!'
+        print e
+    else:
+        assert False, 'Exception missing'
+        
+    try: 
+        role_more_variable(RoleParameter, float)
+    except ValueError, e:
+        print 'Exception is OK!'
+        print e
+    else:
+        assert False, 'Exception missing'
+        
+    try: 
+        role_more_variable(RoleParameter, 1)
+    except TypeError, e:
+        print 'Exception is OK!'
+        print e
+    else:
+        assert False, 'Exception missing'
+        
+        
+
+def test_set_role_recursive_2():
+    #py.test.skip('Test role_more_variable: exceptions for wrong types.')
+    print 'Test role_more_variable: exceptions for wrong types.'
+    from freeode.interpreter import (InterpreterObject, set_role_recursive)
+    from freeode.ast import (RoleConstant, RoleParameter, RoleVariable, 
+                             RoleUnkown)
+    
+    #create a little tree of objects
+    c1 = InterpreterObject()
+    c1.role = RoleConstant
+    p1 = InterpreterObject()
+    p1.role = RoleParameter
+    v1 = InterpreterObject()
+    v1.role = RoleVariable
+    u1 = InterpreterObject()
+    u1.role = RoleUnkown
+    root = InterpreterObject()
+    root.role = RoleVariable
+    root.create_attribute('c1', c1)
+    root.create_attribute('p1', p1)
+    root.create_attribute('v1', v1)
+    root.create_attribute('u1', u1)
+    #set the roles in the whole tree
+    ########## This line varies ############
+    set_role_recursive(root, RoleVariable) 
+    ########################################
+    #test the new roles
+    assert root.role == RoleVariable
+    assert c1.role == RoleConstant
+    assert p1.role == RoleParameter
+    assert v1.role == RoleVariable
+    assert u1.role == RoleVariable
+    
+    #create a little tree of objects
+    c1 = InterpreterObject()
+    c1.role = RoleConstant
+    p1 = InterpreterObject()
+    p1.role = RoleParameter
+    v1 = InterpreterObject()
+    v1.role = RoleVariable
+    u1 = InterpreterObject()
+    u1.role = RoleUnkown
+    root = InterpreterObject()
+    root.role = RoleVariable
+    root.create_attribute('c1', c1)
+    root.create_attribute('p1', p1)
+    root.create_attribute('v1', v1)
+    root.create_attribute('u1', u1)
+    #set the roles in the whole tree
+    ########## This line varies ############
+    set_role_recursive(root, RoleParameter) 
+    ########################################
+    #test the new roles
+    assert root.role == RoleParameter
+    assert c1.role == RoleConstant
+    assert p1.role == RoleParameter
+    assert v1.role == RoleParameter
+    assert u1.role == RoleParameter
+    
+    #create a little tree of objects
+    c1 = InterpreterObject()
+    c1.role = RoleConstant
+    p1 = InterpreterObject()
+    p1.role = RoleParameter
+    v1 = InterpreterObject()
+    v1.role = RoleVariable
+    u1 = InterpreterObject()
+    u1.role = RoleUnkown
+    root = InterpreterObject()
+    root.role = RoleVariable
+    root.create_attribute('c1', c1)
+    root.create_attribute('p1', p1)
+    root.create_attribute('v1', v1)
+    root.create_attribute('u1', u1)
+    #set the roles in the whole tree
+    ########## This line varies ############
+    set_role_recursive(root, RoleConstant) 
+    ########################################
+    #test the new roles
+    assert root.role == RoleConstant
+    assert c1.role == RoleConstant
+    assert p1.role == RoleConstant
+    assert v1.role == RoleConstant
+    assert u1.role == RoleConstant
+    
+    
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_InterpreterObject_create_path_2()
+    test_role_more_variable_2()
     pass

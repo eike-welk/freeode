@@ -797,7 +797,7 @@ class SimlFunction(CallableObject):
             raise UserException('The "this" argument (1st argument) '
                                 'must be a known Siml object.')
         
-        #create local scope (for function arguments and local variables)
+        #create local name space (for function arguments and local variables)
         if self.interpreter.is_collecting_code():
             #store local scope so local variables are accessible for 
             #code generation
@@ -832,9 +832,9 @@ class SimlFunction(CallableObject):
         new_env.global_scope = self.global_scope #global scope from function definition.
         new_env.this_scope = this_namespace
         new_env.local_scope = local_namespace
-        self.interpreter.push_environment(new_env)
 
         #execute the function's code in the new environment.
+        self.interpreter.push_environment(new_env)
         try:
             self.interpreter.run(self.statements)
         except ReturnFromFunctionException:           #IGNORE:W0704
@@ -1386,9 +1386,50 @@ def siml_issubclass(in_type, class_or_type_or_tuple):
     return (in_type in class_or_type_or_tuple)
 
 
-def determine_result_role(arguments, keyword_arguments={}):
+def role_more_variable(role1, role2):
+    '''
+    Compare two roles with respect to their variable-character.
+    
+    The basic roles, the variable-character increases from left to right:
+    RoleConstant, RoleParameter, RoleVariable, RoleUnkown
+    
+    ARGUMENTS
+    ---------
+    role1, role2: AttributeRole
+        The two roles to compare.
+        
+    RETURNS
+    -------
+    True/False
+    True:  if role1 (argument 1) is more variable than role2 (argument 2).
+    False: otherwise
+    '''
+    #list roles with increasing variable-character 
+    rank_list = [RoleConstant, RoleParameter, RoleVariable, RoleUnkown]
+    #classify role1
+    for index1 in range(len(rank_list)):
+        if issubclass(role1, rank_list[index1]):
+            break
+    else:
+        raise ValueError('Unknown role %s' % str(role1))
+    #classify role2
+    for index2 in range(len(rank_list)):
+        if issubclass(role2, rank_list[index2]):
+            break
+    else:
+        raise ValueError('Unknown role %s' % str(role2))
+    #compare the roles' variable-character by comparing their positions in 
+    #the list
+    return index1 > index2 #IGNORE:W0631
+    
+    
+def determine_result_role(arguments, keyword_arguments={}): #IGNORE:W0102
     '''
     Determine the most variable role among function arguments.
+    
+    The function returns the role, that a function's return value should 
+    have, by looking at the function's arguments. The role of the return 
+    value is the role of its most variable argument. 
     
     The result's role is the most variable role from any argument.
     const -> param -> variable
@@ -1402,6 +1443,7 @@ def determine_result_role(arguments, keyword_arguments={}):
     -------
     RoleConstant/RoleParameter/RoleParameter
     '''
+    #TODO: rewrite using role_more_variable(...) to compare roles
     all_args = tuple(arguments) + tuple(keyword_arguments.values())
     is_const_role = lambda obj: issubclass(obj.role, RoleConstant)
     is_param_role = lambda obj: issubclass(obj.role, RoleParameter)
@@ -1420,6 +1462,35 @@ def determine_result_role(arguments, keyword_arguments={}):
         return RoleUnkown
     
 
+def set_role_recursive(tree, new_role):
+    '''
+    Set the role of a whole tree.
+    
+    The function recursively enters all of the tree's (child) attributes until 
+    it encounters fundamental objects. 
+    
+    The root attribute's role is changed unconditionally. A child attribute's 
+    role is only changed if its current role is more variable than the new 
+    role. This algorithm makes it possible that a variable can have a constant 
+    child attribute (for example its unit of measurement).
+    
+    ARGUMENTS
+    ---------
+    tree: InterpreterObject()
+        The attribute where the role is changed. May be a tree with 
+        child attributes.
+    new_role:
+        The new role.
+    '''
+    tree.role = new_role
+    #TODO: is this really necessary? Fundamental objects normally have no data attributes.
+    if isinstance(tree, FundamentalObject): 
+        return
+    for attr in tree.attributes.itervalues():
+        if role_more_variable(attr.role, new_role):
+            set_role_recursive(attr, new_role)
+            
+        
 #TODO: implement this!
 #TODO: implement protocol for values: known/unknown, assigned/unassigned
 def siml_isknown(siml_obj):
@@ -1955,7 +2026,6 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeClassDef)
     def visit_NodeClassDef(self, node):
         '''Define a class - create a class object in local name-space'''
-        #TODO: base classes
         #create new class object and put it into the local name-space
         new_class = SimlClass(node.name, bases=None, 
                               statements=node.statements, loc=node.loc)
@@ -1967,7 +2037,7 @@ class StatementVisitor(Visitor):
         '''Visit node with a list of data definitions. Execute them.'''
         self.interpreter.run(node.statements)
         
-        
+    
     #TODO: Create a nice syntax for the data/compile statement with arbitrary keywords,
     #      and tree literals
     @Visitor.when_type(NodeDataDef)
@@ -1980,20 +2050,20 @@ class StatementVisitor(Visitor):
         #Create the new object
         new_object = class_obj()
             
+        #Set role
+        role = node.role
+        #The default role is variable
+        #TODO: implement flexible default roles
+        if role is None:
+            role = RoleVariable
+        #Set the role recursively for user defined classes
+        set_role_recursive(new_object, role)
+           
         #store new object in local scope
         new_name = node.name
         self.environment.local_scope.create_attribute(new_name, new_object)   
         
-        #Set options
-        new_object.role = node.role
-        #The default role is variable
-        if new_object.role is None:
-            new_object.role = RoleVariable
-        #create associated time derivative if the object is a state variable
-        elif new_object.role is RoleStateVariable:
-            self.expression_visitor.make_derivative(new_object)
-        
-        
+       
     @Visitor.when_type(NodeCompileStmt)
     def visit_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
@@ -2008,12 +2078,15 @@ class StatementVisitor(Visitor):
             raise UserException('Class expected in compile statement.', node.loc)
         #Create the new object
         tree_object = class_obj()
-        #provide a module where local variables can be stored,
-        func_locals = InterpreterObject()
-        tree_object.create_attribute('__func_locals__', func_locals)
+        #set role
+        set_role_recursive(tree_object, RoleVariable)
         #put new object also into module namespace, if name given
         if node.name is not None:
             self.environment.local_scope.create_attribute(node.name, tree_object)
+        #provide a module where local variables can be stored,
+        func_locals = InterpreterObject()
+        #TODO: special handling in flattening process to avoid duplicates
+        tree_object.create_attribute('__func_locals__', func_locals)
 #        print 'tree_object ------------------------------------------------------'
 #        print tree_object
            

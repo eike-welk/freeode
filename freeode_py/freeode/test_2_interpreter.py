@@ -771,51 +771,53 @@ compile A
 
 
 
-def test_interpreter_object_compile_statement():
-    py.test.skip('Test interpreter object: compile statement!!!')
-    print 'Test interpreter object: compile statement'
+def test_user_defined_class_roles_1():
+    '''
+    The role keywords (const, param, variable, ...) should work with user 
+    defined classes too.
+    '''
+    #py.test.skip('Test user defined classes with different roles.')
+    print 'Test user defined classes with different roles.'
     from freeode.interpreter import Interpreter
-
+    from freeode.ast import DotName
+    
     prog_text = \
 '''
-print('start')
+class A:
+    data a: Float
+
+#use the class as a constant
+data ac: A const
+ac.a = 2
 
 class B:
-    data b1: Float variable
+    #use the class as a variable
+    data av: A 
+    data v: Float
     
-    func foo(this, x):
-        b1 = b1 * x
-    
-class A:
-    data a1: Float param
-    data b: B variable
-    
-    func init(this):
-        a1 = 1
-        b.b1 = 11
-        
     func dynamic(this):
-        a1 = a1 + 2
-        b.foo(a1)
-
-compile A
-
-print('end')
+        av.a = v
+        
+compile B
 '''
-
     #create the interpreter
     intp = Interpreter()
-    #run program
+    #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
-    print intp.modules['test']
-    print intp.get_compiled_objects() 
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
 
-    #TODO: Assertions
-    #assert False
-      
-      
+#    #get flattened object
+#    sim = intp.get_compiled_objects()[0] 
+#    print sim
+#    #get the dynamic function with the generated code
+#    dynamic = sim.get_attribute(DotName('dynamic'))
+#    assert len(dynamic.statements) == 1
+    #TODO: assertions
+  
+  
 
 def test_interpreter_dollar_operator_1():
     #py.test.skip('Test interpreter: "$" operator.')
