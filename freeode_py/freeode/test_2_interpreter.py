@@ -141,11 +141,7 @@ print(a+b)
     intp = Interpreter()
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
-  
-#    print
-#    print 'module after interpreter run: ---------------------------------'
-#    print intp.modules['test']
-#TODO: assertions
+    #TODO: assertions
 
 
 
@@ -173,11 +169,7 @@ print(c)
     intp = Interpreter()
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
-  
-#    print
-#    print 'module after interpreter run: ---------------------------------'
-#    print intp.modules['test']
-#TODO: assertions
+    #TODO: assertions
   
   
 

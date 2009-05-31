@@ -375,7 +375,6 @@ def test_BuiltInFunctionWrapper_1():
     #call function: sqrt(2)
     siml_ret = func(val_2)
     assert siml_ret.value == math.sqrt(2) #IGNORE:E1103
-    #assert False, 'implement me!'
     
     
                                       
@@ -415,34 +414,7 @@ def test_BuiltInFunctionWrapper_2():
         print 'Expected exception recieved: unknown arguments.'
     else:
         assert False, 'Expected exception: unknown arguments.'
-    
-    #assert False, 'implement me!'
-    
-    
-                                      
-## -------- Test 2nd version of wrapper object for Python functions ------------------------------------------------------------------------
-#def test_BuiltInFunctionWrapper2_1():
-#    print 'BuiltInFunctionWrapper2: test 2nd version of function call with known arguments, no Interpreter.'
-#    from freeode.interpreter import (BuiltInFunctionWrapper2,
-#                                     ArgumentList, NodeFuncArg,   
-#                                     CLASS_FLOAT, )
-#    import math
-#    
-#    #create sqrt function with named arguments
-#    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
-#    #some interpreter level values
-#    val_2 = CLASS_FLOAT(2)
-#
-#    #create a function object that wraps the sqrt function
-#    func = BuiltInFunctionWrapper2('sqrt', 
-#                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)], None), 
-#                                  return_type=CLASS_FLOAT, 
-#                                  py_function=sqrt)
-#    #call function: sqrt(2)
-#    siml_ret = func(val_2)
-#    assert siml_ret.value == math.sqrt(2) #IGNORE:E1103
-#    #assert False, 'implement me!'
-    
+        
     
                                       
 # -------- Test user defined class object ------------------------------------------------------------------------
@@ -1081,10 +1053,6 @@ def test_SimlFunction_1():
     intp = Interpreter()    #IGNORE:W0612
     #create a Siml value as function argument
     val_1 = CLASS_FLOAT(1)
-    #TODO: test function calling mechanism with unevaluated expressions too!
-#    #create an unevaluated expression
-#    u_ex = NodeOpInfix2()
-#    u_ex.type = ref(CLASS_FLOAT)
     
     #create a function without statements (impossible in Siml)
     # func test(a:Float):
@@ -1187,34 +1155,34 @@ def test_SimlFunction_3():
 
 
 
-def test_role_more_variable_1():
-    #py.test.skip('Test role_more_variable: compare the variablenes of two roles.')
-    print 'Test role_more_variable: compare the variablenes of two roles.'
-    from freeode.interpreter import (role_more_variable)
+def test_is_role_more_variable_1():
+    #py.test.skip('Test is_role_more_variable: compare the variablenes of two roles.')
+    print 'Test is_role_more_variable: compare the variablenes of two roles.'
+    from freeode.interpreter import (is_role_more_variable)
     from freeode.ast import (RoleConstant, RoleParameter, RoleVariable, RoleUnkown)
 
-    assert role_more_variable(RoleConstant, RoleParameter) is False
-    assert role_more_variable(RoleParameter, RoleConstant) is True
-    assert role_more_variable(RoleParameter, RoleVariable) is False
-    assert role_more_variable(RoleVariable, RoleParameter) is True
-    assert role_more_variable(RoleVariable, RoleUnkown) is False
-    assert role_more_variable(RoleUnkown, RoleVariable) is True
+    assert is_role_more_variable(RoleConstant, RoleParameter) is False
+    assert is_role_more_variable(RoleParameter, RoleConstant) is True
+    assert is_role_more_variable(RoleParameter, RoleVariable) is False
+    assert is_role_more_variable(RoleVariable, RoleParameter) is True
+    assert is_role_more_variable(RoleVariable, RoleUnkown) is False
+    assert is_role_more_variable(RoleUnkown, RoleVariable) is True
     
-    assert role_more_variable(RoleConstant, RoleConstant) is False
-    assert role_more_variable(RoleParameter, RoleParameter) is False
-    assert role_more_variable(RoleVariable, RoleVariable) is False
-    assert role_more_variable(RoleUnkown, RoleUnkown) is False
+    assert is_role_more_variable(RoleConstant, RoleConstant) is False
+    assert is_role_more_variable(RoleParameter, RoleParameter) is False
+    assert is_role_more_variable(RoleVariable, RoleVariable) is False
+    assert is_role_more_variable(RoleUnkown, RoleUnkown) is False
     
     
 
-def test_role_more_variable_2():
-    #py.test.skip('Test role_more_variable: exceptions for wrong types.')
-    print 'Test role_more_variable: exceptions for wrong types.'
-    from freeode.interpreter import (role_more_variable)
+def test_is_role_more_variable_2():
+    #py.test.skip('Test is_role_more_variable: exceptions for wrong types.')
+    print 'Test is_role_more_variable: exceptions for wrong types.'
+    from freeode.interpreter import (is_role_more_variable)
     from freeode.ast import (RoleConstant, RoleParameter)
     
     try: 
-        role_more_variable(float, RoleConstant)
+        is_role_more_variable(float, RoleConstant)
     except ValueError, e:
         print 'Exception is OK!'
         print e
@@ -1222,7 +1190,7 @@ def test_role_more_variable_2():
         assert False, 'Exception missing'
         
     try: 
-        role_more_variable(RoleParameter, float)
+        is_role_more_variable(RoleParameter, float)
     except ValueError, e:
         print 'Exception is OK!'
         print e
@@ -1230,7 +1198,7 @@ def test_role_more_variable_2():
         assert False, 'Exception missing'
         
     try: 
-        role_more_variable(RoleParameter, 1)
+        is_role_more_variable(RoleParameter, 1)
     except TypeError, e:
         print 'Exception is OK!'
         print e
@@ -1239,9 +1207,9 @@ def test_role_more_variable_2():
         
         
 
-def test_set_role_recursive_2():
-    #py.test.skip('Test role_more_variable: exceptions for wrong types.')
-    print 'Test role_more_variable: exceptions for wrong types.'
+def test_set_role_recursive_1():
+    #py.test.skip('Test set_role_recursive')
+    print 'Test set_role_recursive'
     from freeode.interpreter import (InterpreterObject, set_role_recursive)
     from freeode.ast import (RoleConstant, RoleParameter, RoleVariable, 
                              RoleUnkown)
@@ -1326,5 +1294,5 @@ def test_set_role_recursive_2():
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_role_more_variable_2()
+    test_set_role_recursive_1()
     pass
