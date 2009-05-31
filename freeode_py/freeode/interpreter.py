@@ -1453,6 +1453,8 @@ def determine_result_role(arguments, keyword_arguments={}): #IGNORE:W0102
     RoleConstant/RoleParameter/RoleParameter
     '''
     #TODO: rewrite using role_more_variable(...) to compare roles
+    #TODO: special handling of RoleUnkown: Is role_unknown allowed in 
+    #      arguments of fundamental functions at all?
     all_args = tuple(arguments) + tuple(keyword_arguments.values())
     is_const_role = lambda obj: issubclass(obj.role, RoleConstant)
     is_param_role = lambda obj: issubclass(obj.role, RoleParameter)
@@ -1514,30 +1516,30 @@ def siml_isknown(siml_obj):
     raise NotImplementedError('Function siml_isknown is not implemented!')
 
 
-def make_unique_name(base_name, existing_names):
-    '''
-    Make a unique name that is not in existing_names.
-    
-    If base_name is already contained in existing_names a number is appended 
-    to base_name to make it unique.
-    
-    Arguments:
-    base_name: DotName, str 
-        The name that should become unique.
-    existing_names: container that supports the 'in' operation
-        Container with the existing names. Names are expected to be 
-        DotName objects.
-        
-    Returns: DotName
-        Unique name; base_name with number appended if necessary
-    '''
-    base_name = DotName(base_name)
-    for number in range(1, 100000):
-        if base_name not in existing_names:
-            return  base_name
-        #append number to last component of DotName
-        base_name = base_name[0:-1] + DotName(base_name[-1] + str(number))
-    raise Exception('Too many similar names')    
+#def make_unique_name(base_name, existing_names):
+#    '''
+#    Make a unique name that is not in existing_names.
+#    
+#    If base_name is already contained in existing_names a number is appended 
+#    to base_name to make it unique.
+#    
+#    Arguments:
+#    base_name: DotName, str 
+#        The name that should become unique.
+#    existing_names: container that supports the 'in' operation
+#        Container with the existing names. Names are expected to be 
+#        DotName objects.
+#        
+#    Returns: DotName
+#        Unique name; base_name with number appended if necessary
+#    '''
+#    base_name = DotName(base_name)
+#    for number in range(1, 100000):
+#        if base_name not in existing_names:
+#            return  base_name
+#        #append number to last component of DotName
+#        base_name = base_name[0:-1] + DotName(base_name[-1] + str(number))
+#    raise Exception('Too many similar names')    
     
     
     
@@ -1953,60 +1955,50 @@ class StatementVisitor(Visitor):
         #TODO: assignment without defining the variable first (no data statement.)
         #      This is very useful inside a function. Putting function arguments 
         #      into the function's namespace could be handled this way too.
-        #TODO: In different parts of code only variables with speciffic roles 
-        #      are valid targets of an assign statement.
-        #      outside compile: only RoleConstant
-        #      in "initial":    only RoleParameter, RoleStateVariable 
-        #      in "dynamic":    only RoleVariable
-        #      in "final":      only RoleVariable
         
         #Test if value has been assigned already.
-        #TODO: What are the semantics for user defined classes?
         if target.is_assigned:
             raise UserException('Duplicate assignment.', loc)
         target.is_assigned = True
         #Targets with RoleUnkown are converted to the role of value.
         #(for local variables of functions)
         if target.role is RoleUnkown:
-            target.role = value.role
-        #Test if assignment is possible according to the role.
-        #TODO: What are the semantics for user defined classes? !!!!!!!!!!!!!!!
-        #TODO: special handling of RoleUnknown on LHS. 
-        assign_role_hierarchy = {
-            RoleConstant:  (RoleConstant,),
-            RoleParameter: (RoleConstant, RoleParameter),
-            RoleVariable:  (RoleConstant, RoleParameter, RoleVariable),
-            RoleUnkown:    (AttributeRole,)} #RoleUnkown matches anything
-        for target_role, value_roles in assign_role_hierarchy.iteritems():
-            if issubclass(target.role, target_role):
-                if issubclass(value.role, value_roles):
-                    break
-                raise UserException('Incompatible roles in assignment. '
-                                    'LHS: %s RHS: %s' % (str(target.role), 
-                                                         str(value.role)), loc)
-        
+            set_role_recursive(target, value.role)
         #get the assignment function
-        assign_func = target.get_attribute(DotName('__assign__'))
-        #Only assignments to leaf types must get to the code generator.
-        if assign_func.is_fundamental_function and target.role is RoleConstant:
-            #function is fundamental and target is constant: 
-            #perform the assignment
+        try:
+            assign_func = target.get_attribute(DotName('__assign__'))
+        except UndefinedAttributeError:
+            raise UserException('Object has no "__assign__" method.', loc)
+        #Always call the function when it is not fundamental. The call  
+        #generates statements with fundamental functions. 
+        #Reason: When a function returns a user defined class, the role is 
+        #often role_unknown. The leaf attributes however, that are fundamental
+        #types, have correct roles.
+        #Also only assignments to leaf types must get to the code generator.
+        if not assign_func.is_fundamental_function:
+            assign_func(value)
+            return
+        #Only fundamental functions from here on: ------------------
+        #Test if assignment is possible according to the role.
+        if role_more_variable(value.role, target.role):
+            raise UserException('Incompatible roles in assignment. '
+                                'LHS: %s RHS: %s' % (str(target.role), 
+                                                     str(value.role)), loc)
+        #perform assignment - function is fundamental and target is constant
+        if target.role is RoleConstant:
             try:
                 assign_func(value)
             except UnknownArgumentsException:
                 UserException('Unknown value in assignment to constant.', loc)
-        elif assign_func.is_fundamental_function:
-            #Generate code if target is a parameter or a variable
-            new_assign = NodeAssignment()
-            new_assign.target = target
-            new_assign.expression = value
-            #new_assign.function_object = assign_func
-            new_assign.loc = loc
-            self.interpreter.collect_statement(new_assign)
-        else:
-            #function is not fundamental: execute, will generate statements 
-            #with fundamental functions. 
-            assign_func(value)
+            return
+        #Generate code for one assignment (of fundamental types)
+        #target is a parameter or a variable
+        new_assign = NodeAssignment()
+        new_assign.target = target
+        new_assign.expression = value
+        #new_assign.function_object = assign_func
+        new_assign.loc = loc
+        self.interpreter.collect_statement(new_assign)
 
 
     @Visitor.when_type(NodeFuncDef)
@@ -2113,6 +2105,12 @@ class StatementVisitor(Visitor):
         
         #Create code: 
         #TODO: Implement automatic calling of main functions in child objects.
+        #TODO: In different parts of code only variables with speciffic roles 
+        #      are valid targets of an assign statement.
+        #      outside compile: only RoleConstant
+        #      in "initial":    only RoleParameter, RoleStateVariable 
+        #      in "dynamic":    only RoleVariable
+        #      in "final":      only RoleVariable
         #call the main functions of tree_object and collect code
         main_func_names = [DotName('init'), DotName('dynamic'), DotName('final')]
         for func_name in main_func_names:

@@ -659,6 +659,8 @@ def test_interpreter_user_defined_operators_1():
     that contain only operations on fundamental types. Intermediate results
     are kept in function local variables, that are stored by the compile 
     statement.
+    
+    The used Siml class simulates a geometric vector class.
     '''
     #py.test.skip('Test user defined operators - code generation.')
     print 'Test user defined operators - code generation.'
@@ -683,6 +685,7 @@ class A:
     data a,b,c: Vec1D
     
     func dynamic(this):
+        #--- invoke the operators ----
         c=a+b
 
 
@@ -726,12 +729,14 @@ compile A
 
 def test_interpreter_user_defined_operators_2():
     '''
-    User defined operators must work as constants too. 
-    Same class as in precioust test, but all variables are constant.
+    User defined operators must also work with constant data. 
+    Same class as in previous test, but all variables are constant.
+    
+    The used Siml class simulates a geometric vector class.
     '''
     #py.test.skip('Test user defined operators - code generation.')
     print 'Test user defined operators - code generation.'
-    from freeode.interpreter import Interpreter, IFloat, CallableObject
+    from freeode.interpreter import Interpreter
     from freeode.ast import DotName, RoleConstant
 
     prog_text = \
@@ -742,7 +747,6 @@ class Vec1D:
     func __add__(this, other):
         data res: Vec1D
         res.x = x + other.x
-        #print(res)
         return res
         
     func __assign__(this, other):
@@ -753,7 +757,8 @@ data a,b,c: Vec1D const
 a.x = 2
 b.x = 3
 
-#the test ----------
+
+#--- invoke the operators ----
 c=a+b
 '''
 
@@ -761,41 +766,26 @@ c=a+b
     intp = Interpreter()
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
+    
     mod = intp.modules['test']
+    #print
+    #print 'Interpreted module: -----------------------------------------------------'
     #print mod
-    #print intp.get_compiled_objects()[0] 
     
     #get the attributes that we have defined
     a = mod.get_attribute(DotName('a'))
     a_x = a.get_attribute(DotName('x'))
     assert a_x.role == RoleConstant
+    assert a_x.value == 2
     b = mod.get_attribute(DotName('b'))
     b_x = b.get_attribute(DotName('x'))
     assert b_x.role == RoleConstant
+    assert b_x.value == 3
     c = mod.get_attribute(DotName('c'))
     c_x = c.get_attribute(DotName('x'))
     assert c_x.role == RoleConstant
+    assert c_x.value == 5
     
-#    dynamic = sim.get_attribute(DotName('dynamic'))
-#    #test some facts about the attributes
-#    assert isinstance(a_x, IFloat)
-#    assert isinstance(b_x, IFloat)
-#    assert isinstance(c_x, IFloat)
-#    assert isinstance(dynamic, CallableObject)
-#    
-#    assert len(dynamic.statements) == 2
-#    stmt0 = dynamic.statements[0]
-#    stmt1 = dynamic.statements[1]
-#    #first statement (res.x = 2*(x + other.x)) assigns to function local variable
-#    assert stmt0.target not in [a_x, b_x, c_x]
-#    assert stmt0.expression.operator == '+'
-#    #second statement (c=a+b) assigns to c.x
-#    assert stmt1.target is c_x
-#    #second statement assigns temporary result of previous computation to attribute c.x
-#    assert stmt0.target is stmt1.expression
-#    #assert False
-
 
 
 def test_interpreter_expression_statement_1():
