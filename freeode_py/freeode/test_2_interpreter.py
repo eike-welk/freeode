@@ -39,10 +39,140 @@ except:
 
 
 
+def test_data_statement_simple_1():
+    #py.test.skip('Test data statement: create attributes')
+    print 'Test data statement: create attributes'
+    from freeode.interpreter import Interpreter, IFloat, IString
+    from freeode.ast import DotName
+    
+    prog_text = \
+'''
+data a: Float const
+data b: String const
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print mod
+    
+    a = mod.get_attribute(DotName('a'))
+    assert isinstance(a, IFloat)
+    b = mod.get_attribute(DotName('b'))
+    assert isinstance(b, IString)
+  
+  
+
+def test_data_statement_roles_1():
+    #py.test.skip('Test data statement: create attributes with different roles')
+    print 'Test data statement: create attributes with different roles'
+    from freeode.interpreter import Interpreter
+    from freeode.ast import (DotName, RoleConstant, RoleParameter, 
+                             RoleVariable)
+    
+    prog_text = \
+'''
+data a: Float const
+data b: Float param
+data c: Float variable
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print mod
+    
+    a = mod.get_attribute(DotName('a'))
+    assert a.role is RoleConstant
+    b = mod.get_attribute(DotName('b'))
+    assert b.role is RoleParameter
+    c = mod.get_attribute(DotName('c'))
+    assert c.role is RoleVariable
+    
+  
+
+def test_data_statement_roles_2():
+    '''
+    In user defined classes the role should be propagated recursively to the 
+    child attributes.
+    However, the child attributes' roles are not simply replaced, but only 
+    changed if they are more variable than the new role. 
+    
+    These are the main roles, the variable character increases from left to 
+    right:
+    RoleConstant, RoleParameter, RoleVariable, RoleUnkown
+    const,        param,         variable,     role_unknown
+    '''
+    msg = 'Test data statement: roles should be propagated to child attributes.'
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter
+    from freeode.ast import (DotName, RoleConstant, RoleParameter, 
+                             RoleVariable)
+    
+    prog_text = \
+'''
+class A:
+    data c: Float const
+    data p: Float param
+    data v: Float variable
+    
+data ac: A const
+data ap: A param
+data av: A variable
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print mod
+    
+    #all attributes should be const
+    a_curr = mod.get_attribute(DotName('ac'))
+    c = a_curr.get_attribute(DotName('c'))
+    p = a_curr.get_attribute(DotName('p'))
+    v = a_curr.get_attribute(DotName('v'))
+    assert c.role is RoleConstant
+    assert p.role is RoleConstant
+    assert v.role is RoleConstant
+  
+    #Roles: c: const; p,v: param
+    a_curr = mod.get_attribute(DotName('ap'))
+    c = a_curr.get_attribute(DotName('c'))
+    p = a_curr.get_attribute(DotName('p'))
+    v = a_curr.get_attribute(DotName('v'))
+    assert c.role is RoleConstant
+    assert p.role is RoleParameter
+    assert v.role is RoleParameter
+  
+    #Roles: c: const; p: param; v: variable
+    a_curr = mod.get_attribute(DotName('av'))
+    c = a_curr.get_attribute(DotName('c'))
+    p = a_curr.get_attribute(DotName('p'))
+    v = a_curr.get_attribute(DotName('v'))
+    assert c.role is RoleConstant
+    assert p.role is RoleParameter
+    assert v.role is RoleVariable
+  
+  
+
 def test_interpreter_object_builtin_function_call_1():
     #py.test.skip('Test disabled')
     print 'Test interpreter object: call built in function sqrt...............................................................'
-    from freeode.interpreter import Interpreter, DotName
+    from freeode.interpreter import Interpreter
+    from freeode.ast import DotName
     import math
     
     prog_text = \

@@ -679,39 +679,6 @@ def test_IString_4():
 
 
 
-# -------- Test administrative functions ------------------------------------------------------------------------
-def test_determine_result_role_1():
-    #py.test.skip('Test IString: special functions for mathematical operators from Siml')
-    print 'Test determine_result_role: '
-    from freeode.interpreter import IFloat, determine_result_role
-    from freeode.ast import RoleConstant, RoleParameter, RoleVariable
-    
-    #some constants
-    c_1 = IFloat()
-    c_1.role = RoleConstant
-    c_2 = IFloat()
-    c_2.role = RoleConstant
-    #some parameters
-    p_1 = IFloat()
-    p_1.role = RoleParameter
-    p_2 = IFloat()
-    p_2.role = RoleParameter
-    #some variables
-    v_1 = IFloat()
-    v_1.role = RoleVariable
-    v_2 = IFloat()
-    v_2.role = RoleVariable
-    
-    #determine the most variable role among the arguments
-    assert determine_result_role((c_1, p_1, v_1), 
-                                 {'a':c_2, 'b':p_2, 'c':v_2, }) == RoleVariable
-    assert determine_result_role((c_1, p_1), 
-                                 {'a':c_2, 'b':p_2}) == RoleParameter
-    assert determine_result_role((c_1,), 
-                                 {'a':c_2}) == RoleConstant
-    
-
-
 # -------- Test expression evaluation ------------------------------------------------------------------------
 def test_operator_dispatch_1():
     #py.test.skip('Test ExpressionVisitor: handling of binary operators with Float values.')
@@ -738,15 +705,18 @@ def test_operator_dispatch_1():
 
 # -------- Test expression evaluation ------------------------------------------------------------------------
 def test_operator_dispatch_2():
-    #py.test.skip('Test ExpressionVisitor: handling of binary operators with unknown Float values.')
-    print 'Test ExpressionVisitor: handling of binary operators with unknown Float values.'
+    msg = 'Test ExpressionVisitor: handling of binary operators with unknown Float values.'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import (IFloat, ExpressionVisitor)
-    from freeode.ast import NodeOpInfix2, NodeOpPrefix1
+    from freeode.ast import NodeOpInfix2, NodeOpPrefix1, RoleVariable
 
     expr_visit = ExpressionVisitor(None)
     
     val_2 = IFloat()
+    val_2.role = RoleVariable
     val_3 = IFloat()
+    val_3.role = RoleVariable
     
     op_sub = NodeOpInfix2('-', [val_2, val_3])
     res = expr_visit.dispatch(op_sub)
@@ -869,12 +839,13 @@ def test_expression_evaluation_2_1():
 
 
 def test_ExpressionVisitor_unknown_arguments_1():
-    #py.test.skip('Test expression evaluation (calling built in functions), unknown arguments')
-    print 'Test expression evaluation (calling built in functions), unknown arguments'
+    msg = 'Test expression evaluation (calling built in functions), unknown arguments'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import (IModule, ExecutionEnvironment,
                                      ExpressionVisitor, DotName,
                                      BuiltInFunctionWrapper, ArgumentList,
-                                     CLASS_FLOAT)
+                                     CLASS_FLOAT, RoleVariable)
     from freeode.ast import (NodeFuncCall, NodeIdentifier, NodeFuncArg)
     import math
     
@@ -902,6 +873,7 @@ def test_ExpressionVisitor_unknown_arguments_1():
     
     #create a Siml value as function argument
     val_1 = CLASS_FLOAT()    
+    val_1.role = RoleVariable
     #create function call with unkown argument
     call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
     
@@ -920,14 +892,15 @@ def test_ExpressionVisitor_unknown_arguments_2():
     #py.test.skip('Test ExpressionVisitor: call library function with unknown argument')
     print 'Test ExpressionVisitor: call library function with unknown argument'
     from freeode.interpreter import (Interpreter, CLASS_FLOAT, )
-    from freeode.ast import (NodeFuncCall, NodeIdentifier, )
+    from freeode.ast import (NodeFuncCall, NodeIdentifier, RoleVariable)
 
     #create the interpreter - initializes InterpreterObject.interpreter
     # this way SimlFunction can access the interpreter.
     intp = Interpreter()    #IGNORE:W0612
     intp.create_test_module_with_builtins()
     #create a Siml value as function argument
-    val_1 = CLASS_FLOAT()    
+    val_1 = CLASS_FLOAT()  
+    val_1.role = RoleVariable  
 
     #create function call with unkown argument
     call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
@@ -1152,6 +1125,95 @@ def test_SimlFunction_3():
     ns_1    = ns_test.  get_attribute(DotName('1'))
     float_a = ns_1.     get_attribute(DotName('a'))
     assert float_a is val_1
+
+
+
+# -------- Test administrative functions ------------------------------------------------------------------------
+def test_determine_result_role_1():
+    msg = 'Test determine_result_role: '
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import IFloat, determine_result_role
+    from freeode.ast import RoleConstant, RoleParameter, RoleVariable
+    
+    #some constants
+    c_1 = IFloat()
+    c_1.role = RoleConstant
+    c_2 = IFloat()
+    c_2.role = RoleConstant
+    #some parameters
+    p_1 = IFloat()
+    p_1.role = RoleParameter
+    p_2 = IFloat()
+    p_2.role = RoleParameter
+    #some variables
+    v_1 = IFloat()
+    v_1.role = RoleVariable
+    v_2 = IFloat()
+    v_2.role = RoleVariable
+    
+    #determine the most variable role among the arguments
+    assert determine_result_role((c_1, p_1, v_1), 
+                                 {'a':c_2, 'b':p_2, 'c':v_2, }) == RoleVariable
+    assert determine_result_role((c_1, p_1), 
+                                 {'a':c_2, 'b':p_2}) == RoleParameter
+    assert determine_result_role((c_1,), 
+                                 {'a':c_2}) == RoleConstant
+    
+
+
+def test_determine_result_role_2():
+    msg = 'Test determine_result_role: errors'
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import IFloat, determine_result_role
+    from freeode.ast import (RoleConstant, RoleParameter, RoleVariable, 
+                             RoleUnkown)
+    
+    #unknown role
+    u = IFloat()
+    u.role = RoleUnkown
+    #some constants
+    c_1 = IFloat()
+    c_1.role = RoleConstant
+    c_2 = IFloat()
+    c_2.role = RoleConstant
+    #some parameters
+    p_1 = IFloat()
+    p_1.role = RoleParameter
+    p_2 = IFloat()
+    p_2.role = RoleParameter
+    #some variables
+    v_1 = IFloat()
+    v_1.role = RoleVariable
+    v_2 = IFloat()
+    v_2.role = RoleVariable
+    
+    #one argument with RoleUnknown - should raise exception
+    try: 
+        determine_result_role((c_1, p_1, v_1, u), 
+                              {'a':c_2, 'b':p_2, 'c':v_2, })
+    except ValueError, e:
+        print 'Exception is OK.'
+        print e
+    else:
+        assert False, 'Exception missing.'
+    #one argument with RoleUnknown - should raise exception
+    try:
+        determine_result_role((c_1, p_1), {'a':c_2, 'b':p_2, 'u':u})
+    except ValueError, e:
+        print 'Exception is OK.'
+        print e
+    else:
+        assert False, 'Exception missing.'
+    #one argument with RoleUnknown - should raise exception
+    try:
+        determine_result_role((c_1, u), {'a':c_2})
+    except ValueError, e:
+        print 'Exception is OK.'
+        print e
+    else:
+        assert False, 'Exception missing.'
 
 
 

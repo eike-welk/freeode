@@ -1192,8 +1192,10 @@ def is_role_more_variable(role1, role2):
     '''
     Compare two roles with respect to their variable-character.
     
-    The basic roles, the variable-character increases from left to right:
+    These are the basic roles, the variable-character increases from left 
+    to right:
     RoleConstant, RoleParameter, RoleVariable, RoleUnkown
+    const,        param,         variable,     role_unknown
     
     ARGUMENTS
     ---------
@@ -1230,43 +1232,40 @@ def determine_result_role(arguments, keyword_arguments={}): #IGNORE:W0102
     Determine the most variable role among function arguments.
     
     The function returns the role, that a function's return value should 
-    have, by looking at the function's arguments. The role of the return 
-    value is the role of its most variable argument. 
+    have, by looking at the function's arguments. The algorithm is used
+    to determine the role of unknown return values of fundamental functions.
+    Therefore role unknown is illegal. 
     
-    The result's role is the most variable role from any argument.
-    const -> param -> variable
+    - The result's role is the most variable role from any argument. The ordering is:
+    These are the basic roles, the variable-character increases from left 
+    to right:
+    RoleConstant, RoleParameter, RoleVariable, RoleUnkown
+    const,        param,         variable,     role_unknown
     
-    RoleUnknown is illegal, function raises exception if any parameter 
+    - RoleUnknown is illegal, function raises ValueError if any parameter 
     has this role.
     
     ARGUMENTS
     ---------
-    arguments: [InterpreterObject, ...]
-    keyword_arguments: {str: InterpreterObject, ...}
+    arguments: [InterpreterObject, ...] or [ast.Node, ...] 
+    keyword_arguments: {str: InterpreterObject, ...} or {str: ast.Node, ...} 
     
     RETURNS
     -------
     RoleConstant/RoleParameter/RoleParameter
+    The role that the unknown return value will have.
     '''
-    #TODO: rewrite using is_role_more_variable(...) to compare roles
-    #TODO: special handling of RoleUnkown: Is role_unknown allowed in 
-    #      arguments of fundamental functions at all?
+    #put all arguments into a single tuple
     all_args = tuple(arguments) + tuple(keyword_arguments.values())
-    is_const_role = lambda obj: issubclass(obj.role, RoleConstant)
-    is_param_role = lambda obj: issubclass(obj.role, RoleParameter)
-    is_varia_role = lambda obj: issubclass(obj.role, RoleVariable)
-    const_role = map(is_const_role, all_args)
-    param_role = map(is_param_role, all_args)
-    varia_role = map(is_varia_role, all_args)
-    
-    if any(varia_role):
-        return RoleVariable
-    elif any(param_role):
-        return RoleParameter
-    elif all(const_role):
-        return RoleConstant
-    else:
-        return RoleUnkown
+    #loop over arguments and find most variable role
+    max_var_role = RoleConstant
+    for arg in all_args:
+        if is_role_more_variable(arg.role, max_var_role):
+            max_var_role = arg.role
+        if arg.role is RoleUnkown:
+            raise ValueError('RoleUnkown is illegal in arguments of '
+                             'fundamental functions.')
+    return max_var_role
     
 
 def set_role_recursive(tree, new_role):
@@ -1290,7 +1289,6 @@ def set_role_recursive(tree, new_role):
         The new role.
     '''
     tree.role = new_role
-    #TODO: is this really necessary? Fundamental objects normally have no data attributes.
     if isinstance(tree, FundamentalObject): 
         return
     for attr in tree.attributes.itervalues():
