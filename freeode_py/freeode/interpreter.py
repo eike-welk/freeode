@@ -148,13 +148,9 @@ class InterpreterObject(Node):
     Can also be seen as part of structured symbol table
     
     It inherits from Node only to get Ascii-art tree and copying.
-    
-    type_ex: NodeFuncCall
-        Call to class that would create the correct object. All classes are
-        really templates. 
     '''
     #let these attributes appear first in the pretty printed tree  
-    aa_top = ['name', 'type', 'type_ex']
+    aa_top = ['name', 'type']
     #reference to interpreter - TODO: global variables are bad
     interpreter = None
     
@@ -167,8 +163,6 @@ class InterpreterObject(Node):
         self.attributes = {}
         #weak reference to class of this instance
         self.type = None
-        #Call to class that would create the correct object.
-        self.type_ex = None
         #const, param, variable, ... (Comparable to storage class in C++)
         self.role = RoleUnkown
         #True/False was this object already assigned to
@@ -358,7 +352,6 @@ class ArgumentList(SimpleArgumentList):
     def evaluate_args(self, interpreter):
         '''
         Interpret the types and default values of the arguments.
-        - type and type_ex data is looked up
         - default values are computed and must evaluate to constants
         '''
         expression_visitor = interpreter.statement_visitor.expression_visitor

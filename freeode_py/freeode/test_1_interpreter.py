@@ -456,9 +456,8 @@ def test_SimlClass_2():
     #construct a class with no statements and no base classes
     #class Test1:
     #    Data a:Float
-    #TODO: NodeDataDef needs nice constructor
     data_stmt = NodeDataDef('a1', NodeIdentifier('Float'))
-    cls=SimlClass('Test1', None, 
+    cls = SimlClass('Test1', None, 
                  [data_stmt], 
                  None)
     assert cls.has_attribute(DotName('a1'))

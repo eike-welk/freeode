@@ -427,9 +427,6 @@ class NodeParentheses(Node):
             Naming is chosen to unify operators and function call
         type: InterpreterObject
             Type of the results of the operation. For decorating the AST.
-        type_ex: NodeFuncCall
-            Call to class that would create the correct object. All classes are
-            really templates. For decorating the AST. 
         role: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: TextLocation; None
@@ -440,7 +437,6 @@ class NodeParentheses(Node):
         self.arguments = []
         self.type = None
         self.type = None
-        self.type_ex = None
         self.role = RoleUnkown
         self.loc = None
 
@@ -463,9 +459,6 @@ class NodeOpInfix2(Node):
             compile time, an annotated function call was created.) 
         type: InterpreterObject
             Type of the results of the operation. For decorating the AST.
-        type_ex: NodeFuncCall
-            Call to class that would create the correct object. All classes are
-            really templates. For decorating the AST. 
         role: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: TextLocation; None
@@ -479,7 +472,6 @@ class NodeOpInfix2(Node):
         #decorations
         self.function_object = None
         self.type = None
-        self.type_ex = None
         self.role = RoleUnkown
         self.is_assigned = None
         #for error messages
@@ -504,9 +496,6 @@ class NodeOpPrefix1(Node):
             compile time, an annotated function call was created.) 
         type: InterpreterObject
             Type of the results of the operation. For decorating the AST.
-        type_ex: NodeFuncCall
-            Call to class that would create the correct object. All classes are
-            really templates. For decorating the AST. 
         role: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: 
@@ -520,7 +509,6 @@ class NodeOpPrefix1(Node):
         #decorations
         self.function_object = None
         self.type = None
-        self.type_ex = None
         self.role = RoleUnkown
         self.is_assigned = None
         #for error messages
@@ -548,9 +536,6 @@ class NodeFuncCall(Node):
             compile time, an annotated function call was created.) 
         type: InterpreterObject
             Type of the results of the operation. For decorating the AST.
-        type_ex: NodeFuncCall
-            Call to class that would create the correct object. All classes are
-            really templates. For decorating the AST.
         role: AttributeRole
             Role of the results of the operation. For decorating the AST.
        loc: 
@@ -569,7 +554,6 @@ class NodeFuncCall(Node):
         self.keyword_arguments = keyword_arguments.copy()
         #--- for the type system (treatment of unevaluated calls) -----------#
         self.type = None
-        self.type_ex = None
         self.role = RoleUnkown
         self.is_assigned = None
         #--- for code generation --------------------------------------------#
