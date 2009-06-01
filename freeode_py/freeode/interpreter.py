@@ -370,7 +370,7 @@ class ArgumentList(SimpleArgumentList):
         return self
     
     
-    def parse_function_call_args(self, args_list, kwargs_dict, loc=None):
+    def parse_function_call_args(self, args_list, kwargs_dict):
         '''
         Executed when a function call happens.
         Fill the arguments of the call site into the arguments of the 
@@ -553,10 +553,9 @@ class BuiltInFunctionWrapper(CallableObject):
         kwargs: {str: InterpreterObject}
             Keyword arguments for the wrapped function
         '''
-        loc = None
         #try if argument definition matches
         parsed_args = self.argument_definition\
-                          .parse_function_call_args(args, kwargs, loc)
+                          .parse_function_call_args(args, kwargs)
         #Test if all arguments are known values.
         parsed_args_2 = {}
         all_python_values_exist = True
@@ -633,11 +632,10 @@ class SimlFunction(CallableObject):
 
     def __call__(self, *args, **kwargs):
         '''All functions must implement this method'''
-        loc = None
         self.call_count += 1
         #parse the arguments that we get from the caller, do type checking
         parsed_args = self.argument_definition\
-                          .parse_function_call_args(args, kwargs, loc)
+                          .parse_function_call_args(args, kwargs)
 
         #Take 'this' name-space from the 'this' argument. 
         # 'this' must be a Siml object, no unevaluated expression
@@ -667,7 +665,7 @@ class SimlFunction(CallableObject):
                 new_arg.role = arg_val.role
                 #put object into local name-space and assign value to it 
                 local_namespace.create_attribute(arg_name, new_arg)
-                self.interpreter.statement_visitor.assign(new_arg, arg_val, loc)
+                self.interpreter.statement_visitor.assign(new_arg, arg_val, None)
         
         #Create new environment for the function. 
         new_env = ExecutionEnvironment()
