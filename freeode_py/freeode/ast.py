@@ -1239,16 +1239,21 @@ class DotName(tuple):
 
 class UserException(Exception):
     '''Exception that transports user visible error messages'''
-    def __init__(self, message, loc=None):
+    def __init__(self, message, loc=None, errno=None):
         Exception.__init__(self)
         self.message = message
         '''The error message'''
         self.loc = loc
         '''Position in the input string, where the error occured.
         Includes input string and file name'''
+        self.errno = errno
 
     def __str__(self):
-        return 'Error! %s \n' % self.message + str(self.loc)
+        if self.errno is None:
+            num_str = ''
+        else:
+            num_str = '(#%s) ' % str(self.errno) 
+        return 'Error! ' + num_str + self.message + str(self.loc) + '\n'
 
 
 

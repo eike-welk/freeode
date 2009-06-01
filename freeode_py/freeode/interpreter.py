@@ -82,7 +82,6 @@ class UnknownArgumentsException(Exception):
         self.loc = loc
         
         
-#TODO: Rename to frame?
 class ExecutionEnvironment(object):
     '''
     Container for name spaces where symbols are looked up.
@@ -99,8 +98,8 @@ class ExecutionEnvironment(object):
         #scope for the local variables of a function
         self.local_scope = None
         
-        #return value from function call
-        self.return_value = None
+        #return value from function call  
+        self.return_value = None 
         #default role for the data statement.
         self.default_data_role = RoleUnkown
 
@@ -353,6 +352,7 @@ class ArgumentList(SimpleArgumentList):
         '''
         Interpret the types and default values of the arguments.
         - default values are computed and must evaluate to constants
+        #TODO: why is this function not called from the constructor?
         '''
         expression_visitor = interpreter.statement_visitor.expression_visitor
         #evaluate argument type and default arguments
@@ -393,8 +393,12 @@ class ArgumentList(SimpleArgumentList):
         
         #test too many positional arguments
         if len(args_list) > len(self.arguments):
-            raise UserException('Function accepts at most %d arguments; %d given.'
-                                % (len(self.arguments), len(args_list)), self.loc)
+            raise UserException(
+                'Too many arguments. '
+                'Function accepts at most %d arguments; %d given. \n'
+                'Argument definition in: %s \n' 
+                % (len(self.arguments), len(args_list), str(self.loc)), 
+                loc=None, errno=3200250)
         #associate positional arguments to their names
         for arg_def, in_val in zip(self.arguments, args_list):
             #test for correct type
@@ -406,10 +410,16 @@ class ArgumentList(SimpleArgumentList):
         for in_name, in_val in kwargs_dict.iteritems():
             #test: argument name must exist in function definition
             if in_name not in self.argument_dict:
-                raise UserException('Unknown argument "%s".' % in_name, self.loc)
+                raise UserException('Unknown argument "%s". \n' 
+                                    'Argument definition in: %s \n' 
+                                    % (in_name, str(self.loc)), 
+                                    loc=None, errno=3200260)
             #test for duplicate argument assignment (positional + keyword)
             if in_name in output_dict:
-                raise UserException('Duplicate argument "%s".' % in_name, self.loc)
+                raise UserException('Duplicate argument "%s".'
+                                    'Argument definition in: %s \n'  
+                                    % (in_name, str(self.loc)), 
+                                    loc=None, errno=3200270)
             #test for correct type, 
             self._test_type_compatible(in_val, self.argument_dict[in_name])
             #associate argument value with name
@@ -426,9 +436,11 @@ class ArgumentList(SimpleArgumentList):
         left_over_names = arg_names_func_def - arg_names_call
         if len(left_over_names) > 0:
             raise UserException('Too few arguments given. '
-                                'Remaining arguments without value: '
-                                + ', '.join([str(n) for n in left_over_names]), 
-                                self.loc)
+                                'Remaining arguments without value: %s \n'
+                                'Argument definition in: %s \n' 
+                                % (', '.join([str(n) for n in left_over_names]),
+                                   str(self.loc) ),
+                                loc=None, errno=3200280)
         return output_dict
 
 
@@ -450,10 +462,12 @@ class ArgumentList(SimpleArgumentList):
             return 
         if not siml_issubclass(in_object.type(), arg_def.type()):
             raise UserException(
-                    'Incompatible types. Variable: "%s" '
-                    'is defined as:\n %s \nHowever, argument type is: \n%s.'
-                    % (arg_def.name, str(arg_def.type()), str(in_object.type())), 
-                    self.loc)
+                    'Incompatible types. \nVariable: "%s" '
+                    'is defined as: %s \nHowever, argument type is: %s. \n'
+                    'Argument definition in: %s \n' 
+                    % (arg_def.name, str(arg_def.type().name), 
+                       str(in_object.type().name), str(self.loc)), 
+                    loc=None, errno=3200310)
 
 
 
@@ -553,32 +567,38 @@ class BuiltInFunctionWrapper(CallableObject):
                 all_python_values_exist = False
             #convert the names to regular strings
             parsed_args_2[str(name)] = siml_val
-        #call the wrapped Python function if all argument values are known,
-        #or if we don't care about unknown values.
-        if all_python_values_exist or self.accept_unknown_values:
+        #Test: call function or generate code
+        if not all_python_values_exist and not self.accept_unknown_values:
+            #Some argument values are unknown; and we don't accept it.
+            #The expression visitor will create an annotated 
+            #NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
+            raise UnknownArgumentsException()
+        
+        #call the wrapped Python function
+        #all argument values are known, or we don't care about unknown values.
+        if 'self' in parsed_args_2:
+            #TODO: more consistent solution, maybe in ArgumentList class
             #bad hack for Python implementation detail:
             #'self' must be positional argument.
-            if 'self' in parsed_args_2:
-                func_self = parsed_args_2['self']
-                del parsed_args_2['self']
-                retval = self.py_function(func_self, **parsed_args_2) #IGNORE:W0142
-            else:
-                retval = self.py_function(**parsed_args_2)            #IGNORE:W0142
-            #add administrative data - known values at compile time are constants
-            if retval is not None:
-                retval.role = RoleConstant
-                retval.is_assigned = True
-            #Test return value.type
-            if(self.return_type is not None and 
-               not siml_issubclass(retval.type(), self.return_type())):
-                raise Exception('Wrong return type in wrapped function.')
-            
-            return retval
-        #Some argument values are unknown!
-        #The expression visitor will create an annotated 
-        #NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
+            func_self = parsed_args_2['self']
+            del parsed_args_2['self']
+            retval = self.py_function(func_self, **parsed_args_2) #IGNORE:W0142
         else:
-            raise UnknownArgumentsException()
+            retval = self.py_function(**parsed_args_2)            #IGNORE:W0142
+            
+        #use Siml's None
+        if retval is None:
+            retval = NONE
+        #known values at compile time are constants
+        if retval is not NONE:
+            retval.role = RoleConstant
+            retval.is_assigned = True
+        #Test return value.type
+        if(self.return_type is not None and 
+           not siml_issubclass(retval.type(), self.return_type())):
+            raise Exception('Wrong return type in wrapped function.')
+        
+        return retval
         
         
     def put_into(self, siml_object):
@@ -878,6 +898,42 @@ class IModule(InterpreterObject):
         
         
 #------- Built In Data --------------------------------------------------
+class INoneClass(BuiltInClassWrapper):
+    '''Class object for Siml's None object'''
+    def __call__(self, *args, **kwargs):
+        '''Raise exception, there must be only a single None object.'''
+        raise UserException('Creating multiple None objects is illegal.')
+    
+class INone(InterpreterObject):
+    '''Siml's None object.'''
+    #The Siml class, naturally shared by all instances 
+    type_object = None
+    
+    def __init__(self):
+        InterpreterObject.__init__(self)
+        self.type = ref(INone.type_object)
+        self.is_assigned = True
+        self.role = RoleConstant
+        
+    @staticmethod            
+    def init_funcs_and_class():
+        '''
+        Create the class object for Siml and create the special methods for 
+        operators (+).
+        '''
+        #create the class object for the Siml class system
+        class_none = INoneClass('NoneType')
+        class_none.py_class = INone
+        INone.type_object = class_none
+        return class_none
+
+#The class object used in Siml for the single instance of INone
+CLASS_NONETYPE = INone.init_funcs_and_class()
+#The single None instance for Siml
+NONE = INone()
+
+ 
+
 class IString(FundamentalObject):
     '''
     Memory location of a string
@@ -885,6 +941,7 @@ class IString(FundamentalObject):
     The variable's value can be known or unknown.
     The variable can be assigned a (possibly unknown) value, or not. 
     '''
+    #The Siml class, naturally shared by all instances 
     type_object = None
     
     def __init__(self, init_val=None):
@@ -953,7 +1010,6 @@ class IString(FundamentalObject):
     def _str(self):
         return self
 
-
 #The class object used in Siml to create instances of IFloat
 CLASS_STRING = IString.init_funcs_and_class()
     
@@ -966,6 +1022,7 @@ class IFloat(FundamentalObject):
     The variable's value can be known or unknown.
     The variable can be assigned a (possibly unknown) value, or not. 
     '''
+    #The Siml class, naturally shared by all instances 
     type_object = None
     
     def __init__(self, init_val=None):
@@ -1062,7 +1119,6 @@ class IFloat(FundamentalObject):
         istr.role = RoleConstant
         return istr
         
-
 #The class object used in Siml to create instances of IFloat
 CLASS_FLOAT = IFloat.init_funcs_and_class()
     
@@ -1117,6 +1173,8 @@ def create_built_in_lib():
     lib.name = DotName('__built_in__')
 
     #basic data types
+    lib.create_attribute('NoneType', CLASS_NONETYPE)
+    lib.create_attribute('None', NONE)
     lib.create_attribute('Float', CLASS_FLOAT)
     lib.create_attribute('String', CLASS_STRING)
     #built in functions
@@ -1680,9 +1738,13 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeReturnStmt)
     def visit_NodeReturnStmt(self, node):
         '''Return value from function call'''
-        #evaluate the expression of the returned value
-        retval = self.expression_visitor.dispatch(node.arguments[0])
-        self.environment.return_value = retval
+        if len(node.arguments) == 0:
+            #no return value
+            self.environment.return_value = NONE
+        else:
+            #evaluate expression to compute return value
+            retval = self.expression_visitor.dispatch(node.arguments[0])
+            self.environment.return_value = retval
         #Forcibly end function execution - 
         #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
         #TODO: transport return value with the exception?
@@ -1846,7 +1908,7 @@ class StatementVisitor(Visitor):
         #The default role is set at beginning of: 
         #module, class definition, function execution
         if role is None:
-            role = self.environment.default_data_role
+            role = self.environment.default_data_role 
         #Set the role recursively for user defined classes
         set_role_recursive(new_object, role)
            
@@ -1953,6 +2015,22 @@ class StatementVisitor(Visitor):
         self.interpreter.add_compiled_object(flat_object)
 
         
+    def dispatch(self, node):
+        '''
+        Call right handler function for a single statement.
+        
+        Also puts good location information into UserExceptions.
+        '''
+        try:
+            Visitor.dispatch(self, node)
+        except UserException, e:
+            #put good location information into error if necassary, 
+            #and re-raise it
+            if e.loc is None:
+                e.loc = node.loc
+            raise e
+
+
 
 class Interpreter(object):
     '''
