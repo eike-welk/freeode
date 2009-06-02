@@ -1811,10 +1811,7 @@ class StatementVisitor(Visitor):
         if target.role is RoleUnkown:
             set_role_recursive(target, value.role)
         #get the assignment function
-        try:
-            assign_func = target.get_attribute(DotName('__assign__'))
-        except UndefinedAttributeError:
-            raise UserException('Object has no "__assign__" method.', loc)
+        assign_func = target.get_attribute(DotName('__assign__'))
         #Always call the function when it is not fundamental. The call  
         #generates statements with fundamental functions. 
         #Reason: When a function returns a user defined class, the role is 
@@ -1824,6 +1821,7 @@ class StatementVisitor(Visitor):
         if not assign_func.is_fundamental_function:
             assign_func(value)
             return
+        
         #Only fundamental functions from here on: ------------------
         #Test if assignment is possible according to the role.
         if is_role_more_variable(value.role, target.role):
@@ -1935,14 +1933,13 @@ class StatementVisitor(Visitor):
         #put new object also into module namespace, if name given
         if node.name is not None:
             self.environment.local_scope.create_attribute(node.name, tree_object)
-        #provide a module where local variables can be stored,
-        func_locals = InterpreterObject()
-        #TODO: special handling in flattening process to avoid duplicates
-        tree_object.create_attribute('__func_locals__', func_locals)
 #        print 'tree_object ------------------------------------------------------'
 #        print tree_object
            
-        #create flat object
+        #provide a module where local variables of functions can be stored
+        func_locals = InterpreterObject()
+
+        #create (empty) flat object
         flat_object = CompiledClass()
         flat_object.instance_name = node.name
         flat_object.class_name = class_obj.name
@@ -1962,9 +1959,11 @@ class StatementVisitor(Visitor):
         for func_name in main_func_names:
             #get one of the main functions of the tree object
             if not tree_object.has_attribute(func_name):
+                #TODO: create the missing main funcions
                 print 'Warning: main function %s is not defined.' % str(func_name)
                 continue
             #TODO: create new environment with correct default role, dynamic:RoleVariable, init:RoleParameter
+            
             #call the main function and collect code
             self.interpreter.start_collect_code(func_locals=func_locals)
             func_tree = tree_object.get_attribute(func_name)
@@ -1982,6 +1981,7 @@ class StatementVisitor(Visitor):
         #return
     
         #flatten tree_object (the data) recursively.
+        flattened_attributes = set()
         def flatten(tree_obj, flat_obj, prefix):
             '''
             Put all attributes (all data leaf objects) into a new flat 
@@ -1996,17 +1996,26 @@ class StatementVisitor(Visitor):
                 Prefix for attribute names, to create the long names.
             '''
             for name, data in tree_obj.attributes.iteritems():
-                #on top level 'this' is a reference to the simulation object 
-                #and leads to infinite recursion
-                if name == DotName('this'):
+#                #on top level 'this' is a reference to the simulation object 
+#                #and leads to infinite recursion
+#                if name == DotName('this'):
+#                    continue
+                #don't flatten anything twice
+                if id(data) in flattened_attributes:
                     continue
+                flattened_attributes.add(id(data))
+                
                 long_name = prefix + name
                 if siml_isinstance(data, (CLASS_FLOAT, CLASS_STRING)):
                     flat_obj.create_attribute(long_name, data)
                 else:
                     flatten(data, flat_obj, long_name)
-            
-        flatten(tree_object, flat_object, DotName())    
+        
+        #flatten regular data first     
+        flatten(tree_object, flat_object, DotName())   
+        #flatten local variables
+        flatten(func_locals, flat_object, DotName('__func_local__')) 
+        
         #TODO: test: the methods of flat object must not use any data from 
         #      outside of flat_object.
      
@@ -2018,16 +2027,24 @@ class StatementVisitor(Visitor):
         '''
         Call right handler function for a single statement.
         
-        Also puts good location information into UserExceptions.
+        Does also some common error handling:
+        - put good error location information into UserExceptions that 
+          have none.
+        - Create user visible 'Duplicate attribute' errors.
+        - Create user visible 'Undefined attribute' errors.
         '''
         try:
             Visitor.dispatch(self, node)
         except UserException, e:
-            #put good location information into error if necassary, 
-            #and re-raise it
             if e.loc is None:
                 e.loc = node.loc
             raise e
+        except DuplicateAttributeError, e:
+            raise UserException('Duplicate attribute %s.' % e.attr_name, 
+                                loc=node.loc, errno=3800910)
+        except UndefinedAttributeError, e:
+            raise UserException('Undefined attribute %s.' % e.attr_name, 
+                                loc=node.loc, errno=3800920)
 
 
 

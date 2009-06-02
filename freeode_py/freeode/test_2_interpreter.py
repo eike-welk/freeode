@@ -1211,7 +1211,6 @@ class B:
         a.dynamic()
 
 compile B #this crashes
-#compile A #this works
 '''
 
     #create the interpreter
@@ -1238,7 +1237,7 @@ g = 9.81
 
 class BarrelWithHole:
     data V, h: Float
-    data A_bott, A_o, mu, q, g: Float param
+    data A_bott, A_o, mu, q: Float param
 
     func dynamic(this):
         h = V/A_bott
