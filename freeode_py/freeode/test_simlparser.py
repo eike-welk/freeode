@@ -30,15 +30,17 @@ from __future__ import absolute_import              #IGNORE:W0410
 
 #import for test helper functions:
 # py.test.fail('bad, bad, bad'); py.test.skip('no test')
-                      
-import py 
+try:                      
+    import py                                       
+except ImportError:
+    print 'No py library, many tests may fail!'
 
 #import the library that we want to test
 import freeode.simlparser as p
 
 
 
-def test_parser_construction():
+def test_parser_construction(): #IGNORE:C01111
     print 'Test construction of the parser. Tests constructing the Pyparsing grammar.'
     parser = p.Parser()
 
@@ -50,7 +52,7 @@ def test_parser_construction():
 
 
 
-def test_parse_function_definition_1():
+def test_parse_function_definition_1(): #IGNORE:C01111
     print 'Test to parse a function definition without arguments.'
     
     parser = p.Parser()
@@ -70,7 +72,7 @@ func test_1():
     
     
     
-def test_parse_function_definition_2():
+def test_parse_function_definition_2(): #IGNORE:C01111
     print 'Test to parse a function definition with positional arguments.'
     
     parser = p.Parser()
@@ -90,7 +92,7 @@ func test_1(a, b, c):
 
 
 
-def test_parse_function_definition_3():
+def test_parse_function_definition_3(): #IGNORE:C01111
 #    py.test.skip() #IGNORE:E1101
     print 'Test to parse a function definition with default values.'
     
@@ -111,7 +113,7 @@ func test_1(a=0, b=2, c=5):
 
 
 
-def test_parse_function_definition_4():
+def test_parse_function_definition_4(): #IGNORE:C01111
 #    py.test.skip() #IGNORE:E1101
     print 'Test to parse a function definition with argument type specifications.'
     
@@ -132,7 +134,7 @@ func test_1(a:Float, b:String, c:Float):
 
 
 
-def test_parse_function_definition_5():
+def test_parse_function_definition_5(): #IGNORE:C01111
 #    py.test.skip() #IGNORE:E1101
     print 'Test to parse a fully featured function definition.'
     
@@ -154,7 +156,7 @@ func test_1(a:String, b, c:Float, d:Float=2, e=3, f:Float=4) -> Float:
     
     
     
-def test_parse_function_definition_6():
+def test_parse_function_definition_6(): #IGNORE:C01111
     print 'Test to parse a function definition with return type specification.'
     
     parser = p.Parser()
@@ -174,7 +176,7 @@ func test_1() -> Float:
 #    assert False, 'Test'
     
     
-def test_parse_complete_program_1():
+def test_parse_complete_program_1(): #IGNORE:C01111
     print 'Test to parse a complete program.'
     
     test_prog = (

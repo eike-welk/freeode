@@ -407,18 +407,19 @@ class ArgumentList(SimpleArgumentList):
             output_dict[arg_def.name] = in_val
         
         #associate keyword arguments to their name
-        for in_name, in_val in kwargs_dict.iteritems():
+        for in_name_s, in_val in kwargs_dict.iteritems():
+            in_name = DotName(in_name_s)
             #test: argument name must exist in function definition
             if in_name not in self.argument_dict:
                 raise UserException('Unknown argument "%s". \n' 
                                     'Argument definition in: %s \n' 
-                                    % (in_name, str(self.loc)), 
+                                    % (str(in_name), str(self.loc)), 
                                     loc=None, errno=3200260)
             #test for duplicate argument assignment (positional + keyword)
             if in_name in output_dict:
                 raise UserException('Duplicate argument "%s".'
                                     'Argument definition in: %s \n'  
-                                    % (in_name, str(self.loc)), 
+                                    % (str(in_name), str(self.loc)), 
                                     loc=None, errno=3200270)
             #test for correct type, 
             self._test_type_compatible(in_val, self.argument_dict[in_name])
@@ -1686,7 +1687,7 @@ class ExpressionVisitor(Visitor):
             ev_arg_val = self.dispatch(arg_val)
             ev_args.append(ev_arg_val)
         ev_kwargs = {}
-        for arg_name, arg_val in node.keyword_arguments:
+        for arg_name, arg_val in node.keyword_arguments.iteritems():
             ev_arg_val = self.dispatch(arg_val)
             ev_kwargs[arg_name] = ev_arg_val
             

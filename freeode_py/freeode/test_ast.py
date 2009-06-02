@@ -33,7 +33,7 @@ from __future__ import absolute_import              #IGNORE:W0410
 # not installed. 
 try:                      
     import py                                       
-except:
+except ImportError:
     print 'No py library, many tests may fail!'
 
 import unittest
@@ -45,7 +45,7 @@ pytest_plugins = "pytest_unittest"
 from freeode.ast import * 
 
 
-class TestAST(unittest.TestCase):
+class TestAST(unittest.TestCase): #IGNORE:C01111
 
     def setUp(self):
         '''Node: perform common setup tasks for each test'''
@@ -158,7 +158,7 @@ class TestAST(unittest.TestCase):
 
 
 
-class TestVisitor(unittest.TestCase):
+class TestVisitor(unittest.TestCase): #IGNORE:C01111
 
     def setUp(self):
         '''perform common setup tasks for each test'''
@@ -187,27 +187,27 @@ class TestVisitor(unittest.TestCase):
     def test__dispatch(self):
         '''Visitor: Test normal operation.'''
         #define visitor class
-        class FooClass(Visitor):
+        class FooClass(Visitor): #IGNORE:C01111
             def __init__(self):
                 Visitor.__init__(self)
             @Visitor.when_type(list)
-            def visitList(self, _inObject):
+            def visitList(self, _inObject): #IGNORE:C01111
                 return 'list'
             @Visitor.when_type(int)
-            def visitInt(self, _inObject):
+            def visitInt(self, _inObject): #IGNORE:C01111
                 return 'int'
             @Visitor.when_type(float)
-            def visitFloat(self, _inObject):
+            def visitFloat(self, _inObject): #IGNORE:C01111
                 return 'float'
             @Visitor.default
-            def visitDefault(self, _inObject):
+            def visitDefault(self, _inObject): #IGNORE:C01111
                 return 'default'
 
         #test dispatching - dispatching multiple times also tries the cache
         fooInst = FooClass()
         #print fooInst.dispatch([])
         self.assertEqual(fooInst.dispatch([]), 'list')
-        self.assertEqual(fooInst.dispatch([1,2]), 'list')
+        self.assertEqual(fooInst.dispatch([1, 2]), 'list')
         self.assertEqual(fooInst.dispatch([]), 'list')
         #print fooInst.dispatch(1)
         self.assertEqual(fooInst.dispatch(1), 'int')
@@ -224,27 +224,27 @@ class TestVisitor(unittest.TestCase):
     def test__switching_inheritance_priority(self):
         '''Visitor: Test switching based on inheritance and priority.'''
         #Define class hierarchy
-        class Base(object):
+        class Base(object): #IGNORE:C01111
             pass
-        class Derived1(Base):
+        class Derived1(Base): #IGNORE:C01111
             pass
-        class Derived2(Base):
+        class Derived2(Base): #IGNORE:C01111
             pass
 
         #define visitor class
-        class TestVisitorClass(Visitor):
+        class TestVisitorClass(Visitor): #IGNORE:C01111
             def __init__(self):
                 Visitor.__init__(self)
             #Can handle all Base objects but has low priority
             @Visitor.when_type(Base, 1)
-            def visitBase(self, _inObject):
+            def visitBase(self, _inObject): #IGNORE:C01111
                 return 'Base'
             #Specialized method for Derived1 with high priority
             @Visitor.when_type(Derived1, 5)
-            def visitDerived1(self, _inObject):
+            def visitDerived1(self, _inObject): #IGNORE:C01111
                 return 'Derived1'
             @Visitor.when_type(int)
-            def visitInt(self, _inObject):
+            def visitInt(self, _inObject): #IGNORE:C01111
                 return 'int'
 
         #create some objects that the visitor should handle
@@ -265,12 +265,12 @@ class TestVisitor(unittest.TestCase):
     def test_priority_2(self):
         '''Visitor: Test priority 2.'''
 
-        class A(Node):
+        class A(Node): #IGNORE:C01111
             pass
-        class B(Node):
+        class B(Node): #IGNORE:C01111
             pass
         
-        class NodeVisitor(Visitor):
+        class NodeVisitor(Visitor): #IGNORE:C01111
             def __init__(self):
                 Visitor.__init__(self)
 
@@ -292,7 +292,7 @@ class TestVisitor(unittest.TestCase):
 #                print 'seen Node: ' + str(node.dat)
                 return ['Node']
 
-            def mainLoop(self, tree):
+            def mainLoop(self, tree): #IGNORE:C01111
                 retList = []
                 for node in tree.kids:
                     retList += self.dispatch(node)
@@ -317,14 +317,14 @@ class TestVisitor(unittest.TestCase):
     def test__built_in_default_func(self):
         '''Visitor: Test the built in default function.'''
         #define visitor class
-        class FooClass(Visitor):
+        class FooClass(Visitor): #IGNORE:C01111
             def __init__(self):
                 Visitor.__init__(self)
             @Visitor.when_type(list)
-            def visitList(self, _inObject):
+            def visitList(self, _inObject): #IGNORE:C01111
                 return 'list'
             @Visitor.when_type(int)
-            def visitInt(self, _inObject):
+            def visitInt(self, _inObject): #IGNORE:C01111
                 return 'int'
 
         fooInst = FooClass()
@@ -370,7 +370,7 @@ class TestVisitor(unittest.TestCase):
         '''Error: Parameters for @Visitor.default.'''
         class FooClass(Visitor): #IGNORE:W0612
             @Visitor.default(int)
-            def visitDefault(self, _inObject):
+            def visitDefault(self, _inObject): #IGNORE:C01111
                 return 'default'
 
 
@@ -387,30 +387,30 @@ def test_visitor_inherited_handler_methods():
     py.test.skip('Inherited handler functions are currently not implemented.') #IGNORE:E1101
     
     #Define class hierarchy
-    class Base(object):
+    class Base(object): #IGNORE:C01111
         pass
-    class Derived1(Base):
+    class Derived1(Base): #IGNORE:C01111
         pass
-    class Derived2(Base):
+    class Derived2(Base): #IGNORE:C01111
         pass
 
     #define visitor class
-    class TestVisitorClass(Visitor):
+    class TestVisitorClass(Visitor): #IGNORE:C01111
         def __init__(self):
             Visitor.__init__(self)
         #Can handle all Base objects but has low priority
         @Visitor.when_type(Base, 1)
-        def visit_Base(self, _inObject):
+        def visit_Base(self, _inObject): #IGNORE:C01111
             return 'Base'
         #Specialized method for Derived1 with high priority
         @Visitor.when_type(Derived1, 5)
-        def visit_Derived1(self, _inObject):
+        def visit_Derived1(self, _inObject): #IGNORE:C01111
             return 'Derived1'
         @Visitor.when_type(int)
-        def visit_Int(self, _inObject):
+        def visit_Int(self, _inObject): #IGNORE:C01111
             return 'int'
         @Visitor.default
-        def default_handler(self, _inObject):
+        def default_handler(self, _inObject): #IGNORE:C01111
             return 'default handler'
 
     #create the visitor
@@ -423,15 +423,15 @@ def test_visitor_inherited_handler_methods():
     assert visitor.dispatch(2.5) == 'default handler'
     
     #define derived visitor
-    class TestVisitorDerived(TestVisitorClass):
-        def __init__(self):
+    class TestVisitorDerived(TestVisitorClass): #IGNORE:C01111
+        def __init__(self): #IGNORE:W0231
             TestVisitorClass.__init__(self)
         #redefine handler for base class (low priority).
         @Visitor.when_type(Base, 1)
-        def visit_Base(self, _inObject):
+        def visit_Base(self, _inObject): #IGNORE:C01111
             return 'Base by derived'
         @Visitor.default
-        def default_handler(self, _inObject):
+        def default_handler(self, _inObject): #IGNORE:C01111
             return 'default handler by derived'
         
     #create the visitor
@@ -445,7 +445,7 @@ def test_visitor_inherited_handler_methods():
 
     
     
-class TestDotName(unittest.TestCase):
+class TestDotName(unittest.TestCase): #IGNORE:C01111
 
     def setUp(self):
         '''perform common setup tasks for each test'''
@@ -455,11 +455,11 @@ class TestDotName(unittest.TestCase):
         '''DotName: Test constructor.'''
         #create DotName object from string
         abc = DotName('a.b.c')
-        self.assertTrue(abc == ('a','b','c'))
-        self.assertTrue(tuple(abc) == ('a','b','c'))
+        self.assertTrue(abc == ('a', 'b', 'c'))
+        self.assertTrue(tuple(abc) == ('a', 'b', 'c'))
         #create DotName from other iterable
-        abc1 = DotName(('a','b','c'))
-        self.assertTrue(abc1 == ('a','b','c'))
+        abc1 = DotName(('a', 'b', 'c'))
+        self.assertTrue(abc1 == ('a', 'b', 'c'))
 
     def test__str__(self):
         '''DotName: Test conversion to string.'''

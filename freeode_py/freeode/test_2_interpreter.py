@@ -34,12 +34,12 @@ from __future__ import absolute_import              #IGNORE:W0410
 # not installed. 
 try:                      
     import py
-except:
+except ImportError:
     print 'No py library, many tests may fail!'
 
 
 
-def test_data_statement_simple_1():
+def test_data_statement_simple_1(): #IGNORE:C01111
     #py.test.skip('Test data statement: create attributes')
     print 'Test data statement: create attributes'
     from freeode.interpreter import Interpreter, IFloat, IString
@@ -67,7 +67,7 @@ data b: String const
   
   
 
-def test_data_statement_roles_1():
+def test_data_statement_roles_1(): #IGNORE:C01111
     #py.test.skip('Test data statement: create attributes with different roles')
     print 'Test data statement: create attributes with different roles'
     from freeode.interpreter import Interpreter
@@ -99,7 +99,7 @@ data c: Float variable
     
   
 
-def test_data_statement_roles_2():
+def test_data_statement_roles_2(): #IGNORE:C01111
     '''
     In user defined classes the role should be propagated recursively to the 
     child attributes.
@@ -168,7 +168,7 @@ data av: A variable
   
   
 
-def test_interpreter_object_builtin_function_call_1():
+def test_builtin_function_call_1(): #IGNORE:C01111
     #py.test.skip('Test disabled')
     print 'Test interpreter object: call built in function sqrt...............................................................'
     from freeode.interpreter import Interpreter
@@ -193,7 +193,7 @@ a = sqrt(2)
   
   
 
-def test_interpreter_object_builtin_function_call_2():
+def test_builtin_function_call_2(): #IGNORE:C01111
     #py.test.skip('Test disabled')
     print 'Test interpreter object: call built in function print...............................................................'
     from freeode.interpreter import Interpreter
@@ -213,7 +213,92 @@ print('test')
   
   
 
-def test_interpreter_function_definition_and_call_1():
+def test_function_definition_1(): #IGNORE:C01111
+    msg = '''Test all legal styles of function definitions.'''
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter
+
+    prog_text = \
+'''
+func foo1(a, b):
+    return a + b
+    
+func foo2(a=1, b=2):
+    return a + b
+    
+func foo3(a:Float, b:Float):
+    return a + b
+
+func foo4(a:Float=1, b:Float=2):
+    return a + b
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
+  
+  
+
+def test_function_call_1(): #IGNORE:C01111
+    msg = '''Test all legal styles of function calls.'''
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter
+    from freeode.ast import DotName
+
+    prog_text = \
+'''
+func foo(a:Float=1, b:Float=2):
+    return a + b
+
+data a,b,c,d,e,f,g,h: Float const
+
+a = foo()           # a == 3       - line 7
+b = foo(5)          # b = 7
+c = foo(5, 6)       # c = 11
+d = foo(a=10)       # d = 12       - line 10
+e = foo(b=20)       # e = 21
+f = foo(5, b=20)    # f = 25
+g = foo(a=10, b=20) # g = 30
+h = foo(b=20, a=10) # h = 30       - line 14
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+    
+    #get the interpreted module
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print mod
+    
+    #test the results
+    a = mod.get_attribute(DotName('a'))
+    b = mod.get_attribute(DotName('b'))
+    c = mod.get_attribute(DotName('c'))
+    d = mod.get_attribute(DotName('d'))
+    e = mod.get_attribute(DotName('e'))
+    f = mod.get_attribute(DotName('f'))
+    g = mod.get_attribute(DotName('g'))
+    h = mod.get_attribute(DotName('h'))
+    assert a.value == 3
+    assert b.value == 7
+    assert c.value == 11
+    assert d.value == 12
+    assert e.value == 21
+    assert f.value == 25
+    assert g.value == 30
+    assert h.value == 30
+ 
+  
+
+def test_function_definition_and_call_1(): #IGNORE:C01111
     #py.test.skip('Test disabled')
     print 'Test interpreter object: function definition and function call ...............................................................'
     from freeode.interpreter import Interpreter, DotName
@@ -246,7 +331,7 @@ print('end')
   
   
 
-def test_print_function_1():
+def test_print_function_1(): #IGNORE:C01111
     #py.test.skip('Test the print function. - actual printing, built in objects.')
     print 'Test the print function. - actual printing: Float, String, expression.'
     from freeode.interpreter import Interpreter
@@ -275,7 +360,7 @@ print(a+b)
 
 
 
-def test_print_function_2():
+def test_print_function_2(): #IGNORE:C01111
     #py.test.skip('Test the print function. - actual printing, user defined class.')
     print 'Test the print function. - actual printing, user defined class.'
     from freeode.interpreter import Interpreter
@@ -303,7 +388,7 @@ print(c)
   
   
 
-def test_print_function_3():
+def test_print_function_3(): #IGNORE:C01111
     #py.test.skip('Test the print function. - code generation for: Float, String')
     print 'Test the print function. - code generation for: Float, String'
     from freeode.interpreter import Interpreter
@@ -347,7 +432,7 @@ compile A
 
 
 
-def test_print_function_4():
+def test_print_function_4(): #IGNORE:C01111
     #py.test.skip('Test the print function. - code generation for: user defined class.')
     print 'Test the print function. - code generation for: user defined class.'
     from freeode.interpreter import Interpreter
@@ -391,7 +476,7 @@ compile A
   
   
 
-def test_interpreter_class_definition_1():
+def test_interpreter_class_definition_1(): #IGNORE:C01111
     #py.test.skip('Test disabled')
     print 'Test interpreter object: class definition ...............................................................'
     from freeode.interpreter import Interpreter, DotName
@@ -442,7 +527,7 @@ print('end')
   
   
   
-def test_interpreter_class_definition_2():
+def test_interpreter_class_definition_2(): #IGNORE:C01111
     '''
     Test user defined classes - correctness of parent attribute.
     
@@ -491,7 +576,7 @@ data b:B const
 
 
 
-def test_interpreter_method_call():
+def test_interpreter_method_call(): #IGNORE:C01111
     #py.test.skip('Method calls do not work! Implement method wrappers!')
     print 'Test interpreter: method call ...............................................................'
     from freeode.interpreter import Interpreter, DotName
@@ -530,7 +615,7 @@ print('end')
 
 
 
-def test_method_call_this_namespace_1():
+def test_method_call_this_namespace_1(): #IGNORE:C01111
     #py.test.skip('Method calls do not work! Implement method wrappers!')
     print 'Test interpreter: method call, this namespace ...............................................................'
     from freeode.interpreter import Interpreter, DotName
@@ -572,7 +657,7 @@ print('end')
 
       
       
-def test_method_call_this_namespace_2():
+def test_method_call_this_namespace_2(): #IGNORE:C01111
     #py.test.skip('Test interpreter: method call, this namespace')
     print 'Test interpreter: method call, this namespace'
     from freeode.interpreter import Interpreter, DotName
@@ -618,7 +703,7 @@ print('b.a.a2 = ', b.a.a2)
 
       
       
-def test_StatementVisitor_assign_const_1():
+def test_StatementVisitor_assign_const_1(): #IGNORE:C01111
     #py.test.skip('Test disabled')
     print 'Test interpreter object: assignment. needs working data statement and number ...............................................................'
     from freeode.interpreter import Interpreter, DotName
@@ -642,7 +727,7 @@ a = 2
   
 
 # -------- Test interpreter object - emit code ----------------------------------------
-def test_StatementVisitor_assign_emit_code_1():
+def test_StatementVisitor_assign_emit_code_1(): #IGNORE:C01111
     #py.test.skip('Test disabled')
     print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
     from freeode.interpreter import (Interpreter, IFloat)
@@ -686,7 +771,7 @@ b = 2*a #emit this statement
       
 
 
-def test_StatementVisitor_assign_emit_code_2():
+def test_StatementVisitor_assign_emit_code_2(): #IGNORE:C01111
     #py.test.skip('Test interpreter object: emit code without the usual infrastructure.')
     print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
     from freeode.interpreter import (Interpreter, IFloat)
@@ -738,7 +823,7 @@ c = 2*b #emit everything
       
 
 
-def test_StatementVisitor__visit_NodeCompileStmt__code_generation_1():
+def test_StatementVisitor__visit_NodeCompileStmt__code_generation_1(): #IGNORE:C01111
     #py.test.skip('Test StatementVisitor.visit_NodeCompileStmt')
     print 'Test StatementVisitor.visit_NodeCompileStmt:'
     from freeode.interpreter import (Interpreter, IFloat, SimlFunction)
@@ -775,7 +860,7 @@ compile A
     
     
     
-def test_interpreter_user_defined_operators_1():
+def test_interpreter_user_defined_operators_1(): #IGNORE:C01111
     '''
     User defined operators must be converted into multiple statements,
     that contain only operations on fundamental types. Intermediate results
@@ -849,7 +934,7 @@ compile A
 
 
 
-def test_interpreter_user_defined_operators_2():
+def test_interpreter_user_defined_operators_2(): #IGNORE:C01111
     '''
     User defined operators must also work with constant data. 
     Same class as in previous test, but all variables are constant.
@@ -858,7 +943,7 @@ def test_interpreter_user_defined_operators_2():
     '''
     #py.test.skip('Test user defined operators - code generation.')
     print 'Test user defined operators - code generation.'
-    from freeode.interpreter import Interpreter
+    from freeode.interpreter import Interpreter 
     from freeode.ast import DotName, RoleConstant
 
     prog_text = \
@@ -910,7 +995,7 @@ c=a+b
     
 
 
-def test_interpreter_expression_statement_1():
+def test_interpreter_expression_statement_1(): #IGNORE:C01111
     '''
     Unevaluated expressions also generate code.
     '''
@@ -958,7 +1043,7 @@ compile A
 
 
 
-def test_user_defined_class_roles_1():
+def test_user_defined_class_roles_1(): #IGNORE:C01111
     '''
     The role keywords (const, param, variable, ...) should work with user 
     defined classes too.
@@ -1009,7 +1094,7 @@ compile B
   
   
 
-def test_function_return_value_roles_1():
+def test_function_return_value_roles_1(): #IGNORE:C01111
     '''
     User defined functions can be called from constant and from variable 
     environments. Test the roles of their return values.
@@ -1066,7 +1151,7 @@ compile B
   
   
 
-def test_interpreter_dollar_operator_1():
+def test_interpreter_dollar_operator_1(): #IGNORE:C01111
     #py.test.skip('Test interpreter: "$" operator.')
     print 'Test interpreter: "$" operator.'
     from freeode.interpreter import Interpreter, IFloat, CallableObject
@@ -1106,7 +1191,7 @@ compile A
 
 
 
-def test_interpreter_dollar_operator_2():
+def test_interpreter_dollar_operator_2(): #IGNORE:C01111
     #py.test.skip('Test interpreter: "$" operator. - Problem with user defined classes.')
     print 'Test interpreter: "$" operator. - Problem with user defined classes.'
     from freeode.interpreter import Interpreter
@@ -1140,7 +1225,7 @@ compile B #this crashes
     #TODO: Assertions
 
   
-def test_interpreter_small_simulation_program():
+def test_interpreter_small_simulation_program(): #IGNORE:C01111
     #py.test.skip('Test interpreter: small simulation program.!!!')
     print 'Test interpreter: small simulation program.'
     from freeode.interpreter import Interpreter
@@ -1199,6 +1284,6 @@ compile RunTest
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_interpreter_user_defined_operators_1()
+    test_function_call_1()
     pass
 

@@ -34,12 +34,12 @@ from __future__ import absolute_import              #IGNORE:W0410
 # not installed. 
 try:                      
     import py
-except:
+except ImportError:
     print 'No py library, many tests may fail!'
 
 
 
-def test_argument_list_1():
+def test_argument_list_1(): #IGNORE:C01111
     msg = 'Test error in argument list - too many arguments.'
     #py.test.skip(msg)
     print msg
@@ -72,9 +72,9 @@ foo(a, b)
     
   
   
-def test_argument_list_2():
+def test_argument_list_2(): #IGNORE:C01111
     msg = 'Test error in argument list - unknown argument.'
-    py.test.skip('Keyword arguments are currently unimplemented!')
+    #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
     from freeode.ast import UserException
@@ -105,9 +105,9 @@ foo(b=a)
     
   
   
-def test_argument_list_3():
+def test_argument_list_3(): #IGNORE:C01111
     msg = 'Test error in argument list - Duplicate argument.'
-    py.test.skip('Keyword arguments are currently unimplemented!')
+    #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
     from freeode.ast import UserException
@@ -138,7 +138,7 @@ foo(a, a=b)
     
   
   
-def test_argument_list_4():
+def test_argument_list_4(): #IGNORE:C01111
     msg = 'Test error in argument list - too few arguments.'
     #py.test.skip(msg)
     print msg
@@ -171,7 +171,7 @@ foo(a)
     
   
 
-def test_argument_list_5():
+def test_argument_list_5(): #IGNORE:C01111
     msg = 'Test error in argument list - wrong types.'
     #py.test.skip(msg)
     print msg
@@ -204,8 +204,100 @@ foo(a)
     
   
 
+def test_argument_list_6(): #IGNORE:C01111
+    msg = 'Test error in argument list - keyword arguments must come first, function definition.'
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter
+    from freeode.ast import UserException
+    
+    prog_text = \
+'''
+func foo(a=1, b):
+    return a
+'''
+    #create the interpreter
+    intp = Interpreter()
+    
+    try:
+        #run mini program
+        intp.interpret_module_string(prog_text, None, 'test')
+    except UserException, e:
+        print e
+        assert e.errno == 1064110
+        print 'Correct exception was raised.'
+    else:
+        assert False, 'An exception should have been raised.'
+    
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
+    
+  
+
+def test_argument_list_7(): #IGNORE:C01111
+    msg = 'Test error in argument list - keyword arguments must come first, function definition.'
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter
+    from freeode.ast import UserException
+    
+    prog_text = \
+'''
+func foo(a, a):
+    return a
+'''
+    #create the interpreter
+    intp = Interpreter()
+    
+    try:
+        #run mini program
+        intp.interpret_module_string(prog_text, None, 'test')
+    except UserException, e:
+        print e
+        assert e.errno == 1064120
+        print 'Correct exception was raised.'
+    else:
+        assert False, 'An exception should have been raised.'
+    
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
+    
+  
+
+def test_argument_list_8(): #IGNORE:C01111
+    msg = 'Test error in argument list - keyword arguments must come first, function call.'
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter
+    from freeode.ast import UserException
+    
+    prog_text = \
+'''
+func foo(a, b):
+    return a
+
+foo(a=1, 2)
+'''
+    #create the interpreter
+    intp = Interpreter()
+    
+    try:
+        #run mini program
+        intp.interpret_module_string(prog_text, None, 'test')
+    except UserException, e:
+        print e
+        assert e.errno == 2140010
+        print 'Correct exception was raised.'
+    else:
+        assert False, 'An exception should have been raised.'
+    
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
+    
+  
+
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_argument_list_1()
+    test_argument_list_8()
     pass

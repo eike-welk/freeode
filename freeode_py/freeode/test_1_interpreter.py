@@ -34,13 +34,13 @@ from __future__ import absolute_import              #IGNORE:W0410
 # not installed. 
 try:                      
     import py
-except:
+except ImportError:
     print 'No py library, many tests may fail!'
 
 
 
 # -------- Test InterpreterObject class ----------------------------------------------------------------------
-def test_InterpreterObject_1():
+def test_InterpreterObject_1(): #IGNORE:C01111
     print 'InterpreterObject: basic operation'
     from freeode.interpreter import (InterpreterObject, DotName, UndefinedAttributeError,
                                      DuplicateAttributeError, BoundMethod, CallableObject)
@@ -83,7 +83,7 @@ def test_InterpreterObject_1():
     
     
 
-def test_InterpreterObject_method_retrieval():
+def test_InterpreterObject_method_retrieval(): #IGNORE:C01111
     print 'InterpreterObject: attributes are also searched in the class object'
     print 'If the attributes taken from the class are call-able they are wrapped in a bound method.'
     from freeode.interpreter import (InterpreterObject, DotName, UndefinedAttributeError,
@@ -131,7 +131,7 @@ def test_InterpreterObject_method_retrieval():
 
 
 
-def test_InterpreterObject_create_path_1():
+def test_InterpreterObject_create_path_1(): #IGNORE:C01111
     print 'InterpreterObject: create_path method: create non-existing path.'
     from freeode.interpreter import (InterpreterObject, DotName)
     
@@ -153,7 +153,7 @@ def test_InterpreterObject_create_path_1():
 
 
 
-def test_InterpreterObject_create_path_2():
+def test_InterpreterObject_create_path_2(): #IGNORE:C01111
     print 'InterpreterObject: create_path method: return existing path, extend path'
     from freeode.interpreter import (InterpreterObject, DotName)
     
@@ -175,7 +175,7 @@ def test_InterpreterObject_create_path_2():
 
 
 #-------- Test IntArgumentList class ------------------------------------------------------------------------#
-def test_IntArgumentList_1():
+def test_IntArgumentList_1(): #IGNORE:C01111
     print 'IntArgumentList: construction'
     from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
     
@@ -214,7 +214,7 @@ def test_IntArgumentList_1():
     
     
     
-def test_IntArgumentList_2():
+def test_IntArgumentList_2(): #IGNORE:C01111
     print 'ArgumentList: test argument processing at call site'
     from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
     
@@ -278,7 +278,7 @@ def test_IntArgumentList_2():
     
     
     
-def test_IntArgumentList_2_1():
+def test_IntArgumentList_2_1(): #IGNORE:C01111
     print 'ArgumentList: __init__: strings are converted to DotName, default argument for loc'
     from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, CLASS_FLOAT)
     
@@ -304,7 +304,7 @@ def test_IntArgumentList_2_1():
     
     
     
-def test_IntArgumentList_3():
+def test_IntArgumentList_3(): #IGNORE:C01111
     print 'ArgumentList: test calling with default arguments.'
     from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, CLASS_FLOAT)
     
@@ -324,7 +324,7 @@ def test_IntArgumentList_3():
     
     
     
-def test_IntArgumentList_4():
+def test_IntArgumentList_4(): #IGNORE:C01111
     print 'ArgumentList: test type compatibility testing.'
     from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName,  
                                      CLASS_FLOAT, CLASS_STRING)
@@ -355,7 +355,7 @@ def test_IntArgumentList_4():
  
  
 # -------- Test wrapper object for Python functions ------------------------------------------------------------------------
-def test_BuiltInFunctionWrapper_1():
+def test_BuiltInFunctionWrapper_1(): #IGNORE:C01111
     print 'BuiltInFunctionWrapper: test function call with known arguments, no Interpreter.'
     from freeode.interpreter import (BuiltInFunctionWrapper,
                                      ArgumentList, NodeFuncArg,   
@@ -378,7 +378,7 @@ def test_BuiltInFunctionWrapper_1():
     
     
                                       
-def test_BuiltInFunctionWrapper_2():
+def test_BuiltInFunctionWrapper_2(): #IGNORE:C01111
     print 'BuiltInFunctionWrapper: test function call with unknown arguments, no Interpreter.'
     from freeode.interpreter import (BuiltInFunctionWrapper,
                                      ArgumentList, NodeFuncArg, ref,  
@@ -418,7 +418,7 @@ def test_BuiltInFunctionWrapper_2():
     
                                       
 # -------- Test user defined class object ------------------------------------------------------------------------
-def test_SimlClass_1():
+def test_SimlClass_1(): #IGNORE:C01111
     #py.test.skip('Test expression evaluation (only immediate values)')
     print 'Test SimlClass: class without statements'
     from freeode.interpreter import SimlClass, Interpreter
@@ -440,7 +440,7 @@ def test_SimlClass_1():
     
 
 
-def test_SimlClass_2():
+def test_SimlClass_2(): #IGNORE:C01111
     #py.test.skip('Test expression evaluation (only immediate values)')
     print 'Test SimlClass: class with one data member'
     from freeode.interpreter import SimlClass, Interpreter
@@ -475,7 +475,7 @@ def test_SimlClass_2():
     
 
 # -------- Test wrapper for built in classes ------------------------------------------------------------------
-def test_BuiltInClassWrapper_1():
+def test_BuiltInClassWrapper_1(): #IGNORE:C01111
     #py.test.skip('Test BuiltInClassWrapper: construction, put into module')
     print 'Test BuiltInClassWrapper: construction, put into module'
     from freeode.interpreter import BuiltInClassWrapper, InterpreterObject
@@ -499,7 +499,7 @@ def test_BuiltInClassWrapper_1():
     
 
 # -------- Test Siml wrapper for float classes ------------------------------------------------------------------
-def test_IFloat_1():
+def test_IFloat_1(): #IGNORE:C01111
     #py.test.skip('Test IFloat: construction from Siml class')
     print 'Test IFloat: construction from Siml class'
     from freeode.interpreter import IFloat, CLASS_FLOAT, siml_isinstance
@@ -516,7 +516,7 @@ def test_IFloat_1():
 
 
 
-def test_IFloat_2():
+def test_IFloat_2(): #IGNORE:C01111
     #py.test.skip('Test IFloat: constructor')
     print 'Test IFloat: constructor'
     from freeode.interpreter import IFloat
@@ -547,7 +547,7 @@ def test_IFloat_2():
 
 
 
-def test_IFloat_3():
+def test_IFloat_3(): #IGNORE:C01111
     #py.test.skip('Test IFloat: mathematical operators from Python') #IGNORE:E1101
     print 'Test IFloat: mathematical operators from Python'
     from freeode.interpreter import IFloat
@@ -570,7 +570,7 @@ def test_IFloat_3():
 
 
 
-def test_IFloat_4():
+def test_IFloat_4(): #IGNORE:C01111
     #py.test.skip('Test IFloat: special functions for mathematical operators from Siml')
     print 'Test IFloat: special functions for mathematical operators from Siml'
     from freeode.interpreter import IFloat
@@ -598,7 +598,7 @@ def test_IFloat_4():
 
 
 # -------- Test Siml wrapper for str classes ------------------------------------------------------------------
-def test_IString_1():
+def test_IString_1(): #IGNORE:C01111
     #py.test.skip('Test IString: construction from Siml class')
     print 'Test IString: construction from Siml class'
     from freeode.interpreter import IString, CLASS_STRING, siml_isinstance
@@ -615,7 +615,7 @@ def test_IString_1():
 
 
 
-def test_IString_2():
+def test_IString_2(): #IGNORE:C01111
     #py.test.skip('Test IString: constructor')
     print 'Test IString: constructor'
     from freeode.interpreter import IString
@@ -650,7 +650,7 @@ def test_IString_2():
 
 
 
-def test_IString_3():
+def test_IString_3(): #IGNORE:C01111
     #py.test.skip('Test IString: mathematical operators from Python') #IGNORE:E1101
     print 'Test IString: mathematical operators from Python'
     from freeode.interpreter import IString
@@ -663,7 +663,7 @@ def test_IString_3():
 
 
 
-def test_IString_4():
+def test_IString_4(): #IGNORE:C01111
     #py.test.skip('Test IString: special functions for mathematical operators from Siml')
     print 'Test IString: special functions for mathematical operators from Siml'
     from freeode.interpreter import IString
@@ -679,7 +679,7 @@ def test_IString_4():
 
 
 # -------- Test expression evaluation ------------------------------------------------------------------------
-def test_operator_dispatch_1():
+def test_operator_dispatch_1(): #IGNORE:C01111
     #py.test.skip('Test ExpressionVisitor: handling of binary operators with Float values.')
     print 'Test ExpressionVisitor: handling of binary operators with Float values.'
     from freeode.interpreter import (IFloat, ExpressionVisitor)
@@ -703,7 +703,7 @@ def test_operator_dispatch_1():
 
 
 # -------- Test expression evaluation ------------------------------------------------------------------------
-def test_operator_dispatch_2():
+def test_operator_dispatch_2(): #IGNORE:C01111
     msg = 'Test ExpressionVisitor: handling of binary operators with unknown Float values.'
     #py.test.skip(msg)
     print msg
@@ -729,7 +729,7 @@ def test_operator_dispatch_2():
     
 
 
-def test_expression_evaluation_1():
+def test_expression_evaluation_1(): #IGNORE:C01111
     #py.test.skip('Test expression evaluation (only immediate values)')
     print 'Test expression evaluation (only immediate values)'
     from freeode.interpreter import ExpressionVisitor
@@ -752,7 +752,7 @@ def test_expression_evaluation_1():
     
     
 
-def test_expression_evaluation_2():
+def test_expression_evaluation_2(): #IGNORE:C01111
     #py.test.skip('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (access to variables)'
     from freeode.interpreter import (IModule, CLASS_FLOAT, RoleConstant, 
@@ -791,7 +791,7 @@ def test_expression_evaluation_2():
     
     
 
-def test_expression_evaluation_2_1():
+def test_expression_evaluation_2_1(): #IGNORE:C01111
     #py.test.skip('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (calling built in functions)'
     from freeode.interpreter import (simlparser, IModule, ExecutionEnvironment,
@@ -837,7 +837,7 @@ def test_expression_evaluation_2_1():
 
 
 
-def test_ExpressionVisitor_unknown_arguments_1():
+def test_ExpressionVisitor_unknown_arguments_1(): #IGNORE:C01111
     msg = 'Test expression evaluation (calling built in functions), unknown arguments'
     #py.test.skip(msg)
     print msg
@@ -887,7 +887,7 @@ def test_ExpressionVisitor_unknown_arguments_1():
     
     
 
-def test_ExpressionVisitor_unknown_arguments_2():
+def test_ExpressionVisitor_unknown_arguments_2(): #IGNORE:C01111
     #py.test.skip('Test ExpressionVisitor: call library function with unknown argument')
     print 'Test ExpressionVisitor: call library function with unknown argument'
     from freeode.interpreter import (Interpreter, CLASS_FLOAT, )
@@ -911,7 +911,7 @@ def test_ExpressionVisitor_unknown_arguments_2():
     
 
 
-def test_expression_evaluation_3():
+def test_expression_evaluation_3(): #IGNORE:C01111
     #py.test.skip('Test disabled')
     print 'Test expression evaluation (returning of partially evaluated expression when accessing variables)'
     from freeode.interpreter import (IModule, CLASS_FLOAT, RoleVariable, 
@@ -953,7 +953,7 @@ def test_expression_evaluation_3():
 
 
 # --------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
-def test_basic_execution_of_statements():
+def test_basic_execution_of_statements(): #IGNORE:C01111
     #py.test.skip('Test basic execution of statements (no interpreter object)')
     print 'Test basic execution of statements (no interpreter object) .................................'
     from freeode.interpreter import (IModule, CLASS_FLOAT, CLASS_STRING,
@@ -1010,7 +1010,7 @@ c = 'Hello ' + 'world!'
   
   
 # -------- Test interpreter object - basic --------------------------------------------------------  
-def test_SimlFunction_1():
+def test_SimlFunction_1(): #IGNORE:C01111
     #py.test.skip('Test disabled')
     print 'Test SimlFunction: call user defined function ...............................................................'
     print 'User defined functions are created without parser.'
@@ -1061,7 +1061,7 @@ def test_SimlFunction_1():
 
 
 
-def test_SimlFunction_2():
+def test_SimlFunction_2(): #IGNORE:C01111
     print 'SimlFunction: get_complete_path method'
     from freeode.interpreter import (SimlFunction, DotName)
     
@@ -1081,7 +1081,7 @@ def test_SimlFunction_2():
 
 
 
-def test_SimlFunction_3():
+def test_SimlFunction_3(): #IGNORE:C01111
     #py.test.skip('Test disabled')
     print 'Test SimlFunction: storage of local variables during code collection.'
     print 'User defined functions are created without parser.'
@@ -1128,7 +1128,7 @@ def test_SimlFunction_3():
 
 
 # -------- Test administrative functions ------------------------------------------------------------------------
-def test_determine_result_role_1():
+def test_determine_result_role_1(): #IGNORE:C01111
     msg = 'Test determine_result_role: '
     #py.test.skip(msg)
     print msg
@@ -1161,7 +1161,7 @@ def test_determine_result_role_1():
     
 
 
-def test_determine_result_role_2():
+def test_determine_result_role_2(): #IGNORE:C01111
     msg = 'Test determine_result_role: errors'
     #py.test.skip(msg)
     print msg
@@ -1216,7 +1216,7 @@ def test_determine_result_role_2():
 
 
 
-def test_is_role_more_variable_1():
+def test_is_role_more_variable_1(): #IGNORE:C01111
     #py.test.skip('Test is_role_more_variable: compare the variablenes of two roles.')
     print 'Test is_role_more_variable: compare the variablenes of two roles.'
     from freeode.interpreter import (is_role_more_variable)
@@ -1236,7 +1236,7 @@ def test_is_role_more_variable_1():
     
     
 
-def test_is_role_more_variable_2():
+def test_is_role_more_variable_2(): #IGNORE:C01111
     #py.test.skip('Test is_role_more_variable: exceptions for wrong types.')
     print 'Test is_role_more_variable: exceptions for wrong types.'
     from freeode.interpreter import (is_role_more_variable)
@@ -1268,7 +1268,7 @@ def test_is_role_more_variable_2():
         
         
 
-def test_set_role_recursive_1():
+def test_set_role_recursive_1(): #IGNORE:C01111
     #py.test.skip('Test set_role_recursive')
     print 'Test set_role_recursive'
     from freeode.interpreter import (InterpreterObject, set_role_recursive)

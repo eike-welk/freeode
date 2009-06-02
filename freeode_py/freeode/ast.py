@@ -538,7 +538,7 @@ class NodeFuncCall(Node):
             Type of the results of the operation. For decorating the AST.
         role: AttributeRole
             Role of the results of the operation. For decorating the AST.
-       loc: 
+        loc: 
             Location in input string
             
     TODO: unify functions and operators and
@@ -954,11 +954,11 @@ class SimpleArgumentList(Node):
                 self.default_args.append(arg)
             elif there_was_keyword_argument:
                 raise UserException('Positional arguments must come before '
-                                    'keyword arguments!', loc)
+                                    'keyword arguments!', loc, errno=1064110)
             #test: argument names must be unique
             if arg.name in self.argument_dict:
                 raise UserException('Duplicate argument name "%s"!' 
-                                    % str(arg.name), loc) 
+                                    % str(arg.name), loc, errno=1064120) 
             self.argument_dict[arg.name] = arg
 
 

@@ -639,7 +639,7 @@ class Parser(object):
             if isinstance(toks.default_value, Node):
                 attrDef.default_value = toks.default_value
                 raise UserException('Default values are currently unsupported!',
-                                    self.createTextLocation(loc))
+                                    self.createTextLocation(loc), errno=2138010)
             #store the attribute definition in the list
             attrDefList.statements.append(attrDef)
         #Special case: only one attribute defined
@@ -656,7 +656,7 @@ class Parser(object):
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         raise UserException('Slicing is currently unsupported!',
-                            self.createTextLocation(loc))
+                            self.createTextLocation(loc), errno=2139010)
 
 
 #    def _action_func_call_arg(self, s, loc, toks): #IGNORE:W0613
@@ -708,15 +708,14 @@ class Parser(object):
         for arg in toks[1].argument_list:
             if arg.positional_argument:
                 if there_was_keyword_argument:
-                    raise UserException('Positional arguments must come before keyword arguments!',
-                                        nCurr.loc)
+                    raise UserException('Positional arguments must come before keyword arguments.',
+                                        nCurr.loc, errno=2140010)
                 nCurr.arguments.append(arg.positional_argument[0][0])
             elif arg.keyword_argument:
                 there_was_keyword_argument = True
-#                print 'arg.keyword_argument: ', arg.keyword_argument
-                #TODO: store keyword arguments too
-                raise UserException('Keyword arguments are currently unimplemented!',
-                                     nCurr.loc)
+                arg_name = str(arg.keyword_argument[0][0].name)
+                arg_val = arg.keyword_argument[0][2]
+                nCurr.keyword_arguments[arg_name] = arg_val
         return nCurr
 
 
