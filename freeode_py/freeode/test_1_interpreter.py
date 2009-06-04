@@ -960,6 +960,7 @@ def test_basic_execution_of_statements(): #IGNORE:C01111
                                      DotName, ExecutionEnvironment,
                                      ExpressionVisitor, StatementVisitor)
     import freeode.simlparser as simlparser
+    from freeode.ast import RoleConstant
     
     prog_text = \
 '''
@@ -980,11 +981,17 @@ c = 'Hello ' + 'world!'
 #    print 'global namespace - before interpreting statements - built in library: ---------------'
 #    print mod
            
+    #create dummy interpreter class, needed for assignment statement
+    class Interpreter(object):
+        def __init__(self):
+            self.assign_target_roles = (RoleConstant,)
     #initialize the interpreter
+    intp = Interpreter()
     env = ExecutionEnvironment()
     exv = ExpressionVisitor(None)
     exv.environment = env
     stv = StatementVisitor(None)
+    stv.interpreter = intp
     stv.environment = env
     stv.expression_visitor = exv
     #set up parsing the main module

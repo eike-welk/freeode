@@ -852,6 +852,10 @@ class RoleStateVariable(RoleVariable):
 class RoleAlgebraicVariable(RoleVariable):
     '''The attribute is an algebraic variable'''
 #    userStr = 'algebraic_variable'
+class RoleTimeDifferential(RoleAlgebraicVariable):
+    '''The attribute is an algebraic variable'''
+#    userStr = 'algebraic_variable'
+
 
 
 class NodeDataDef(Node):

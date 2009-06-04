@@ -39,7 +39,6 @@ from __future__ import division
 
 import cStringIO
 from freeode.ast import *
-#import freeode.interpreter as interpreter
 from  freeode.interpreter import *
 
 
@@ -53,7 +52,7 @@ class PyGenException(Exception):
 
 
 
-class FormulaGenerator(Visitor):
+class ExpressionGenerator(Visitor):
     '''
     Take ILT sub-tree that describes a formula and
     convert it into a formula in the Python programming language.
@@ -103,7 +102,7 @@ class FormulaGenerator(Visitor):
 #        retStr += ')'
 #        return retStr
         
-    @Visitor.when_type(InstFloat, 1)
+    @Visitor.when_type(IFloat, 1)
     def _createNum(self, variable):
         #Number: 123.5 or variable with type float
         if variable.role is RoleConstant:
@@ -111,7 +110,7 @@ class FormulaGenerator(Visitor):
         else:
             return variable.target_name
         
-    @Visitor.when_type(InstString, 1)
+    @Visitor.when_type(IString, 1)
     def _createString(self, variable):
         #String: 'hello world' or variable with type str
         if variable.role is RoleConstant:
@@ -150,7 +149,7 @@ class FormulaGenerator(Visitor):
     @Visitor.default
     def _ErrorUnknownNode(self, iltFormula):
         #Internal error: unknown node
-        raise PyGenException('Unknown node in FormulaGenerator:\n' 
+        raise PyGenException('Unknown node in ExpressionGenerator:\n' 
                              + str(iltFormula))
 
 
@@ -173,7 +172,7 @@ class StatementGenerator(Visitor):
         #File like object, where the Python program will be stored.
         self.out_py = buffer
         #Object that creates a formula from an AST sub-tree
-        self.genFormula = FormulaGenerator()
+        self.genFormula = ExpressionGenerator()
 
     def write(self, string):
         '''Put a string of python code into the buffer.'''
@@ -252,16 +251,16 @@ class StatementGenerator(Visitor):
             self.dispatch(iltStmt.elsePart, indent + ind4)
 
 
-    @Visitor.when_type(NodePrintStmt, 1)
-    def _createPrintStmt(self, iltStmt, indent):
-        #print statement -----------------------------------------------------
-        line = indent + 'print '
-        for expr in iltStmt.arguments:
-            line += self.createFormula(expr) + ', '
-        #take away last comma if newline is wanted
-        if iltStmt.newline:
-            line = line[:-2]
-        self.write(line + '\n')
+#    @Visitor.when_type(NodePrintStmt, 1)
+#    def _createPrintStmt(self, iltStmt, indent):
+#        #print statement -----------------------------------------------------
+#        line = indent + 'print '
+#        for expr in iltStmt.arguments:
+#            line += self.createFormula(expr) + ', '
+#        #take away last comma if newline is wanted
+#        if iltStmt.newline:
+#            line = line[:-2]
+#        self.write(line + '\n')
 
 
 #    @Visitor.when_type(NodeStoreStmt, 1)
@@ -343,7 +342,7 @@ class StatementGenerator(Visitor):
 
 
 
-class ProcessGenerator(object):
+class SimulationClassGenerator(object):
     '''create python class that simulates a process'''
 
     def __init__(self, buffer):
@@ -351,7 +350,7 @@ class ProcessGenerator(object):
         Arguments:
             buffer : File where the Python program will be stored.
         '''
-        super(ProcessGenerator, self).__init__()
+        super(SimulationClassGenerator, self).__init__()
         #The input: an IL-tree of the process. It has no external dependencies.
         self.ilt_process = CompiledClass()
         #File where the Python program will be stored.
@@ -383,7 +382,7 @@ class ProcessGenerator(object):
         time_differentials = set()
         #create dicts to find and classify attributes fast
         for name, attr in self.ilt_process.attributes.iteritems():
-            if not isinstance(attr, (InstFloat, InstString)):
+            if not isinstance(attr, (IFloat, IString)):
                 continue
             if attr.role is RoleParameter:
                 self.parameters[name] = attr
@@ -439,7 +438,7 @@ class ProcessGenerator(object):
         #loop over all attribute definitions and create an unique python name
         #for each attribute
         for name, attr in self.ilt_process.attributes.iteritems():
-            if not isinstance(attr, (InstFloat, InstString)):
+            if not isinstance(attr, (IFloat, IString)):
                 continue
             #create underline separated name string
             py_name1 = '_'.join(name)
@@ -754,7 +753,7 @@ if __name__ == '__main__':
         for name in process_names:
             self.process_class_names.append(name)
             process = ilt_root.get_attribute(name)
-            procGen = ProcessGenerator(self.out_py)
+            procGen = SimulationClassGenerator(self.out_py)
             procGen.create_process(process, name)
 
         self.write_program_end()

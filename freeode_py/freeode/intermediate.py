@@ -21,6 +21,10 @@
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
 '''
+============================================================================
+THIS MODULE IS SUPERSEEDED BY 'interpreter.py' IT IS ONLY KEPT FOR REFERENCE!
+============================================================================
+
 Creation of the program's intermediate representation (language). 
 
 This intermediate representation is a tree made of AST nodes (classes 

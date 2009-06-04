@@ -814,7 +814,7 @@ class SimlClass(TypeObject):
         new_env.local_scope = self #functions and data are created 
         #                           in the local scope - this class object
         #Data attributes of user defined objects are by default variables
-        new_env.default_data_role = RoleVariable
+        new_env.default_data_role = RoleAlgebraicVariable
         
         #execute the function's code in the new environment.
         self.interpreter.push_environment(new_env)
@@ -930,6 +930,17 @@ class INone(InterpreterObject):
 CLASS_NONETYPE = INone.init_funcs_and_class()
 #The single None instance for Siml
 NONE = INone()
+
+
+
+#TODO: Class that acts as special undetermined class. Necessary for local 
+#      variables of true template functions. Currently only the arguments 
+#      of a function have this property. Instances would need to be treated 
+#      specially in assignments, similarly to RoleUnknown. It would always be 
+#      unassigned, with unknown value.
+#
+#      class IAny(InterpreterObject): #or IUnknownType
+#          '''Instance of special undetermined class.'''
 
  
 
@@ -1136,14 +1147,21 @@ class PrintFunction(CallableObject):
             #create code that prints at runtime
             new_args = []
             for arg1 in args:
+                #call argument's the __str__ method, the expression visitor 
+                #may (will probably) return an unevaluated function call.
+                #This will transform a call to a user-defined __str__ method
+                #into calls to fundamental __str__ methods
                 str_func = arg1.type().get_attribute(DotName('__str__'))
                 str_call = NodeFuncCall(str_func, [arg1], {}, None)
                 str_expr = self.interpreter.statement_visitor\
                            .expression_visitor.dispatch(str_call)
-                new_args.append(str_expr)
-            print_func = NodeFuncCall(DotName('print'), new_args, {}, None)
-            print_stmt = NodeExpressionStmt(print_func, None)
-            self.interpreter.collect_statement(print_stmt)
+                new_args.append(str_expr) #collect the call's result
+            #create a new call to the print function
+            print_call = NodeFuncCall(NodeIdentifier(DotName('print')), new_args, {}, None)
+            print_call.type = CLASS_NONETYPE
+            print_call.is_assigned = True
+            print_call.role = RoleConstant
+            return print_call
         else:
             #execute the print statement.
             line = ''
@@ -1154,10 +1172,11 @@ class PrintFunction(CallableObject):
                     arg1_str = str_func().value 
                 except (UndefinedAttributeError, AttributeError, 
                         UnknownArgumentsException):
-                    #Convert to string Python way (this should always work)
+                    #Convert to string with Python's 'str' function
                     arg1_str = str(arg1)
                 line += arg1_str
             print line
+            return NONE
      
      
      
@@ -1669,13 +1688,6 @@ class ExpressionVisitor(Visitor):
         - Node.keyword_arguments : For regular functions all arguments are specified
                                    keyword arguments
        '''
-        #TODO: honor node.function_object: 
-        #      the indicator that the function to perform the operation is 
-        #      already known. Generated code could be interpreted for a 2nd 
-        #      time.
-        #   
-        #      if  node.function_object is not None:
-        #          func_obj = node.function_object
         #find the right call-able object   
         func_obj = self.dispatch(node.name)
         if not isinstance(func_obj, CallableObject):
@@ -1695,10 +1707,14 @@ class ExpressionVisitor(Visitor):
             #call the call-able object
             return func_obj(*ev_args, **ev_kwargs)     #IGNORE:W0142
         except UnknownArgumentsException:
-            #TODO: maybe special actions for bound methods necessary
             #Some arguments were unknown create an unevaluated function call
             new_call = NodeFuncCall(node.name, ev_args, ev_kwargs, node.loc)
             #put on decoration
+            #TODO: Maybe put func_obj into new_call.name ?
+            #      This would result in a function call, that could be 
+            #      evaluated by ExpressionVisitor.
+            #      This TODO would also allow to remove new_call.function_object at all.
+            #      However this TODO can not be implemented with NodeOpInfix2, NodeOpPrefix1.
             #new_call.function_object = func_obj
             new_call.type = func_obj.return_type
             new_call.is_assigned = True
@@ -1760,6 +1776,7 @@ class StatementVisitor(Visitor):
         elif isinstance(ret_val, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1, 
                                   NodeParentheses)):
             #TODO: remove all statements that have no effect, and warn about it
+            #TODO: accept only calls to the print and graph functions
             #there is an unevaluated expression - create some code that 
             #evaluates it at runtime
             if not self.interpreter.is_collecting_code():
@@ -1799,8 +1816,9 @@ class StatementVisitor(Visitor):
                 Location in program text for error messages
         '''
         #TODO: assignment without defining the variable first (no data statement.)
-        #      This is very useful inside a function. Putting function arguments 
-        #      into the function's namespace could be handled this way too.
+        #      This is very useful inside a function. 
+        #      - Putting function arguments into the function's namespace 
+        #        could be handled this way too.
         
         #Test if value has been assigned already.
         if target.is_assigned:
@@ -1823,11 +1841,20 @@ class StatementVisitor(Visitor):
             return
         
         #Only fundamental functions from here on: ------------------
-        #Test if assignment is possible according to the role.
-        if is_role_more_variable(value.role, target.role):
-            raise UserException('Incompatible roles in assignment. '
-                                'LHS: %s RHS: %s' % (str(target.role), 
-                                                     str(value.role)), loc)
+#        #Test if assignment is possible according to the role.
+#        if is_role_more_variable(value.role, target.role):
+#            raise UserException('Incompatible roles in assignment. '
+#                                'LHS: %s RHS: %s' % (str(target.role), 
+#                                                     str(value.role)), loc)
+        #In different regions of the program only some roles are legal as 
+        #targets for assignments
+        if not issubclass(target.role, self.interpreter.assign_target_roles):
+            raise UserException('Variable has illegal role as target for '
+                                'assignment. '
+                                '\nIllegal role: %s \nLegal roles %s'
+                                % (str(target.role), 
+                                   str(self.interpreter.assign_target_roles)), 
+                                   loc)
         #perform assignment - function is fundamental and target is constant
         if target.role is RoleConstant:
             try:
@@ -1929,7 +1956,7 @@ class StatementVisitor(Visitor):
         #Create the new object
         tree_object = class_obj()
         #set role
-        set_role_recursive(tree_object, RoleVariable)
+        set_role_recursive(tree_object, RoleAlgebraicVariable)
         #put new object also into module namespace, if name given
         if node.name is not None:
             self.environment.local_scope.create_attribute(node.name, tree_object)
@@ -1947,25 +1974,37 @@ class StatementVisitor(Visitor):
         flat_object.loc = tree_object.type().loc 
         
         #Create code: 
-        #TODO: Implement automatic calling of main functions in child objects.
-        #TODO: In different parts of code only variables with speciffic roles 
-        #      are valid targets of an assign statement.
+        #In different parts of code only variables with speciffic roles 
+        #are valid targets of an assign statement.
         #      outside compile: only RoleConstant
-        #      in "initial":    only RoleParameter, RoleStateVariable 
-        #      in "dynamic":    only RoleVariable
-        #      in "final":      only RoleVariable
+        #      in "init":       only RoleParameter, RoleVariable, RoleConstant 
+        #      in "dynamic":    only RoleAlgebraicVariable, RoleConstant 
+        #      in "final":      only RoleVariable, RoleConstant 
+        main_func_specs = \
+            [Node(name=DotName('init'), 
+                  roles=(RoleParameter, RoleVariable, RoleConstant)),
+             Node(name=DotName('dynamic'), 
+                  roles=(RoleAlgebraicVariable, RoleConstant)),
+             Node(name=DotName('final'), 
+                  roles=(RoleVariable, RoleConstant))]
         #call the main functions of tree_object and collect code
-        main_func_names = [DotName('init'), DotName('dynamic'), DotName('final')]
-        for func_name in main_func_names:
+        for spec in main_func_specs:
+            func_name = spec.name             #IGNORE:E1101
+            legal_roles = spec.roles          #IGNORE:E1101
             #get one of the main functions of the tree object
             if not tree_object.has_attribute(func_name):
-                #TODO: create the missing main funcions
+                #Create empty function for the missing main funcion
+                func_flat = SimlFunction(func_name, ArgumentList([NodeFuncArg('this')]), 
+                                         None, statements=[], global_scope=None)
+                flat_object.create_attribute(func_name, func_flat)
                 print 'Warning: main function %s is not defined.' % str(func_name)
                 continue
-            #TODO: create new environment with correct default role, dynamic:RoleVariable, init:RoleParameter
             
             #call the main function and collect code
-            self.interpreter.start_collect_code(func_locals=func_locals)
+            #TODO: remove 'is_assigned' mark from attributes
+            #TODO: Implement automatic calling of main functions in child objects.
+            self.interpreter.start_collect_code(func_locals=func_locals, 
+                                                assign_target_roles=legal_roles)
             func_tree = tree_object.get_attribute(func_name)
             func_tree()
             stmt_list, dummy = self.interpreter.stop_collect_code()
@@ -1996,18 +2035,15 @@ class StatementVisitor(Visitor):
                 Prefix for attribute names, to create the long names.
             '''
             for name, data in tree_obj.attributes.iteritems():
-#                #on top level 'this' is a reference to the simulation object 
-#                #and leads to infinite recursion
-#                if name == DotName('this'):
-#                    continue
                 #don't flatten anything twice
                 if id(data) in flattened_attributes:
                     continue
                 flattened_attributes.add(id(data))
                 
                 long_name = prefix + name
-                if siml_isinstance(data, (CLASS_FLOAT, CLASS_STRING)):
-                    flat_obj.create_attribute(long_name, data)
+                if isinstance(data, FundamentalObject) and \
+                   issubclass(data.role, (RoleParameter, RoleVariable)):
+                    flat_obj.create_attribute(long_name, data, reparent=True)
                 else:
                     flatten(data, flat_obj, long_name)
         
@@ -2071,6 +2107,8 @@ class Interpreter(object):
         # put into self.statement_visitor
         self.env_stack = []
         self.push_environment(ExecutionEnvironment())
+        #roles that are currently legal as targets in assignment statements
+        self.assign_target_roles = (RoleConstant,)
         
         #storage for objects generated by the compile statement
         self.compiled_object_list = []
@@ -2087,14 +2125,16 @@ class Interpreter(object):
         
         
     # --- code collection - compile statement ------------------------------------------------------
-    def start_collect_code(self, stmt_list=None, func_locals=None):
+    def start_collect_code(self, stmt_list=None, func_locals=None, 
+                           assign_target_roles=(RoleVariable, RoleConstant)):
         '''Set up everything for the code collection process'''
         self.compile_stmt_collect = [] if stmt_list is None \
                                        else stmt_list
         self.locals_storage = InterpreterObject() if func_locals is None \
                                                   else func_locals
+        self.assign_target_roles = assign_target_roles
         
-    def stop_collect_code(self):
+    def stop_collect_code(self, assign_target_roles=(RoleConstant,)):
         '''
         End the code collection process
         
@@ -2110,6 +2150,7 @@ class Interpreter(object):
         stmt_list, func_locals = self.compile_stmt_collect, self.locals_storage
         self.compile_stmt_collect = None
         self.locals_storage = None
+        self.assign_target_roles = assign_target_roles
         return stmt_list, func_locals
         
     def get_locals_storage(self):

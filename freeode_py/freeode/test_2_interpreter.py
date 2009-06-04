@@ -1051,7 +1051,7 @@ def test_user_defined_class_roles_1(): #IGNORE:C01111
     #py.test.skip('Test user defined classes with different roles.')
     print 'Test user defined classes with different roles.'
     from freeode.interpreter import Interpreter
-    from freeode.ast import (DotName, RoleConstant, RoleVariable)
+    from freeode.ast import (DotName, RoleConstant, RoleAlgebraicVariable)
     
     prog_text = \
 '''
@@ -1090,7 +1090,7 @@ compile B
 #    print 'Flattened object: ---------------------------------'
 #    print sim
     av_a = sim.get_attribute(DotName('av.a'))
-    assert av_a.role == RoleVariable
+    assert av_a.role == RoleAlgebraicVariable
   
   
 
@@ -1103,7 +1103,7 @@ def test_function_return_value_roles_1(): #IGNORE:C01111
     #py.test.skip('Test roles of return values of user defined functions.')
     print 'Test roles of return values of user defined functions.'
     from freeode.interpreter import Interpreter
-    from freeode.ast import (DotName, RoleConstant, RoleVariable)
+    from freeode.ast import (DotName, RoleConstant, RoleAlgebraicVariable)
     
     prog_text = \
 '''
@@ -1146,16 +1146,17 @@ compile B
 #    print sim
     av = sim.get_attribute(DotName('av'))
     bv = sim.get_attribute(DotName('bv'))
-    assert av.role == RoleVariable
-    assert bv.role == RoleVariable
+    assert av.role == RoleAlgebraicVariable
+    assert bv.role == RoleAlgebraicVariable
   
   
 
 def test_interpreter_dollar_operator_1(): #IGNORE:C01111
-    #py.test.skip('Test interpreter: "$" operator.')
-    print 'Test interpreter: "$" operator.'
+    msg = 'Test "$" operator. Basic capabililities.'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import Interpreter, IFloat, CallableObject
-    from freeode.ast import DotName
+    from freeode.ast import DotName, RoleStateVariable, RoleAlgebraicVariable
 
     prog_text = \
 '''
@@ -1163,11 +1164,10 @@ class A:
     data a1: Float 
 
     func dynamic(this):
-        $a1 = 2
+        $a1 = a1
 
 compile A
 '''
-
 
     #create the interpreter
     intp = Interpreter()
@@ -1175,26 +1175,40 @@ compile A
   
     print
     #print intp.modules['test']
-    print intp.get_compiled_objects()[0] 
+    #print intp.get_compiled_objects()[0] 
     
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
     #get the attributes that we have defined
     a1 = sim.get_attribute(DotName('a1'))
-    a1_dt = sim.get_attribute(DotName('a1$time'))
+    a1_dt = sim.get_attribute(DotName('a1$time'))   #implicitly defined by $ operator
     dynamic = sim.get_attribute(DotName('dynamic'))
+    
     #test some facts about the attributes
-    assert isinstance(a1, IFloat)
-    assert isinstance(a1_dt, IFloat)
+    assert isinstance(a1, IFloat)        #a1 is state variable, because it 
+    assert a1.role == RoleStateVariable  #has derivative
+    assert isinstance(a1_dt, IFloat)     
+    assert a1_dt.role == RoleAlgebraicVariable # $a1 is algebraic variable
     assert isinstance(dynamic, CallableObject)
+    
+    #test if assignment really is 'a1$time' = 'a1'
+    assign = dynamic.statements[0]
+    assert assign.target is a1_dt
+    assert assign.expression is a1
     #assert False
 
 
 
 def test_interpreter_dollar_operator_2(): #IGNORE:C01111
-    #py.test.skip('Test interpreter: "$" operator. - Problem with user defined classes.')
-    print 'Test interpreter: "$" operator. - Problem with user defined classes.'
-    from freeode.interpreter import Interpreter
+    msg = '''
+    Test "$" operator. 
+    Bug: $ operator did not work with attributes of user defined classes.
+    Background: Class instantiation did not get parent refferences right.
+    '''
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter, CallableObject, IFloat
+    from freeode.ast import DotName, RoleStateVariable, RoleAlgebraicVariable
 
     prog_text = \
 '''
@@ -1202,7 +1216,7 @@ class A:
     data z: Float
     
     func dynamic(this):
-        $z = 2
+        $z = z
 
 class B:
     data a: A
@@ -1210,7 +1224,7 @@ class B:
     func dynamic(this):
         a.dynamic()
 
-compile B #this crashes
+compile B
 '''
 
     #create the interpreter
@@ -1219,14 +1233,34 @@ compile B #this crashes
   
     print
     #print intp.modules['test']
-    print intp.get_compiled_objects()[0] 
-  
+    #print intp.get_compiled_objects()[0]
     #TODO: Assertions
 
+    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+    #get the attributes that we have defined
+    az = sim.get_attribute(DotName('a.z'))
+    az_dt = sim.get_attribute(DotName('a.z$time'))   #implicitly defined by $ operator
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    #test some facts about the attributes
+    assert isinstance(az, IFloat)        #a1 is state variable, because it 
+    assert az.role == RoleStateVariable  #has derivative
+    assert isinstance(az_dt, IFloat)     
+    assert az_dt.role == RoleAlgebraicVariable # $a1 is algebraic variable
+    assert isinstance(dynamic, CallableObject)
+    
+    #test if assignment really is 'a1$time' = 'a1'
+    assign = dynamic.statements[0]
+    assert assign.target is az_dt
+    assert assign.expression is az
+    #assert False
+
   
-def test_interpreter_small_simulation_program(): #IGNORE:C01111
-    #py.test.skip('Test interpreter: small simulation program.!!!')
-    print 'Test interpreter: small simulation program.'
+  
+def test_compile_statement__small_simulation_program(): #IGNORE:C01111
+    msg = 'Test compile statement: see if small simulation program can be compiled.'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import Interpreter
 
     prog_text = \
@@ -1239,7 +1273,7 @@ class BarrelWithHole:
     data V, h: Float
     data A_bott, A_o, mu, q: Float param
 
-    func dynamic(this):
+    func dynamic(this):                            #line 10
         h = V/A_bott
         $V = q - mu*A_o*sqrt(2*g*h)
 #        print('h: ', h)
@@ -1249,7 +1283,7 @@ class BarrelWithHole:
         A_bott = 1; A_o = 0.02; mu = 0.55;
         q = q_in #0.05
  
- 
+                                                   #line 20
 class RunTest:
     data system: BarrelWithHole
 
@@ -1259,10 +1293,10 @@ class RunTest:
     func init(this):
         system.init(0.55)
 #        solutionParameters.simulationTime = 100
-#        solutionParameters.reportingInterval = 1
+#        solutionParameters.reportingInterval = 1  #line 30
 
     func final(this):
-#        graph system.V, system.h
+#        graph(system.V, system.h)
         print('Simulation finished successfully.')
         
 
@@ -1274,15 +1308,70 @@ compile RunTest
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
-    print intp.modules['test']
-    print intp.get_compiled_objects() 
+    #print intp.modules['test']
+    #print intp.get_compiled_objects()[0] 
+    
   
-    #TODO: Assertions
+  
+def test_compile_statement_1(): #IGNORE:C01111
+    msg = '''
+    Test the compile statement 
+    - Flattening and storage of functions' local variables'''
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter, IFloat, CallableObject
+    from freeode.ast import DotName
 
+    prog_text = \
+'''
+class A:
+    data a1: Float 
+    
+    func foo(this, x):
+        return x
+        
+    func dynamic(this):
+        data b,c: Float
+        b = foo(a1)
+        c = foo(a1 + b)
+        $a1 = b
+
+compile A
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
   
+    print
+    #print intp.modules['test']
+    print intp.get_compiled_objects()[0] 
+    
+    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+    
+    #get the attributes that we have defined
+    a1 = sim.get_attribute(DotName('a1'))
+    a1_dt = sim.get_attribute(DotName('a1$time'))
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    #test some facts about the attributes
+    assert isinstance(a1, IFloat)
+    assert isinstance(a1_dt, IFloat)
+    assert isinstance(dynamic, CallableObject)
+
+    #check number of attributes, most are automatically generated
+    #attributes:           init, dynamic, final, 
+    #instance variables:   a1, $a1, 
+    #local variables:      A.dynamic.b, A.dynamic.c, 
+    #intermediate result:  A.foo.x, (2nd call)
+    assert len(sim.attributes) == 8
+    
+
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_function_call_1()
+    test_compile_statement__small_simulation_program()
     pass
 
