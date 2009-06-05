@@ -391,7 +391,7 @@ class NodeAttrAccess(Node):
     def __init__(self):
         super(NodeAttrAccess, self).__init__()
         self.operator = '.'
-        self.arguments = []
+        self.arguments = tuple()
         self.loc = None        
 
 
@@ -410,7 +410,7 @@ class NodeDollarPrefix(Node):
     def __init__(self):
         super(NodeDollarPrefix, self).__init__()
         self.operator = '$'
-        self.arguments = []
+        self.arguments = tuple()
         self.loc = None        
 
 
@@ -432,9 +432,9 @@ class NodeParentheses(Node):
         loc: TextLocation; None
             Location in input string
     '''
-    def __init__(self):
+    def __init__(self, arguments=None):
         super(NodeParentheses, self).__init__()
-        self.arguments = []
+        self.arguments = arguments if arguments is not None else tuple()
         self.type = None
         self.type = None
         self.role = RoleUnkown
@@ -447,7 +447,7 @@ class NodeOpInfix2(Node):
     Data attributes:
         operator: 
             Operator symbol e.g.: '+'
-        arguments:  list(Node(), Node())
+        arguments:  tuple(Node(), Node())
             Expression on left and right of operator: 
             left: arguments[0], right: arguments[1]
             Naming is chosen to unify operators and function call
@@ -464,10 +464,10 @@ class NodeOpInfix2(Node):
         loc: TextLocation; None
             Location in input string
     '''
-    def __init__(self, operator='*_*', arguments=[], loc=None):
+    def __init__(self, operator='*_*', arguments=None, loc=None):
         super(NodeOpInfix2, self).__init__()
         self.operator = operator
-        self.arguments = arguments[:]
+        self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
         #decorations
         self.function_object = None
@@ -485,7 +485,7 @@ class NodeOpPrefix1(Node):
     Data attributes:
         operator: 
             Operator symbol e.g.: '-'
-        arguments:  list(Node())
+        arguments:  tuple(Node())
             Expression on right side of operator
             Naming is chosen to unify operators and function call
         keyword_arguments: 
@@ -501,10 +501,10 @@ class NodeOpPrefix1(Node):
         loc: 
             Location in input string
   '''
-    def __init__(self, operator='*_*', arguments=[], loc=None):
+    def __init__(self, operator='*_*', arguments=None, loc=None):
         super(NodeOpPrefix1, self).__init__()
         self.operator = operator
-        self.arguments = arguments[:]
+        self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
         #decorations
         self.function_object = None
@@ -527,7 +527,7 @@ class NodeFuncCall(Node):
         name: typically NodeIdentifier
             expression that yields the function object
         arguments: 
-            List of positional arguments
+            Tuple of positional arguments
         keyword_arguments: 
             Dictionary of keyword arguments
         function_object:
@@ -547,11 +547,13 @@ class NodeFuncCall(Node):
     TODO:    operator_placement: prefix/infix/suffix 
     '''
     #TODO: give NodeFuncCall a nice constructor
-    def __init__(self, name=None, arguments=[], keyword_arguments = {}, loc=None):
+    def __init__(self, name=None, arguments=None, keyword_arguments=None, 
+                 loc=None):
         super(NodeFuncCall, self).__init__()
         self.name = name
-        self.arguments = arguments[:]
-        self.keyword_arguments = keyword_arguments.copy()
+        self.arguments = arguments if arguments is not None else tuple()
+        self.keyword_arguments = keyword_arguments \
+                                 if keyword_arguments is not None else {}
         #--- for the type system (treatment of unevaluated calls) -----------#
         self.type = None
         self.role = RoleUnkown

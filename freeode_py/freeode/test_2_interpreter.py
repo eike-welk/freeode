@@ -469,10 +469,46 @@ compile A
 
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
-    print sim
+    #print sim
+    
     #get the dynamic function with the generated code
     dynamic = sim.get_attribute(DotName('dynamic'))
     assert len(dynamic.statements) == 1
+  
+  
+
+def test_graph_function_1(): #IGNORE:C01111
+    #py.test.skip('Test the print function. - code generation for: user defined class.')
+    print 'Test the print function. - code generation for: user defined class.'
+    from freeode.interpreter import Interpreter
+    from freeode.ast import DotName
+    
+    prog_text = \
+'''
+class A:
+    data c: Float
+    
+    func final(this):
+        graph(c)
+        
+compile A
+'''
+    #create the interpreter
+    intp = Interpreter()
+    #run mini program
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print intp.modules['test']
+
+    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+    #print sim
+    
+    #get the final function with the generated code
+    final = sim.get_attribute(DotName('final'))
+    assert len(final.statements) == 1
   
   
 
@@ -1366,7 +1402,6 @@ compile A
     #intermediate result:  A.foo.x, (2nd call)
     assert len(sim.attributes) == 8
     
-
 
 
 if __name__ == '__main__':

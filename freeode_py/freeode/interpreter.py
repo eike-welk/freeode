@@ -389,6 +389,10 @@ class ArgumentList(SimpleArgumentList):
         dict(<argument name>: <siml values, AST nodes>, ...)
         dict(DotName(): Node(), ...)
         '''
+        #TODO: offer two different formats to return the parsed arguments:
+        #      - a tuple of positional arguments. (For function wrapper)
+        #      - a dictionary of keyword arguments. (For Siml function)
+        
         output_dict = {} #dict(<argument name>: <siml values>, ...)
         
         #test too many positional arguments
@@ -1138,6 +1142,15 @@ CLASS_FLOAT = IFloat.init_funcs_and_class()
 class PrintFunction(CallableObject):
     '''
     The print function object.
+    
+    The print function takes an arbitrary number of positional arguments.
+    For each argument print calls its '__str__' function to create a text
+    representation of the object.
+    
+    In constant sections it will immediately produce text output. If an 
+    argument does not have a '__str__' function it user Python's str().
+    When the compiler collects (generates) code, it will create 
+    a call to the print function. 
     '''
     def __init__(self):
         CallableObject.__init__(self, 'print')
@@ -1180,6 +1193,39 @@ class PrintFunction(CallableObject):
      
      
      
+class GraphFunction(CallableObject):
+    '''
+    The graph function object.
+    
+    The graph function takes an arbitrary number of positional arguments.
+    '''
+    def __init__(self):
+        CallableObject.__init__(self, 'graph')
+        
+    def __call__(self, *args, **kwargs):
+        if self.interpreter.is_collecting_code():
+            #create code that prints at runtime
+            new_args = []
+            for arg1 in args:
+                ev_arg = self.interpreter.statement_visitor\
+                           .expression_visitor.dispatch(arg1)
+                if not isinstance(ev_arg, IFloat):
+                    raise UserException('The graph function can only display '
+                                        'Float values.')
+                new_args.append(ev_arg) 
+            #create a new call to the print function
+            print_call = NodeFuncCall(NodeIdentifier(DotName('graph')), new_args, {}, None)
+            print_call.type = CLASS_NONETYPE
+            print_call.is_assigned = True
+            print_call.role = RoleConstant
+            return print_call
+        else:
+            #execute the print statement.
+            raise UserException('The "graph" function can only be called '
+                                'when code is generated.')
+     
+     
+     
 def create_built_in_lib():
     '''
     Returns module with objects that are built into interpreter.
@@ -1190,14 +1236,16 @@ def create_built_in_lib():
     lib = IModule()
     lib.name = DotName('__built_in__')
 
+    #None object
+    lib.create_attribute('None', NONE)
     #basic data types
     lib.create_attribute('NoneType', CLASS_NONETYPE)
-    lib.create_attribute('None', NONE)
     lib.create_attribute('Float', CLASS_FLOAT)
     lib.create_attribute('String', CLASS_STRING)
     #built in functions
     lib.create_attribute('print', PrintFunction())
-    #math functions
+    lib.create_attribute('graph', GraphFunction())
+    #math 
     WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 
           return_type=CLASS_FLOAT, 
           py_function=lambda x: IFloat(math.sqrt(x.value))).put_into(lib)
@@ -1325,7 +1373,7 @@ def determine_result_role(arguments, keyword_arguments={}): #IGNORE:W0102
     The role that the unknown return value will have.
     '''
     #put all arguments into a single tuple
-    all_args = tuple(arguments) + tuple(keyword_arguments.values())
+    all_args = arguments + tuple(keyword_arguments.values())
     #loop over arguments and find most variable role
     max_var_role = RoleConstant
     for arg in all_args:
@@ -1448,6 +1496,7 @@ class ExpressionVisitor(Visitor):
     def make_derivative(self, variable):    
         '''Create time derivative of given variable. 
         Put it into the variable's parent.'''
+        #TODO: maybe this should become a member function of IFloat?
 #        #mark attribute as state variable
 #        variable.role = RoleStateVariable
         #create the associated derived variable
@@ -1520,6 +1569,7 @@ class ExpressionVisitor(Visitor):
         Create this special attribute if necessary'''
         #evaluate expression on RHS of operator
         variable = self.dispatch(node.arguments[0])
+        #TODO: The special function '__diff__' should be called instead.
         #Precondition: $ acts upon a variable
         if not (siml_isinstance(variable, CLASS_FLOAT) and 
                 issubclass(variable.role, RoleVariable)):
@@ -1601,7 +1651,7 @@ class ExpressionVisitor(Visitor):
             #Some arguments were unknown create an unevaluated expression
             new_oper = NodeOpPrefix1()
             new_oper.operator = node.operator
-            new_oper.arguments = [inst_rhs]
+            new_oper.arguments = (inst_rhs,)
             new_oper.keyword_arguments = {}
             #put on decoration
             #new_oper.function_object = func
@@ -1617,7 +1667,7 @@ class ExpressionVisitor(Visitor):
                     '*': ('__mul__','__rmul__'),
                     '/': ('__div__','__rdiv__'),
                     '%': ('__mod__','__rmod__'),
-                    '**':('__exp__','__rexp__'), }
+                    '**':('__pow__','__rpow__'), }
     
     @Visitor.when_type(NodeOpInfix2)
     def visit_NodeOpInfix2(self, node):
@@ -1648,14 +1698,14 @@ class ExpressionVisitor(Visitor):
             #Some arguments were unknown create an unevaluated expression
             new_oper = NodeOpInfix2()
             new_oper.operator = node.operator
-            new_oper.arguments = [inst_lhs, inst_rhs]
+            new_oper.arguments = (inst_lhs, inst_rhs)
             new_oper.keyword_arguments = {}
             #put on decoration
             #new_oper.function_object = func
             new_oper.type = func.return_type
             new_oper.is_assigned = True
             #Choose most variable role: const -> param -> variable
-            new_oper.role = determine_result_role([inst_lhs, inst_rhs])
+            new_oper.role = determine_result_role((inst_lhs, inst_rhs))
             return new_oper
 
         #TODO: if unsuccessful in finding a suitable function get the 
@@ -1698,11 +1748,12 @@ class ExpressionVisitor(Visitor):
         for arg_val in node.arguments:
             ev_arg_val = self.dispatch(arg_val)
             ev_args.append(ev_arg_val)
+        ev_args = tuple(ev_args)    
         ev_kwargs = {}
         for arg_name, arg_val in node.keyword_arguments.iteritems():
             ev_arg_val = self.dispatch(arg_val)
             ev_kwargs[arg_name] = ev_arg_val
-            
+        
         try:
             #call the call-able object
             return func_obj(*ev_args, **ev_kwargs)     #IGNORE:W0142
@@ -1962,10 +2013,10 @@ class StatementVisitor(Visitor):
             self.environment.local_scope.create_attribute(node.name, tree_object)
 #        print 'tree_object ------------------------------------------------------'
 #        print tree_object
-           
+        
         #provide a module where local variables of functions can be stored
         func_locals = InterpreterObject()
-
+        
         #create (empty) flat object
         flat_object = CompiledClass()
         flat_object.instance_name = node.name
@@ -1974,6 +2025,13 @@ class StatementVisitor(Visitor):
         flat_object.loc = tree_object.type().loc 
         
         #Create code: 
+        #TODO: additional main function for steady-state simulations:
+        #        init_steadystate(x01)
+        #      The function is called repeatedly during a steady-state simulation
+        #      to initialize the system with slightly different conditions. The 
+        #      argument x01 varies during the steady state simulation in small steps 
+        #      from 0 to 1. It is intended to control the variations of interesting 
+        #      parameters during the steady-state simulation.
         #In different parts of code only variables with speciffic roles 
         #are valid targets of an assign statement.
         #      outside compile: only RoleConstant
@@ -1995,7 +2053,7 @@ class StatementVisitor(Visitor):
             if not tree_object.has_attribute(func_name):
                 #Create empty function for the missing main funcion
                 func_flat = SimlFunction(func_name, ArgumentList([NodeFuncArg('this')]), 
-                                         None, statements=[], global_scope=None)
+                                         None, statements=[], global_scope=BUILT_IN_LIB)
                 flat_object.create_attribute(func_name, func_flat)
                 print 'Warning: main function %s is not defined.' % str(func_name)
                 continue
@@ -2011,7 +2069,7 @@ class StatementVisitor(Visitor):
             #create a new main function for the flat object with the collected code
             func_flat = SimlFunction(func_name, ArgumentList([NodeFuncArg('this')]), 
                                      None, statements=stmt_list, 
-                                     global_scope=None)                                 
+                                     global_scope=BUILT_IN_LIB)                                 
             #Put new main function into flat object
             flat_object.create_attribute(func_name, func_flat)
 

@@ -59,7 +59,7 @@ class ExpressionGenerator(Visitor):
     
     USAGE:
         Call the method
-            createFormula(iltFormula)
+            create_expression(iltFormula)
         with an ILT tree as an argument. The method will convert it into
         a Python string, which it returns.
     '''
@@ -67,7 +67,7 @@ class ExpressionGenerator(Visitor):
     def __init__(self):
         Visitor.__init__(self)
         
-    def createFormula(self, iltFormula):
+    def create_expression(self, iltFormula):
         '''
         Take ILT sub-tree that describes a formula and
         convert it into a formula in the Python programming language.
@@ -80,27 +80,22 @@ class ExpressionGenerator(Visitor):
         '''
         return self.dispatch(iltFormula)
     
-#    @Visitor.when_type(NodeBuiltInVal, 1)
-#    def _createBuiltInVal(self, iltFormula):
-#        #Built in value: pi, time
-#        nameDict = {'pi':'pi', 'time':'time'}
-#        return nameDict[iltFormula.dat]
-        
-#TODO: implement function call!
-#    @Visitor.when_type(NodeBuiltInFuncCall, 1)
-#    def _createBuiltInFuncCall(self, iltFormula):
-#        #Built in function: sin(...)
-#        nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
-#                    'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
+    @Visitor.when_type(NodeFuncCall, 1)
+    def _createBuiltInFuncCall(self, call):
+        #Built in function: sin(...)
+        nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
+                    'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',}
 #                    'overrideParam':'self._overrideParam' }
-#        #get name of the corresponding Python function
-#        funcName = nameDict[iltFormula.dat] 
-#        #produce output
-#        retStr = funcName + '('
-#        for funcArgument in iltFormula:
-#            retStr += self.dispatch(funcArgument) + ','
-#        retStr += ')'
-#        return retStr
+        #get name of the corresponding Python function
+        func_name = nameDict[call.name] 
+        #produce output
+        ret_str = func_name + '('
+        for arg in call.arguments:
+            ret_str += self.dispatch(arg) + ','
+        for name, arg in call.keyword_arguments.iteritems():
+            ret_str += name + ' = ' + self.dispatch(arg) + ','
+        ret_str += ')'
+        return ret_str
         
     @Visitor.when_type(IFloat, 1)
     def _createNum(self, variable):
@@ -126,10 +121,11 @@ class ExpressionGenerator(Visitor):
     @Visitor.when_type(NodeOpInfix2, 1)
     def _createOpInfix2(self, iltFormula):
     #Infix operator: + - * / ^ and or
-        opDict = {'+':' + ', '-':' - ', '*':'*', '/':'/', '**':'**',
-                  '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ',
-                  '==':' == ', '!=':' != ',
-                  'and':' and ', 'or':' or '}
+        opDict = {'+':' + ', '-':' - ', '*':' * ', '/':' / ', '%':' % ',
+                   '**':' ** ',}
+#                  '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ',
+#                  '==':' == ', '!=':' != ',
+#                  'and':' and ', 'or':' or '}
         opStr = opDict[iltFormula.operator]
         return (self.dispatch(iltFormula.arguments[0]) + opStr +
                 self.dispatch(iltFormula.arguments[1]))
@@ -216,7 +212,7 @@ class StatementGenerator(Visitor):
             self.dispatch(node, indent)
 
 
-    def createFormula(self, iltFormula):
+    def create_expression(self, iltFormula):
         '''
         Take ILT sub-tree that describes a formula (expression) and
         convert it into a formula in the Python programming language.
@@ -227,14 +223,14 @@ class StatementGenerator(Visitor):
         RETURN:
             string, formula in Python language
         '''
-        return self.genFormula.createFormula(iltFormula)
+        return self.genFormula.create_expression(iltFormula)
 
 
     @Visitor.when_type(NodeAssignment, 1)
     def _createAssignment(self, iltStmt, indent):
         #Assignment  ---------------------------------------------------------
         self.write(indent + iltStmt.target.target_name + ' = ' +
-                    self.createFormula(iltStmt.expression) + '\n')
+                    self.create_expression(iltStmt.expression) + '\n')
     
         
     @Visitor.when_type(NodeIfStmt, 1)
@@ -242,7 +238,7 @@ class StatementGenerator(Visitor):
         #if statement --------------------------------------------------------
         ind4 = ' '*4
         self.write(indent + 'if '
-                           + self.createFormula(iltStmt.condition)
+                           + self.create_expression(iltStmt.condition)
                            + ':\n')
         self.dispatch(iltStmt.ifTruePart, indent + ind4)
         #Only create else clause if necessary
@@ -256,7 +252,7 @@ class StatementGenerator(Visitor):
 #        #print statement -----------------------------------------------------
 #        line = indent + 'print '
 #        for expr in iltStmt.arguments:
-#            line += self.createFormula(expr) + ', '
+#            line += self.create_expression(expr) + ', '
 #        #take away last comma if newline is wanted
 #        if iltStmt.newline:
 #            line = line[:-2]
@@ -278,7 +274,7 @@ class StatementGenerator(Visitor):
 #        for expr in iltStmt:               #iterate over arguments (max 1)
 #            #child is a string
 #            if isinstance(expr, NodeString):
-#                filename = self.createFormula(expr)   #write filename
+#                filename = self.create_expression(expr)   #write filename
 #                self.write(filename)
 #            #anything else is illegal
 #            else:
@@ -372,7 +368,7 @@ class SimulationClassGenerator(object):
         self.out_py.write(string)
 
 
-    def find_attributes(self):
+    def classify_attributes(self):
         '''
         Loop over the attribute definitions and classify the attributes into
         parameters, algebraic variables, state variables.
@@ -389,9 +385,9 @@ class SimulationClassGenerator(object):
             elif attr.role is RoleStateVariable:
                 self.state_variables[name] = attr
                 time_differentials.add(attr.time_derivative)
-            elif issubclass(attr.role, RoleDataCanVaryAtRuntime) and attr in time_differentials:
+            elif issubclass(attr.role, RoleVariable) and attr in time_differentials:
                 self.time_differentials[name] = attr
-            elif issubclass(attr.role, RoleDataCanVaryAtRuntime) and attr not in time_differentials:
+            elif issubclass(attr.role, RoleVariable) and attr not in time_differentials:
                 self.algebraic_variables[name] = attr
             else:
                 raise PyGenException('Unknown attribute definition:\n'+ str(attr))
@@ -634,7 +630,7 @@ class SimulationClassGenerator(object):
 
         #collect information about the process
         self.process_py_name = name
-        self.find_attributes()
+        self.classify_attributes()
         self.createAttrPyNames()
 
         #print self.ilt_process

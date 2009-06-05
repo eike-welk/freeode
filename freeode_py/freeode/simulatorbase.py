@@ -394,7 +394,7 @@ class SimulatorBase(object):
 
 
 #---- simulator main function -------------------------------------------------
-#The followin functions are for running the simulator as a standalone program
+#The following functions are for running the simulator as a stand alone program
 
 def secureShow():
     '''Show the graphs; but don't crash if no graphs exist.'''
@@ -446,7 +446,7 @@ def parseCommandLineOptions(simulationClassList):
     optPars.add_option('--prepend-newline', dest='prepend_newline',
                        action="store_true", default=False,
                        help='prepend output with one newline '
-                          + '(usefull when started from the compiler)')
+                          + '(useful when started from the compiler)')
     #do the parsing
     (options, args) = optPars.parse_args()
 
@@ -473,7 +473,7 @@ def parseCommandLineOptions(simulationClassList):
         sys.exit(0)
 
     #user has said which simulation procedure should be run
-    #TODO: code to run the simulationa is a mess.
+    #TODO: code to run the simulation is a mess.
     #There are three different places where simulations are run!
     if options.run == 'all': #special argument 'all': -r all
         runSimulations(simulationClassList)

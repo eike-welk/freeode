@@ -753,6 +753,29 @@ def test_expression_evaluation_1(): #IGNORE:C01111
     
 
 def test_expression_evaluation_2(): #IGNORE:C01111
+    #py.test.skip('Test expression evaluation (only immediate values)')
+    print 'Test expression evaluation, all operators and brackets (only immediate values)'
+    from freeode.interpreter import ExpressionVisitor
+    import freeode.simlparser as simlparser
+    
+    #parse the expression
+    ps = simlparser.Parser()
+    ex = ps.parseExpressionStr('(((0-1+2)*3--1)/4)**5*(-1+2*--1**4)%6')
+    print
+    print 'AST (parser output): -----------------------------------------------------------'
+    #print ex
+    
+    #interpret the expression
+    exv = ExpressionVisitor(None)
+    res = exv.dispatch(ex)
+    print
+    print 'Result object: --------------------------------------------------------------'
+    #print res 
+    assert res.value == 1
+    
+    
+
+def test_expression_evaluation_3(): #IGNORE:C01111
     #py.test.skip('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (access to variables)'
     from freeode.interpreter import (IModule, CLASS_FLOAT, RoleConstant, 
@@ -791,7 +814,7 @@ def test_expression_evaluation_2(): #IGNORE:C01111
     
     
 
-def test_expression_evaluation_2_1(): #IGNORE:C01111
+def test_expression_evaluation_4(): #IGNORE:C01111
     #py.test.skip('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (calling built in functions)'
     from freeode.interpreter import (simlparser, IModule, ExecutionEnvironment,
@@ -834,6 +857,47 @@ def test_expression_evaluation_2_1(): #IGNORE:C01111
     print 'Result object: --------------------------------------------------------------'
     print res 
     assert res.value == math.sqrt(2)
+
+
+
+def test_expression_evaluation_5(): #IGNORE:C01111
+    #py.test.skip('Test disabled')
+    print 'Test expression evaluation (returning of partially evaluated expression when accessing variables)'
+    from freeode.interpreter import (IModule, CLASS_FLOAT, RoleVariable, 
+                                     DotName, ExecutionEnvironment, ExpressionVisitor,
+                                     NodeOpInfix2)
+    import freeode.simlparser as simlparser
+    #parse the expression
+    ps = simlparser.Parser()
+    ex = ps.parseExpressionStr('a + 2*2')
+    print
+    print 'AST (parser output): -----------------------------------------------------------'
+    print ex
+    
+    #create module where name lives
+    mod = IModule()
+    #create attribute 'a' with no value
+    val_2 = CLASS_FLOAT()
+    val_2.value = None
+    val_2.role = RoleVariable
+    mod.create_attribute(DotName('a'), val_2)
+    print
+    print 'Module where variable is located: --------------------------------------------'
+    print mod
+    
+    #create environment for lookup of variables (stack frame)
+    env = ExecutionEnvironment()
+    env.global_scope = mod
+    
+    #interpret the expression
+    exv = ExpressionVisitor(None)
+    exv.environment = env
+    res = exv.dispatch(ex)
+    print
+    print 'Result object - should be an unevaluated expression: --------------------------------------------------------------'
+    print res 
+    assert isinstance(res, NodeOpInfix2)
+    assert res.operator == '+'
 
 
 
@@ -909,47 +973,6 @@ def test_ExpressionVisitor_unknown_arguments_2(): #IGNORE:C01111
     assert isinstance(ret_val, NodeFuncCall)
     assert ret_val.type() is CLASS_FLOAT
     
-
-
-def test_expression_evaluation_3(): #IGNORE:C01111
-    #py.test.skip('Test disabled')
-    print 'Test expression evaluation (returning of partially evaluated expression when accessing variables)'
-    from freeode.interpreter import (IModule, CLASS_FLOAT, RoleVariable, 
-                                     DotName, ExecutionEnvironment, ExpressionVisitor,
-                                     NodeOpInfix2)
-    import freeode.simlparser as simlparser
-    #parse the expression
-    ps = simlparser.Parser()
-    ex = ps.parseExpressionStr('a + 2*2')
-    print
-    print 'AST (parser output): -----------------------------------------------------------'
-    print ex
-    
-    #create module where name lives
-    mod = IModule()
-    #create attribute 'a' with no value
-    val_2 = CLASS_FLOAT()
-    val_2.value = None
-    val_2.role = RoleVariable
-    mod.create_attribute(DotName('a'), val_2)
-    print
-    print 'Module where variable is located: --------------------------------------------'
-    print mod
-    
-    #create environment for lookup of variables (stack frame)
-    env = ExecutionEnvironment()
-    env.global_scope = mod
-    
-    #interpret the expression
-    exv = ExpressionVisitor(None)
-    exv.environment = env
-    res = exv.dispatch(ex)
-    print
-    print 'Result object - should be an unevaluated expression: --------------------------------------------------------------'
-    print res 
-    assert isinstance(res, NodeOpInfix2)
-    assert res.operator == '+'
-
 
 
 # --------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
@@ -1362,5 +1385,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_set_role_recursive_1()
+    test_expression_evaluation_2()
     pass

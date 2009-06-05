@@ -285,7 +285,7 @@ class Parser(object):
         tok_list = toks.asList()
         node = NodeParentheses()
         node.loc = self.createTextLocation(loc) #Store position
-        node.arguments = [tok_list[0]] #store child expression
+        node.arguments = (tok_list[0],) #store child expression
         return node
 
     def _action_op_prefix(self, s, loc, toks): #IGNORE:W0613
@@ -308,7 +308,7 @@ class Parser(object):
         #put data into node
         node.loc = self.createTextLocation(loc) #Store position
         node.operator = operator
-        node.arguments = [expr_rhs] 
+        node.arguments = (expr_rhs,)
         return node
 
     def _action_op_infix_left(self, s, loc, toks): #IGNORE:W0613
@@ -356,7 +356,7 @@ class Parser(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         #Store both expressions and operator
         nCurr.operator = operator
-        nCurr.arguments = [exprLhs, exprRhs]
+        nCurr.arguments = (exprLhs, exprRhs)
         return nCurr
 
     def _action_identifier(self, s, loc, toks): #IGNORE:W0613
@@ -698,25 +698,27 @@ class Parser(object):
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         toks = toks[0] #remove extra bracket of group
-        nCurr = NodeFuncCall() 
-        nCurr.loc = self.createTextLocation(loc) #Store position
+        n_curr = NodeFuncCall() 
+        n_curr.loc = self.createTextLocation(loc) #Store position
         #store function name
-        nCurr.name = toks[0]
-        #check argument list - positional arguments must come before keyword arguments
-        there_was_keyword_argument = False
+        n_curr.name = toks[0]
         #store function arguments:
+        there_was_keyword_argument = False #For check positional arguments must come before keyword arguments
+        pos_arg_list = [] #collect positional arguments
         for arg in toks[1].argument_list:
             if arg.positional_argument:
                 if there_was_keyword_argument:
-                    raise UserException('Positional arguments must come before keyword arguments.',
-                                        nCurr.loc, errno=2140010)
-                nCurr.arguments.append(arg.positional_argument[0][0])
+                    raise UserException('Positional arguments must come '
+                                        'before keyword arguments.',
+                                        n_curr.loc, errno=2140010)
+                pos_arg_list.append(arg.positional_argument[0][0])
             elif arg.keyword_argument:
                 there_was_keyword_argument = True
                 arg_name = str(arg.keyword_argument[0][0].name)
                 arg_val = arg.keyword_argument[0][2]
-                nCurr.keyword_arguments[arg_name] = arg_val
-        return nCurr
+                n_curr.keyword_arguments[arg_name] = arg_val
+        n_curr.arguments = tuple(pos_arg_list)
+        return n_curr
 
 
     def _action_func_def_arg(self, s, loc, toks): #IGNORE:W0613
