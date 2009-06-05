@@ -565,6 +565,20 @@ class NodeFuncCall(Node):
 
 
 #-------------- Statements --------------------------------------------------
+class NodePassStmt(Node):
+    '''
+    AST node to represent a pass statement. The pass statement does nothing.
+    It is necessary to define empty compound statements (if, func, class).
+    
+    Data attributes:
+        loc: 
+            Location in input string
+    '''
+    def __init__(self, loc=None):
+        super(NodePassStmt, self).__init__()
+        self.loc = loc
+        
+
 class NodeExpressionStmt(Node):
     '''
     AST node intended for a function call. It can however contain any 

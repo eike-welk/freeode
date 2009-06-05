@@ -1381,7 +1381,7 @@ compile A
   
     print
     #print intp.modules['test']
-    print intp.get_compiled_objects()[0] 
+    #print intp.get_compiled_objects()[0] 
     
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
@@ -1401,6 +1401,54 @@ compile A
     #local variables:      A.dynamic.b, A.dynamic.c, 
     #intermediate result:  A.foo.x, (2nd call)
     assert len(sim.attributes) == 8
+    
+
+
+def test_pass_statement_1(): #IGNORE:C01111
+    msg = '''
+    Test the pass statement.
+    - The pass statement does nothing try if it works as intended.'''
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter
+
+    prog_text = \
+'''
+#empty class body
+class Dummy:
+    pass
+
+data d: Dummy const
+
+
+#empty function body
+func f_dummy():
+    pass
+    
+f_dummy()
+    
+    
+#call class with pass statement in compiled code
+class A:
+    data x: Float 
+    
+    func foo(this):
+        pass
+        
+    func dynamic(this):
+        foo()
+        $x = 1
+
+compile A
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    #print intp.modules['test']
+    #print intp.get_compiled_objects()[0] 
     
 
 

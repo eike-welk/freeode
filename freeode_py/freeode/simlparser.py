@@ -498,6 +498,21 @@ class Parser(object):
 #        nCurr.kids = toks.argList.asList()
 #        return nCurr
 
+    def _action_pass_stmt(self, s, loc, toks): #IGNORE:W0613
+        '''
+        Create node for pass statement (which does nothing):
+        
+        BNF:
+        pass_stmt = kw('pass')                                      .setParseAction(self._action_pass_stmt)
+        '''
+        if Parser.noTreeModification:
+            return None #No parse result modifications for debugging
+        n_curr = NodeReturnStmt()
+        n_curr.loc = self.createTextLocation(loc) #Store position
+        return n_curr
+      
+      
+      
     def _action_return_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for return statement:
@@ -985,23 +1000,14 @@ class Parser(object):
 #                           )                                         .setParseAction(self._actionForeignCodeStmt)
 
 #        #expression list - parse: 2, foo.bar, 3*sin(baz)
-#        expression_list = delimitedList(expression, ',')            .setName('exprList')
-#        #print something to stdout
-#        print_stmt = Group(kw('print')
-#                          - Optional(expression_list)               .setResultsName('arg_list')
-#                          + Optional(',')                           .setResultsName('trail_comma')                       
-#                          )                                         .setParseAction(self._action_print_stmt)\
-#                                                                    .setFailAction(ChMsg(prepend='print statement: '))
-        #TODO: create built in graph function instead
-#        #show graphs
-#        graph_stmt = Group(kw('graph') - expression_list            .setResultsName('arg_list')
-#                           - Optional(','))                         .setParseAction(self._actionGraphStmt)\
-#                                                                    .setFailAction(ChMsg(prepend='graph statement: '))
         #TODO: create built in store function instead
         #store to disk
 #        store_stmt = Group(kw('save') - expression_list             .setResultsName('arg_list')
 #                          - Optional(','))                          .setParseAction(self._actionStoreStmt)\
 #                                                                    .setFailAction(ChMsg(prepend='save statement: '))
+
+        #pass statement, do nothing - necessary for empty compund statements
+        pass_stmt = kw('pass')                                      .setParseAction(self._action_pass_stmt)
 
         #compile a class
         compile_stmt = (kw('compile') 
@@ -1043,7 +1049,7 @@ class Parser(object):
                           )                                         .setParseAction(self._action_data_def)\
                                                                     .setFailAction(ChMsg(prepend='data definition: '))
                                                                    
-        simple_stmt = (data_stmt| #print_stmt | 
+        simple_stmt = (data_stmt| pass_stmt |#print_stmt | 
                        return_stmt | pragma_stmt | #store_stmt | graph_stmt |                                    
                        compile_stmt | assign_stmt |expression_stmt ).setName('simple statement')
 

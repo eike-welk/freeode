@@ -1801,6 +1801,15 @@ class StatementVisitor(Visitor):
         self.environment = new_env
         self.expression_visitor.set_environment(new_env)
         
+    @Visitor.when_type(NodePassStmt)
+    def visit_NodePassStmt(self, node): #IGNORE:W0613
+        '''
+        Interpret 'pass' statement. Do nothing. 
+        The pass statement is necessary to define empty compound statements 
+        (if, func, class).
+        '''
+        return
+
     @Visitor.when_type(NodeReturnStmt)
     def visit_NodeReturnStmt(self, node):
         '''Return value from function call'''
