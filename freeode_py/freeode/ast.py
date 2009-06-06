@@ -836,42 +836,37 @@ class RoleParameter(RoleDataCanVaryAtRuntime):
     - is stored.
     '''
 #    userStr = 'param'
-class RoleDataCanVaryDuringSimulation(RoleDataCanVaryAtRuntime):
-    '''Data that can vary during the simulation. (Base class.)'''
-    pass
-#class RoleFuncArgument(RoleDataCanVaryDuringSimulation):
-#    '''
-#    The attribute is a function/method argument:
-#    - can vary during the simulation
-#    - should be optmized away
-#    - is not stored.
-#    '''
-##    userStr = 'function argument'
-#class RoleLocalVariable(RoleDataCanVaryDuringSimulation):
-#    '''
-#    The attribute is a local variable:
-#    - can vary during the simulation
-#    - should be optmized away
-#    - is not stored.
-#    '''
-##    userStr = 'local variable'
-class RoleVariable(RoleDataCanVaryDuringSimulation):
+class RoleVariable(RoleDataCanVaryAtRuntime):
     '''
     The attribute is a state or algebraic variable:
     - can vary during the simulation
-    - is stored.
     '''
 #    userStr = 'variable'
-class RoleStateVariable(RoleVariable):
+class RoleInputVariable(RoleVariable):
+    '''
+    This variable is an input of the dynamic function. 
+    It is computed by the solution algorithm, and it is usually regarded 
+    as part of the solution.
+    '''
+class RoleStateVariable(RoleInputVariable):
     '''The attribute is a state variable'''
 #    userStr = 'state_variable'
-class RoleAlgebraicVariable(RoleVariable):
+class RoleIntermediateVariable(RoleVariable):
+    '''
+    This variable is an intermediate value, that is computed inside the 
+    dynamic function.
+    '''
+class RoleAlgebraicVariable(RoleIntermediateVariable):
     '''The attribute is an algebraic variable'''
 #    userStr = 'algebraic_variable'
-class RoleTimeDifferential(RoleAlgebraicVariable):
+class RoleOutputVariable(RoleVariable):
+    '''
+    This variable is a returned from the simulation function.
+    The solution algorithm needs this variable to compute the solution.
+    '''
+class RoleTimeDifferential(RoleOutputVariable):
     '''The attribute is an algebraic variable'''
 #    userStr = 'algebraic_variable'
-
 
 
 class NodeDataDef(Node):

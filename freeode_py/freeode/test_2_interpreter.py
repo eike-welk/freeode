@@ -1192,7 +1192,7 @@ def test_interpreter_dollar_operator_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter, IFloat, CallableObject
-    from freeode.ast import DotName, RoleStateVariable, RoleAlgebraicVariable
+    from freeode.ast import DotName, RoleStateVariable, RoleTimeDifferential
 
     prog_text = \
 '''
@@ -1224,7 +1224,7 @@ compile A
     assert isinstance(a1, IFloat)        #a1 is state variable, because it 
     assert a1.role == RoleStateVariable  #has derivative
     assert isinstance(a1_dt, IFloat)     
-    assert a1_dt.role == RoleAlgebraicVariable # $a1 is algebraic variable
+    assert a1_dt.role == RoleTimeDifferential # $a1 is a time differential
     assert isinstance(dynamic, CallableObject)
     
     #test if assignment really is 'a1$time' = 'a1'
@@ -1244,7 +1244,7 @@ def test_interpreter_dollar_operator_2(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter, CallableObject, IFloat
-    from freeode.ast import DotName, RoleStateVariable, RoleAlgebraicVariable
+    from freeode.ast import DotName, RoleStateVariable, RoleTimeDifferential
 
     prog_text = \
 '''
@@ -1282,7 +1282,7 @@ compile B
     assert isinstance(az, IFloat)        #a1 is state variable, because it 
     assert az.role == RoleStateVariable  #has derivative
     assert isinstance(az_dt, IFloat)     
-    assert az_dt.role == RoleAlgebraicVariable # $a1 is algebraic variable
+    assert az_dt.role == RoleTimeDifferential # $a1 is time differential
     assert isinstance(dynamic, CallableObject)
     
     #test if assignment really is 'a1$time' = 'a1'

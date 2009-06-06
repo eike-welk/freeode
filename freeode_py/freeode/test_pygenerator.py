@@ -44,7 +44,7 @@ def test_ExpressionGenerator_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.pygenerator import ExpressionGenerator, IFloat
-    from freeode.ast import (DotName, RoleConstant,
+    from freeode.ast import (RoleConstant,
                              NodeOpInfix2, NodeOpPrefix1, NodeParentheses)
 
     e_gen = ExpressionGenerator()
@@ -92,32 +92,88 @@ def test_ExpressionGenerator_1(): #IGNORE:C01111
 
 
 def test_ExpressionGenerator_2(): #IGNORE:C01111
-    msg = 'Test creation of expression strings. Check function calls'
+    msg = 'Test creation of expression strings. Check function call.'
     #py.test.skip(msg)
     print msg
     from math import sin
-    from freeode.pygenerator import ExpressionGenerator, IFloat
-    from freeode.ast import (RoleConstant, NodeFuncCall)
+    from freeode.pygenerator import ExpressionGenerator
+    from freeode.interpreter import IFloat
+    from freeode.ast import NodeFuncCall
 
     e_gen = ExpressionGenerator()
     #create some variables and numbers
     a = IFloat()
     a.target_name = 'a'
-    b = IFloat()
-    b.target_name = 'b'
-    c = IFloat(2)
-    c.role = RoleConstant
     
-    #expression a + b * 2
+    #expression: sin(a)
     expr = NodeFuncCall('sin', (a,))
     expr_str = e_gen.create_expression(expr)
     print expr_str
     assert eval(expr_str, {'a':0, 'sin':sin}) == 0
 
 
+def test_ProgramGenerator__write_program_start():
+    msg = ''' Test ProgramGenerator.write_program_start: 
+    Just see if function does not crash.
+    '''
+    #py.test.skip(msg)
+    print msg
+    from freeode.pygenerator import ProgramGenerator
     
+    pg = ProgramGenerator()
+    pg.write_program_start()
+    print pg.get_buffer()
+    
+
+
+def test_ProgramGenerator__write_program_end():
+    msg = ''' Test ProgramGenerator.write_program_end: 
+    Just see if function does not crash.
+    '''
+    #py.test.skip(msg)
+    print msg
+    from freeode.pygenerator import ProgramGenerator
+    
+    pg = ProgramGenerator()
+    pg.simulation_class_names = ['Foo', 'Bar']
+    pg.write_program_end()
+    print pg.get_buffer()
+    
+
+
+def test_ProgramGenerator__create_program():
+    msg = ''' Test ProgramGenerator.create_program: 
+    Just see if function does not crash.
+    '''
+    py.test.skip(msg)
+    print msg
+    
+    from freeode.pygenerator import ProgramGenerator
+    from freeode.interpreter import Interpreter
+    
+    prog_text = \
+'''
+class A:
+    data a:Float
+    
+    func dynamic(this):
+        $a = 1
+    
+compile A
+'''
+    
+    #interpret the compile time code
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, 'foo.siml', '__main__')
+    #create the output text
+    pg = ProgramGenerator()
+    pg.create_program('foo.siml', intp.get_compiled_objects())
+    print pg.get_buffer()
+    
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_locals_update()
+    test_ProgramGenerator__create_program()
     pass

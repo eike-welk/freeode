@@ -893,7 +893,7 @@ class IModule(InterpreterObject):
     def __init__(self, name=None, file_name=None):
         InterpreterObject.__init__(self)
         self.name = name
-        self.file_name = file_name
+        self.source_file_name = file_name
         self.role = RoleConstant
 #the single object that should be used to create all Modules
 #CLASS_MODULE = IModule.init_funcs_and_class()
@@ -1502,7 +1502,7 @@ class ExpressionVisitor(Visitor):
         #create the associated derived variable
         deri_var_class = variable.type()
         deri_var = deri_var_class()
-        deri_var.role = RoleAlgebraicVariable
+        deri_var.role = RoleTimeDifferential
         
         #find state variable in parent
         for var_name, var in variable.parent().attributes.iteritems():
@@ -2048,10 +2048,10 @@ class StatementVisitor(Visitor):
         #      in "dynamic":    only RoleAlgebraicVariable, RoleConstant 
         #      in "final":      only RoleVariable, RoleConstant 
         main_func_specs = \
-            [Node(name=DotName('init'), 
+            [Node(name=DotName('dynamic'), 
+                  roles=(RoleAlgebraicVariable, RoleTimeDifferential, RoleConstant)),
+             Node(name=DotName('init'), 
                   roles=(RoleParameter, RoleVariable, RoleConstant)),
-             Node(name=DotName('dynamic'), 
-                  roles=(RoleAlgebraicVariable, RoleConstant)),
              Node(name=DotName('final'), 
                   roles=(RoleVariable, RoleConstant))]
         #call the main functions of tree_object and collect code
@@ -2262,7 +2262,7 @@ class Interpreter(object):
         #create the new module and import the built in objects
         mod = IModule()
         mod.name = module_name
-        mod.file_name = file_name
+        mod.source_file_name = file_name
         #put module into root namespace (symbol table)
         self.modules[module_name] = mod
         mod.attributes.update(self.built_in_lib.attributes)

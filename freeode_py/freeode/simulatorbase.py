@@ -49,36 +49,49 @@ from freeode.storage import DictStore
 
 
 
+class ParamStorage(object):
+    '''
+    Namespace for storing parameters.
+    Otherwise parameters would appear in the namespace of the simulation 
+    object, and need ugly prefixes to avoid name collisions.
+    '''
+    pass
+
 class SimulatorBase(object):
     """ Base class for the generated simulator classes """
     #TODO: think about separate data storage object.
 
     def __init__(self):
-        self.variableNameMap = {}
-        '''Maping between variable (siml) name and index in the result array'''
-        self.parameterNameMap = {} #TODO: attribute is currently unused
-        '''Maping between parameter (siml) name and (data member, python name)???'''
-        self.p_solutionParameters_simulationTime = 100.0
+#        #TODO: this should be handled by the storage class
+#        self.variableNameMap = {}
+#        '''Maping between variable (siml) name and index in the result array'''
+
+        self.param = ParamStorage()
+        '''Storage for the parameters'''
+        self.simulation_time = 100.0
         '''Duration of the simulation. Built in parameter.'''
-        self.p_solutionParameters_reportingInterval = 1.0
+        self.reporting_interval = 1.0
         '''Interval at which the simulation results are recorded.
            Built in parameter.'''
         self.defaultFileName = 'error-no-file-name-given.csv'
         '''Default file name for storing simulation results.
            Set by generated simulator class'''
-        self.time = None
-        '''Array with times at which the solution was computed.'''
-        self.resultArray = None
-        '''Array with the simulation results'''
+           
+#        #TODO: this should be handled by the storage class   
+#        self.time = None
+#        '''Array with times at which the solution was computed.'''
+#        self.resultArray = None
+#        '''Array with the simulation results'''
+        
         self.initialValues = None
         '''Array with the initial values of the state variables.'''
         self.stateVectorLen = None
         '''Length of the state vector'''
         self.algVectorLen = None
         '''Length of vector that contains the algebraic variables'''
-        self.paramOverrideDict = {}
-        '''Store alternative values for parameters.
-           Written and read in initialize.'''
+#        self.paramOverrideDict = {}
+#        '''Store alternative values for parameters.
+#           Written and read in initialize.'''
 
 
     def help(self):
