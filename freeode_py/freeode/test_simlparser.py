@@ -53,7 +53,11 @@ def test_parser_construction(): #IGNORE:C01111
 
 
 def test_parse_function_definition_1(): #IGNORE:C01111
-    print 'Test to parse a function definition without arguments.'
+    msg = 'Test to parse a function definition without arguments.'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.ast import NodeFuncDef
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -65,10 +69,15 @@ def test_parse_function_definition_1(): #IGNORE:C01111
 func test_1():
     return
 ''' )
-    print test_prog
+    #print test_prog
     print
     ast = parser.parseModuleStr(test_prog)
-    print ast 
+    #print ast 
+    
+    func = ast.statements[0]
+    assert isinstance(func, NodeFuncDef)
+    assert len(func.arguments.arguments) == 0
+    assert len(func.statements) == 1
     
     
     
@@ -85,10 +94,10 @@ def test_parse_function_definition_2(): #IGNORE:C01111
 func test_1(a, b, c):
     return
 ''' )
-    print test_prog
+    #print test_prog
     print
     ast = parser.parseModuleStr(test_prog)
-    print ast    
+    #print ast    
 
 
 
@@ -106,10 +115,10 @@ def test_parse_function_definition_3(): #IGNORE:C01111
 func test_1(a=0, b=2, c=5):
     return
 ''' )
-    print test_prog
+    #print test_prog
     print
     ast = parser.parseModuleStr(test_prog)
-    print ast   
+    #print ast   
 
 
 
@@ -127,10 +136,10 @@ def test_parse_function_definition_4(): #IGNORE:C01111
 func test_1(a:Float, b:String, c:Float):
     return
 ''' )
-    print test_prog
+    #print test_prog
     print
     ast = parser.parseModuleStr(test_prog)
-    print ast   
+    #print ast   
 
 
 
@@ -148,10 +157,10 @@ def test_parse_function_definition_5(): #IGNORE:C01111
 func test_1(a:String, b, c:Float, d:Float=2, e=3, f:Float=4) -> Float:
     return
 ''' )
-    print test_prog
+    #print test_prog
     print
     ast = parser.parseModuleStr(test_prog)
-    print ast   
+    #print ast   
     #assert False, 'Test'
     
     
@@ -169,10 +178,10 @@ def test_parse_function_definition_6(): #IGNORE:C01111
 func test_1() -> Float:
     return 1
 ''' )
-    print test_prog
+    #print test_prog
     print
     ast = parser.parseModuleStr(test_prog)
-    print ast 
+    #print ast 
 #    assert False, 'Test'
     
     
@@ -224,12 +233,12 @@ compile RunTest
 #   Parser.noTreeModification = 1
 
     ast = parser.parseModuleStr(test_prog)
-    print ast
+    #print ast
     #assert False, 'Test'
 
 
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_parse_function_definition_4()
+    test_parse_function_definition_1()
     pass
