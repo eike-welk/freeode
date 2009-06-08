@@ -63,8 +63,12 @@ class SimulatorBase(object):
 
     def __init__(self):
 #        #TODO: this should be handled by the storage class
-#        self.variableNameMap = {}
-#        '''Maping between variable (siml) name and index in the result array'''
+        self.variableNameMap = {}
+        '''Maping between variable (siml) name and index in the result array'''
+        self.time = None
+        '''Array with times at which the solution was computed.'''
+        self.resultArray = None
+        '''Array with the simulation results'''
 
         self.param = ParamStorage()
         '''Storage for the parameters'''
@@ -76,13 +80,6 @@ class SimulatorBase(object):
         self.defaultFileName = 'error-no-file-name-given.csv'
         '''Default file name for storing simulation results.
            Set by generated simulator class'''
-           
-#        #TODO: this should be handled by the storage class   
-#        self.time = None
-#        '''Array with times at which the solution was computed.'''
-#        self.resultArray = None
-#        '''Array with the simulation results'''
-        
         self.initialValues = None
         '''Array with the initial values of the state variables.'''
         self.stateVectorLen = None
@@ -198,7 +195,6 @@ class SimulatorBase(object):
         for varName1 in varList:
             if len(varName1) == 0:
                 continue
-            if not (varName1 in self.variableNameMap):
                 print >> sys.stderr, \
                     'Error unknown attribute name: %s' % varName1
                 continue
@@ -316,9 +312,8 @@ class SimulatorBase(object):
         if self.initialValues == None:
             self.initialize()
         #create the array of output time points. Note: no rounding is better
-        self.time = linspace(0.0, self.p_solutionParameters_simulationTime,
-                             self.p_solutionParameters_simulationTime/
-                             self.p_solutionParameters_reportingInterval + 1)
+        self.time = linspace(0.0, self.simulation_time,
+                             self.simulation_time/self.reporting_interval + 1)
         #Create space for storing simulation results
         #dim 1: time; dim 2: the different variables
         #-> vector of variables (state and algebraic) lies horizontally
@@ -328,8 +323,8 @@ class SimulatorBase(object):
         self.resultArray[0,0:self.stateVectorLen] = self.initialValues
         #create integrator object and care for intitial values
         solver = (odeInt(self.dynamic).set_integrator('vode', nsteps = 5000) #IGNORE:E1102
-                                     .set_initial_value(self.initialValues,
-                                                        self.time[0]))
+                                      .set_initial_value(self.initialValues,
+                                                         self.time[0]))
         #compute the numerical solution
         i=1
         while solver.successful() and i < len(self.time):

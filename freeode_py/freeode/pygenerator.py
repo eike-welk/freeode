@@ -346,11 +346,11 @@ class SimulationClassGenerator(object):
         '''
         super(SimulationClassGenerator, self).__init__()
         #The input: an IL-tree of the process. It has no external dependencies.
-        self.ilt_process = CompiledClass()
+        self.flat_object = CompiledClass()
         #File where the Python program will be stored.
         self.out_py = buffer
         #Python name of the process
-        self.process_py_name = ''
+        self.class_py_name = ''
         #The parameters: dict: {DotName: InterpreterObject]
         self.parameters = {}
         #The algebraic variables: dict: {DotName: InterpreterObject]
@@ -373,19 +373,19 @@ class SimulationClassGenerator(object):
         Results:
         self.parameters, self.algebraic_variables, self.state_variables
         '''
-        time_differentials = set()
+        #time_differentials = set()
         #create dicts to find and classify attributes fast
-        for name, attr in self.ilt_process.attributes.iteritems():
+        for name, attr in self.flat_object.attributes.iteritems():
             if not isinstance(attr, (IFloat, IString)):
                 continue
-            if attr.role is RoleParameter:
+            if issubclass(attr.role, RoleParameter):
                 self.parameters[name] = attr
-            elif attr.role is RoleStateVariable:
+            elif issubclass(attr.role, RoleInputVariable):
                 self.state_variables[name] = attr
-                time_differentials.add(attr.time_derivative)
-            elif issubclass(attr.role, RoleVariable) and attr in time_differentials:
+                #time_differentials.add(attr.time_derivative)
+            elif issubclass(attr.role, RoleOutputVariable):
                 self.time_differentials[name] = attr
-            elif issubclass(attr.role, RoleVariable) and attr not in time_differentials:
+            elif issubclass(attr.role, RoleIntermediateVariable):
                 self.algebraic_variables[name] = attr
             else:
                 raise PyGenException('Unknown attribute definition:\n'+ str(attr))
@@ -418,27 +418,28 @@ class SimulationClassGenerator(object):
         raise Exception('Too many similar names')    
     
     
-    def createAttrPyNames(self):
+    def create_attr_py_names(self):
         '''
         Create python names for all attributes
         The python names are stored in the data attribute:
         self.targetName of NodeDataDef and NodeAttrAccess
         '''
         #TODO: prepend variables and parameters with different additional strings?
-        param_prefix = 'self.p_'
+        param_prefix = 'param.'
 #        varPrefix = 'v'
         py_names = set() #set of already existing target names.
 
         #loop over all attribute definitions and create an unique python name
         #for each attribute
-        for name, attr in self.ilt_process.attributes.iteritems():
+        for name, attr in self.flat_object.attributes.iteritems():
             if not isinstance(attr, (IFloat, IString)):
                 continue
-            #create underline separated name string
+            #create underline separated name string, replace '$' with '_D'
             py_name1 = '_'.join(name)
             #add prefix to parameters
             if attr.role is RoleParameter:
                 py_name1 = param_prefix + py_name1
+            py_name1 = py_name1.replace('$', '_D')
             #see if python name is unique; append number to make it unique
             py_name1 = self.make_unique_str(py_name1, py_names)
             py_names.add(py_name1)
@@ -446,42 +447,42 @@ class SimulationClassGenerator(object):
             attr.target_name = py_name1        
 
 
-    def writeClassDefStart(self):
+    def write_class_def_start(self):
         '''Write first few lines of class definition.'''
-        self.write('class %s(SimulatorBase): \n' % self.process_py_name)
+        self.write('class %s(SimulatorBase): \n' % self.class_py_name)
         self.write('    \'\'\' \n')
-        self.write('    Object to simulate process %s \n'
-                         % self.ilt_process.type().name)
+#        self.write('    Object to simulate class %s \n'
+#                         % self.flat_object.type().name)
         self.write('    Definition in\n    file: \'%s\'\n    line: %s \n'
-                         % (self.ilt_process.loc.fileName(), 
-                            self.ilt_process.loc.lineNo()))
+                         % (self.flat_object.loc.fileName(), 
+                            self.flat_object.loc.lineNo()))
         self.write('    \'\'\' \n')
         self.write('    \n')
 
 
-    def writeConstructor(self):
+    def write_constructor(self):
         '''Generate the __init__ function.'''
         ind8 = ' '*8
         self.write('    def __init__(self): \n')
-        self.write('        super(%s, self).__init__() \n' % self.process_py_name)
+        self.write('        super(%s, self).__init__() \n' % self.class_py_name)
         #out_py.write(ind8 + 'self.variableNameMap = {} \n')
         #create default file name
-        self.write(ind8 + 'self.defaultFileName = \'%s.simres\' \n' % self.process_py_name)
+        self.write(ind8 + 'self.defaultFileName = \'%s.simres\' \n' % self.class_py_name)
         #create the parameters
-        self.write(ind8 + '#create all parameters with value 0; ' +
+        self.write(ind8 + '#create all parameters with value 0; '
                            'to prevent runtime errors. \n')
+        self.write(ind8 + 'param = self.param \n')
         for paramDef in self.parameters.values():
-            self.write(ind8 + '%s = %s \n' % (paramDef.target_name, paramDef.zero_value))
+            self.write(ind8 + '%s = 0 \n' % (paramDef.target_name))
         self.write('\n\n')
 
 
-    def writeInitializeMethod(self):
+    def write_initialize_method(self):
         '''Generate method that initializes variables and parameters'''
         #get the process' init method
-        #get the process' dynamic method
-        method_name = DotName('init')
-        if self.ilt_process.has_attribute(method_name):
-            method = self.ilt_process.get_attribute(method_name)
+        method_name = DotName('initialize')
+        if self.flat_object.has_attribute(method_name):
+            method = self.flat_object.get_attribute(method_name)
         else:
             return
         #write method definition
@@ -497,11 +498,11 @@ class SimulationClassGenerator(object):
         for var in (self.algebraic_variables.values() + 
                     self.state_variables.values() + 
                     self.time_differentials.values()):
-            self.write(ind8 + '%s = %s \n' % (var.target_name, var.zero_value))
+            self.write(ind8 + '%s = 0 \n' % (var.target_name, ))
 
-        #create dict for parameter override
-        self.write(ind8 + '#create dict for parameter override \n')
-        self.write(ind8 + 'self._createParamOverrideDict(args, kwArgs) \n')
+#        #create dict for parameter override
+#        self.write(ind8 + '#create dict for parameter override \n')
+#        self.write(ind8 + 'self._createParamOverrideDict(args, kwArgs) \n')
 
         #print the method's statements
         self.write(ind8 + '#do computations \n')
@@ -538,12 +539,12 @@ class SimulationClassGenerator(object):
         self.write('\n\n')
 
 
-    def writeDynamicMethod(self):
+    def write_dynamic_method(self):
         '''Generate the method that contains the differential equations'''
         #get the process' dynamic method
         method_name = DotName('dynamic')
-        if self.ilt_process.has_attribute(method_name):
-            method = self.ilt_process.get_attribute(method_name)
+        if self.flat_object.has_attribute(method_name):
+            method = self.flat_object.get_attribute(method_name)
         else:
             return
         #write method definition
@@ -564,7 +565,7 @@ class SimulationClassGenerator(object):
         self.write(ind8 + '#create all algebraic variables with value 0; ' +
                            'to prevent runtime errors.\n')
         for var in (self.algebraic_variables.values()):
-            self.write(ind8 + '%s = %s \n' % (var.target_name, var.zero_value))
+            self.write(ind8 + '%s = 0 \n' % (var.target_name))
 
         #print the method's statements
         self.write(ind8 + '#do computations \n')
@@ -587,19 +588,19 @@ class SimulationClassGenerator(object):
         self.write(ind12 + '#assemble the time derivatives into the return vector \n')
         self.write(ind12 + 'stateDt = array([')
         for var, n_var in zip(stateVars, range(len(stateVars))):
-            self.write('%s, ' % var.target_name)
+            self.write('%s, ' % var.time_derivative().target_name)
         self.write('], \'float64\') \n')
         self.write(ind12 + 'return stateDt \n')
 
         self.write('\n\n')
 
 
-    def writeFinalMethod(self):
+    def write_final_method(self):
         '''Generate the method that dispays/saves results after the simulation.'''
         #get the process' final method
         method_name = DotName('final')
-        if self.ilt_process.has_attribute(method_name):
-            method = self.ilt_process.get_attribute(method_name)
+        if self.flat_object.has_attribute(method_name):
+            method = self.flat_object.get_attribute(method_name)
         else:
             return
         #write method definition
@@ -615,29 +616,30 @@ class SimulationClassGenerator(object):
         self.write(ind8 + '#the final method\'s statements \n')
         stmtGen = StatementGenerator(self.out_py)
         stmtGen.create_statements(method.statements, ind8)
-        self.write(ind8 + "print 'simulation %s finished.'\n" % self.process_py_name)
+        self.write(ind8 + "print 'simulation %s finished.'\n" % self.class_py_name)
         self.write(ind8 + '\n')
 
 
-    def create_process(self, ilt_process, name):
+    def create_sim_class(self, class_name, flat_object):
         '''
         Take part of ILT tree that defines one procedure and ouput definition
         of python class as string
         '''
-        self.ilt_process = ilt_process #.copy()
+        self.flat_object = flat_object #.copy()
 
         #collect information about the process
-        self.process_py_name = name
+        self.class_py_name = class_name
         self.classify_attributes()
-        self.createAttrPyNames()
+        self.create_attr_py_names()
 
-        #print self.ilt_process
-        self.writeClassDefStart()
-        self.writeConstructor()
-        self.writeInitializeMethod()
-        self.writeDynamicMethod()
-        self.writeFinalMethod()
-        #self.writeOutputEquations()
+        #output program text
+        self.write_class_def_start()
+        self.write_constructor()
+        self.write_initialize_method()
+        self.write_dynamic_method()
+        self.write_final_method()
+        #TODO: separate function to compute the algebraic variables.
+        #self.write_output_equations()
 
         self.write('\n\n')
 
@@ -712,6 +714,7 @@ from freeode.simulatorbase import simulatorMainFunc
 
     def write_program_end(self):
         '''Write last part of program, such as main routine.'''
+        #TODO: add program text to output file as string.
         self.write(
 '''
 
@@ -746,7 +749,7 @@ if __name__ == '__main__':
             #TODO: make unique class names
             self.simulation_class_names.append(sim_object.class_name)
             procGen = SimulationClassGenerator(self.out_py)
-            procGen.create_process(sim_object, sim_object.class_name)
+            procGen.create_sim_class(sim_object.class_name, sim_object)
 
         self.write_program_end()
 

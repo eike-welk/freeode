@@ -112,6 +112,52 @@ def test_ExpressionGenerator_2(): #IGNORE:C01111
     assert eval(expr_str, {'a':0, 'sin':sin}) == 0
 
 
+
+def test_SimulationClassGenerator__create_sim_class_1():
+    msg = ''' Test SimulationClassGenerator.create_sim_class: 
+    Just see if function does not crash.
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.pygenerator import SimulationClassGenerator
+    from freeode.interpreter import Interpreter
+    import cStringIO
+    
+    prog_text = \
+'''
+class A:
+    data a:Float
+    data b: Float 
+    data c: Float param
+    
+    func initialize(this):
+        a = 1
+        c = 2
+    
+    func dynamic(this):
+        b = c
+        $a = b
+        
+#    func final(this):
+#        pass
+#        graph(a)
+    
+compile A
+'''
+    
+    #interpret the compile time code
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, 'foo.siml', '__main__')
+    flat_o = intp.get_compiled_objects()[0]
+    #create the output text
+    buf = cStringIO.StringIO()
+    cg = SimulationClassGenerator(buf)
+    cg.create_sim_class('A', flat_o)
+    print buf.getvalue()
+    
+
+
 def test_ProgramGenerator__write_program_start():
     msg = ''' Test ProgramGenerator.write_program_start: 
     Just see if function does not crash.
@@ -145,7 +191,7 @@ def test_ProgramGenerator__create_program():
     msg = ''' Test ProgramGenerator.create_program: 
     Just see if function does not crash.
     '''
-    py.test.skip(msg)
+    #py.test.skip(msg)
     print msg
     
     from freeode.pygenerator import ProgramGenerator
@@ -154,7 +200,8 @@ def test_ProgramGenerator__create_program():
     prog_text = \
 '''
 class A:
-    data a:Float
+    data a: Float
+    data b: Float param
     
     func dynamic(this):
         $a = 1
@@ -175,5 +222,5 @@ compile A
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_ProgramGenerator__create_program()
+    test_SimulationClassGenerator__create_sim_class_1()
     pass

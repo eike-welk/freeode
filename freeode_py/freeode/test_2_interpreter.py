@@ -1314,7 +1314,7 @@ class BarrelWithHole:
         $V = q - mu*A_o*sqrt(2*g*h)
 #        print('h: ', h)
 
-    func init(this, q_in):
+    func initialize(this, q_in):
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
         q = q_in #0.05
@@ -1326,8 +1326,8 @@ class RunTest:
     func dynamic(this):
         system.dynamic()
 
-    func init(this):
-        system.init(0.55)
+    func initialize(this):
+        system.initialize(0.55)
 #        solutionParameters.simulationTime = 100
 #        solutionParameters.reportingInterval = 1  #line 30
 
@@ -1396,7 +1396,7 @@ compile A
     assert isinstance(dynamic, CallableObject)
 
     #check number of attributes, most are automatically generated
-    #attributes:           init, dynamic, final, 
+    #attributes:           initialize, dynamic, final, 
     #instance variables:   a1, $a1, 
     #local variables:      A.dynamic.b, A.dynamic.c, 
     #intermediate result:  A.foo.x, (2nd call)

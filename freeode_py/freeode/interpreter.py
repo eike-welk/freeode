@@ -1517,7 +1517,7 @@ class ExpressionVisitor(Visitor):
         #deri_name = make_unique_name(deri_name, variable.parent().attributes)
         variable.parent().create_attribute(deri_name, deri_var)
         #remember time derivative also in state variable
-        variable.time_derivative = weakref.ref(deri_var)
+        variable.time_derivative = ref(deri_var)
    
     
     @Visitor.when_type(InterpreterObject)
@@ -2050,7 +2050,7 @@ class StatementVisitor(Visitor):
         main_func_specs = \
             [Node(name=DotName('dynamic'), 
                   roles=(RoleAlgebraicVariable, RoleTimeDifferential, RoleConstant)),
-             Node(name=DotName('init'), 
+             Node(name=DotName('initialize'), 
                   roles=(RoleParameter, RoleVariable, RoleConstant)),
              Node(name=DotName('final'), 
                   roles=(RoleVariable, RoleConstant))]
