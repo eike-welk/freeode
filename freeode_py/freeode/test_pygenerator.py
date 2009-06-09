@@ -97,16 +97,19 @@ def test_ExpressionGenerator_2(): #IGNORE:C01111
     print msg
     from math import sin
     from freeode.pygenerator import ExpressionGenerator
-    from freeode.interpreter import IFloat
+    from freeode.interpreter import IFloat, CallableObject
     from freeode.ast import NodeFuncCall
 
     e_gen = ExpressionGenerator()
-    #create some variables and numbers
+    #create a variable
     a = IFloat()
     a.target_name = 'a'
+    #create a function
+    fsin = CallableObject(None)
+    fsin.codegen_name = 'sin'
     
     #expression: sin(a)
-    expr = NodeFuncCall('sin', (a,))
+    expr = NodeFuncCall(fsin, (a,))
     expr_str = e_gen.create_expression(expr)
     print expr_str
     assert eval(expr_str, {'a':0, 'sin':sin}) == 0
@@ -120,9 +123,10 @@ def test_SimulationClassGenerator__create_sim_class_1():
     #py.test.skip(msg)
     print msg
     
+    import cStringIO
     from freeode.pygenerator import SimulationClassGenerator
     from freeode.interpreter import Interpreter
-    import cStringIO
+    from freeode.simulatorbase import SimulatorBase
     
     prog_text = \
 '''
@@ -134,14 +138,14 @@ class A:
     func initialize(this):
         a = 1
         c = 2
+        print(a)
     
     func dynamic(this):
         b = c
-        $a = b
+        $a = b * sin(a)
         
-#    func final(this):
-#        pass
-#        graph(a)
+    func final(this):
+        graph(a)
     
 compile A
 '''
@@ -150,12 +154,15 @@ compile A
     intp = Interpreter()
     intp.interpret_module_string(prog_text, 'foo.siml', '__main__')
     flat_o = intp.get_compiled_objects()[0]
-    #create the output text
+    #create the Python class definition as text
     buf = cStringIO.StringIO()
     cg = SimulationClassGenerator(buf)
     cg.create_sim_class('A', flat_o)
-    print buf.getvalue()
-    
+    cls_txt = buf.getvalue()
+    print cls_txt
+
+#    exec cls_txt
+#    a = A()
 
 
 def test_ProgramGenerator__write_program_start():

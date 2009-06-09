@@ -278,6 +278,7 @@ class CallableObject(InterpreterObject):
         self.is_assigned = True
         self.name = DotName(name)
         self.is_fundamental_function = False
+        self.codegen_name = None
         '''
         If True: the function is a basic building block of the language. 
         The code generator can emit code for this function. The flattened 
@@ -500,11 +501,12 @@ class BuiltInFunctionWrapper(CallableObject):
         name of function
     argument_definition: IntArgumentList
         Argument definition of the function
-    return_type: TypeObject
-        Return type of the function.
+    return_type: TypeObject or None
+        Type of the function's return value.
         When an unevaluated result is returned, this will be assigned to the 
         type of the ast.Node.
-        If the return type is None, the function has no return value.
+        If the return type is None, there is no definition of a return type.
+        Functions that return no value must put CLASS_NONETYPE here.
     py_function:
         Function that will be called when the result can be computed.
     accept_unknown_values: True/False - default: False
@@ -525,12 +527,13 @@ class BuiltInFunctionWrapper(CallableObject):
     def __init__(self, name, argument_definition=ArgumentList([]), 
                              return_type=None, 
                              py_function=lambda:None,
-                             accept_unknown_values = False,
-                             is_fundamental_function = True):
+                             accept_unknown_values=False,
+                             is_fundamental_function=True,
+                             codegen_name=None):
         CallableObject.__init__(self, name)
-        #IntArgumentList
+        #ArgumentList(): The function's argument definition. 
         self.argument_definition = argument_definition
-        #TypeObject or None
+        #TypeObject or None: The type of the function's return value
         self.return_type = ref(return_type) if return_type is not None else None
         #A Python function
         self.py_function = py_function
@@ -538,6 +541,8 @@ class BuiltInFunctionWrapper(CallableObject):
         self.accept_unknown_values = accept_unknown_values
         #If true, this function is a basic building block of the simulation
         self.is_fundamental_function = is_fundamental_function
+        #Name, so the code generator can recognize the function
+        self.codegen_name = codegen_name
 
 
     def __call__(self, *args, **kwargs):
@@ -1001,7 +1006,8 @@ class IString(FundamentalObject):
         #Printing
         single_args = ArgumentList([NodeFuncArg('self', class_string)])
         W('__str__', single_args, class_string, 
-          py_function=IString._str).put_into(class_string)  
+          py_function=IString._str,
+          codegen_name='String.__str__').put_into(class_string)  
         #return the class object
         return class_string
 
@@ -1085,6 +1091,9 @@ class IFloat(FundamentalObject):
           py_function=IFloat.__mod__).put_into(class_float) 
         W('__pow__', binop_args, class_float, 
           py_function=IFloat.__pow__).put_into(class_float) 
+        #TODO: sin, cos, tan, log should become member functions of the 
+        #      numerical base types. These functions must behave differently
+        #      for each base type (Float, RawFloatArray)
         #The prefix operator
         prefix_args = ArgumentList([NodeFuncArg('self', class_float)])
         W('__neg__', prefix_args, class_float, 
@@ -1095,7 +1104,8 @@ class IFloat(FundamentalObject):
           accept_unknown_values=True).put_into(class_float) 
         #Printing
         W('__str__', prefix_args, CLASS_STRING, 
-          py_function=IFloat._str).put_into(class_float)
+          py_function=IFloat._str,
+          codegen_name='Float.__str__').put_into(class_float)
         #return the class object
         return class_float
 
@@ -1154,6 +1164,7 @@ class PrintFunction(CallableObject):
     '''
     def __init__(self):
         CallableObject.__init__(self, 'print')
+        self.codegen_name = 'print'
         
     def __call__(self, *args, **kwargs):
         if self.interpreter.is_collecting_code():
@@ -1170,7 +1181,7 @@ class PrintFunction(CallableObject):
                            .expression_visitor.dispatch(str_call)
                 new_args.append(str_expr) #collect the call's result
             #create a new call to the print function
-            print_call = NodeFuncCall(NodeIdentifier(DotName('print')), new_args, {}, None)
+            print_call = NodeFuncCall(self, new_args, {}, None)
             print_call.type = CLASS_NONETYPE
             print_call.is_assigned = True
             print_call.role = RoleConstant
@@ -1201,6 +1212,7 @@ class GraphFunction(CallableObject):
     '''
     def __init__(self):
         CallableObject.__init__(self, 'graph')
+        self.codegen_name = 'graph'
         
     def __call__(self, *args, **kwargs):
         if self.interpreter.is_collecting_code():
@@ -1208,13 +1220,13 @@ class GraphFunction(CallableObject):
             new_args = []
             for arg1 in args:
                 ev_arg = self.interpreter.statement_visitor\
-                           .expression_visitor.dispatch(arg1)
+                             .expression_visitor.dispatch(arg1)
                 if not isinstance(ev_arg, IFloat):
                     raise UserException('The graph function can only display '
-                                        'Float values.')
+                                        'the time course of Float variables.')
                 new_args.append(ev_arg) 
             #create a new call to the print function
-            print_call = NodeFuncCall(NodeIdentifier(DotName('graph')), new_args, {}, None)
+            print_call = NodeFuncCall(self, new_args, {}, None)
             print_call.type = CLASS_NONETYPE
             print_call.is_assigned = True
             print_call.role = RoleConstant
@@ -1246,12 +1258,15 @@ def create_built_in_lib():
     lib.create_attribute('print', PrintFunction())
     lib.create_attribute('graph', GraphFunction())
     #math 
+    #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units 
     WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 
           return_type=CLASS_FLOAT, 
-          py_function=lambda x: IFloat(math.sqrt(x.value))).put_into(lib)
+          py_function=lambda x: IFloat(math.sqrt(x.value)),
+          codegen_name='sqrt').put_into(lib)
     WFunc('sin', ArgumentList([Arg('x', CLASS_FLOAT)]), 
           return_type=CLASS_FLOAT, 
-          py_function=lambda x: IFloat(math.sin(x.value))).put_into(lib)
+          py_function=lambda x: IFloat(math.sin(x.value)),
+          codegen_name='sin').put_into(lib)
     
     return lib
 #the module of built in objects
@@ -1759,7 +1774,7 @@ class ExpressionVisitor(Visitor):
             return func_obj(*ev_args, **ev_kwargs)     #IGNORE:W0142
         except UnknownArgumentsException:
             #Some arguments were unknown create an unevaluated function call
-            new_call = NodeFuncCall(node.name, ev_args, ev_kwargs, node.loc)
+            new_call = NodeFuncCall(func_obj, ev_args, ev_kwargs, node.loc)
             #put on decoration
             #TODO: Maybe put func_obj into new_call.name ?
             #      This would result in a function call, that could be 

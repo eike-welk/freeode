@@ -78,14 +78,33 @@ class ExpressionGenerator(Visitor):
         '''
         return self.dispatch(iltFormula)
     
+    def _create_graph_func_call(self, call):
+        '''
+        Create call to the graph pseudo-function.
+        
+        Arguments to the graph function are not interpreted as their value at 
+        the current time, but as the complete history during the 
+        simulation.
+        '''
+        ret_str = 'self.graph(['
+        for arg in call.arguments:
+            ret_str += '"' + str(arg.siml_dot_name) + '"' + ','
+        ret_str += '])'
+        return ret_str
+        
     @Visitor.when_type(NodeFuncCall, 1)
     def _createBuiltInFuncCall(self, call):
         #Built in function: sin(...)
         nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
-                    'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',}
+                    'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
+                    'print':'print', 'graph':'graph', 
+                    'Float.__str__':'str', 'String.__str__':'str'}
 #                    'overrideParam':'self._overrideParam' }
         #get name of the corresponding Python function
-        func_name = nameDict[call.name] 
+        func_name = nameDict[call.name.codegen_name] 
+        #special handling of the graph pseudo-function
+        if func_name == 'graph':
+            return self._create_graph_func_call(call)
         #produce output
         ret_str = func_name + '('
         for arg in call.arguments:
@@ -134,11 +153,6 @@ class ExpressionGenerator(Visitor):
         opDict = {'-':' -', 'not':' not '}
         opStr = opDict[iltFormula.operator]
         return opStr + self.dispatch(iltFormula.arguments[0])
-        
-#    @Visitor.when_type(NodeAttrAccess, 1)
-#    def _createAttrAccess(self, iltFormula):
-#        #variable or parameter
-#        return iltFormula.targetName
         
     @Visitor.default
     def _ErrorUnknownNode(self, iltFormula):
@@ -245,6 +259,12 @@ class StatementGenerator(Visitor):
             self.dispatch(iltStmt.elsePart, indent + ind4)
 
 
+    @Visitor.when_type(NodeExpressionStmt, 1)
+    def _createExpressionStmt(self, iltStmt, indent):
+        #Expression with side effects: print(), graph(), store()
+        self.write(indent + self.create_expression(iltStmt.expression) + '\n')
+        
+    
 #    @Visitor.when_type(NodePrintStmt, 1)
 #    def _createPrintStmt(self, iltStmt, indent):
 #        #print statement -----------------------------------------------------
@@ -420,9 +440,9 @@ class SimulationClassGenerator(object):
     
     def create_attr_py_names(self):
         '''
-        Create python names for all attributes
-        The python names are stored in the data attribute:
-        self.targetName of NodeDataDef and NodeAttrAccess
+        Create python names for all variables and parameters
+        The python names are stored in the attribute: target_name 
+        Additionally the dotted Siml name is stored in: siml_dot_name
         '''
         #TODO: prepend variables and parameters with different additional strings?
         param_prefix = 'param.'
@@ -436,15 +456,17 @@ class SimulationClassGenerator(object):
                 continue
             #create underline separated name string, replace '$' with '_D'
             py_name1 = '_'.join(name)
+            py_name1 = py_name1.replace('$', '_D')
             #add prefix to parameters
             if attr.role is RoleParameter:
                 py_name1 = param_prefix + py_name1
-            py_name1 = py_name1.replace('$', '_D')
             #see if python name is unique; append number to make it unique
             py_name1 = self.make_unique_str(py_name1, py_names)
             py_names.add(py_name1)
-            #store python name
-            attr.target_name = py_name1        
+            #store python name in attribute   
+            attr.target_name = py_name1
+            #store Siml name in attribute
+            attr.siml_dot_name = name
 
 
     def write_class_def_start(self):
@@ -464,7 +486,7 @@ class SimulationClassGenerator(object):
         '''Generate the __init__ function.'''
         ind8 = ' '*8
         self.write('    def __init__(self): \n')
-        self.write('        super(%s, self).__init__() \n' % self.class_py_name)
+        self.write('        SimulatorBase.__init__(self) \n') #% self.class_py_name)
         #out_py.write(ind8 + 'self.variableNameMap = {} \n')
         #create default file name
         self.write(ind8 + 'self.defaultFileName = \'%s.simres\' \n' % self.class_py_name)
@@ -535,7 +557,7 @@ class SimulationClassGenerator(object):
                               self.state_variables.keys() +
                               self.algebraic_variables.keys()):
             self.write('\'%s\':%d, ' % (str(varName), i))
-        self.write('}')
+        self.write('}\n')
         self.write('\n\n')
 
 
