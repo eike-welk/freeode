@@ -1,16 +1,16 @@
 
 #Biological reactor with no inflow or outfow
-class Batch(Process):
+class Batch:
     #Define values that stay constant during the simulation.
-    data mu_max, Ks, Yxs: Real parameter;
+    data mu_max, Ks, Yxs: Float param
     #Define values that change during the simulation.
-    data mu, X, S: Real;
+    data mu, X, S: Float
 
     #Initialize the simulation.
-    func init():
+    func initialize(this):
         #Specify options for the simulation algorithm.
-        solutionParameters.simulationTime = 20;     #total simulation time
-        solutionParameters.reportingInterval = 0.1; #time between data points
+        #solutionParameters.simulationTime = 20;     #total simulation time
+        #solutionParameters.reportingInterval = 0.1; #time between data points
         #Give values to the parameters
         mu_max = 0.32; #max growth speed
         Ks     = 0.01; #at this sugar concentration growth speed is 0.5*mu_max
@@ -18,17 +18,18 @@ class Batch(Process):
         #Give initial values to the state variables.
         X      = 0.1;  #initial biomass concentration
         S      = 20;   #initial sugar concentration
-    end
+
 
     #compute dynamic behaviour - the system's 'equations'
-    func dynamic():
+    func dynamic(this):
         mu = mu_max * S/(S+Ks); #growth speed (of biomass)
         $X = mu*X;              #change of biomass concentration
         $S = -1/Yxs*mu*X;       #change of sugar concentration
-    end
+
 
     #show results
-    func final():
-        graph mu, X, S;
-    end
-end
+    func final(this):
+        graph(mu, X, S);
+
+
+compile Batch

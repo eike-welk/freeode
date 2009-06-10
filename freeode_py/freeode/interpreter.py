@@ -44,6 +44,7 @@ from __future__ import division
 import weakref
 from weakref import ref
 import math
+import os
 
 from freeode.ast import *
 import freeode.simlparser as simlparser
@@ -895,6 +896,11 @@ class BuiltInClassWrapper(TypeObject):
 
 class IModule(InterpreterObject):
     '''Represent one file'''
+    #TODO: Modules have modified attribute lookup:
+    #      When attributes are not found in their namespace,
+    #      the attributes are searched in the builtin namespace.
+    #      This way the built in attributes do not need to be imported 
+    #      into the module's namespace, and they can be overridden. 
     def __init__(self, name=None, file_name=None):
         InterpreterObject.__init__(self)
         self.name = name
@@ -1248,8 +1254,12 @@ def create_built_in_lib():
     lib = IModule()
     lib.name = DotName('__built_in__')
 
-    #None object
+    #built in constants
     lib.create_attribute('None', NONE)
+    time = IFloat()
+    time.role = RoleAlgebraicVariable
+    time.is_assigned = True
+    lib.create_attribute('time', time)
     #basic data types
     lib.create_attribute('NoneType', CLASS_NONETYPE)
     lib.create_attribute('Float', CLASS_FLOAT)
@@ -1267,6 +1277,14 @@ def create_built_in_lib():
           return_type=CLASS_FLOAT, 
           py_function=lambda x: IFloat(math.sin(x.value)),
           codegen_name='sin').put_into(lib)
+    WFunc('max', ArgumentList([Arg('a', CLASS_FLOAT), Arg('b', CLASS_FLOAT)]), 
+          return_type=CLASS_FLOAT, 
+          py_function=lambda a, b: IFloat(max(a.value, b.value)),
+          codegen_name='max').put_into(lib)
+    WFunc('min', ArgumentList([Arg('a', CLASS_FLOAT), Arg('b', CLASS_FLOAT)]), 
+          return_type=CLASS_FLOAT, 
+          py_function=lambda a, b: IFloat(min(a.value, b.value)),
+          codegen_name='min').put_into(lib)
     
     return lib
 #the module of built in objects
@@ -2161,7 +2179,7 @@ class StatementVisitor(Visitor):
             raise UserException('Duplicate attribute %s.' % e.attr_name, 
                                 loc=node.loc, errno=3800910)
         except UndefinedAttributeError, e:
-            raise UserException('Undefined attribute %s.' % e.attr_name, 
+            raise UserException('Undefined attribute "%s".' % e.attr_name, 
                                 loc=node.loc, errno=3800920)
 
 
@@ -2272,6 +2290,21 @@ class Interpreter(object):
     
     
     # --- run code ---------------------------------------------------------------    
+    def interpret_module_file(self, file_name, module_name=None):
+        '''Interpret a whole program. The program's file name is supplied.'''
+        long_file_name = os.path.abspath(file_name)
+        #open and read the file
+        try:
+            input_file = open(long_file_name, 'r')
+            module_text = input_file.read()
+            input_file.close()
+        except IOError, theError:
+            message = 'Could not read input file.\n' + str(theError)
+            raise UserException(message, None)
+        #parse the program
+        return self.interpret_module_string(module_text, file_name, module_name)
+
+
     def interpret_module_string(self, text, file_name=None, module_name=None):
         '''Interpret the program text of a module.'''
         #create the new module and import the built in objects

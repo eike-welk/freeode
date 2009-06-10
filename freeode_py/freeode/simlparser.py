@@ -507,7 +507,7 @@ class Parser(object):
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        n_curr = NodeReturnStmt()
+        n_curr = NodePassStmt()
         n_curr.loc = self.createTextLocation(loc) #Store position
         return n_curr
       

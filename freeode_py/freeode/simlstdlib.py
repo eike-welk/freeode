@@ -23,6 +23,10 @@
 ############################################################################
 
 '''
+============================================================================
+THIS MODULE IS NO LONGER USED, IT IS ONLY KEPT FOR REFERENCE!
+============================================================================
+
 Standard library of the SIML language
 
 The standard library is mostly written in Siml, and resides in a text string 

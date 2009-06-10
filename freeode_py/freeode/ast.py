@@ -470,7 +470,7 @@ class NodeOpInfix2(Node):
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
         #decorations
-        self.function_object = None
+        #self.function_object = None
         self.type = None
         self.role = RoleUnkown
         self.is_assigned = None
@@ -507,7 +507,7 @@ class NodeOpPrefix1(Node):
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
         #decorations
-        self.function_object = None
+        #self.function_object = None
         self.type = None
         self.role = RoleUnkown
         self.is_assigned = None
@@ -524,20 +524,25 @@ class NodeFuncCall(Node):
     
     Data attributes:
     ----------------
-        name: typically NodeIdentifier
-            expression that yields the function object
+        name: NodeIdentifier/callable object
+            expression that yields the function object, or the function 
+            object that will be called. 
+            The function object is present when an unevaluated function call 
+            was generated.
         arguments: 
             Tuple of positional arguments
         keyword_arguments: 
             Dictionary of keyword arguments
-        function_object:
-            The Siml function that the interpreter called when the function
-            call was interpreted. (Because not all arguments were known at 
-            compile time, an annotated function call was created.) 
+            
         type: InterpreterObject
-            Type of the results of the operation. For decorating the AST.
+            Type of the results of the operation. (unevaluated function call)
         role: AttributeRole
-            Role of the results of the operation. For decorating the AST.
+            Role of the results of the operation. (unevaluated function call)
+        is_assigned: None/True
+            - None for calls that have not been processed by the interpreter.
+            - True for unevaluated function calls (some arguments are unknown 
+            variables). Unevaluated calls can therefore be treated like 
+            unknown variables.
         loc: 
             Location in input string
             
@@ -550,7 +555,10 @@ class NodeFuncCall(Node):
     def __init__(self, name=None, arguments=None, keyword_arguments=None, 
                  loc=None):
         super(NodeFuncCall, self).__init__()
-        self.name = name
+        #TODO: rename to callable, function, function_object, callable_object
+        #      because it may store a callable object, not just the object's 
+        #      name. This would also allow unification with operators.
+        self.name = name 
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = keyword_arguments \
                                  if keyword_arguments is not None else {}
@@ -558,8 +566,6 @@ class NodeFuncCall(Node):
         self.type = None
         self.role = RoleUnkown
         self.is_assigned = None
-        #--- for code generation --------------------------------------------#
-        self.function_object = None
         #--- for error messages ---------------------------------------------#
         self.loc = loc
 
@@ -655,7 +661,7 @@ class NodeAssignment(Node):
         self.target = None
         self.expression = None
         self.loc = None
-        self.function_object = None
+        #self.function_object = None
 
 
 #class NodePrintStmt(Node):
@@ -1268,7 +1274,7 @@ class UserException(Exception):
             num_str = ''
         else:
             num_str = '(#%s) ' % str(self.errno) 
-        return 'Error! ' + num_str + self.message + str(self.loc) + '\n'
+        return 'Error! ' + num_str + self.message + '\n' + str(self.loc) + '\n'
 
 
 

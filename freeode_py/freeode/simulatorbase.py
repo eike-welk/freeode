@@ -448,9 +448,9 @@ def parseCommandLineOptions(simulationClassList):
                           + 'from top of file; or special value "all" which '
                           + 'is equivalent to giving no options)',
                        metavar='<number>')
-    optPars.add_option('-i', '--interactive', dest='interactive',
-                       action="store_true", default=False,
-                       help='go to interactive mode (defunct)')
+#    optPars.add_option('-i', '--interactive', dest='interactive',
+#                       action="store_true", default=False,
+#                       help='go to interactive mode (defunct)')
     optPars.add_option('--prepend-newline', dest='prepend_newline',
                        action="store_true", default=False,
                        help='prepend output with one newline '
@@ -475,10 +475,10 @@ def parseCommandLineOptions(simulationClassList):
             print i, ': ', simName
         sys.exit(0) #exit successfully
 
-    #user wants to go into interactive mode
-    if options.interactive:
-        print 'interactive mode is not implemented yet'
-        sys.exit(0)
+#    #user wants to go into interactive mode
+#    if options.interactive:
+#        print 'interactive mode is not implemented yet'
+#        sys.exit(0)
 
     #user has said which simulation procedure should be run
     #TODO: code to run the simulation is a mess.

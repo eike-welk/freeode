@@ -106,7 +106,7 @@ def test_ExpressionGenerator_2(): #IGNORE:C01111
     a.target_name = 'a'
     #create a function
     fsin = CallableObject(None)
-    fsin.codegen_name = 'sin'
+    fsin.codegen_name = 'sin' 
     
     #expression: sin(a)
     expr = NodeFuncCall(fsin, (a,))
@@ -210,8 +210,11 @@ class A:
     data a: Float
     data b: Float param
     
+    func initialize(this):
+        b = 1
+    
     func dynamic(this):
-        $a = 1
+        $a = b
     
 compile A
 '''
@@ -229,5 +232,5 @@ compile A
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_SimulationClassGenerator__create_sim_class_1()
+    test_ProgramGenerator__create_program()
     pass

@@ -10,9 +10,6 @@ is in the Python programming language, using the Numpy and Scipy libraries.
 
 
 Prerequisites:
-- The compiler depends on the "pyparsing" library. Download it from:
-	https://sourceforge.net/projects/pyparsing/
-
 - The generated simulation programs depend on three libraries for numerical
   computations and plotting: "numpy", "scipy", "matplotlib". Homepages:
   http://numpy.scipy.org/

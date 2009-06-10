@@ -1406,11 +1406,16 @@ compile A
 
 def test_pass_statement_1(): #IGNORE:C01111
     msg = '''
-    Test the pass statement.
-    - The pass statement does nothing try if it works as intended.'''
+    Test the pass statement. Try the normal use case.
+    - The pass statement does nothing it is necessary to create empty 
+    functions and classes. 
+    '''
     #py.test.skip(msg)
     print msg
-    from freeode.interpreter import Interpreter
+    
+    from freeode.interpreter import (Interpreter, siml_isinstance, 
+                                     CallableObject, TypeObject, IFloat)
+    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -1431,6 +1436,7 @@ f_dummy()
 #call class with pass statement in compiled code
 class A:
     data x: Float 
+    data d: Dummy
     
     func foo(this):
         pass
@@ -1447,14 +1453,87 @@ compile A
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
-    #print intp.modules['test']
-    #print intp.get_compiled_objects()[0] 
     
+    #test the module a bit
+    mod = intp.modules['test']
+    #print mod
+    class_Dummy = mod.get_attribute(DotName('Dummy'))
+    d = mod.get_attribute(DotName('d'))
+    f_dummy = mod.get_attribute(DotName('f_dummy'))
+    class_A = mod.get_attribute(DotName('A'))
+    assert siml_isinstance(d, class_Dummy)
+    assert isinstance(f_dummy, CallableObject)
+    assert isinstance(class_A, TypeObject)
+
+    #Test the compiled object
+    flat_A = intp.get_compiled_objects()[0] 
+    #print flat_A
+    x = flat_A.get_attribute(DotName('x'))
+    x_time = flat_A.get_attribute(DotName('x$time'))
+    assert isinstance(x, IFloat)
+    assert isinstance(x_time, IFloat)
+    assert len(flat_A.attributes) == 5
+    
+
+
+def test_pass_statement_2(): #IGNORE:C01111
+    msg = '''
+    Test the pass statement. Try stupid but legal cases.
+    - The pass statement should just do nothing. 
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, siml_isinstance, 
+                                     CallableObject, TypeObject, IFloat)
+    from freeode.ast import DotName
+
+    prog_text = \
+'''
+#class with definition after pass statement
+class A:
+    pass
+    data x: Float role_unknown
+
+data a:A
+a.x = 2
+
+#function with statement after pass statement
+func add2(x):
+    pass
+    return x + 2
+    
+data four: Float const
+four = add2(2)
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    
+    #test the module a bit
+    mod = intp.modules['test']
+    #print mod
+    class_A = mod.get_attribute(DotName('A'))
+    a = mod.get_attribute(DotName('a'))
+    a_x = a.get_attribute(DotName('x'))
+    add2 = mod.get_attribute(DotName('add2'))
+    four = mod.get_attribute(DotName('four'))
+    assert isinstance(class_A, TypeObject)
+    assert siml_isinstance(a, class_A)
+    assert isinstance(a_x, IFloat)
+    assert a_x.value == 2
+    assert isinstance(add2, CallableObject)
+    assert isinstance(four, IFloat)
+    assert four.value == 4
+
 
 
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_compile_statement__small_simulation_program()
+    test_pass_statement_2()
     pass
 

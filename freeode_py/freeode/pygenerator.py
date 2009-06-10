@@ -514,6 +514,8 @@ class SimulationClassGenerator(object):
         self.write(ind8 + 'Compute parameter values and \n')
         self.write(ind8 + 'compute initial values of state variables \n')
         self.write(ind8 + '\'\'\' \n')
+        self.write(ind8 + '#Make parameters visible in dynamic method \n')
+        self.write(ind8 + 'param = self.param \n')
         #create all variables
         self.write(ind8 + '#create all variables with value 0; '
                            'to prevent runtime errors.\n')
@@ -576,6 +578,8 @@ class SimulationClassGenerator(object):
         self.write(ind8 + 'Compute time derivative of state variables. \n')
         self.write(ind8 + 'This function will be called by the solver repeatedly. \n')
         self.write(ind8 + '\'\'\' \n')
+        self.write(ind8 + '#Make parameters visible in dynamic method \n')
+        self.write(ind8 + 'param = self.param \n')
         #take the state variables out of the state vector
         #sequence of variables in the array is determined by self.state_variables
         self.write(ind8 + '#take the state variables out of the state vector \n')
@@ -725,7 +729,8 @@ class ProgramGenerator(object):
 ################################################################################
 
 
-from numpy import array, pi, sin, cos, tan, sqrt, exp, log, min, max
+from numpy import array
+from math import pi, sin, cos, tan, sqrt, exp, log
 from freeode.simulatorbase import SimulatorBase
 from freeode.simulatorbase import simulatorMainFunc
 
