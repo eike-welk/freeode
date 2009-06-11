@@ -127,8 +127,8 @@ class Conti: #Define a concrete simulation experiment
 
 # #Biological reactor with constant inflow and outflow
 # # Here we make the start more smart
-# # 1. start with height sugar concentration and no inflow
-# # 2. when biomass concentration above a level switch inflow pump on
+# # 1. start with height sugar concentration and no inflow (like a batch reactor)
+# # 2. when biomass concentration is above a certain level, switch inflow pump on
 # class ContiSmartStart(Process): #Define a concrete simulation experiment
 #     #Define the constant values again.
 #     data mu_max, Ks, Yxs, Sf, D_fin, ms, X_init, S_init: Float param

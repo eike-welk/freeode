@@ -27,6 +27,12 @@ __doc__ = \
 """
 pyparsing module - Classes and methods to define and execute parsing grammars
 
+---------------------------------------------------------------------------------------------------
+NOTE, MODIFIED LIBRARY:
+This is a modified version of the Pyparsing library version 1.5.0, that is specially adapted for 
+the Siml compiler.
+---------------------------------------------------------------------------------------------------
+
 The pyparsing module is an alternative approach to creating and executing simple grammars,
 vs. the traditional lex/yacc approach, or the use of regular expressions.  With pyparsing, you
 don't need to learn a new syntax for defining grammars or matching expressions - the parsing module

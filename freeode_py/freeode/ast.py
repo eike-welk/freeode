@@ -603,45 +603,43 @@ class NodeExpressionStmt(Node):
         self.loc = loc
         
 
+class ConditionalBlock(Node):
+    '''
+    Building block of if ... elif ... else statement.
+    
+    One condition (really an expression) and a list of statements. The
+    statements are executed when the condition is true. (AST node)
+    
+    Data attributes
+    ---------------
+    condition: Node()
+        Expression that is evaluated. When the condition is true the 
+        statements are executed. 
+    statements: [Node]
+        List of statements that are executed when the condition is true.
+    '''
+    def __init__(self, condition=None, statements=None):
+        Node.__init__(self)
+        self.condition = condition
+        self.statements = statements
+        
+        
 class NodeIfStmt(Node):
     '''
-    AST node for an if ... the ... else statement
-    Data attributes:
-        kids    : [<condition>, <then statements>, <else statements>]
-        loc     : location in input string
-        dat     : None
+    AST node for an if ... elif ... else statement
+    
+    Data attributes
+    ---------------
+    cond_blocks: [ConditionalBlock]
+        Each element is a condition and a list of statements. The statements 
+        are executed when the condition is true.
+        The first element represents an if, the next elements represent elif 
+        clauses, and a last element with a constant True/1 as the condition
+        represents an else. 
     '''
-    def __init__(self):
+    def __init__(self, cond_blocks=None):
         super(NodeIfStmt, self).__init__()
-
-    #TODO: design good interface for NodeIfStmt
-    #TODO: make compatible with multiple elif clauses:
-    #      if ...: ... elif ...: ... elif...: ... else: ...
-    #Condition property
-#    def getCondition(self): return self.kids[0]
-#    def setCondition(self, inCondtion): self.kids[0] = inCondtion
-#    condition = property(getCondition, setCondition, None,
-#        'Condition of if:...else:...end statement.')
-#
-#    #ifTruePart property
-#    def getIfTruePart(self): return self.kids[1]
-#    def setIfTruePart(self, inStatements): self.kids[1] = inStatements
-#    ifTruePart = property(getIfTruePart, setIfTruePart, None,
-#        'Statements executed when condition is true.')
-#
-#    #ifFalsePart property
-#    def getElsePart(self):
-#        if len(self.kids) == 3:
-#            return self.kids[2]
-#        else:
-#            return NodeStmtList()
-#    def setElsePart(self, inStatements):
-#        if len(self.kids) == 3:
-#            self.kids[2] = inStatements
-#        else:
-#            raise KeyError('NodeIfStmt has no "else" clause.')
-#    elsePart = property(getElsePart, setElsePart, None,
-#        'Statements executed when condition is false.')
+        self.cond_blocks = cond_blocks if cond_blocks is not None else []
 
 
 class NodeAssignment(Node):
@@ -737,23 +735,23 @@ class NodePragmaStmt(Node):
         if options: self.options = options
 
 
-class NodeForeignCodeStmt(Node):
-    '''
-    AST Node for the foreign_code statement
-    Data attributes:
-        kids        : the expressions of the argument list
-        loc         : location in input string
-        dat         : None
-
-        language    : the progamming languae of the foreign code: string
-        method      : the insertion method - type of the foreign code: string
-        code        : the piece of program code that should be inserted: string
-    '''
-    def __init__(self, kids=None, loc=None, dat=None, language='', method='', code=''):
-        super(NodeForeignCodeStmt, self).__init__(kids, loc, dat)
-        self.language = language
-        self.method = method
-        self.code = code
+#class NodeForeignCodeStmt(Node):
+#    '''
+#    AST Node for the foreign_code statement
+#    Data attributes:
+#        kids        : the expressions of the argument list
+#        loc         : location in input string
+#        dat         : None
+#
+#        language    : the progamming languae of the foreign code: string
+#        method      : the insertion method - type of the foreign code: string
+#        code        : the piece of program code that should be inserted: string
+#    '''
+#    def __init__(self, kids=None, loc=None, dat=None, language='', method='', code=''):
+#        super(NodeForeignCodeStmt, self).__init__(kids, loc, dat)
+#        self.language = language
+#        self.method = method
+#        self.code = code
 
 
 class NodeImportStmt(Node):
@@ -797,23 +795,6 @@ class NodeStmtList(Node):
         super(NodeStmtList, self).__init__()
         self.statements = []
         self.loc = None
-
-##TODO: remove? NodeStmtList should do the same now
-#class NodeDataDefList(NodeStmtList):
-#    '''
-#    AST Node for list of atribute definitions.
-#    Each child is an attribute definition statement.
-#    Used to identify these lists so they can be flattened with a pretty
-#    simple algogithm.
-#    
-#    Attributes:
-#    statements: list(Node())
-#        The list of statements.
-#    loc: TextLocation; None
-#        Location in input string
-#    '''
-#    def __init__(self):
-#        super(NodeDataDefList, self).__init__()
 
 
 class AttributeRole(object):
@@ -1011,31 +992,30 @@ class NodeFuncDef(Node):
         Node.__init__(self)
         self.name = DotName()
         self.arguments = SimpleArgumentList([])
-        #self.keyword_arguments = []
         self.statements = []
         self.return_type = None
         self.loc = None
 
 
 
-class NodeGenFunc(NodeFuncDef):
-    '''
-    Generated function, expanded template; ready for flattening.
-
-    The missing information of the NodeFuncDef is filled in. These "functions"
-    exist once for each time a function is called. To distinguish them from
-    functions writen by the user, this Node type is necessary.
-
-    Attributes:
-    -----------
-    targetName :
-            Individual name for each generated instance. Used in flattening
-            process to give individual names to the local variables.
-    '''
-    def __init__(self, kids=None, loc=None, dat=None, name=None,
-                  returnType=None):
-        NodeFuncDef.__init__(self, kids, loc, dat, name, returnType)
-        self.targetName = None
+#class NodeGenFunc(NodeFuncDef):
+#    '''
+#    Generated function, expanded template; ready for flattening.
+#
+#    The missing information of the NodeFuncDef is filled in. These "functions"
+#    exist once for each time a function is called. To distinguish them from
+#    functions writen by the user, this Node type is necessary.
+#
+#    Attributes:
+#    -----------
+#    targetName :
+#            Individual name for each generated instance. Used in flattening
+#            process to give individual names to the local variables.
+#    '''
+#    def __init__(self, kids=None, loc=None, dat=None, name=None,
+#                  returnType=None):
+#        NodeFuncDef.__init__(self, kids, loc, dat, name, returnType)
+#        self.targetName = None
 
 
 class NodeClassDef(Node):

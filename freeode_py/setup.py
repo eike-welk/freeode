@@ -64,8 +64,7 @@ in the Python programming language, which solves the differential equations
 numerically. The generated program uses the Numpy and Scipy libraries for 
 numerical computations.''',
       license = 'GPL',
-      packages = ['freeode'],
+      packages = ['freeode','freeode.third_party'],
       scripts = ['simlc'],
-      #data_files = [('freeode', ['hl_siml.xml'])], # (<folder>, [<file>])
       )
 
