@@ -89,7 +89,10 @@ class ExpressionGenerator(Visitor):
         ret_str = 'self.graph(['
         for arg in call.arguments:
             ret_str += '"' + str(arg.siml_dot_name) + '"' + ','
-        ret_str += '])'
+        ret_str += '], '
+        for arg_name, arg in call.keyword_arguments.iteritems():
+            ret_str += arg_name + '=' + self.dispatch(arg) + ','
+        ret_str += ')'
         return ret_str
         
     @Visitor.when_type(NodeFuncCall, 1)
@@ -97,13 +100,14 @@ class ExpressionGenerator(Visitor):
         #Built in function: sin(...)
         nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
                     'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
-                    'print':'print', 'graph':'graph', 
+                    'print':'print', 'graph':'@graph', 'save':'self.save',
+                    'solution_parameters':'self.set_solution_parameters',
                     'Float.__str__':'str', 'String.__str__':'str'}
 #                    'overrideParam':'self._overrideParam' }
         #get name of the corresponding Python function
         func_name = nameDict[call.name.codegen_name] 
         #special handling of the graph pseudo-function
-        if func_name == 'graph':
+        if func_name == '@graph':
             return self._create_graph_func_call(call)
         #produce output
         ret_str = func_name + '('
@@ -514,7 +518,7 @@ class SimulationClassGenerator(object):
         self.write(ind8 + 'Compute parameter values and \n')
         self.write(ind8 + 'compute initial values of state variables \n')
         self.write(ind8 + '\'\'\' \n')
-        self.write(ind8 + '#Make parameters visible in dynamic method \n')
+        self.write(ind8 + '#Make parameters visible in initialize method. \n')
         self.write(ind8 + 'param = self.param \n')
         #create all variables
         self.write(ind8 + '#create all variables with value 0; '
@@ -531,7 +535,7 @@ class SimulationClassGenerator(object):
         #print the method's statements
         self.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(self.out_py)
-        stmtGen.create_statements(method.statements, ind8) 
+        stmtGen.create_statements(method.statements, ind8) #IGNORE:E1103
         self.write(ind8 + '\n')
 
         #put initial values into array and store them
@@ -578,7 +582,7 @@ class SimulationClassGenerator(object):
         self.write(ind8 + 'Compute time derivative of state variables. \n')
         self.write(ind8 + 'This function will be called by the solver repeatedly. \n')
         self.write(ind8 + '\'\'\' \n')
-        self.write(ind8 + '#Make parameters visible in dynamic method \n')
+        self.write(ind8 + '#Make parameters visible in dynamic method. \n')
         self.write(ind8 + 'param = self.param \n')
         #take the state variables out of the state vector
         #sequence of variables in the array is determined by self.state_variables
@@ -596,7 +600,7 @@ class SimulationClassGenerator(object):
         #print the method's statements
         self.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(self.out_py)
-        stmtGen.create_statements(method.statements, ind8)
+        stmtGen.create_statements(method.statements, ind8) #IGNORE:E1103
         self.write(ind8 + '\n')
 
         #return either state variables or algebraic variables
@@ -637,11 +641,13 @@ class SimulationClassGenerator(object):
         self.write(ind8 + 'This function will be called once; after the simulation results \n')
         self.write(ind8 + 'have been computed. \n')
         self.write(ind8 + '\'\'\' \n')
+        self.write(ind8 + '#Make parameters visible in final method. \n')
+        self.write(ind8 + 'param = self.param \n')
         #TODO: create all variables, with values from the last iteration?
         #generate code for the statements
         self.write(ind8 + '#the final method\'s statements \n')
         stmtGen = StatementGenerator(self.out_py)
-        stmtGen.create_statements(method.statements, ind8)
+        stmtGen.create_statements(method.statements, ind8) #IGNORE:E1103
         self.write(ind8 + "print 'simulation %s finished.'\n" % self.class_py_name)
         self.write(ind8 + '\n')
 

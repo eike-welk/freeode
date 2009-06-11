@@ -1212,38 +1212,108 @@ class PrintFunction(CallableObject):
      
 class GraphFunction(CallableObject):
     '''
-    The graph function object.
+    The graph special-function.
     
+    ARGUMENTS
+    ---------
+    Positional arguments:
     The graph function takes an arbitrary number of positional arguments.
+    These values must be Floats that were created with a data statement, and 
+    whose values are also recorded during the solution process. The arguments 
+    are interpreted as all recorded values during the solution process, and 
+    not as a single value at a speciffic moment in time like variables 
+    normally are interpreted.
+    
+    Keyword arguments:
+    title: String
+        The title of the graph, shown at the top.
     '''
+    #TODO: express this in Siml code, needs 
+    #      *args, **kwargs, isrecoded, isinstance, all_values
     def __init__(self):
         CallableObject.__init__(self, 'graph')
         self.codegen_name = 'graph'
         
     def __call__(self, *args, **kwargs):
         if self.interpreter.is_collecting_code():
-            #create code that prints at runtime
-            new_args = []
-            for arg1 in args:
-                ev_arg = self.interpreter.statement_visitor\
-                             .expression_visitor.dispatch(arg1)
-                if not isinstance(ev_arg, IFloat):
-                    raise UserException('The graph function can only display '
-                                        'the time course of Float variables.')
-                new_args.append(ev_arg) 
-            #create a new call to the print function
-            print_call = NodeFuncCall(self, new_args, {}, None)
+            #we generate code:
+            #check arguments
+            for arg_val in args:
+                if not isinstance(arg_val, IFloat):
+                    raise UserException(
+                        'The graph function can only display Float variables, '
+                        'that are recorded during the simulation. \n'
+                        'No expressions (2*x), and no intermediate variables '
+                        'if they are removed by the optimizer.')
+            legal_kwargs = set(['title'])
+            for arg_name, arg_val in kwargs.iteritems():
+                if arg_name not in legal_kwargs:
+                    raise UserException('Unknown keyword argument: %s' % arg_name)
+            
+            #create a new call to the graph function and return it (unevaluated)
+            print_call = NodeFuncCall(self, args, kwargs, None)
             print_call.type = CLASS_NONETYPE
             print_call.is_assigned = True
             print_call.role = RoleConstant
             return print_call
         else:
-            #execute the print statement.
+            #If invoked at compile time create error.
             raise UserException('The "graph" function can only be called '
                                 'when code is generated.')
      
      
      
+def save_function(file_name=None):
+    '''
+    The store function.
+    
+    At compile time the store function raises an error.
+    At run time it stores all recorded variables in the file system.
+    
+    ARGUMENTS
+    ---------
+    file_name: String
+        Filename of the stored variables.
+    '''
+    dummy = InterpreterObject()
+    if dummy.interpreter.is_collecting_code():
+        #create unevaluated function call indirectly
+        raise UnknownArgumentsException('Raising exception to force creation '
+                                        'of unevaluated function call.')
+    else:
+        #If invoked at compile time create error.
+        raise UserException('The "store" function can only be called '
+                            'when code is generated.')
+    
+    
+    
+def solution_parameters_function(duration=None, reporting_interval=None):
+    '''
+    The solution_parameters function.
+    
+    At compile time this function raises an error.
+    At run time it changes parameters of the solution algorithm.
+    
+    ARGUMENTS
+    ---------
+    duration: Float
+        Duration of the simulation.
+    reporting_interval: Float
+        Interval at which the simulation results are recorded.
+        Time between data points
+    '''
+    dummy = InterpreterObject()
+    if dummy.interpreter.is_collecting_code():
+        #create unevaluated function call indirectly
+        raise UnknownArgumentsException('Raising exception to force creation '
+                                        'of unevaluated function call.')
+    else:
+        #If invoked at compile time create error.
+        raise UserException('The "store" function can only be called '
+                            'when code is generated.')
+    
+    
+    
 def create_built_in_lib():
     '''
     Returns module with objects that are built into interpreter.
@@ -1267,6 +1337,16 @@ def create_built_in_lib():
     #built in functions
     lib.create_attribute('print', PrintFunction())
     lib.create_attribute('graph', GraphFunction())
+    WFunc('save', ArgumentList([Arg('file_name', CLASS_STRING)]), 
+          return_type=CLASS_NONETYPE,
+          py_function=save_function,
+          codegen_name='save').put_into(lib)
+    WFunc('solution_parameters', 
+          ArgumentList([Arg('duration', CLASS_FLOAT), 
+                        Arg('reporting_interval', CLASS_FLOAT)]), 
+          return_type=CLASS_NONETYPE,
+          py_function=solution_parameters_function,
+          codegen_name='solution_parameters').put_into(lib)
     #math 
     #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units 
     WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 

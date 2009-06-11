@@ -73,10 +73,9 @@ class SimulatorBase(object):
         self.param = ParamStorage()
         '''Storage for the parameters'''
         self.simulation_time = 100.0
-        '''Duration of the simulation. Built in parameter.'''
+        '''Duration of the simulation.'''
         self.reporting_interval = 1.0
-        '''Interval at which the simulation results are recorded.
-           Built in parameter.'''
+        '''Interval at which the simulation results are recorded.'''
         self.defaultFileName = 'error-no-file-name-given.csv'
         '''Default file name for storing simulation results.
            Set by generated simulator class'''
@@ -111,6 +110,22 @@ class SimulatorBase(object):
         if hasattr(self, 'resultArray'):
             del self.resultArray
 
+    def set_solution_parameters(self, duration=None, reporting_interval=None):
+        '''
+        Change parameters of the solution algorithm.
+    
+        ARGUMENTS
+        ---------
+        duration: Float
+            Duration of the simulation.
+        reporting_interval: Float
+            Interval at which the simulation results are recorded.
+        '''
+        if duration is not None:
+            self.simulation_time = duration 
+        if reporting_interval is not None:
+            self.reporting_interval = reporting_interval        
+        
     def getAttribute(self, attrName):
         """
         Get an attribute by name.
@@ -135,15 +150,15 @@ class SimulatorBase(object):
         index = self.variableNameMap[attrName]
         return self.resultArray[:,index]
 
-    def save(self, fileName=None):
+    def save(self, file_name=None):
         '''
         Save the simulation results to disk.
         If no filename is given, self.defaultFileName is used
         '''
-        if fileName == None:
-            fileName = self.defaultFileName
+        if file_name == None:
+            file_name = self.defaultFileName
         result = self.getResults()
-        result.save(fileName)
+        result.save(file_name)
 
     def getResults(self):
         '''Return the simulation results in a DictStore object'''
@@ -155,7 +170,7 @@ class SimulatorBase(object):
         #TODO: also include parameters
         return result
 
-    def graph(self, varNames, titleStr=None):
+    def graph(self, varNames, title=None):
         """
         Show one or several attributes in a graph.
 
@@ -166,7 +181,7 @@ class SimulatorBase(object):
                         example: ['r.X', 'r.mu']
         """
         #self._graphGnuplot(varNames)
-        self._graphMatPlotLib(varNames, titleStr)
+        self._graphMatPlotLib(varNames, title)
 
 #    def _graphGnuplot(self, varNames):
 #        '''Create plots with gnuplot. Called by graph()'''

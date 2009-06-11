@@ -4,6 +4,7 @@
 # Concentrations are in g/l
 # Constants are roughly correct for C.glutamicum
 
+#TODO: read trough all comments and update according to the features of the new language.
 
 #Define system behaviour
 class BioReactor:
@@ -30,6 +31,11 @@ class BioReactor:
 
 
 #Biological reactor with no inflow or outflow
+#
+# Note the negative sugar concentration towards the end of the simulation!
+# In reality some bacteria would die, and become food. More importantly, the
+# model becomes invalid. The formulas only apply when the bacteria
+# grow fairly fast on sugar.
 class Batch: #Define a concrete simulation experiment
     #Define the constant values again.
     #data mu_max, Ks, Yxs, Sf, D, ms, X_init, S_init: Float param
@@ -39,10 +45,9 @@ class Batch: #Define a concrete simulation experiment
     #Say which model will be used.
     data r: BioReactor
 
-    func initial(this):
+    func initialize(this):
         #Specify options for the simulation algorithm.
-        #solutionParameters.simulationTime = 20     #[h] total simulation time
-        #solutionParameters.reportingInterval = 0.1 #[h] time between data points
+        solution_parameters(duration=20, reporting_interval=0.1)
 
         #Set values to the parameters.
         #The values will be copied into the BioReactor model
@@ -67,14 +72,9 @@ class Batch: #Define a concrete simulation experiment
 
     #Show results
     func final(this):
-        # Note the negative sugar concentration towards the end!
-        # In reality bacteria would die, and become food. More importantly, the
-        # model becomes invalid. The formulas only apply when the bacteria
-        # grow fairly fast on sugar.
-        #if  showGraph != 0:
-        #TODO: graph titles: graph 'Batch', r.mu, r.X, r.S
-        graph(r.mu, r.X, r.S)
-
+        #TODO: if  showGraph != 0:
+        graph(r.mu, r.X, r.S, title='Batch')
+        #save('batch.simres')
 
 
 
@@ -88,10 +88,10 @@ class Conti: #Define a concrete simulation experiment
     #Say which model will be used.
     data r: BioReactor
 
-    func initial(this):
+    func initialize(this):
         #Specify options for the simulation algorithm.
-        #solutionParameters.simulationTime = 40     #[h] total simulation time
-        #solutionParameters.reportingInterval = 0.1 #[h] time between data points
+        #Total simulation time: 40 h; time between data points: 0.1 h
+        solution_parameters(duration=30, reporting_interval=0.01)
 
         #Set values to the parameters.
         #The values will be copied into the BioReactor model, becau8se there
@@ -120,8 +120,8 @@ class Conti: #Define a concrete simulation experiment
 #         if  showGraph != 0:
 #             graph 'Conti', r.mu, r.X, r.S
 #             graph 'Conti', r.D, r.mu
-        graph(r.mu, r.X, r.S)
-        graph(r.D, r.mu)
+        graph(r.mu, r.X, r.S, title='Conti')
+        graph(r.D, r.mu, title='Conti')
 
 
 
@@ -137,7 +137,7 @@ class Conti: #Define a concrete simulation experiment
 #     #Say which model will be used.
 #     data r: BioReactor
 #
-#     func initial():
+#     func initialize():
 #         #Specify options for the simulation algorithm.
 #         solutionParameters.simulationTime = 40     #[h] total simulation time
 #         solutionParameters.reportingInterval = 0.1 #[h] time between data points
@@ -181,5 +181,6 @@ class Conti: #Define a concrete simulation experiment
 #         save 'ContiSmartStart-results.csv'
 
 
-compile Conti
+
 compile Batch
+compile Conti
