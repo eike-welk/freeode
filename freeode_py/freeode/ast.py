@@ -334,10 +334,10 @@ class NodeFloat(Node):
         loc     : location in input string
         value   : the number as a string???
     '''
-    def __init__(self):
+    def __init__(self, value=None, loc=None):
         super(NodeFloat, self).__init__()
-        self.value = None
-        self.loc = None
+        self.value = value
+        self.loc = loc
 
 
 class NodeString(Node):
@@ -603,7 +603,7 @@ class NodeExpressionStmt(Node):
         self.loc = loc
         
 
-class ConditionalBlock(Node):
+class NodeClause(Node):
     '''
     Building block of if ... elif ... else statement.
     
@@ -617,11 +617,15 @@ class ConditionalBlock(Node):
         statements are executed. 
     statements: [Node]
         List of statements that are executed when the condition is true.
+    loc: TextLocation
+        Location in the program text which is represented by the node. 
+        (For error messages.)    
     '''
-    def __init__(self, condition=None, statements=None):
+    def __init__(self, condition=None, statements=None, loc=None):
         Node.__init__(self)
         self.condition = condition
         self.statements = statements
+        self.loc = loc
         
         
 class NodeIfStmt(Node):
@@ -630,16 +634,20 @@ class NodeIfStmt(Node):
     
     Data attributes
     ---------------
-    cond_blocks: [ConditionalBlock]
+    clauses: [NodeClause]
         Each element is a condition and a list of statements. The statements 
         are executed when the condition is true.
         The first element represents an if, the next elements represent elif 
         clauses, and a last element with a constant True/1 as the condition
         represents an else. 
+    loc: TextLocation
+        Location in the program text which is represented by the node. 
+        (For error messages.)    
     '''
-    def __init__(self, cond_blocks=None):
+    def __init__(self, clauses=None, loc=None):
         super(NodeIfStmt, self).__init__()
-        self.cond_blocks = cond_blocks if cond_blocks is not None else []
+        self.clauses = clauses if clauses is not None else []
+        self.loc = loc
 
 
 class NodeAssignment(Node):

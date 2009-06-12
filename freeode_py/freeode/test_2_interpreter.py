@@ -959,8 +959,10 @@ compile A
     assert len(dynamic.statements) == 2
     stmt0 = dynamic.statements[0]
     stmt1 = dynamic.statements[1]
-    #first statement (res.x = 2*(x + other.x)) assigns to function local variable
-    assert stmt0.target not in [a_x, b_x, c_x]
+    #first statement (res.x = x + other.x) assigns to function local variable
+    assert stmt0.target is not a_x 
+    assert stmt0.target is not b_x 
+    assert stmt0.target is not c_x
     assert stmt0.expression.operator == '+'
     #second statement (c=a+b) assigns to c.x
     assert stmt1.target is c_x
@@ -1531,9 +1533,92 @@ four = add2(2)
 
 
 
+def test_if_statement_1(): #IGNORE:C01111
+    msg = '''
+    Test the if statement. Just constant code, no code creation.
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, siml_isinstance, 
+                                     CallableObject, TypeObject, IFloat)
+    from freeode.ast import DotName
+
+    prog_text = \
+'''
+data a,b: Float const
+a = 2 
+
+if a == 1:
+    b = 1
+elif a == 2:
+    b = 2
+else:
+    b = 3
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    
+    #test the module a bit
+    mod = intp.modules['test']
+    #print mod
+    a = mod.get_attribute(DotName('a'))
+    b = mod.get_attribute(DotName('b'))
+    print 'b = ', b.value
+    assert a.value == 2
+    assert b.value == 2
+
+
+
+def test_if_statement_2(): #IGNORE:C01111
+    msg = '''
+    Test the if statement. Code is generated and condition involves variables.
+    All branches of the statement must be visited.
+    '''
+    py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, siml_isinstance, 
+                                     CallableObject, TypeObject, IFloat)
+    from freeode.ast import DotName
+
+    prog_text = \
+'''
+class A:
+    data a,b: Float
+
+    func dynamic(this):       
+        if a == 1:
+            b = 1
+        elif a == 2:
+            b = 2
+        else:
+            b = 3
+
+compile A
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    
+    #the module
+    mod = intp.modules['test']
+    #print mod
+    
+    sim = intp.get_compiled_objects()[0]
+    print sim
+
+
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_pass_statement_2()
+    test_if_statement_2()
     pass
 

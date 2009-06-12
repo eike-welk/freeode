@@ -45,7 +45,7 @@ __version__ = "$Revision: $"
 #import pdb
 import os
 #import parser library
-from freeode.third_party.pyparsing import ( 
+from freeode.third_party.pyparsing import (
     Literal, CaselessLiteral, Keyword, Word,
     ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,
     oneOf, LineEnd, indentedBlock, 
@@ -393,37 +393,68 @@ class Parser(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.expression = toks[0][0]
         return nCurr
-   
-    def _actionIfStatement(self, s, loc, toks): #IGNORE:W0613 
+    
+    def _action_if_clause(self, s, loc, toks): #IGNORE:W0613 
         '''
-        Create node for if ... : ... else: ... statement.
-        BNF:
-        ifStatement = Group(kw('if') + boolExpression + ':'
-                            + statementList
-                            + Optional(kw('else') +':' + statementList)
-                            + kw('end'))
+        Create node for one clause of the if statement.
+        
+        Each clause is stored as a pair: <condition, statement list>. The 'else'
+        clause has a condition that is always true.
+        
+        A clause is:
+            if condition:
+                statement
+                ...
+        or:
+            elif condition:
+                ...
+        or:
+            else:
+                ...
+                
+        For BNF look at: _action_if_statement
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeIfStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-#        #there must be the correct number of tokens
-#        if len(tokList) < 7 or (len(tokList)-7) % 4:
-#            raise Exception('Broken "if" statement! loc: '
-#                                       + str(nCurr.loc))
-#        #extract the interesting tokens
-#        for i in range(1, len(tokList)-4, 4):
-#            condition = tokList[i]
-#            condStmts = tokList[i+2]
-#            nCurr.kids.append(condition)
-#            nCurr.kids.append(condStmts)
-#        #else: last condition is always true
-#        elseCond = NodeFloat(None, nCurr.loc, '1')
-#        elseStmts = tokList[-1]
-#        nCurr.kids.append(elseCond)
-#        nCurr.kids.append(elseStmts)
-#        return nCurr
+        loc_ex = self.createTextLocation(loc) #Store position
+        #'if', 'elif' have different structure than 'else' clause
+        keyword = toks[0]
+        if keyword in ['if', 'elif']:
+            condition = toks[1]
+            statements = toks[3].asList()
+        elif keyword == 'else':
+            condition = NodeFloat('1', loc_ex) #always true  - there is no bool yet
+            statements = toks[2].asList()
+        else:
+            raise Exception('Unknown keyword in if ... elif ... else statement.')
+        #repackage statements; they are stored in nested lists
+        stmts_flat = []
+        for sublist in statements:
+            stmts_flat.append(sublist[0])        
+        #create node for this clause and return it
+        node = NodeClause(condition, stmts_flat, loc_ex)
+        return node
+        
+    def _action_if_statement(self, s, loc, toks): #IGNORE:W0613 
+        '''
+        Create node for if ... : ... else: ... statement.
+        
+        BNF:
+        if_stmt = Group \
+            (             (kw('if')   - expression + ':' + suite)   .setParseAction(self._action_if_clause)
+             + ZeroOrMore((kw('elif') - expression + ':' + suite)   .setParseAction(self._action_if_clause) 
+                                                                    .setFailAction(ChMsg(prepend='elif: ')))
+             + Optional(  (kw('else') - ':' + suite)                .setParseAction(self._action_if_clause)
+                                                                    .setFailAction(ChMsg(prepend='else: ')))
+             )                                                      .setParseAction(self._action_if_statement) \
+                                                                    .setFailAction(ChMsg(prepend='if statement: ')) \
+        '''
+        if Parser.noTreeModification:
+            return None #No parse result modifications for debugging
+        tokList = toks.asList()[0] #Group() ads an extra pair of brackets
+        loc_ex = self.createTextLocation(loc) #Store position
+        node = NodeIfStmt(tokList, loc_ex)
+        return node
 
     def _action_assign_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
@@ -942,9 +973,7 @@ class Parser(object):
 
         #attribute access, function call, and slicing. (operators with the strongest binding come first.)
         expression_ex = operatorPrecedence(atom,
-             #TODO: special node and parse action for attribute lookup
             [(L('.'),       2, opAssoc.LEFT,             self._action_op_infix_left), #access to an object's attributes
-             #TODO: special node and parse action for differential operator
              (L('$'),       1, opAssoc.RIGHT,            self._action_op_prefix), #time differential
              (call,         1, opAssoc.LEFT,             self._action_func_call), #function/method call: f(23)
              (slicing,      1, opAssoc.LEFT,             self._action_slicing), #slicing/subscription: a[23]
@@ -1059,11 +1088,13 @@ class Parser(object):
         
         #------------- if ...........................................................................................
         #Flow control - if then else
-        if_stmt = \
-            Group(kw('if') - expression + ':' + suite
-                  + ZeroOrMore(kw('elif') - expression + ':' + suite) .setFailAction(ChMsg(prepend='elif: '))
-                  + Optional(  kw('else') - ':' + suite)            .setFailAction(ChMsg(prepend='else: '))
-                  )                                                 .setParseAction(self._actionIfStatement) \
+        if_stmt = Group \
+            (             (kw('if')   - expression + ':' + suite)   .setParseAction(self._action_if_clause)
+             + ZeroOrMore((kw('elif') - expression + ':' + suite)   .setParseAction(self._action_if_clause) 
+                                                                    .setFailAction(ChMsg(prepend='elif: ')))
+             + Optional(  (kw('else') - ':' + suite)                .setParseAction(self._action_if_clause)
+                                                                    .setFailAction(ChMsg(prepend='else: ')))
+             )                                                      .setParseAction(self._action_if_statement) \
                                                                     .setFailAction(ChMsg(prepend='if statement: ')) \
                                                                     .setName('if statement')
         

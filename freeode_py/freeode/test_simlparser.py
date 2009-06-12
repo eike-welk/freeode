@@ -35,13 +35,15 @@ try:
 except ImportError:
     print 'No py library, many tests may fail!'
 
-#import the library that we want to test
-import freeode.simlparser as p
-
 
 
 def test_parser_construction(): #IGNORE:C01111
-    print 'Test construction of the parser. Tests constructing the Pyparsing grammar.'
+    msg = 'Test construction of the parser. Tests constructing the Pyparsing grammar.'
+    #py.test.skip(msg)
+    print msg
+    
+    import freeode.simlparser as p
+    
     parser = p.Parser()
 
     print 'Keywords:'
@@ -52,11 +54,87 @@ def test_parser_construction(): #IGNORE:C01111
 
 
 
+def test_if_stmt_1(): #IGNORE:C01111
+    msg = 'Test to parse an if statement.'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser   
+    from freeode.ast import NodeIfStmt, NodeClause, NodeFloat
+    
+    parser = Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+    #Parser.noTreeModification = 1
+
+    test_prog = (
+'''
+if a==1:
+    b = 1
+    c = 1
+elif a==2:
+    b = 2
+else:
+    b = 3
+''' )
+    #print test_prog
+    print
+    ast = parser.parseModuleStr(test_prog)
+    #print ast 
+    
+    if_stmt = ast.statements[0]
+    assert isinstance(if_stmt, NodeIfStmt)
+    assert len(if_stmt.clauses) == 3 
+    if_clause = if_stmt.clauses[0]
+    assert isinstance(if_clause, NodeClause)
+    assert len(if_clause.statements) == 2
+    elif_clause = if_stmt.clauses[1]
+    assert isinstance(elif_clause, NodeClause)
+    assert len(elif_clause.statements) == 1
+    else_clause = if_stmt.clauses[2]
+    assert isinstance(else_clause, NodeClause)
+    assert len(else_clause.statements) == 1
+    assert isinstance(else_clause.condition, NodeFloat)
+    
+
+
+def test_if_stmt_2(): #IGNORE:C01111
+    msg = 'Test to parse an if statement. - Corner case, most simple if statement.'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser   
+    from freeode.ast import NodeIfStmt, NodeClause
+    
+    parser = Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+    #Parser.noTreeModification = 1
+
+    test_prog = (
+'''
+if a: b
+''' )
+    #print test_prog
+    print
+    ast = parser.parseModuleStr(test_prog)
+    #print ast 
+    
+    if_stmt = ast.statements[0]
+    assert isinstance(if_stmt, NodeIfStmt)
+    assert len(if_stmt.clauses) == 1 
+    if_clause = if_stmt.clauses[0]
+    assert isinstance(if_clause, NodeClause)
+    assert len(if_clause.statements) == 1
+    
+
+
 def test_parse_function_definition_1(): #IGNORE:C01111
     msg = 'Test to parse a function definition without arguments.'
     #py.test.skip(msg)
     print msg
     
+    import freeode.simlparser as p    
     from freeode.ast import NodeFuncDef
     
     parser = p.Parser()
@@ -78,11 +156,15 @@ func test_1():
     assert isinstance(func, NodeFuncDef)
     assert len(func.arguments.arguments) == 0
     assert len(func.statements) == 1
-    
+
     
     
 def test_parse_function_definition_2(): #IGNORE:C01111
-    print 'Test to parse a function definition with positional arguments.'
+    msg = 'Test to parse a function definition with positional arguments.'
+    #py.test.skip(msg)
+    print msg
+    
+    import freeode.simlparser as p
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -102,8 +184,11 @@ func test_1(a, b, c):
 
 
 def test_parse_function_definition_3(): #IGNORE:C01111
-#    py.test.skip() #IGNORE:E1101
-    print 'Test to parse a function definition with default values.'
+    msg = 'Test to parse a function definition with default values.'
+    #py.test.skip(msg)
+    print msg
+    
+    import freeode.simlparser as p
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -123,8 +208,11 @@ func test_1(a=0, b=2, c=5):
 
 
 def test_parse_function_definition_4(): #IGNORE:C01111
-#    py.test.skip() #IGNORE:E1101
-    print 'Test to parse a function definition with argument type specifications.'
+    msg = 'Test to parse a function definition with argument type specifications.'
+    #py.test.skip(msg)
+    print msg
+    
+    import freeode.simlparser as p
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -144,8 +232,11 @@ func test_1(a:Float, b:String, c:Float):
 
 
 def test_parse_function_definition_5(): #IGNORE:C01111
-#    py.test.skip() #IGNORE:E1101
-    print 'Test to parse a fully featured function definition.'
+    msg = 'Test to parse a fully featured function definition.'
+    #py.test.skip(msg)
+    print msg
+    
+    import freeode.simlparser as p
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -166,7 +257,11 @@ func test_1(a:String, b, c:Float, d:Float=2, e=3, f:Float=4) -> Float:
     
     
 def test_parse_function_definition_6(): #IGNORE:C01111
-    print 'Test to parse a function definition with return type specification.'
+    msg = 'Test to parse a function definition with return type specification.'
+    #py.test.skip(msg)
+    print msg
+    
+    import freeode.simlparser as p
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -186,7 +281,11 @@ func test_1() -> Float:
     
     
 def test_parse_complete_program_1(): #IGNORE:C01111
-    print 'Test to parse a complete program.'
+    msg = 'Test to parse a complete program.'
+    #py.test.skip(msg)
+    print msg
+    
+    import freeode.simlparser as p
     
     test_prog = (
 '''
@@ -240,5 +339,5 @@ compile RunTest
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_parse_function_definition_1()
+    test_if_stmt_1()
     pass

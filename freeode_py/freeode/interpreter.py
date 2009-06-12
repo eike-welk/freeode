@@ -734,14 +734,15 @@ class SimlFunction(CallableObject):
     
     def create_persistent_locals_ns(self):
         '''
-        Store local variables in a special namespace.
+        Create special, and unique namespace for storing local variables.
         
-        When collecting code a function's local variables must be placed 
-        as algebraic variables in the simulation object. The code of all
-        functions is inlined into the main functions, and the local variables 
-        of each function invocation must get unique names. 
+        When creating code, a function's local variables must be placed 
+        (as algebraic variables) in the simulation object. The code of all
+        functions is inlined into the main functions. Therfore the local  
+        variables of each function invocation must be stored separately with 
+        unique names. 
         
-        The special namespace where the local variables are stored is supplied 
+        The root namespace where the local variables are stored is supplied 
         by the interpreter.
         '''
         #long name of function. like: bioreactor.conti.bacterial_growth
@@ -957,7 +958,12 @@ NONE = INone()
 #      class IAny(InterpreterObject): #or IUnknownType
 #          '''Instance of special undetermined class.'''
 
- 
+
+
+#TODO: Bool class, with two constants: True, False
+#      must implement necessary functions for and or not
+
+
 
 class IString(FundamentalObject):
     '''
@@ -1020,7 +1026,7 @@ class IString(FundamentalObject):
 
     def __add__(self, other):
         return IString(self.value + other.value)
-    
+       
     def __assign__(self, other): 
         if isinstance(other, IString) and other.value is not None:
             self.value = other.value
@@ -1080,9 +1086,13 @@ class IFloat(FundamentalObject):
         class_float.py_class = IFloat
         IFloat.type_object = class_float
         
+        #TODO: sin, cos, tan, log should become member functions of the 
+        #      numerical base types. These functions must behave differently
+        #      for each base type (Float, RawFloatArray)
         #initialize the mathematical operators, put them into the class
         W = BuiltInFunctionWrapper
-        #Binary operators
+        #Arithmetic operators
+        #binary
         binop_args = ArgumentList([NodeFuncArg('self', class_float), 
                                    NodeFuncArg('other', class_float)])
         W('__add__', binop_args, class_float, 
@@ -1097,13 +1107,23 @@ class IFloat(FundamentalObject):
           py_function=IFloat.__mod__).put_into(class_float) 
         W('__pow__', binop_args, class_float, 
           py_function=IFloat.__pow__).put_into(class_float) 
-        #TODO: sin, cos, tan, log should become member functions of the 
-        #      numerical base types. These functions must behave differently
-        #      for each base type (Float, RawFloatArray)
         #The prefix operator
         prefix_args = ArgumentList([NodeFuncArg('self', class_float)])
         W('__neg__', prefix_args, class_float, 
-          py_function=IFloat.__neg__).put_into(class_float)  
+          py_function=IFloat.__neg__).put_into(class_float) 
+        #comparison operators
+        W('__lt__', binop_args, class_float, 
+          py_function=IFloat.__lt__).put_into(class_float)      
+        W('__le__', binop_args, class_float, 
+          py_function=IFloat.__le__).put_into(class_float)      
+        W('__eq__', binop_args, class_float, 
+          py_function=IFloat.__eq__).put_into(class_float)      
+        W('__ne__', binop_args, class_float, 
+          py_function=IFloat.__ne__).put_into(class_float)      
+        W('__gt__', binop_args, class_float, 
+          py_function=IFloat.__gt__).put_into(class_float)      
+        W('__ge__', binop_args, class_float, 
+          py_function=IFloat.__ge__).put_into(class_float)         
         #Special function for assignment
         W('__assign__', binop_args, None, 
           py_function=IFloat.__assign__,
@@ -1115,7 +1135,7 @@ class IFloat(FundamentalObject):
         #return the class object
         return class_float
 
-
+    #arithmetic operators 
     def __add__(self, other):
         return IFloat(self.value + other.value)
     def __sub__(self, other):
@@ -1132,6 +1152,20 @@ class IFloat(FundamentalObject):
     def __neg__(self):
         return IFloat(-self.value)
     
+    #comparison operators
+    def __lt__(self, other):
+        return IFloat(float(self.value < other.value))
+    def __le__(self, other):
+        return IFloat(float(self.value <= other.value))
+    def __eq__(self, other):
+        return IFloat(float(self.value == other.value))
+    def __ne__(self, other):
+        return IFloat(float(self.value != other.value))
+    def __gt__(self, other):
+        return IFloat(float(self.value > other.value))
+    def __ge__(self, other):
+        return IFloat(float(self.value >= other.value))
+        
     def __assign__(self, other): 
         if isinstance(other, IFloat) and other.value is not None:
             self.value = other.value
@@ -1361,7 +1395,7 @@ def create_built_in_lib():
           return_type=CLASS_FLOAT, 
           py_function=lambda a, b: IFloat(max(a.value, b.value)),
           codegen_name='max').put_into(lib)
-    WFunc('min', ArgumentList([Arg('a', CLASS_FLOAT), Arg('b', CLASS_FLOAT)]), 
+    WFunc('min', ArgumentList([Arg('a', CLASS_FLOAT), Arg('b', CLASS_FLOAT)]),
           return_type=CLASS_FLOAT, 
           py_function=lambda a, b: IFloat(min(a.value, b.value)),
           codegen_name='min').put_into(lib)
@@ -1610,8 +1644,8 @@ class ExpressionVisitor(Visitor):
         '''Create time derivative of given variable. 
         Put it into the variable's parent.'''
         #TODO: maybe this should become a member function of IFloat?
-#        #mark attribute as state variable
-#        variable.role = RoleStateVariable
+        #mark attribute as state variable
+        variable.role = RoleStateVariable
         #create the associated derived variable
         deri_var_class = variable.type()
         deri_var = deri_var_class()
@@ -1680,9 +1714,10 @@ class ExpressionVisitor(Visitor):
     def visit_NodeDollarPrefix(self, node): 
         '''Return time derivative of state variable. 
         Create this special attribute if necessary'''
+        #TODO: The special function '__diff__' should be called instead.
+        #TODO: Remove NodeDollarPrefix, after introducing special function.
         #evaluate expression on RHS of operator
         variable = self.dispatch(node.arguments[0])
-        #TODO: The special function '__diff__' should be called instead.
         #Precondition: $ acts upon a variable
         if not (siml_isinstance(variable, CLASS_FLOAT) and 
                 issubclass(variable.role, RoleVariable)):
@@ -1690,7 +1725,7 @@ class ExpressionVisitor(Visitor):
                                 node.loc)
         #change variable into state variable if necessary
         if variable.role is not RoleStateVariable:
-            variable.role = RoleStateVariable
+            #variable.role = RoleStateVariable
             self.make_derivative(variable)
         #return the associated derived variable
         return variable.time_derivative()
@@ -1780,7 +1815,14 @@ class ExpressionVisitor(Visitor):
                     '*': ('__mul__','__rmul__'),
                     '/': ('__div__','__rdiv__'),
                     '%': ('__mod__','__rmod__'),
-                    '**':('__pow__','__rpow__'), }
+                    '**':('__pow__','__rpow__'), 
+                    '<': ('__lt__', '__gt__'), 
+                    '<=':('__le__', '__ge__'), 
+                    '==':('__eq__', '__eq__'), 
+                    '!=':('__ne__', '__ne__'), 
+                    '>': ('__gt__', '__lt__'), 
+                    '>=':('__ge__', '__le__'), 
+                    }
     
     @Visitor.when_type(NodeOpInfix2)
     def visit_NodeOpInfix2(self, node):
@@ -2044,6 +2086,48 @@ class StatementVisitor(Visitor):
         new_assign.loc = loc
         self.interpreter.collect_statement(new_assign)
 
+    
+    @Visitor.when_type(NodeIfStmt)
+    def visit_NodeIfStmt(self, node):
+        '''
+        Interpret an "if" statement.
+        
+        If no code is generated (in constant contexts) the if statement works
+        like in Python. All expressions must offcourse evaluate  
+        to constants; especially the conditions.
+        
+        If code is generated multiple clauses/branches of the 'if' statement 
+        must potentially be visited. This is the algorithm:
+        - The interpreter visits each clause where the condition's truth 
+          value can not be determined at compile time (the condition evaluates 
+          to an expression or to an unknown variable).
+        - The interpreter visits clauses where the condition evaluates to 
+          True at compile time.
+        - A clauses where the condition evaluates to True is the last clause 
+          which is visited by the interpreter. Further clauses are ignored.
+        - If statements that can be completely decided at compile time are  
+          optimized away.  
+        
+        There are additionally requirements for if statements when code is 
+        generated:
+        - The last clause of every if statement must have a condition that 
+          evaluates to True (constant with value equivalent to True). In 
+          other words: In the compiled code each if statement must end
+          with an else clause.
+        - All clauses must assign to the same variables.
+        '''
+        
+        #TODO: additional infrastructure so that collected code gets into
+        #      the clauses of the if statement; and not to the function's
+        #      top level.
+        #      interpreter.push_statement_list(...)
+        for clause in node.clauses:
+            cond_ev = self.expression_visitor.dispatch(clause.condition)
+            if not bool(cond_ev.value):
+                continue
+            self.interpreter.run(clause.statements)
+            break
+        
 
     @Visitor.when_type(NodeFuncDef)
     def visit_NodeFuncDef(self, node):
@@ -2307,7 +2391,22 @@ class Interpreter(object):
     # --- code collection - compile statement ------------------------------------------------------
     def start_collect_code(self, stmt_list=None, func_locals=None, 
                            assign_target_roles=(RoleVariable, RoleConstant)):
-        '''Set up everything for the code collection process'''
+        '''
+        Set up everything for the code collection process
+        
+        ARGUMENTS
+        ---------
+        stmt_list: list/None
+            List where the generated statements will be appended to.
+        func_locals: InterpreterObject/None
+            Namespace where each function's local variables will be stored.
+        assign_target_roles: (AttributeRole, ...)
+            Roles that are currently legal for attributes that are targets
+            (LHS) of assignment statements. (For example in the dynamic(...)
+            method only intermediate variables and time differentials 
+            (RoleIntermediateVariable, RoleTimeDifferential) can be assigned
+            to.
+        '''
         self.compile_stmt_collect = [] if stmt_list is None \
                                        else stmt_list
         self.locals_storage = InterpreterObject() if func_locals is None \
@@ -2327,23 +2426,43 @@ class Interpreter(object):
             Namespace where the local variables from each function invocation 
             are stored
         '''
+        if not self.is_collecting_code():
+            raise Exception('Collecting statements (compilation) has not been enabled!')
+        
         stmt_list, func_locals = self.compile_stmt_collect, self.locals_storage
         self.compile_stmt_collect = None
         self.locals_storage = None
         self.assign_target_roles = assign_target_roles
         return stmt_list, func_locals
         
+    def push_statement_list(self, statement_list):
+        '''
+        Put a statement list on the stack of lists. 
+        
+        Called by compund statents, for example the "if" statement.'''
+        #TODO: implement!
+        
+    def pop_statement_list(self):
+        '''
+        Remove a statement list from the stack of lists, and return it. 
+        
+        Called by compund statents, for example the "if" statement.
+        '''
+        #TODO: implement!
+    
     def get_locals_storage(self):
         '''
         Return special storage namespace for local variables of functions.
         Only availlable when collecting code.
+        
+        (Used by SimlFunction.create_persistent_locals_ns()).
         '''
         if not self.is_collecting_code():
             raise Exception('Collecting statements (compilation) has not been enabled!')
         return self.locals_storage
     
     def collect_statement(self, stmt):
-        '''Collect statement for code generation.'''
+        '''Put a statement into the current satement list for code generation.'''
         if not self.is_collecting_code():
             raise Exception('Collecting statements (compilation) has not been enabled!')
         self.compile_stmt_collect.append(stmt)
