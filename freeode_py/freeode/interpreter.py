@@ -323,7 +323,8 @@ class FundamentalObject(InterpreterObject):
     '''
     def __init__(self):
         InterpreterObject.__init__(self)
-
+        self.time_derivative = None
+        self.target_name = None
 
 
 class ArgumentList(SimpleArgumentList):
@@ -986,8 +987,6 @@ class IBool(FundamentalObject):
     def __init__(self, init_val=None):
         FundamentalObject.__init__(self)
         self.type = ref(IBool.type_object)
-        self.time_derivative = None
-        self.target_name = None
         #initialize the value
         self.value = None
         if init_val is not None:
@@ -1077,8 +1076,6 @@ class IString(FundamentalObject):
     def __init__(self, init_val=None):
         FundamentalObject.__init__(self)
         self.type = ref(IString.type_object)
-        self.time_derivative = None
-        self.target_name = None
         #initialize the value
         self.value = None
         if init_val is not None:
@@ -1160,8 +1157,6 @@ class IFloat(FundamentalObject):
     def __init__(self, init_val=None):
         FundamentalObject.__init__(self)
         self.type = ref(IFloat.type_object)
-        self.time_derivative = None
-        self.target_name = None
         #initialize the value
         self.value = None
         if init_val is not None:
@@ -1533,11 +1528,17 @@ def siml_callable(siml_object):
 
 
 def siml_isinstance(in_object, class_or_type_or_tuple):    
-    '''isinstance(...) but inside the SIML language. 
-    If in_object is "ast.Node" instance (unevaluated expression), the function returns False.  '''
-    #precondition: must be SIML object not AST node
-    if not isinstance(in_object, InterpreterObject):
-        return False
+    '''
+    Check if an object's type is in class_or_type_or_tuple.
+    
+    isinstance(...) but inside the SIML language. 
+    
+    If in_object is an expression, which would evaluate to an object of the 
+    correct type, the function return True. 
+    '''
+#    #precondition: must be SIML object not AST node
+#    if not isinstance(in_object, InterpreterObject):
+#        return False
     #the test: use siml_issubclass() on type attribute
     if in_object.type is not None:
         return siml_issubclass(in_object.type(), class_or_type_or_tuple)
@@ -1553,8 +1554,35 @@ def siml_issubclass(in_type, class_or_type_or_tuple):
     #always create tuple of class objects
     if not isinstance(class_or_type_or_tuple, tuple):
         class_or_type_or_tuple = (class_or_type_or_tuple,)
-    #the test, there is no inheritance, so it is simple
+    #the test: there is no inheritance, so it is simple
     return (in_type in class_or_type_or_tuple)
+
+
+def siml_isknown(siml_obj):
+    '''
+    Test if an object is a known value, or an unevaluated expression.
+    
+    RETURNS
+    -------
+    True:  argument is a known Siml value.
+    False: argument is an unevaluated expression or an unknown variable.
+    '''
+    #TODO: implement protocol for values: known/unknown, assigned/unassigned
+    assert isinstance(siml_obj, (InterpreterObject, NodeOpInfix2, 
+                                 NodeOpPrefix1, NodeParentheses)), \
+           'Function only works with Siml objects.'
+    if siml_isrole(siml_obj.role, RoleConstant) and siml_obj.is_assigned:
+        return True
+    else:
+        return False
+
+
+def siml_isrole(role1, role2_or_tuple):
+    '''
+    Is role-1 a sub-role or equal to role-2.
+    Also accepts a tuple of roles for the 2nd argument 
+    '''
+    return issubclass(role1, role2_or_tuple)
 
 
 def is_role_more_variable(role1, role2):
@@ -1577,6 +1605,8 @@ def is_role_more_variable(role1, role2):
     True:  if role1 (argument 1) is more variable than role2 (argument 2).
     False: otherwise
     '''
+    #TODO: Maybe speed this function up by giving each role a variability index
+    #      that is stored inside the role object
     #list roles with increasing variable-character 
     rank_list = [RoleConstant, RoleParameter, RoleVariable, RoleUnkown]
     #classify role1
@@ -1634,6 +1664,10 @@ def determine_result_role(arguments, keyword_arguments={}): #IGNORE:W0102
         if arg.role is RoleUnkown:
             raise ValueError('RoleUnkown is illegal in arguments of '
                              'fundamental functions.')
+    #convert: state variable, time differential --> algebraic variable
+    #These two roles result only from taking time differentials
+    if siml_isrole(max_var_role, RoleVariable):
+        max_var_role = RoleAlgebraicVariable 
     return max_var_role
     
 
@@ -1665,19 +1699,6 @@ def set_role_recursive(tree, new_role):
             set_role_recursive(attr, new_role)
             
         
-#TODO: implement this!
-#TODO: implement protocol for values: known/unknown, assigned/unassigned
-def siml_isknown(siml_obj):
-    '''
-    Test if an object is a known value, or an unevaluated expression.
-    
-    RETURNS
-    -------
-    True:  argument is a known Siml value.
-    False: argument is an unevaluated expression or an unknown variable.
-    '''
-    raise NotImplementedError('Function siml_isknown is not implemented!')
-
 
 #def make_unique_name(base_name, existing_names):
 #    '''
@@ -2226,22 +2247,60 @@ class StatementVisitor(Visitor):
         #      top level.
         #      interpreter.push_statement_list(...)
         
-        #If code is created, create a node for an if statement???
-        
+        is_collecting_code = False
+        new_if = None
+        #If code is created, create a node for an if statement
+        if self.interpreter.is_collecting_code():
+            is_collecting_code = True
+            new_if = NodeIfStmt(None, node.loc)
+            
+        #A clause consists of a condition and a list of statements.
+        #Like the clauses in Lisp's 'cond' special-function
         for clause in node.clauses:
-            cond_ev = self.expression_visitor.dispatch(clause.condition)
-            #Do not enter clause where condition evaluates to constant False.
-            if not bool(cond_ev.value):
+            is_last_statement = False
+            #interpret the condition
+            condition_ev = self.expression_visitor.dispatch(clause.condition)
+            if not siml_isinstance(condition_ev, CLASS_BOOL):
+                raise UserException('Conditions must evaluate to '
+                                    'instances of class Bool.', loc=clause.loc)
+            
+            #Condition evaluates to constant False: Do not enter clause.
+            if siml_isknown(condition_ev) and condition_ev.value is False:
                 continue
+            #Condition evaluates to constant True
+            #This is the last clause, the 'else' clause
+            elif siml_isknown(condition_ev) and condition_ev.value is True:
+                is_last_statement = True
+            #Condition evaluates to unknown value
+            #This is only legal when code is created
+            elif not is_collecting_code:
+                    raise UserException('Only conditions with constant values '
+                                        'are legal in this context.', loc=clause.loc)
+            
             #If code is created, create node for a clause
             #Tell interpreter to put generated statements into body of clause
+            if is_collecting_code:
+                new_clause = NodeClause(condition_ev, None, clause.loc)
+                new_if.clauses.append(new_clause)
+                self.interpreter.push_statement_list(new_clause.statements)
+            #interpret the statements
             self.interpreter.run(clause.statements)
-            #See if this is the last statement (constant True)
-            break
+            #Tell interpreter to put generated statements into previous location
+            if is_collecting_code:
+                self.interpreter.pop_statement_list()
+                
+            if is_last_statement:
+                break
         
-        #see if generated if has the required else clause
+        #see if generated 'if' has the required 'else' clause
         
-        #if there is only one clause optimize if statement away.
+        #if there is only one clause that is always executed
+        #optimize if statement away.
+        
+        #Store generated if statement in interpreter
+        if new_if is not None:
+            self.interpreter.collect_statement(new_if)
+        return
         
 
     @Visitor.when_type(NodeFuncDef)
@@ -2491,8 +2550,10 @@ class Interpreter(object):
         
         #storage for objects generated by the compile statement
         self.compiled_object_list = []
-        #list of emitted statements (temporary storage) - needed for compile 
-        #statement
+        #temporary storage for emitted statements - needed for compilation 
+        #This is a list of lists [[],[]]. The currently emitted statements 
+        #go into the topmost list. The nested structure is necessary for 
+        #compund (if ... else ...) statements.
         self.compile_stmt_collect = None
         #namespace (InterpreterObject) for storage of a function's local 
         #variables - needed for compile statement
@@ -2522,8 +2583,8 @@ class Interpreter(object):
             (RoleIntermediateVariable, RoleTimeDifferential) can be assigned
             to.
         '''
-        self.compile_stmt_collect = [] if stmt_list is None \
-                                       else stmt_list
+        self.compile_stmt_collect = [[]] if stmt_list is None \
+                                       else [stmt_list]
         self.locals_storage = InterpreterObject() if func_locals is None \
                                                   else func_locals
         self.assign_target_roles = assign_target_roles
@@ -2544,7 +2605,7 @@ class Interpreter(object):
         if not self.is_collecting_code():
             raise Exception('Collecting statements (compilation) has not been enabled!')
         
-        stmt_list, func_locals = self.compile_stmt_collect, self.locals_storage
+        stmt_list, func_locals = self.compile_stmt_collect[0], self.locals_storage
         self.compile_stmt_collect = None
         self.locals_storage = None
         self.assign_target_roles = assign_target_roles
@@ -2555,7 +2616,9 @@ class Interpreter(object):
         Put a statement list on the stack of lists. 
         
         Called by compund statents, for example the "if" statement.'''
-        #TODO: implement!
+        if not self.is_collecting_code():
+            raise Exception('Collecting statements (compilation) has not been enabled!')
+        self.compile_stmt_collect.append(statement_list)
         
     def pop_statement_list(self):
         '''
@@ -2563,7 +2626,25 @@ class Interpreter(object):
         
         Called by compund statents, for example the "if" statement.
         '''
-        #TODO: implement!
+        if not self.is_collecting_code():
+            raise Exception('Collecting statements (compilation) has not been enabled!')
+        return self.compile_stmt_collect.pop()
+    
+    def collect_statement(self, stmt):
+        '''
+        Put a statement into the current (top-most) statement list for code 
+        creation.
+        
+        The storage for statements is a list of lists to allow nested compound 
+        statements.
+        '''
+        if not self.is_collecting_code():
+            raise Exception('Collecting statements (compilation) has not been enabled!')
+        self.compile_stmt_collect[-1].append(stmt)
+        
+    def is_collecting_code(self):
+        '''Return True if self.collect_statement can be successfully called.'''
+        return self.compile_stmt_collect is not None
     
     def get_locals_storage(self):
         '''
@@ -2575,16 +2656,6 @@ class Interpreter(object):
         if not self.is_collecting_code():
             raise Exception('Collecting statements (compilation) has not been enabled!')
         return self.locals_storage
-    
-    def collect_statement(self, stmt):
-        '''Put a statement into the current satement list for code generation.'''
-        if not self.is_collecting_code():
-            raise Exception('Collecting statements (compilation) has not been enabled!')
-        self.compile_stmt_collect.append(stmt)
-        
-    def is_collecting_code(self):
-        '''Return True if self.collect_statement can be successfully called.'''
-        return self.compile_stmt_collect is not None
     
     def add_compiled_object(self, flat_object):
         '''

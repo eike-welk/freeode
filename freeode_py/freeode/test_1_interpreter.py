@@ -1246,8 +1246,9 @@ def test_determine_result_role_1(): #IGNORE:C01111
     v_2.role = RoleVariable
     
     #determine the most variable role among the arguments
-    assert determine_result_role((c_1, p_1, v_1), 
-                                 {'a':c_2, 'b':p_2, 'c':v_2, }) == RoleVariable
+    assert issubclass(determine_result_role((c_1, p_1, v_1), 
+                                            {'a':c_2, 'b':p_2, 'c':v_2, }),  
+                      RoleVariable)
     assert determine_result_role((c_1, p_1), 
                                  {'a':c_2, 'b':p_2}) == RoleParameter
     assert determine_result_role((c_1,), 

@@ -1578,7 +1578,7 @@ def test_if_statement_2(): #IGNORE:C01111
     Test the if statement. Code is generated and condition involves variables.
     All branches of the statement must be visited.
     '''
-    py.test.skip(msg)
+    #py.test.skip(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, siml_isinstance, 
