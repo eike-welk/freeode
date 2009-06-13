@@ -369,12 +369,12 @@ def test_BuiltInFunctionWrapper_1(): #IGNORE:C01111
 
     #create a function object that wraps the sqrt function
     func = BuiltInFunctionWrapper('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)], None), 
+                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
                                   return_type=CLASS_FLOAT, 
                                   py_function=sqrt)
     #call function: sqrt(2)
     siml_ret = func(val_2)
-    assert siml_ret.value == math.sqrt(2) #IGNORE:E1103
+    assert siml_ret.value == math.sqrt(2) #IGNORE:E1101
     
     
                                       
@@ -596,6 +596,7 @@ def test_IFloat_4(): #IGNORE:C01111
     assert res.value == -2 
 
 
+#TODO: test comparison operators
 
 # -------- Test Siml wrapper for str classes ------------------------------------------------------------------
 def test_IString_1(): #IGNORE:C01111
@@ -678,6 +679,70 @@ def test_IString_4(): #IGNORE:C01111
 
 
 
+# -------- Test Siml wrapper for bool objects ------------------------------------------------------------------
+def test_IBool_1(): #IGNORE:C01111
+    msg = 'Test IBool: construction from Siml class'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import IBool, CLASS_BOOL, siml_isinstance
+    
+    #test construction from Siml class
+    val = CLASS_BOOL()
+    assert isinstance(val, IBool)
+    assert siml_isinstance(val, CLASS_BOOL)
+    
+    #test construction from Python class - Siml type must still be right
+    val1 = IBool()
+    assert siml_isinstance(val1, CLASS_BOOL)
+
+
+
+def test_IBool_2(): #IGNORE:C01111
+    msg = 'Test IString: constructor'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import IBool
+    
+    #no arguments
+    val_none = IBool()
+    assert val_none.value is None
+    
+    #bool argument
+    val_true = IBool(True)
+    assert val_true.value == True
+    
+    #int argument
+    val_0 = IBool(0)
+    assert val_0.value == False
+    val_1 = IBool(1)
+    assert val_1.value == True
+    
+    #float argument
+    val_pi = IBool(3.1415)
+    assert val_pi.value == True
+    
+    #str argument
+    val_a = IBool('a')
+    assert val_a.value == True
+    
+    #IString argument
+    val_true_2 = IBool(val_true)
+    assert  val_true_2.value == True
+
+    try:
+        IBool([])
+    except TypeError:
+        print 'expected exception: wrong argument type.'
+    else:
+        assert False, 'object was constructed with wrong initial values'
+
+#TODO: Test comparison operators
+#TODO: Test IBool to string conversion
+#TODO: Test boolean operations (eventually)
+
+
 # -------- Test expression evaluation ------------------------------------------------------------------------
 def test_operator_dispatch_1(): #IGNORE:C01111
     #py.test.skip('Test ExpressionVisitor: handling of binary operators with Float values.')
@@ -702,7 +767,6 @@ def test_operator_dispatch_1(): #IGNORE:C01111
     
 
 
-# -------- Test expression evaluation ------------------------------------------------------------------------
 def test_operator_dispatch_2(): #IGNORE:C01111
     msg = 'Test ExpressionVisitor: handling of binary operators with unknown Float values.'
     #py.test.skip(msg)

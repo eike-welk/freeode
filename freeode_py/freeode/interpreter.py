@@ -940,8 +940,16 @@ class INone(InterpreterObject):
         class_none = INoneClass('NoneType')
         class_none.py_class = INone
         INone.type_object = class_none
+        #TODO: NoneType.__str__: implement, and get the circular references right
         return class_none
 
+    def __str__(self):#convenience for sane behavior from Python
+        return 'NONE'
+    #called from Siml
+    def _str(self):
+        istr = IString('None')
+        istr.role = RoleConstant
+        return istr
 #The class object used in Siml for the single instance of INone
 CLASS_NONETYPE = INone.init_funcs_and_class()
 #The single None instance for Siml
@@ -961,7 +969,98 @@ NONE = INone()
 
 
 #TODO: Bool class, with two constants: True, False
-#      must implement necessary functions for and or not
+#      must implement necessary functions for 'and', 'or', 'not'
+
+
+
+class IBool(FundamentalObject):
+    '''
+    Memory location of a boolean value.
+    
+    The variable's value can be known or unknown.
+    The variable can be assigned a (possibly unknown) value, or not. 
+    '''
+    #The Siml class, naturally shared by all instances 
+    type_object = None
+    
+    def __init__(self, init_val=None):
+        FundamentalObject.__init__(self)
+        self.type = ref(IBool.type_object)
+        self.time_derivative = None
+        self.target_name = None
+        #initialize the value
+        self.value = None
+        if init_val is not None:
+            if isinstance(init_val, (str, float, int, bool)):
+                self.value = bool(init_val)
+            elif isinstance(init_val, (FundamentalObject)):
+                if init_val.value is None:
+                    ValueError('Object can not be initialized from unknown value.')
+                self.value = bool(init_val.value)
+            else:
+                raise TypeError('Can not initialize IBool from type: %s' 
+                                % str(type(init_val)))
+    
+    
+    @staticmethod            
+    def init_funcs_and_class():
+        '''
+        Create the class object for Siml and create the special methods for 
+        operators.
+        '''
+        #create the class object for the Siml class system
+        class_bool = BuiltInClassWrapper('Bool')
+        class_bool.py_class = IBool
+        IBool.type_object = class_bool
+        
+        #initialize the mathematical operators, put them into the class
+        W = BuiltInFunctionWrapper
+        #Binary operators
+        binop_args = ArgumentList([NodeFuncArg('self', class_bool), 
+                                    NodeFuncArg('other', class_bool)])
+        #TODO: comparison operators
+        #TODO: design boolean operations/operator special functions
+        #Special function for assignment
+        W('__assign__', binop_args, CLASS_NONETYPE, 
+          py_function=IBool.__assign__,
+          accept_unknown_values=True).put_into(class_bool) 
+        #Printing
+        #TODO: Bool.__str__: get the circular references right
+#        single_args = ArgumentList([NodeFuncArg('self', class_bool)])
+#        W('__str__', single_args, CLASS_STRING, 
+#          py_function=IString._str,
+#          codegen_name='Bool.__str__').put_into(class_bool)  
+        #return the class object
+        return class_bool
+
+
+    def __assign__(self, other): 
+        if other.value is not None:
+            self.value = other.value
+        else:
+            raise UnknownArgumentsException()
+        
+    def __str__(self):#convenience for sane behavior from Python
+        if self.value is None:
+            return '<unknown Bool>'
+        else:
+            return self.value
+    #called from Siml
+    def _str(self):
+        istr = IString(self.value)
+        istr.role = RoleConstant
+        return istr
+
+
+#The class object used in Siml to create instances of IFloat
+CLASS_BOOL = IBool.init_funcs_and_class()
+#global constants True and False
+TRUE = IBool(True)
+TRUE.role = RoleConstant
+TRUE.is_assigned = True
+FALSE = IBool(False)
+FALSE.role = RoleConstant
+FALSE.is_assigned = True
 
 
 
@@ -983,13 +1082,14 @@ class IString(FundamentalObject):
         #initialize the value
         self.value = None
         if init_val is not None:
-            if isinstance(init_val, (str, float, int)):
+            if isinstance(init_val, (str, float, int, bool)):
                 self.value = str(init_val)
-            elif isinstance(init_val, IString) and init_val.value is not None:
-                self.value = init_val.value
+            elif isinstance(init_val, FundamentalObject):
+                if init_val.value is None:
+                    ValueError('Object can not be initialized from unknown value.')
+                self.value = str(init_val.value)
             else:
-                raise TypeError('Expecting None, str, float, int or known IString in '
-                                'constructor, but received %s' 
+                raise TypeError('Can not init IString from type: %s' 
                                 % str(type(init_val)))
     
     
@@ -1012,7 +1112,7 @@ class IString(FundamentalObject):
         W('__add__', binop_args, class_string, 
           py_function=IString.__add__).put_into(class_string)
         #Special function for assignment
-        W('__assign__', binop_args, None, 
+        W('__assign__', binop_args, CLASS_NONETYPE, 
           py_function=IString.__assign__,
           accept_unknown_values=True).put_into(class_string) 
         #Printing
@@ -1107,25 +1207,27 @@ class IFloat(FundamentalObject):
           py_function=IFloat.__mod__).put_into(class_float) 
         W('__pow__', binop_args, class_float, 
           py_function=IFloat.__pow__).put_into(class_float) 
+        #TODO: __abs__
+        #TODO: __nonzero__ ??? #For truth value testing 
         #The prefix operator
         prefix_args = ArgumentList([NodeFuncArg('self', class_float)])
         W('__neg__', prefix_args, class_float, 
           py_function=IFloat.__neg__).put_into(class_float) 
         #comparison operators
-        W('__lt__', binop_args, class_float, 
+        W('__lt__', binop_args, CLASS_BOOL, 
           py_function=IFloat.__lt__).put_into(class_float)      
-        W('__le__', binop_args, class_float, 
+        W('__le__', binop_args, CLASS_BOOL, 
           py_function=IFloat.__le__).put_into(class_float)      
-        W('__eq__', binop_args, class_float, 
+        W('__eq__', binop_args, CLASS_BOOL, 
           py_function=IFloat.__eq__).put_into(class_float)      
-        W('__ne__', binop_args, class_float, 
+        W('__ne__', binop_args, CLASS_BOOL, 
           py_function=IFloat.__ne__).put_into(class_float)      
-        W('__gt__', binop_args, class_float, 
+        W('__gt__', binop_args, CLASS_BOOL, 
           py_function=IFloat.__gt__).put_into(class_float)      
-        W('__ge__', binop_args, class_float, 
+        W('__ge__', binop_args, CLASS_BOOL, 
           py_function=IFloat.__ge__).put_into(class_float)         
         #Special function for assignment
-        W('__assign__', binop_args, None, 
+        W('__assign__', binop_args, CLASS_NONETYPE, 
           py_function=IFloat.__assign__,
           accept_unknown_values=True).put_into(class_float) 
         #Printing
@@ -1154,17 +1256,17 @@ class IFloat(FundamentalObject):
     
     #comparison operators
     def __lt__(self, other):
-        return IFloat(float(self.value < other.value))
+        return IBool(self.value < other.value)
     def __le__(self, other):
-        return IFloat(float(self.value <= other.value))
+        return IBool(self.value <= other.value)
     def __eq__(self, other):
-        return IFloat(float(self.value == other.value))
+        return IBool(self.value == other.value)
     def __ne__(self, other):
-        return IFloat(float(self.value != other.value))
+        return IBool(self.value != other.value)
     def __gt__(self, other):
-        return IFloat(float(self.value > other.value))
+        return IBool(self.value > other.value)
     def __ge__(self, other):
-        return IFloat(float(self.value >= other.value))
+        return IBool(self.value >= other.value)
         
     def __assign__(self, other): 
         if isinstance(other, IFloat) and other.value is not None:
@@ -1360,6 +1462,9 @@ def create_built_in_lib():
 
     #built in constants
     lib.create_attribute('None', NONE)
+    lib.create_attribute('True', TRUE)
+    lib.create_attribute('False', FALSE)
+    
     time = IFloat()
     time.role = RoleAlgebraicVariable
     time.is_assigned = True
@@ -2116,17 +2221,27 @@ class StatementVisitor(Visitor):
           with an else clause.
         - All clauses must assign to the same variables.
         '''
-        
         #TODO: additional infrastructure so that collected code gets into
         #      the clauses of the if statement; and not to the function's
         #      top level.
         #      interpreter.push_statement_list(...)
+        
+        #If code is created, create a node for an if statement???
+        
         for clause in node.clauses:
             cond_ev = self.expression_visitor.dispatch(clause.condition)
+            #Do not enter clause where condition evaluates to constant False.
             if not bool(cond_ev.value):
                 continue
+            #If code is created, create node for a clause
+            #Tell interpreter to put generated statements into body of clause
             self.interpreter.run(clause.statements)
+            #See if this is the last statement (constant True)
             break
+        
+        #see if generated if has the required else clause
+        
+        #if there is only one clause optimize if statement away.
         
 
     @Visitor.when_type(NodeFuncDef)
