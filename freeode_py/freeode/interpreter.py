@@ -2161,9 +2161,16 @@ class StatementVisitor(Visitor):
         #      - Putting function arguments into the function's namespace 
         #        could be handled this way too.
         
+        #TODO: Infrastructure to integrate protection against duplicate 
+        #      assignment with the 'if' statement. 
+        #      - In an 'if' statement with n clauses each variable must/should 
+        #      be assigned n times.
+        #      - Local variables of functions however, will be created 
+        #      uniquely for each function invocation. They can therefore 
+        #      only be assigned once, even in an 'if' statement.  
         #Test if value has been assigned already.
-        if target.is_assigned:
-            raise UserException('Duplicate assignment.', loc)
+#        if target.is_assigned:
+#            raise UserException('Duplicate assignment.', loc)
         target.is_assigned = True
         #Targets with RoleUnkown are converted to the role of value.
         #(for local variables of functions)
@@ -2182,11 +2189,11 @@ class StatementVisitor(Visitor):
             return
         
         #Only fundamental functions from here on: ------------------
-#        #Test if assignment is possible according to the role.
-#        if is_role_more_variable(value.role, target.role):
-#            raise UserException('Incompatible roles in assignment. '
-#                                'LHS: %s RHS: %s' % (str(target.role), 
-#                                                     str(value.role)), loc)
+        #Test if assignment is possible according to the role.
+        if is_role_more_variable(value.role, target.role):
+            raise UserException('Incompatible roles in assignment. '
+                                'LHS: %s RHS: %s' % (str(target.role), 
+                                                     str(value.role)), loc)
         #In different regions of the program only some roles are legal as 
         #targets for assignments
         if not issubclass(target.role, self.interpreter.assign_target_roles):
@@ -2242,11 +2249,13 @@ class StatementVisitor(Visitor):
           with an else clause.
         - All clauses must assign to the same variables.
         '''
-        #TODO: additional infrastructure so that collected code gets into
-        #      the clauses of the if statement; and not to the function's
-        #      top level.
-        #      interpreter.push_statement_list(...)
-        
+        #TODO: Infrastructure to integrate protection against duplicate 
+        #      assignment with the 'if' statement. 
+        #      - In an 'if' statement with n clauses each variable must/should 
+        #      be assigned n times.
+        #      - Local variables of functions however, will be created 
+        #      uniquely for each function invocation. They can therefore 
+        #      only be assigned once, even in an 'if' statement.  
         is_collecting_code = False
         new_if = None
         #If code is created, create a node for an if statement
@@ -2254,22 +2263,22 @@ class StatementVisitor(Visitor):
             is_collecting_code = True
             new_if = NodeIfStmt(None, node.loc)
             
-        #A clause consists of a condition and a list of statements.
-        #Like the clauses in Lisp's 'cond' special-function
+        #A clause consists of: <condition>, <list of statements>.
+        #Like the clauses in Lisp's 'cond' special-function.
         for clause in node.clauses:
             is_last_statement = False
             #interpret the condition
             condition_ev = self.expression_visitor.dispatch(clause.condition)
-            if not siml_isinstance(condition_ev, CLASS_BOOL):
+            if not siml_isinstance(condition_ev, (CLASS_BOOL, CLASS_FLOAT)):
                 raise UserException('Conditions must evaluate to '
                                     'instances of class Bool.', loc=clause.loc)
             
             #Condition evaluates to constant False: Do not enter clause.
-            if siml_isknown(condition_ev) and condition_ev.value is False:
+            if siml_isknown(condition_ev) and bool(condition_ev.value) is False:
                 continue
             #Condition evaluates to constant True
             #This is the last clause, the 'else' clause
-            elif siml_isknown(condition_ev) and condition_ev.value is True:
+            elif siml_isknown(condition_ev) and bool(condition_ev.value) is True:
                 is_last_statement = True
             #Condition evaluates to unknown value
             #This is only legal when code is created
@@ -2280,7 +2289,7 @@ class StatementVisitor(Visitor):
             #If code is created, create node for a clause
             #Tell interpreter to put generated statements into body of clause
             if is_collecting_code:
-                new_clause = NodeClause(condition_ev, None, clause.loc)
+                new_clause = NodeClause(condition_ev, [], clause.loc)
                 new_if.clauses.append(new_clause)
                 self.interpreter.push_statement_list(new_clause.statements)
             #interpret the statements

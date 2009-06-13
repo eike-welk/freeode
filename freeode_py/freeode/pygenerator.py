@@ -112,9 +112,9 @@ class ExpressionGenerator(Visitor):
         #produce output
         ret_str = func_name + '('
         for arg in call.arguments:
-            ret_str += self.dispatch(arg) + ','
+            ret_str += self.dispatch(arg) + ', '
         for name, arg in call.keyword_arguments.iteritems():
-            ret_str += name + ' = ' + self.dispatch(arg) + ','
+            ret_str += name + ' = ' + self.dispatch(arg) + ', '
         ret_str += ')'
         return ret_str
         
@@ -143,10 +143,10 @@ class ExpressionGenerator(Visitor):
     def _createOpInfix2(self, iltFormula):
     #Infix operator: + - * / ^ and or
         opDict = {'+':' + ', '-':' - ', '*':' * ', '/':' / ', '%':' % ',
-                   '**':' ** ',}
-#                  '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ',
-#                  '==':' == ', '!=':' != ',
-#                  'and':' and ', 'or':' or '}
+                  '**':' ** ',
+                  '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ',
+                  '==':' == ', '!=':' != ',
+                  'and':' and ', 'or':' or '}
         opStr = opDict[iltFormula.operator]
         return (self.dispatch(iltFormula.arguments[0]) + opStr +
                 self.dispatch(iltFormula.arguments[1]))
@@ -250,107 +250,33 @@ class StatementGenerator(Visitor):
     
         
     @Visitor.when_type(NodeIfStmt, 1)
-    def _createIfStmt(self, iltStmt, indent):
+    def _createIfStmt(self, if_stmt, indent):
         #if statement --------------------------------------------------------
         ind4 = ' '*4
-        self.write(indent + 'if '
-                           + self.create_expression(iltStmt.condition)
-                           + ':\n')
-        self.dispatch(iltStmt.ifTruePart, indent + ind4)
-        #Only create else clause if necessary
-        if len(iltStmt.elsePart) > 0:
-            self.write(indent + 'else: \n')
-            self.dispatch(iltStmt.elsePart, indent + ind4)
+        index_else = len(if_stmt.clauses) - 1
+        for clause, index in zip(if_stmt.clauses, range(len(if_stmt.clauses))):
+            if index == 0:
+                keyword = 'if '
+            elif index == index_else:
+                keyword = 'else'
+            else:
+                keyword = 'elif '
+            #write line with 'if', 'elif', 'else'
+            self.write(indent + keyword)
+            if index != index_else:
+                self.write(self.create_expression(clause.condition))
+            self.write(':\n')
+            #write the statements of the clause 
+            self.create_statements(clause.statements, indent + ind4)
+            #Write pass statement for clause without statements
+            if len(clause.statements) == 0:
+                self.write(indent + ind4 + 'pass\n')
 
 
     @Visitor.when_type(NodeExpressionStmt, 1)
     def _createExpressionStmt(self, iltStmt, indent):
         #Expression with side effects: print(), graph(), store()
-        self.write(indent + self.create_expression(iltStmt.expression) + '\n')
-        
-    
-#    @Visitor.when_type(NodePrintStmt, 1)
-#    def _createPrintStmt(self, iltStmt, indent):
-#        #print statement -----------------------------------------------------
-#        line = indent + 'print '
-#        for expr in iltStmt.arguments:
-#            line += self.create_expression(expr) + ', '
-#        #take away last comma if newline is wanted
-#        if iltStmt.newline:
-#            line = line[:-2]
-#        self.write(line + '\n')
-
-
-#    @Visitor.when_type(NodeStoreStmt, 1)
-#    def _createStoreStmt(self, iltStmt, indent):
-#        #save statement -----------------------------------------------------
-#        #One optional argument:
-#        #    -the file name: string
-#        #generated code is a function call:
-#        #    self.save('source_file_name')
-#        outPy = self.out_py
-#        if len(iltStmt) > 1:               #Number of arguments: 0,1
-#            raise UserException('The save statement can have 1 or no arguments.',
-#                                iltStmt.loc)
-#        self.write(indent + 'self.save(') #write start of statement
-#        for expr in iltStmt:               #iterate over arguments (max 1)
-#            #child is a string
-#            if isinstance(expr, NodeString):
-#                filename = self.create_expression(expr)   #write filename
-#                self.write(filename)
-#            #anything else is illegal
-#            else:
-#                raise UserException('Argument of save statement must be a file name.',
-#                                    iltStmt.loc)
-#        self.write(') \n')                #write end of statement
-#
-#
-#    @Visitor.when_type(NodeGraphStmt, 1)
-#    def _createGraphStmt(self, iltStmt, indent):
-#        #graph statement -----------------------------------------------------
-#        #Any number of arguments. Legal types are:
-#        #    -Variable for inclusion in graph: attribute access
-#        #    -Graph title: string
-#        #generated code is a function call:
-#        #    self.graph(['t.V', 't.h', 't.qOut0', 't.qOut1', ], 'graph title')
-#        outPy = self.out_py
-#        graphTitle = ''
-#        self.write(indent + 'self.graph([') #write start of statement
-#        for expr in iltStmt:                 #iterate over arguments
-#            #Argument is variable name
-#            if   isinstance(expr, NodeAttrAccess):
-#                self.write("'%s', " % str(expr.attrName)) #write variable name
-#            #Argument is graph title
-#            elif isinstance(expr, NodeString):
-#                graphTitle = expr.dat        #store graph title
-#            #anything else is illegal
-#            else:
-#                raise UserException('Illegal argument in graph statement.',
-#                                    iltStmt.loc)
-#        self.write('], ')                   #end list of var names
-#        #A graph title was found
-#        if graphTitle:
-#            self.write("'%s'" % graphTitle) #write write grapt title as 2nd argument
-#        self.write(') \n')                  #write end of statement
-
-
-#    @Visitor.when_type(NodeStmtList, 1)
-#    def _createStatementList(self, node, indent):
-#        '''
-#        Take NodeStmtList and convert
-#        into multiple Python statements.
-#
-#        arguments:
-#            node : Node object that contains statements as children
-#            indent   : string of whitespace, put in front of each line
-#        output:
-#            self.out_py - text is written to object
-#        '''
-#        if len(node.statements) == 0:
-#            self.out_py.write(indent + 'pass \n')
-#            return
-#        self.create_statements(node.statements, indent)
-            
+        self.write(indent + self.create_expression(iltStmt.expression) + '\n')            
             
     @Visitor.default
     def _ErrorUnknownNode(self, iltStmt, indent):

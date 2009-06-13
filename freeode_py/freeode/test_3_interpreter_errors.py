@@ -359,7 +359,21 @@ a = 2 * b
 #    print intp.modules['test']
     
   
-
+#TODO: Better error messages when this is missing in definition of main function.
+#      Current error message only points to compile statement. 
+#      Line where function is defined is reported as None
+#
+#      Example:
+#'''
+#class A:
+#    func dynamic():
+#    
+#compile A
+#'''
+#      The error message should point to line 3
+#      Ideally the error message for an impossible function call would list:
+#      - Line where call is made,
+#      - Line where function is defined. 
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()

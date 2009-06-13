@@ -1557,7 +1557,7 @@ else:
     b = 3
 '''
 
-    #create the interpreter
+    #interpret the program
     intp = Interpreter()
     intp.interpret_module_string(prog_text, None, 'test')
 
@@ -1581,15 +1581,15 @@ def test_if_statement_2(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isinstance, 
-                                     CallableObject, TypeObject, IFloat)
-    from freeode.ast import DotName
+    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
+    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
 
     prog_text = \
 '''
 class A:
     data a,b: Float
-
+    data c: Float const
+    
     func dynamic(this):       
         if a == 1:
             b = 1
@@ -1601,18 +1601,41 @@ class A:
 compile A
 '''
 
-    #create the interpreter
+    #interpret the program
     intp = Interpreter()
     intp.interpret_module_string(prog_text, None, 'test')
 
-    
     #the module
     mod = intp.modules['test']
     #print mod
     
     sim = intp.get_compiled_objects()[0]
-    print sim
-
+    #print sim
+    #look at variables
+    a = sim.get_attribute(DotName('a'))
+    assert a.is_assigned == False
+    b = sim.get_attribute(DotName('b'))
+    assert b.is_assigned == True
+    #look at generated function and if statement
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    assert len(dynamic.statements) == 1 #function has one statement
+    if_stmt = dynamic.statements[0]
+    assert isinstance(if_stmt, NodeIfStmt)
+    assert len(if_stmt.clauses) == 3  #if statement has 3 clauses
+    clause_a_1 = if_stmt.clauses[0]
+    clause_a_2 = if_stmt.clauses[1]
+    clause_a_3 = if_stmt.clauses[2]
+    #each clause contains one assignment
+    assert len(clause_a_1.statements) == 1
+    assert isinstance(clause_a_1.statements[0], NodeAssignment)
+    assert len(clause_a_2.statements) == 1
+    assert isinstance(clause_a_2.statements[0], NodeAssignment)
+    assert len(clause_a_3.statements) == 1
+    assert isinstance(clause_a_3.statements[0], NodeAssignment)
+    #the last clause is an else statement: condition equivalent to True, constant 
+    assert isinstance(clause_a_3.condition, (IFloat, IBool))
+    assert siml_isrole(clause_a_3.condition.role, RoleConstant)
+    assert bool(clause_a_3.condition.value) is True
 
 
 

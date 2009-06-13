@@ -30,34 +30,34 @@ class BioReactor:
         STY = X*D                            #yield per time and space
 
 
-#Biological reactor with no inflow or outflow
+
+#Biological reactor with no inflow or outflow.
+#This kind of reactor is called a 'batch' reactor.
 #
 # Note the negative sugar concentration towards the end of the simulation!
 # In reality some bacteria would die, and become food. More importantly, the
 # model becomes invalid. The formulas only apply when the bacteria
 # grow fairly fast on sugar.
 class Batch: #Define a concrete simulation experiment
-    #Define the constant values again.
-    #data mu_max, Ks, Yxs, Sf, D, ms, X_init, S_init: Float param
+    #Define parameters.
     data D: Float param
-    #data showGraph: Float param
+    data showGraph: Float param
 
     #Say which model will be used.
     data r: BioReactor
 
     func initialize(this):
         #Specify options for the simulation algorithm.
-        solution_parameters(duration=20, reporting_interval=0.1)
+        solution_parameters(duration=30, reporting_interval=0.1)
 
         #Set values to the parameters.
-        #The values will be copied into the BioReactor model
         r.mu_max = 0.32 #max growth speed
         r.Ks     = 0.01 #at this sugar concentration growth speed is 0.5 * mu_max
         r.Yxs    = 0.5  #one g sugar gives this much biomass
         r.Sf     = 20   #sugar concentration in feed liquid (inflow)
         D        = 0    #dilution rate (inflow speed)
         r.ms     = 0.02 #sugar consumption when bacteria are not growing
-        #showGraph = 1 #flag, if 1: show graph; do not show graph otherwise
+        showGraph = 1 #flag, if 1: show graph; do not show graph otherwise
 
         #Set initial values to the state variables.
         #Note: the full path has to be specified for variables.
@@ -72,18 +72,27 @@ class Batch: #Define a concrete simulation experiment
 
     #Show results
     func final(this):
-        #TODO: if  showGraph != 0:
-        graph(r.mu, r.X, r.S, title='Batch')
+        if showGraph != 0:
+            graph(r.mu, r.X, r.S, title='Batch')
+        else:
+            pass
         #save('batch.simres')
 
 
 
-#Biological reactor with constant inflow and outflow
+#Biological reactor with constant inflow and outflow.
+#
+#From the beginning of the experiment the feed pump pumps sugary water into
+#the reactor, and also removes biomass. It takes fairly long for the bacteria
+#to reach their final concentration. compared to the batch experiment above.
+#
+#The flowrate is relatively low: half of the bacteria's maximum growth speed.
+#With higher flow rates it takes even longer for the bacteria to reach their
+#final concentration.
 class Conti: #Define a concrete simulation experiment
-    #Define the constant values again.
-    #data mu_max, Ks, Yxs, Sf, D, ms, X_init, S_init: Float param
+    #Define parameters.
     data D: Float param
-    #data showGraph: Float param
+    data showGraph: Float param
 
     #Say which model will be used.
     data r: BioReactor
@@ -94,15 +103,13 @@ class Conti: #Define a concrete simulation experiment
         solution_parameters(duration=30, reporting_interval=0.01)
 
         #Set values to the parameters.
-        #The values will be copied into the BioReactor model, becau8se there
-        #are parameters with the same name
-        r.mu_max = 0.32 #max growth speed
+        r.mu_max = 0.32 #[1/h] max growth speed
         r.Ks     = 0.01 #at this sugar concentration growth speed is 0.5 * mu_max
         r.Yxs    = 0.5  #one g sugar gives this much biomass
         r.Sf     = 20   #sugar concentration in feed liquid (inflow)
-        D        = 0.1  #dilution rate (inflow speed)
+        D        = 0.15  #[1/h] dilution rate (inflow speed)
         r.ms     = 0.02 #sugar consumption when bacteria are not growing
-        #showGraph = 1 #flag, if 1: show graph; do not show graph otherwise
+        showGraph = 1 #flag, if 1: show graph; do not show graph otherwise
 
         #Set initial values to the state variables.
         #Note: the full path has to be specified for variables.
@@ -117,70 +124,72 @@ class Conti: #Define a concrete simulation experiment
 
     #Show results
     func final(this):
-#         if  showGraph != 0:
-#             graph 'Conti', r.mu, r.X, r.S
-#             graph 'Conti', r.D, r.mu
-        graph(r.mu, r.X, r.S, title='Conti')
-        graph(r.D, r.mu, title='Conti')
+        if showGraph != 0:
+            graph(r.mu, r.X, r.S, title='Conti')
+            graph(r.D, r.mu, title='Conti')
+        else:
+            pass
 
 
 
-# #Biological reactor with constant inflow and outflow
-# # Here we make the start more smart
-# # 1. start with height sugar concentration and no inflow (like a batch reactor)
-# # 2. when biomass concentration is above a certain level, switch inflow pump on
-# class ContiSmartStart(Process): #Define a concrete simulation experiment
-#     #Define the constant values again.
-#     data mu_max, Ks, Yxs, Sf, D_fin, ms, X_init, S_init: Float param
-#     data showGraph: Float param
+#Biological reactor with constant inflow and outflow
 #
-#     #Say which model will be used.
-#     data r: BioReactor
+# Here we make the start more smart:
+# 1. start with height sugar concentration and no inflow (like a batch reactor)
+# 2. when biomass concentration is above a certain level, switch inflow pump on
+# Therefore the bacteria reach high concentrations fast.
 #
-#     func initialize():
-#         #Specify options for the simulation algorithm.
-#         solutionParameters.simulationTime = 40     #[h] total simulation time
-#         solutionParameters.reportingInterval = 0.1 #[h] time between data points
-#
-#         #Set values to the parameters.
-#         #The values will be copied into the BioReactor model, becau8se there
-#         #are parameters with the same name
-#         mu_max = 0.32 #max growth speed
-#         Ks     = 0.01 #at this sugar concentration growth speed is 0.5 * mu_max
-#         Yxs    = 0.5  #one g sugar gives this much biomass
-#         Sf     = 20   #sugar concentration in feed liquid (inflow)
-#         D_fin  = 0.3  #dilution rate (inflow speed) for production
-#         ms     = 0.02 #sugar consumption when bacteria are not growing
-#         X_init = 0.1  #Parameter for initial biomass concentration
-#         S_init = 20   #Parameter for initial sugar concentration
-#         showGraph = 1 #flag, if 1: show graph; do not show graph otherwise
-#
-#         #Set initial values to the state variables.
-#         #Note: the full path has to be specified for variables.
-#         r.X = X_init #initial biomass concentration
-#         r.S = S_init  #initial sugar concentration
-#
-#
-#     func dynamic():
-#         #switch dilution rate depending on the biomass concentration
-#         if r.X < Sf*Yxs*0.90:
-#             r.D = 0 #low biomass concentration: pump off
-#         else:
-#             r.D = D_fin # high biomass concentration: pump on
-#
-#         #compute the reactor's dynamic equations
-#         call r.dynamic()
-#
-#
-#     #Show results
-#     func final():
-#         if  showGraph != 0:
-#             graph 'ContiSmartStart - mu, X, S', r.mu, r.X, r.S
-#             graph 'ContiSmartStart - mu, D', r.D, r.mu
-#
-#         save 'ContiSmartStart-results.csv'
+#The production flowrate is close to the maximum growth speed (0.3 1/h).
+class ContiSmartStart: #Define a concrete simulation experiment
+    #Define parameters.
+    data D_prod, showGraph: Float param
+
+    #Say which model will be used.
+    data r: BioReactor
+
+    func initialize(this):
+        #Specify options for the simulation algorithm.
+        #Total simulation time: 30 h; time between data points: 0.01 h
+        solution_parameters(duration=30, reporting_interval=0.01)
+
+        #Set values to the parameters.
+        r.mu_max = 0.32 #[1/h] max growth speed
+        r.Ks     = 0.01 #at this sugar concentration growth speed is 0.5 * mu_max
+        r.Yxs    = 0.5  #one g sugar gives this much biomass
+        r.Sf     = 20   #sugar concentration in feed liquid (inflow)
+        D_prod   = 0.3  #[1/h] dilution rate (inflow speed) for production
+        r.ms     = 0.02 #sugar consumption when bacteria are not growing
+        showGraph = 1 #flag, if 1: show graph; do not show graph otherwise
+
+        #Set initial values to the state variables.
+        #Note: the full path has to be specified for variables.
+        r.X = 0.1 #initial biomass concentration
+        r.S = 20  #initial sugar concentration
+
+
+    func dynamic(this):
+        #switch dilution rate depending on the biomass concentration
+        if r.X < r.Sf * r.Yxs * 0.90:
+            r.D = 0 #low biomass concentration: pump off
+        else:
+            r.D = D_prod # high biomass concentration: pump on
+
+        #compute the reactor's dynamic equations
+        r.dynamic()
+
+
+    #Show results
+    func final(this):
+        if showGraph != 0:
+            graph(r.mu, r.X, r.S, title='ContiSmartStart - mu, X, S')
+            graph(r.D, r.mu, title='ContiSmartStart - mu, D')
+        else:
+            pass
+        #save('ContiSmartStart-results.csv')
 
 
 
+#create the python objects
 compile Batch
 compile Conti
+compile ContiSmartStart

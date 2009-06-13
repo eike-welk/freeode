@@ -171,19 +171,19 @@ class SimlCompilerMain(object):
         except SystemExit:
             raise #for sys.exit() - the error message was already printed
         except Exception: #Any other exception must be a malfunction of the compiler
-            print >> sys.stderr, \
-                  '\nOh my golly! Compiler internal error! \n\n', \
-                  'Please file a bug report at the project\'s website,', \
-                  'or send an e-mail \n', \
-                  'with with a bug report to the developer(s).\n', \
-                  'The bug report should include the traceback', \
-                  'at the end of this message. \n', \
-                  'Please include also a short description of the error. \n', \
-                  'Website: \n', \
-                  '  https://developer.berlios.de/projects/freeode/\n', \
-                  'E-mail: \n', \
-                  '  eike@users.berlios.de \n\n', \
-                  'SIML compiler version: %s \n' %  ast.PROGRAM_VERSION
+            print >> sys.stderr, ('\n'
+                  'Oh my golly! Compiler internal error! \n\n'
+                  'Please file a bug report at the project\'s website,'
+                  'or send an e-mail \n'
+                  'with with a bug report to the developer(s).\n'
+                  'The bug report should include the traceback'
+                  'at the end of this message. \n'
+                  'Please include also a short description of the error. \n'
+                  'Bug-website: \n'
+                  '  https://bugs.launchpad.net/freeode \n'
+                  'E-mail: \n'
+                  '  eike@users.berlios.de \n\n'
+                  'SIML compiler version: %s \n' %  ast.PROGRAM_VERSION)
             raise #gets traceback and ends program
         #return with success
         sys.exit(0)
