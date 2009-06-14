@@ -1,188 +1,307 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-====================================================================
-SIML syntax highlighting file for the KDE editors Kate and Kwrite
-====================================================================
-Copyright: 2007, Eike Welk
-License: GPL
+<!DOCTYPE language>
+<!-- Python syntax highlightning v0.9 by Per Wigren -->
+<!-- Python syntax highlighting v1.9 by Michael Bueker (improved keyword differentiation) -->
+<!-- Python syntax highlighting v1.97 by Paul Giannaros -->
+<!-- Python syntax highlighting v1.99 by Primoz Anzur -->
+<!-- Siml syntax highlighting v0.4.0 by Eike Welk -->
+<language name="Siml" version="0.4.0" kateversion="2.4" section="Scientific"
+          extensions="*.siml;*.SIML" mimetype="text/simlfile"
+          casesensitive="1" author="Eike Welk" license="GPL">
+	<highlighting>
+		<list name="prep">
+			<item> import </item>
+			<item> from </item>
+			<item> as </item>
+		</list>
+		<list name="defs">
+			<item> class </item>
+            <item> func </item>
+            <item> data </item>
+            <item> compile </item>
+		</list>
+		<list name="operators">
+			<item> and </item>
+            <item> assert </item>
+			<item> not </item>
+			<item> or </item>
+		</list>
+		<list name="commands">
+            <item> print </item> <!-- ???? -->
+		</list>
+		<list name="flow">
+			<item> elif </item>
+			<item> else </item>
+			<item> except </item>
+			<item> if </item>
+			<item> pass </item>
+			<item> raise </item>
+			<item> return </item>
+			<item> try </item>
+		</list>
+		<list name="builtinfuncs">
+			<item> abs </item>
+			<item> all </item>
+			<item> any </item>
+			<item> bool </item>
+			<item> callable </item>
+			<item> complex </item>
+			<item> divmod </item>
+			<item> float </item>
+			<item> id </item>
+			<item> int </item>
+			<item> isinstance </item>
+			<item> issubclass </item>
+			<item> locals </item>
+			<item> max </item>
+			<item> min </item>
+			<item> pow </item>
+			<item> reduce </item>
+			<item> repr </item>
+			<item> round </item>
+			<item> slice </item>
+			<item> str </item>
+			<item> sum </item>
+			<item> super </item>
+            <item> tuple </item>
+            <item> type </item>
+            <item> sin </item>
+            <item> cos </item>
+            <item> tan </item>
+            <item> log </item>
+		</list>
+		<list name="specialvars">
+			<item> None </item>
+			<item> this </item>
+			<item> True </item>
+			<item> False </item>
+			<item> time </item>
+		</list>
+        <list name="bindings">                <!-- ???? -->
+			<item> SIGNAL </item>
+			<item> SLOT </item>
+			<item> connect </item>
+		</list>
+		<list name="overloaders">
+			<item>__new__</item>
+			<item>__init__</item>
+			<item>__del__</item>
+			<item>__repr__</item>
+			<item>__str__</item>
+			<item>__lt__</item>
+			<item>__le__</item>
+			<item>__eq__</item>
+			<item>__ne__</item>
+			<item>__gt__</item>
+			<item>__ge__</item>
+			<item>__nonzero__</item>
+		</list>
+        <list name="exceptions">             <!-- ???? -->
+			<item>ArithmeticError</item>
+			<item>AssertionError</item>
+			<item>AttributeError</item>
+			<item>BaseException</item>
+			<item>DeprecationWarning</item>
+			<item>EnvironmentError</item>
+			<item>EOFError</item>
+			<item>Exception</item>
+			<item>FloatingPointError</item>
+			<item>FutureWarning</item>
+			<item>GeneratorExit</item>
+			<item>IOError</item>
+			<item>ImportError</item>
+			<item>ImportWarning</item>
+			<item>IndexError</item>
+			<item>KeyError</item>
+			<item>KeyboardInterrupt</item>
+			<item>LookupError</item>
+			<item>MemoryError</item>
+			<item>NameError</item>
+			<item>NotImplementedError</item>
+			<item>OSError</item>
+			<item>OverflowError</item>
+			<item>PendingDeprecationWarning</item>
+			<item>ReferenceError</item>
+			<item>RuntimeError</item>
+			<item>RuntimeWarning</item>
+			<item>StandardError</item>
+			<item>StopIteration</item>
+			<item>SyntaxError</item>
+			<item>SyntaxWarning</item>
+			<item>SystemError</item>
+			<item>SystemExit</item>
+			<item>TypeError</item>
+			<item>UnboundLocalError</item>
+			<item>UserWarning</item>
+			<item>UnicodeError</item>
+			<item>UnicodeWarning</item>
+			<item>UnicodeEncodeError</item>
+			<item>UnicodeDecodeError</item>
+			<item>UnicodeTranslateError</item>
+			<item>ValueError</item>
+			<item>Warning</item>
+			<item>WindowsError</item>
+			<item>ZeroDivisionError</item>
+		</list>
+		<contexts>
+			<context name="Normal" attribute="Normal Text" lineEndContext="#stay">
+				<keyword attribute="Preprocessor" String="prep" context="#stay"/>
+				<keyword attribute="Definition Keyword" String="defs" context="#stay"/>
+				<keyword attribute="Operator" String="operators" context="#stay"/>
+				<keyword attribute="Command Keyword" String="commands" context="#stay"/>
+				<keyword attribute="Flow Control Keyword" String="flow" context="#stay"/>
+				<keyword attribute="Builtin Function" String="builtinfuncs" context="#stay"/>
+				<keyword attribute="Special Variable" String="specialvars" context="#stay"/>
+				<keyword attribute="Extensions" String="bindings" context="#stay"/>
+				<keyword attribute="Exceptions" String="exceptions" context="#stay"/>
+				<keyword attribute="Overloaders" String="overloaders" context="#stay"/>
+				<RegExpr attribute="Normal" String="[a-zA-Z_][a-zA-Z_0-9]+" context="#stay"/>
 
-Derived from the MATLAB syntax highlighting.
-Original author: Stefan Stoll, Swiss Federal Institute of Technology, Zurich
-====================================================================
+				<RegExpr attribute="Complex" String=" ((([0-9]*\.[0-9]+|[0-9]+\.)|([0-9]+|([0-9]*\.[0-9]+|[0-9]+\.))[eE](\+|-)?[0-9]+)|[0-9]+)[jJ]" context="#stay"/>
+				<RegExpr attribute="Float" String="([0-9]+\.[0-9]*|\.[0-9]+)([eE][0-9]+)?" context="#stay"/>
+				<RegExpr attribute="Int" String="([1-9][0-9]*([eE][0-9]+)?|0)" context="#stay"/>
+				<RegExpr attribute="Long" String="[1-9][0-9]*([eE][0-9.]+)?[Ll]" context="#stay"/>
+				<RegExpr attribute="Hex" String="0[Xx][0-9a-fA-F]+" context="#stay"/>
+				<RegExpr attribute="Octal" String="0[1-9][0-9]*" context="#stay"/>
 
-Usage:
-Copy this file into the following folder:
-~/.kde/share/apps/katepart/syntax
+				<RegExpr attribute="Raw String" String="[rR]'''" context="Raw Tripple A-string"/>
+				<RegExpr attribute="Raw String" String="[rR]&quot;&quot;&quot;" context="Raw Tripple Q-string"/>
 
-The katepart will then highlight files with the extensions 'siml' or 'SIML'
-with this file. This means Kate, Kwrite and Kdevelop will do syntax
-highligting for SIML files.
+				<RegExpr attribute="Raw String" String="[rR]'" context="Raw A-string"/>
+				<RegExpr attribute="Raw String" String="[rR]&quot;" context="Raw Q-string"/>
 
-================= old MATLAB hl documentation (part) ===============
+				<RegExpr attribute="Comment" String="#.*$" context="#stay"/>
+				<RegExpr attribute="Comment" String="^\s*'''" context="Tripple A-comment" beginRegion="Tripple A-region"/>
+				<RegExpr attribute="Comment" String="^\s*&quot;&quot;&quot;" context="Tripple Q-comment" beginRegion="Tripple Q-region"/>
 
-This file works only for syntactically correct MATLAB code. For incorrect
-code, the behaviour is undefined. One exception is made: Incomplete strings
-with missing closing delimiter are highlighted separately, just as in the
-native editor of MATLAB does.
+				<StringDetect attribute="String" String="'''" context="Tripple A-string" beginRegion="Tripple A-region"/>
+				<StringDetect attribute="String" String="&quot;&quot;&quot;" context="Tripple Q-string" beginRegion="Tripple Q-region"/>
+				<DetectChar attribute="String" char="'" context="Single A-string"/>
+				<DetectChar attribute="String" char="&quot;" context="Single Q-string"/>
 
-Highlighting errors never propagate across line breaks.
+				<DetectChar attribute="Operator" char="(" context="parenthesised" beginRegion="parenthesis"/>
+				<DetectChar attribute="Operator" char=")" context="#pop" endRegion="parenthesis"/>
 
-Most of this XML file is straight and simple. Only the character ' (&apos;)
-needs nontrivial treatment, since it is both a postfix operator indicating
-complex conjugate transpose (adjoint) and a string delimiter. It is an
-adjoint operator in the following positions:
-1) immediately after an identifier (variable, function, but not keyword)
-2) immediately after a number literal
-3) immediately after the closing parenthesis ), ] and }
-4) immediately after a simple transpose operator .'
-5) immediately after another adjoint operator '
-In all other cases it is a string delimiter.
+				<RegExpr attribute="Operator" String="[+*/%\|=;\!&lt;&gt;!^&amp;~-]" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
 
-This is implemented using look-ahead regexps. If one of the entities in the
-above cases 1-4 (identifier, number literal, ...) matches and look-ahead
-shows that it is followed by a ', the entity is highlighted and control is
-passed to the special context _adjoint, whose sole purpose is to correctly
-highlight a series of ' (thus covering case 5 as well). _adjoint immediately
-returns to the default context _normal.
+			</context>
 
-MATLAB number literals are different from those in C and similar languages:
-a) All numbers literals are doubles. There is no distinction between float and int.
-b) There is no notation of hex or oct base integers.
-c) The symbols i or j may be attached to a number to indicate a multiplication
-    with the imaginary unit.
+			<context name="parenthesised" attribute="Normal Text" lineEndContext="#stay" noIndentationBasedFolding="true">
+				<IncludeRules context="Normal" />
+			</context>
 
-MATLAB identifiers have to start with a letter followed by any number of letters,
-digits and underscores.
+			<context name="Tripple A-comment" attribute="Comment" lineEndContext="#stay" noIndentationBasedFolding="true">
+				<StringDetect attribute="Comment" String="'''" context="#pop" endRegion="Tripple A-region"/>
+			</context>
 
-There is a small number of reserved keywords, which cannot be the target of an
-assignment. All other identifiers (including all of the many 100s of MATLAB commands)
-can be redefined. Consequently, only the reserved keywords are highlighted.
+			<context name="Tripple Q-comment" attribute="Comment" lineEndContext="#stay" noIndentationBasedFolding="true">
+				<HlCChar attribute="Comment" context="#stay"/>
+				<RegExpr attribute="Comment" String="&quot;&quot;&quot;" context="#pop" endRegion="Tripple Q-region"/>
+			</context>
 
--->
+			<context name="Tripple A-string" attribute="String" lineEndContext="#stay" noIndentationBasedFolding="true">
+				<HlCStringChar attribute="String Char" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%\([a-zA-Z0-9_]+\)[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String" String="'''" context="#pop" endRegion="Tripple A-region"/>
+			</context>
 
-<!DOCTYPE language SYSTEM "language.dtd">
+			<context name="Raw Tripple A-string" attribute="Raw String" lineEndContext="#stay" noIndentationBasedFolding="true">
+				<HlCStringChar attribute="Raw String" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%\([a-zA-Z0-9_]+\)[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String" String="'''" context="#pop" endRegion="Tripple A-region"/>
+			</context>
 
-<language name="Siml" version="0.3" kateversion="2.2" section="Scientific"
-        extensions="*.siml;*.SIML" mimetype="text/simlfile"
-        casesensitive="1">
-<highlighting>
-    <!-- Reserved keywords in SIML -->
-    <list name="KeywordsList">
-    <!--keywords-->
-    <item> class </item>
-    <item> func </item>
-    <item> data </item>
-    <item> if </item>
-    <item> else </item>
-    <item> end </item>
-    <item> and </item>
-    <item> or </item>
-    <item> not </item>
-    <item> parameter </item>
-    <item> call </item>
-    <item> graph </item>
-    <item> save </item>
-    </list>
+			<context name="Tripple Q-string" attribute="String" lineEndContext="#stay" noIndentationBasedFolding="true">
+				<HlCStringChar attribute="String Char" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%\([a-zA-Z0-9_]+\)[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String" String="&quot;&quot;&quot;" context="#pop" endRegion="Tripple Q-region"/>
+			</context>
 
-    <!--Special names, predefined objects-->
-    <list name="SpecialNamesList">
-        <!--special objects-->
-        <item> Model </item>
-        <item> Process </item>
-        <item> Real </item>
-        <!--special member functions-->
-        <item> dynamic </item>
-        <item> init </item>
-        <item> final </item>
-        <!--predefined variable-->
-        <item> time </item>
-        <!--predefined parameters-->
-        <item> pi </item>
-    </list>
+			<context name="Raw Tripple Q-string" attribute="Raw String" lineEndContext="#stay" noIndentationBasedFolding="true">
+				<HlCStringChar attribute="Raw String" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%\([a-zA-Z0-9_]+\)[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String" String="&quot;&quot;&quot;" context="#pop" endRegion="Tripple Q-region"/>
+			</context>
 
-    <contexts>
-        <context name="_normal" attribute="Normal Text" lineEndContext="#pop">
-            <!--code folding-->
-<!--             <RegExpr context="#stay" attribute="Keyword" String="\b(class)\b" beginRegion="class" /> -->
-<!--             <RegExpr context="#stay" attribute="Keyword" String="\b(end)\b" endRegion="class" /> -->
-<!--             <RegExpr context="#stay" attribute="Keyword" String="\b(func)\b" beginRegion="func" /> -->
-<!--             <RegExpr context="#stay" attribute="Keyword" String="\b(end)\b" endRegion="func" /> -->
-<!--             <RegExpr context="#stay" attribute="Keyword" String="\b(if)\b" beginRegion="if" /> -->
-<!--             <RegExpr context="#stay" attribute="Keyword" String="\b(end)\b" endRegion="if" /> -->
+			<context name="Single A-comment" attribute="Comment" lineEndContext="#stay">
+				<HlCStringChar attribute="Comment" context="#stay"/>
+				<DetectChar attribute="Comment" char="'" context="#pop"/>
+			</context>
 
-            <!-- If ' is not the adjoint operator, it starts a string or an unterminated string -->
-            <RegExpr context="#stay" attribute="String" String="'[^']*(''[^']*)*'(?=[^']|$)" />
-            <RegExpr context="#stay" attribute="Incomplete String" String="'[^']*(''[^']*)*" />
+			<context name="Single Q-comment" attribute="Comment" lineEndContext="#stay">
+				<HlCStringChar attribute="Comment" context="#stay"/>
+				<DetectChar attribute="Comment" char="&quot;" context="#pop"/>
+			</context>
 
-            <!-- Handling of keywords, comments, system commands, identifiers, numbers and braces -->
-            <keyword context="#stay" attribute="Keyword" String="KeywordsList" />
-            <RegExpr context="#stay" attribute="Comment" String="#.*$" />
-    <!--         <RegExpr context="#stay" attribute="System" String="!.*$" /> -->
-            <RegExpr context="#stay" attribute="Variable" String="[a-zA-Z]\w*" />
-            <RegExpr context="#stay" attribute="Number" String="(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?[ij]?" />
-            <AnyChar context="#stay" attribute="Delimiter" String="()[]{}"/>
-            <keyword context="#stay" attribute="SpecialName" String="SpecialNamesList" />
+			<context name="Single A-string" attribute="String" lineEndContext="#stay">
+				<HlCStringChar attribute="String Char" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%\([a-zA-Z0-9_]+\)[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
+				<DetectChar attribute="String" char="'" context="#pop"/>
+			</context>
 
-            <!-- Three and two-character operators -->
-    <!--         <StringDetect context="#stay" attribute="Operator" String=":="/> -->
-    <!--         <StringDetect context="#stay" attribute="Operator" String="..."/> -->
-            <StringDetect context="#stay" attribute="Operator" String="=="/>
-            <StringDetect context="#stay" attribute="Operator" String="!="/>
-    <!--         <StringDetect context="#stay" attribute="Operator" String="~="/> -->
-            <StringDetect context="#stay" attribute="Operator" String="&lt;="/>
-            <StringDetect context="#stay" attribute="Operator" String="&gt;="/>
-    <!--         <StringDetect context="#stay" attribute="Operator" String="&amp;&amp;"/> -->
-    <!--         <StringDetect context="#stay" attribute="Operator" String="||"/> -->
-    <!--         <StringDetect context="#stay" attribute="Operator" String=".*"/> -->
-    <!--         <StringDetect context="#stay" attribute="Operator" String=".^"/> -->
-    <!--         <StringDetect context="#stay" attribute="Operator" String="./"/> -->
-    <!--         <StringDetect context="#stay" attribute="Operator" String=".'"/> -->
+			<context name="Single Q-string" attribute="String" lineEndContext="#stay">
+				<HlCStringChar attribute="String Char" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%\([a-zA-Z0-9_]+\)[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
+				<DetectChar attribute="String" char="&quot;" context="#pop"/>
+			</context>
 
-            <!-- Single-character operators -->
-    <!--         <AnyChar context="#stay" attribute="Operator" String="*+-/\&amp;|&lt;&gt;~^=,;:@"/> -->
-            <AnyChar context="#stay" attribute="Operator" String="*+-/^$&lt;&gt;:="/>
-        </context>
+			<context name="Raw A-string" attribute="Raw String" lineEndContext="#stay">
+				<HlCStringChar attribute="Raw String" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%\([a-zA-Z0-9_]+\)[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
+				<DetectChar attribute="Raw String" char="'" context="#pop"/>
+			</context>
 
-    <!-- Context entered after encountering an ' adjoint operator -->
-<!--      <context name="_adjoint" attribute="Operator" lineEndContext="#pop">
-        <RegExpr context="#pop" attribute="Operator" String="'+" />
-    </context>-->
-    </contexts>
+			<context name="Raw Q-string" attribute="Raw String" lineEndContext="#stay">
+				<HlCStringChar attribute="Raw String" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%\([a-zA-Z0-9_]+\)[a-zA-Z]" context="#stay"/>
+				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
+				<DetectChar attribute="Raw String" char="&quot;" context="#pop"/>
+			</context>
 
-    <itemDatas>
-        <itemData name="Normal Text" defStyleNum="dsNormal" />
-        <itemData name="Variable" defStyleNum="dsNormal" />
-        <itemData name="Operator" defStyleNum="dsNormal" color="#FF00FF"/>
-        <itemData name="Number" defStyleNum="dsFloat"  color="#0000ff"/>
-        <itemData name="Delimiter" defStyleNum="dsNormal"  color="#FF00FF"/>
-        <itemData name="String" defStyleNum="dsString" color="#b20000"/>
-    <!--       <itemData name="System" defStyleNum="dsBaseN" color="#b28c00"/> -->
-        <itemData name="Incomplete String" defStyleNum="dsChar" color="#a020f0"/>
-        <itemData name="Keyword" defStyleNum="dsNormal" color="#0000ff"/>
-        <itemData name="SpecialName" defStyleNum="dsNormal" color="#00ff00"/>
-        <itemData name="Comment" defStyleNum="dsComment" />
-    </itemDatas>
-    <!-- MATLAB 6.5 default color scheme
-        keywords             #0000ff
-        comments             #228b22
-        strings              #b20000
-        unterminated strings #a020f0
-        system commands      #b28c00
-        errors               #ff0000
-        all others           #000000
-    -->
 
-</highlighting>
-
-<general>
-    <comments>
-        <comment name="singleLine" start="# " />
-        <comment name="singleLine" start="//" />
-    </comments>
-    <keywords casesensitive="1" weakDeliminator=""/>
-</general>
-
+		</contexts>
+		<itemDatas>
+			<itemData name="Normal Text" defStyleNum="dsNormal"/>
+			<itemData name="Definition Keyword" defStyleNum="dsKeyword"/>
+			<itemData name="Operator" defStyleNum="dsNormal"/>
+			<itemData name="String Substitution" defStyleNum="dsNormal"/>
+			<itemData name="Command Keyword" defStyleNum="dsKeyword"/>
+			<itemData name="Flow Control Keyword" defStyleNum="dsKeyword"/>
+			<itemData name="Builtin Function" defStyleNum="dsDataType"/>
+			<itemData name="Special Variable" defStyleNum="dsOthers"/>
+			<itemData name="Extensions" defStyleNum="dsOthers" color="#0095ff" selColor="#ffffff" bold="1" italic="0"/>
+			<itemData name="Exceptions" defStyleNum="dsOthers" color="#054d00" selColor="#ffffff" bold="1" italic="0"/>
+			<itemData name="Overloaders" defStyleNum="dsOthers" color="#000e52" selColor="#ffffff" bold="1" italic="0"/>
+			<itemData name="Preprocessor" defStyleNum="dsChar"/>
+			<itemData name="String Char" defStyleNum="dsChar"/>
+			<itemData name="Long" defStyleNum="dsOthers"/>
+			<itemData name="Float" defStyleNum="dsFloat"/>
+			<itemData name="Int" defStyleNum="dsDecVal"/>
+			<itemData name="Hex" defStyleNum="dsOthers"/>
+			<itemData name="Octal" defStyleNum="dsOthers"/>
+			<itemData name="Complex" defStyleNum="dsOthers"/>
+			<itemData name="Comment" defStyleNum="dsComment"/>
+			<itemData name="String" defStyleNum="dsString"/>
+			<itemData name="Raw String" defStyleNum="dsString"/>
+		</itemDatas>
+	</highlighting>
+   <general>
+     <folding indentationsensitive="1" />
+     <emptyLines>
+       <emptyLine regexpr="\s+" casesensitive="false"/>
+       <emptyLine regexpr="\s*#.*$" casesensitive="false"/>
+     </emptyLines>
+     <comments>
+        <comment name="singleLine" start="#" position="afterwhitespace"/>
+     </comments>
+     <keywords casesensitive="1" />
+   </general>
 </language>
-<!--
-    Insert test code
--->
