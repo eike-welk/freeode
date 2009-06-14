@@ -825,6 +825,9 @@ class Parser(object):
         #store function arguments: SimpleArgumentList performs some checks
         if toks.arg_list:
             ncurr.arguments = SimpleArgumentList(toks.arg_list.asList(), ncurr.loc)
+        else:
+            #empty argument lists need a loc too.
+            ncurr.arguments = SimpleArgumentList([], ncurr.loc)
         #store return type
         if toks.return_type:
             ncurr.return_type = toks.return_type

@@ -1588,7 +1588,6 @@ def test_if_statement_2(): #IGNORE:C01111
 '''
 class A:
     data a,b: Float
-    data c: Float const
     
     func dynamic(this):       
         if a == 1:
@@ -1639,9 +1638,223 @@ compile A
 
 
 
+def test_if_statement_3(): #IGNORE:C01111
+    msg = '''
+    Test the if statement. Code is generated but all conditions evaluate 
+    to false. No if statement is generated.
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
+    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
+
+    prog_text = \
+'''
+class A:
+    data a,b: Float
+    
+    func dynamic(this):       
+        if 0 == 1:
+            b = 1
+        elif 0 == 2:
+            b = 2
+        elif 0 == 3:
+            b = 3
+
+compile A
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    #the module
+    mod = intp.modules['test']
+    #print mod
+    
+    sim = intp.get_compiled_objects()[0]
+    #print sim
+    #look at variables
+    a = sim.get_attribute(DotName('a'))
+    assert a.is_assigned == False
+    b = sim.get_attribute(DotName('b'))
+    assert b.is_assigned == False
+    #look at generated function and if statement
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    assert len(dynamic.statements) == 0 #function has no statement
+
+
+
+def test_if_statement_4_1(): #IGNORE:C01111
+    msg = '''
+    Test the if statement. Code is generated and condition involves variables.
+    There is no catch all (else) statement. The interpreter must complain about it.
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool, UserException)
+    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
+
+    prog_text = \
+'''
+class A:
+    data a,b: Float
+    data c: Float const
+    
+    func dynamic(this):       
+        if a == 1:
+            b = 1
+        elif a == 2:
+            b = 2
+        elif a == 3:
+            b = 3
+
+compile A
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    try:
+        intp.interpret_module_string(prog_text, None, 'test')
+    except UserException, e:
+        print 'Exception is OK'
+        print e
+    else:
+        assert False, 'No exception is raised.'
+
+
+
+def test_if_statement_4_2(): #IGNORE:C01111
+    msg = '''
+    Test the if statement. Code is generated and condition involves variables.
+    There is no else statement, but one statement is always True.
+    The interpreter must accept this case. The statement which is always true 
+    becomes the 'else' clause.
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool, UserException)
+    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
+
+    prog_text = \
+'''
+class A:
+    data a,b: Float
+    data c: Float const
+    
+    func dynamic(this):       
+        if a == 1:
+            b = 1
+        elif 2 == 2:
+            b = 2
+        elif a == 3:
+            b = 3
+
+compile A
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    #the module
+    mod = intp.modules['test']
+    #print mod
+    
+    sim = intp.get_compiled_objects()[0]
+    #print sim
+    #look at variables
+    a = sim.get_attribute(DotName('a'))
+    assert a.is_assigned == False
+    b = sim.get_attribute(DotName('b'))
+    assert b.is_assigned == True
+    #look at generated function and if statement
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    assert len(dynamic.statements) == 1 #function has one statement
+    if_stmt = dynamic.statements[0]
+    assert isinstance(if_stmt, NodeIfStmt)
+    #if statement has 2 clauses, although the original if has 3 clauses:
+    # - clause 2 has become the else clause
+    assert len(if_stmt.clauses) == 2  
+    clause_a_1 = if_stmt.clauses[0]
+    clause_2_2 = if_stmt.clauses[1]
+    #each clause contains one assignment
+    assert len(clause_a_1.statements) == 1
+    assert isinstance(clause_a_1.statements[0], NodeAssignment)
+    assert len(clause_2_2.statements) == 1
+    assert isinstance(clause_2_2.statements[0], NodeAssignment)
+    #the last clause is an else statement: condition equivalent to True, constant 
+    assert isinstance(clause_2_2.condition, (IFloat, IBool))
+    assert siml_isrole(clause_2_2.condition.role, RoleConstant)
+    assert bool(clause_2_2.condition.value) is True
+
+
+
+def test_if_statement_5(): #IGNORE:C01111
+    msg = '''
+    Test the if statement. Code is generated but condition involves only constants.
+    Only one clause is visited, and the if statement is converted to linear code.
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
+    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
+
+    prog_text = \
+'''
+class A:
+    data a,b: Float
+    
+    func dynamic(this):       
+        if 2 == 1:
+            b = 1
+        elif 2 == 2:
+            b = 2
+        else:
+            b = 3
+
+compile A
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    #the module
+    mod = intp.modules['test']
+    #print mod
+    
+    sim = intp.get_compiled_objects()[0]
+    #print sim
+    #look at variables
+    a = sim.get_attribute(DotName('a'))
+    assert a.is_assigned == False
+    b = sim.get_attribute(DotName('b'))
+    assert b.is_assigned == True
+    #look at generated function and if statement
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    #function has one statement
+    assert len(dynamic.statements) == 1 
+    #But this statement is an assignment, NOT an if statement
+    assign_stmt = dynamic.statements[0]
+    assert isinstance(assign_stmt, NodeAssignment)
+    #This assignment must be from clause 2:
+    #    b = 2
+    target = assign_stmt.target
+    expr = assign_stmt.expression
+    assert target is b
+    assert isinstance(expr, IFloat)
+    assert expr.value == 2
+
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_if_statement_2()
+    test_if_statement_5()
     pass
 

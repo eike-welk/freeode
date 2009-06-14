@@ -605,10 +605,12 @@ class NodeExpressionStmt(Node):
 
 class NodeClause(Node):
     '''
-    Building block of if ... elif ... else statement.
+    Building block of if ... elif ... else statement. (AST node)
     
-    One condition (really an expression) and a list of statements. The
-    statements are executed when the condition is true. (AST node)
+    A clause consists of a condition (really an expression) and a list of 
+    statements. The statements are executed when the condition is true. 
+    This is inspired by Lisp's 'cond' special-function.
+    http://www.cis.upenn.edu/~matuszek/LispText/lisp-cond.html
     
     Data attributes
     ---------------
@@ -631,6 +633,8 @@ class NodeClause(Node):
 class NodeIfStmt(Node):
     '''
     AST node for an if ... elif ... else statement
+    
+    TODO: maybe rename to NodeCondStmt ???
     
     Data attributes
     ---------------

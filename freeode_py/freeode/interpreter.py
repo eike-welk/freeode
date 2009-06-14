@@ -403,7 +403,7 @@ class ArgumentList(SimpleArgumentList):
             raise UserException(
                 'Too many arguments. '
                 'Function accepts at most %d arguments; %d given. \n'
-                'Argument definition in: %s \n' 
+                'Function definition in: %s \n' 
                 % (len(self.arguments), len(args_list), str(self.loc)), 
                 loc=None, errno=3200250)
         #associate positional arguments to their names
@@ -419,13 +419,13 @@ class ArgumentList(SimpleArgumentList):
             #test: argument name must exist in function definition
             if in_name not in self.argument_dict:
                 raise UserException('Unknown argument "%s". \n' 
-                                    'Argument definition in: %s \n' 
+                                    'Function definition in: %s \n' 
                                     % (str(in_name), str(self.loc)), 
                                     loc=None, errno=3200260)
             #test for duplicate argument assignment (positional + keyword)
             if in_name in output_dict:
                 raise UserException('Duplicate argument "%s".'
-                                    'Argument definition in: %s \n'  
+                                    'Function definition in: %s \n'  
                                     % (str(in_name), str(self.loc)), 
                                     loc=None, errno=3200270)
             #test for correct type, 
@@ -445,7 +445,7 @@ class ArgumentList(SimpleArgumentList):
         if len(left_over_names) > 0:
             raise UserException('Too few arguments given. '
                                 'Remaining arguments without value: %s \n'
-                                'Argument definition in: %s \n' 
+                                'Function definition in: %s \n' 
                                 % (', '.join([str(n) for n in left_over_names]),
                                    str(self.loc) ),
                                 loc=None, errno=3200280)
@@ -1805,6 +1805,7 @@ class ExpressionVisitor(Visitor):
         result = CLASS_FLOAT()
         result.value = float(node.value)
         result.role = RoleConstant
+        result.is_assigned = True
         return result
         
     @Visitor.when_type(NodeString)
@@ -1813,6 +1814,7 @@ class ExpressionVisitor(Visitor):
         result = CLASS_STRING()
         result.value = str(node.value)
         result.role = RoleConstant
+        result.is_assigned = True
         return result
         
     @Visitor.when_type(NodeIdentifier)
@@ -2257,6 +2259,7 @@ class StatementVisitor(Visitor):
         #      uniquely for each function invocation. They can therefore 
         #      only be assigned once, even in an 'if' statement.  
         is_collecting_code = False
+        is_seen_else_clause = False
         new_if = None
         #If code is created, create a node for an if statement
         if self.interpreter.is_collecting_code():
@@ -2264,14 +2267,15 @@ class StatementVisitor(Visitor):
             new_if = NodeIfStmt(None, node.loc)
             
         #A clause consists of: <condition>, <list of statements>.
-        #Like the clauses in Lisp's 'cond' special-function.
+        #This is inspired by Lisp's 'cond' special-function.
+        #http://www.cis.upenn.edu/~matuszek/LispText/lisp-cond.html
         for clause in node.clauses:
-            is_last_statement = False
             #interpret the condition
             condition_ev = self.expression_visitor.dispatch(clause.condition)
             if not siml_isinstance(condition_ev, (CLASS_BOOL, CLASS_FLOAT)):
                 raise UserException('Conditions must evaluate to '
-                                    'instances of class Bool.', loc=clause.loc)
+                                    'instances equivalent to Bool.', 
+                                    loc=clause.loc)#, errno=3700510)
             
             #Condition evaluates to constant False: Do not enter clause.
             if siml_isknown(condition_ev) and bool(condition_ev.value) is False:
@@ -2279,12 +2283,13 @@ class StatementVisitor(Visitor):
             #Condition evaluates to constant True
             #This is the last clause, the 'else' clause
             elif siml_isknown(condition_ev) and bool(condition_ev.value) is True:
-                is_last_statement = True
+                is_seen_else_clause = True
             #Condition evaluates to unknown value
             #This is only legal when code is created
             elif not is_collecting_code:
-                    raise UserException('Only conditions with constant values '
-                                        'are legal in this context.', loc=clause.loc)
+                raise UserException('Only conditions with constant values '
+                                    'are legal in this context.', 
+                                    loc=clause.loc)#, errno=3700520)
             
             #If code is created, create node for a clause
             #Tell interpreter to put generated statements into body of clause
@@ -2298,16 +2303,27 @@ class StatementVisitor(Visitor):
             if is_collecting_code:
                 self.interpreter.pop_statement_list()
                 
-            if is_last_statement:
+            if is_seen_else_clause:
                 break
         
-        #see if generated 'if' has the required 'else' clause
-        
-        #if there is only one clause that is always executed
+        #remove 'if' statements where all clauses evaluated to false
+        if is_collecting_code and len(new_if.clauses) == 0:
+            new_if = None
+        #see if 'if' statement has the required 'else' clause
+        elif is_collecting_code and not is_seen_else_clause:
+            last_clause = new_if.clauses[-1]
+            raise UserException('Generated "if" statements must end with a '
+                                'clause that is always True; usually an '
+                                '"else".', loc=last_clause.loc, errno=3700530)
+        #if there is only one clause (which is always executed),
         #optimize if statement away.
-        
+        elif is_collecting_code and len(new_if.clauses) == 1:
+            for stmt in new_if.clauses[0].statements:
+                self.interpreter.collect_statement(stmt)
+            new_if = None
+            
         #Store generated if statement in interpreter
-        if new_if is not None:
+        if new_if is not None and len(new_if.clauses) > 0:
             self.interpreter.collect_statement(new_if)
         return
         
@@ -2521,7 +2537,7 @@ class StatementVisitor(Visitor):
         except UserException, e:
             if e.loc is None:
                 e.loc = node.loc
-            raise e
+            raise 
         except DuplicateAttributeError, e:
             raise UserException('Duplicate attribute %s.' % e.attr_name, 
                                 loc=node.loc, errno=3800910)
