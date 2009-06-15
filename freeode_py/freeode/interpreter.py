@@ -1895,7 +1895,8 @@ class ExpressionVisitor(Visitor):
             return new_node
 
     
-    _prefopt_table = {'-':'__neg__'}
+    _prefopt_table = { '-' :'__neg__',
+                      'not':'__not__', }
 
     @Visitor.when_type(NodeOpPrefix1)
     def visit_NodeOpPrefix1(self, node):
@@ -1950,6 +1951,8 @@ class ExpressionVisitor(Visitor):
                     '!=':('__ne__', '__ne__'), 
                     '>': ('__gt__', '__lt__'), 
                     '>=':('__ge__', '__le__'), 
+                   'and':('__and2__', '__rand2__'), 
+                    'or':('__or2__', '__ror2__'), 
                     }
     
     @Visitor.when_type(NodeOpInfix2)
@@ -1990,10 +1993,25 @@ class ExpressionVisitor(Visitor):
             #Choose most variable role: const -> param -> variable
             new_oper.role = determine_result_role((inst_lhs, inst_rhs))
             return new_oper
-
-        #TODO: if unsuccessful in finding a suitable function get the 
-        #      right-handed function from the RHS and try to call it.
+        
+        #TODO: special methods for boolean operators 'and', 'or'
+        #      To retain the shortcut semantics split the execution of the 
+        #      operator into two phases: 
+        #      - first call __and1__(self), __or1__(self) if these operators 
+        #        can compute the result they return True/False; otherwise they 
+        #        return the special value NeedOtherOperand.
+        #      - if NeedOtherOperand was returned call:
+        #        __and2__(self, other), __rand2__(self, other)
+        #        __or2__(self, other),  __ror2__(self, other)
+        #      Calls with unknown arguments might always end up as: __xx2__
+        #      
+        #      There is a PEP on this topic: 
+        #      http://www.python.org/dev/peps/pep-0335/
+        #
+        #TODO: if unsuccessful in finding a suitable methods get the 
+        #      right-handed methods from the RHS and try to call it.
         #      float.__sub__(a, b) == float.__rsub__(b, a)
+        #
         #TODO: *** Dispatching Binary Operators of Derived Classes ***
         #      If the right operand’s type is a subclass of the left operand’s
         #      type and that subclass provides the reflected method for the operation, 
@@ -2306,6 +2324,12 @@ class StatementVisitor(Visitor):
             if is_seen_else_clause:
                 break
         
+        #Optimizations of the generated 'if' statement, and checking of 
+        #special constraints.
+        #  The optimizations give the 'if' statement additionally the power of 
+        #  makros and C++ templates: Different code can be generated depending 
+        #  on the situation.
+        #
         #remove 'if' statements where all clauses evaluated to false
         if is_collecting_code and len(new_if.clauses) == 0:
             new_if = None
@@ -2323,7 +2347,7 @@ class StatementVisitor(Visitor):
             new_if = None
             
         #Store generated if statement in interpreter
-        if new_if is not None and len(new_if.clauses) > 0:
+        if new_if is not None:
             self.interpreter.collect_statement(new_if)
         return
         

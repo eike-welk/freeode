@@ -947,9 +947,13 @@ class Parser(object):
         #Atoms are the most basic elements of expressions.
         #Brackets or braces are also categorized syntactically as atoms.
         #TODO: future extension: enclosures can also create tuples
-        enclosure = (S('(') + expression + S(')'))                  .setParseAction(self._action_parentheses_pair)
+        #TODO: Inside brackets any number of newlines should be allowed!
+        #      Look at setWhitespaceChars().
+        enclosure = (S('(') - expression + S(')'))                  .setParseAction(self._action_parentheses_pair)
         atom = identifier | literal | enclosure
       
+        #TODO: Inside brackets any number of newlines should be allowed!
+        #      Look at setWhitespaceChars().
         #Function/method call: everything within the round brackets is parsed here;
         # the function name is parsed in 'expression'. This parser is quite general;
         # more syntax checks are done in parse action to generate better error messages.
@@ -962,7 +966,8 @@ class Parser(object):
         call_argument = Group(keyword_argument | positional_argument) #extra group to make setResultsName work
         argument_list = ( delimitedList(call_argument)              .setResultsName('argument_list')
                           + Optional(',') )
-        call = Group('(' - Optional(argument_list) + ')') #TODO: Error message 'Function arguments: '
+        #TODO: Error message 'Function arguments: '
+        call = Group('(' - Optional(argument_list) + ')')
 
         #Slicing/subscription: everything within the rectangular brackets is parsed here;
         # the variable name is parsed in 'expression'
@@ -1148,6 +1153,7 @@ class Parser(object):
         stmt_list_1 = stmt_list.copy()                              .setParseAction(self._action_stmt_list)
         #Statement: one line of code, or a compound (if, class, func) statement
         #TODO: set a fail action that says 'Expected statement here.' ('Expected end of file' is misleading.) 
+        #TODO: good error messages for the parser are important.
         statement = (  simple_stmt + newline 
                      | stmt_list_1 + newline 
                      | compound_stmt         )

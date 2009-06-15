@@ -22,14 +22,16 @@
 		</list>
 		<list name="operators">
 			<item> and </item>
-            <item> assert </item>
 			<item> not </item>
 			<item> or </item>
 		</list>
-		<list name="commands">
-            <item> print </item> <!-- ???? -->
+        <list name="commands">
+            <item> const </item>
+            <item> param </item>
+            <item> variable </item>
 		</list>
-		<list name="flow">
+        <list name="flow">
+            <item> assert </item>
 			<item> elif </item>
 			<item> else </item>
 			<item> except </item>
@@ -40,22 +42,23 @@
 			<item> try </item>
 		</list>
 		<list name="builtinfuncs">
-			<item> abs </item>
 			<item> all </item>
 			<item> any </item>
 			<item> bool </item>
 			<item> callable </item>
 			<item> complex </item>
-			<item> divmod </item>
-			<item> float </item>
+            <item> divmod </item>
+            <item> float </item>
+            <item> graph </item>
 			<item> id </item>
 			<item> int </item>
 			<item> isinstance </item>
 			<item> issubclass </item>
 			<item> locals </item>
 			<item> max </item>
-			<item> min </item>
-			<item> pow </item>
+            <item> min </item>
+            <item> pow </item>
+            <item> print </item>
 			<item> reduce </item>
 			<item> repr </item>
 			<item> round </item>
@@ -65,6 +68,9 @@
 			<item> super </item>
             <item> tuple </item>
             <item> type </item>
+            <!-- math -->
+            <item> abs </item>
+            <item> sqrt </item>
             <item> sin </item>
             <item> cos </item>
             <item> tan </item>
@@ -77,10 +83,11 @@
 			<item> False </item>
 			<item> time </item>
 		</list>
-        <list name="bindings">                <!-- ???? -->
-			<item> SIGNAL </item>
-			<item> SLOT </item>
-			<item> connect </item>
+        <list name="bindings">
+            <!-- main functions -->
+            <item> initialize </item>
+            <item> dynamic </item>
+            <item> final </item>
 		</list>
 		<list name="overloaders">
 			<item>__new__</item>
