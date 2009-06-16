@@ -1,17 +1,28 @@
-#Predator Prey Model
+#    Copyright (C) 2009 by Eike Welk
+#    eike.welk@post.rwth-aachen.de
+
+
+
+#-----------------------------------------------------------------------------
+#          Different Predator Prey Models
+#-----------------------------------------------------------------------------
+
+
+
+#Lotka-Volterra Predator Prey Model
 #
-# This is a simple model of predator prey relations in a biologial system.
-# The differential equations were propsed by Alfred J. Lotka and Vito Volterra
+# This is a simple model of predator prey relations in a biological system.
+# The differential equations were proposed by Alfred J. Lotka and Vito Volterra
 # independently in 1925 and 1926.
-# Volterra used the model to explain unexpected results of marine biologial
+# Volterra used the model to explain unexpected results of marine biological
 # research.
 #
 #see:
-#   http://en.wikipedia.org/wiki/Lotka-Volterra_equation
-#   Leah Edelstein-Keshet; Mathematical Models in Biology; 1988.
+#  -http://en.wikipedia.org/wiki/Lotka-Volterra_equation
+#  -Leah Edelstein-Keshet; Mathematical Models in Biology; 1988.
 #       (republished by SIAM 2005) pp. 218.
 #
-# The whole argumentations and the variable names were taken from
+# The whole argumentation and the variable names were taken from
 # [Edelstein-Keshet].
 #
 #Differential Equations:
@@ -29,136 +40,144 @@
 #
 # b/d : growth of predator biomass per amount of eaten prey
 # sqrt(c*a) : frequency of oscillation
+#
+class ClassicModel:
+    data x, y: Float #state variables
+    data a, b, c, d: Float param
+    data x0, y0: Float param #parameters for initial values
+    data showGraph: Float param #Flag if graphs should be shown
 
-
-#This is the usual predator prey model
-class ClassicModel(Process):
-    data x, y: Real; #state variables
-    data a, b, c, d: Real parameter;
-    data x0, y0: Real parameter; #parameters for initial values
-    data showGraph: Real parameter; #Flag if graphs should be shown
-
-    func dynamic():
+    func dynamic(this):
         #  | growth | predation
-        $x = a*x    - b*x*y; #prey
+        $x = a*x    - b*x*y #prey
         #  | death  | food intake
-        $y = -c*y   + d*x*y; #predator
-    end
+        $y = -c*y   + d*x*y #predator
 
-    func init():
+
+    func initialize(this):
         #parameters
         a = 1; b = 1; c = 1;
-        d = b*0.2; #for each unit of prey eaten, the predators grow 0.2 units
+        d = b*0.2 #for each unit of prey eaten, the predators grow 0.2 units
         #initial values
-        x0 = 2;
-        y0 = 2;
+        x0 = 2
+        y0 = 2
         x = x0; y = y0;
 
         #administrative parameters
-        showGraph = 1;
-        solutionParameters.simulationTime = 20;
-        solutionParameters.reportingInterval = 0.1;
-    end
+        showGraph = 1
+        solution_parameters(duration = 20, reporting_interval = 0.1)
 
-    func final():
+
+    func final(this):
         if showGraph == 1:
-            graph 'Classic Predator Prey Model', x, y;
-        end
-    end
-end
+            graph(x, y, title='Classic Predator Prey Model')
+        else:
+            pass
+
 
 
 #Model where prey have logistic growth
-class LogisticPrey(Process):
-    data x, y: Real; #state variables
-    data a, b, c, d, K: Real parameter;
-    data x0, y0: Real parameter; #parameters for initial values
-    data showGraph: Real parameter; #Flag if graphs should be shown
+# This model has stable solutions
+#
+# The model was also taken from:
+# Leah Edelstein-Keshet; Mathematical Models in Biology; 1988.
+#
+class LogisticPrey:
+    data x, y: Float #state variables
+    data a, b, c, d, K: Float param
+    data x0, y0: Float param #parameters for initial values
+    data showGraph: Float param #Flag if graphs should be shown
 
-    func dynamic():
+    func dynamic(this):
         #  | growth        | predation
-        $x = a*x * (K-x)/K - b*x*y; #prey
+        $x = a*x * (K-x)/K - b*x*y #prey
         #  | death         | food intake
-        $y = -c*y          + d*x*y; #predator
-    end
+        $y = -c*y          + d*x*y #predator
 
-    func init():
+
+    func initialize(this):
         #parameters
-        a = 1; b = 1; c = 1;
-        d = b*0.2; #for each unit of prey eaten, the predators grow 0.2 units
-        K = 20;
+        a = 1; b = 1; c = 1
+        d = b*0.2 #for each unit of prey eaten, the predators grow 0.2 units
+        K = 20
         #initial values
-        x0 = 2;
-        y0 = 2;
-        x = x0; y = y0;
+        x0 = 2
+        y0 = 2
+        x = x0; y = y0
 
         #administrative parameters
-        showGraph = 1;
-        solutionParameters.simulationTime = 30;
-        solutionParameters.reportingInterval = 0.1;
-    end
+        showGraph = 1
+        solution_parameters(duration = 30, reporting_interval = 0.1)
 
-    func final():
+
+    func final(this):
         if showGraph == 1:
-            graph 'Predator Prey Model; Logistic Growth of Prey', x, y;
-        end
-    end
-end
+            graph(x, y, title='Predator Prey Model; Logistic Growth of Prey')
+        else:
+            pass
+
 
 
 #Relatively complex predator-prey model.
-#Features:
+#
+# Features:
 #   prey     : logistic growth
-#   predators: maximum food uptake capacity
-#   Hunting
-class EnhancedModel(Model):
-    data x, y: Real; #x:prey, y:predators
-    data muX, muY: Real;
-    data muXMax, muYMax, Yxy, Dy, Kx, Ky, Hx, Hy: Real parameter;
+#   predators: growth with maximum food uptake capacity
+#   Hunting  : predators and prey are killed by an additional super predator
+#
+# For the predators there are interesting consequences:
+# - If they are bad hunters (Ky = 30) they survive in high numbers (y ~ 5),
+#   together with high numbers of prey.
+# - If they are good hunters (Ky = 3) there are strong fluctuations in both
+#   populations. Long periods of famine alternate wit short periods of
+#   very much food. But even their peak numbers (y ~ 3.6) are lower than the
+#   numbers in the bad hunting scenario.
+#
+# Moderate hunting of any species by the super-predator stabilizes both
+# populations as expected.
+class EnhancedModel:
+    data x, y: Float #x:prey, y:predators
+    data muX, muY: Float
+    data muXMax, muYMax, Yxy, Dy, Kx, Ky, Hx, Hy: Float param
+    data showGraph: Float param #Flag if graphs should be shown
 
-    func dynamic():
-        muX = muXMax *(Kx-x)/Kx; #prey's growth rate (logistic growth)
-        muY = muYMax *x/(x+Ky);  #predator's growth rate
+    func dynamic(this):
+        muX = muXMax *(Kx-x)/Kx #prey's growth rate (logistic growth)
+        muY = muYMax *x/(x+Ky)  #predator's growth rate
         #  | growth | predation | hunting
-        $x = muX*x  - Yxy*y*muY - Hx*x; #prey
+        $x = muX*x  - Yxy*y*muY - Hx*x #prey
         #  | growth | death     | hunting
-        $y = muY*y  - Dy*y      - Hy*y; #predator
-    end
-end
+        $y = muY*y  - Dy*y      - Hy*y #predator
 
-class RunEnhanced(Process):
-    data m: EnhancedModel; #The model
-    data showGraph: Real parameter; #Flag if graphs should be shown
 
-    func init():
+    func initialize(this):
         #parameters
-        m.muXMax = 5; #prey's max growth rate
-        m.Yxy = 10; #units prey necessary to produce one unit of predator
-        m.Dy = 0.5; #predator's death rate
-        m.muYMax = 2; #predator's max growth rate
-        m.Kx = 20; #system's carrying capacity for prey
-        m.Ky = 8;  #low prey concentration, hunting speed is 0.5 muYMax
-        m.Hx = 0;  #Hunting rate on prey
-        m.Hy = 0;  #Hunting rate on predator
+        muXMax = 5 #prey's max growth rate
+        Yxy = 10 #units prey necessary to produce one unit of predator
+        Dy = 0.5 #predator's death rate
+        muYMax = 2 #predator's max growth rate
+        Kx = 20 #system's carrying capacity for prey
+        Ky = 8  # 8   #Low prey concentration, hunting speed is 0.5 muYMax
+        Hx = 0  # 2.  #Hunting rate on prey
+        Hy = 0  # 0.5 #Hunting rate on predator
         #initial values
-        m.x = 5;
-        m.y = 0.5;
+        x = 5
+        y = 0.5
 
         #administrative parameters
-        showGraph = 1;
-        solutionParameters.simulationTime = 20;
-        solutionParameters.reportingInterval = 0.1;
-    end
+        showGraph = 1
+        solution_parameters(duration = 100, reporting_interval = 0.1)
 
-    func dynamic():
-        call m.dynamic();
-    end
 
-    func final():
+    func final(this):
         if showGraph == 1:
-            graph 'Strongly Modified Predator Prey Model', m.x, m.y;
-        end
-    end
-end
+            graph(x, y, title='Strongly Modified Predator Prey Model')
+        else:
+            pass
 
+
+
+compile ClassicModel
+compile LogisticPrey
+compile EnhancedModel
 
