@@ -1398,11 +1398,12 @@ compile A
     assert isinstance(dynamic, CallableObject)
 
     #check number of attributes, most are automatically generated
-    #attributes:           initialize, dynamic, final, 
+    #global variable:   time
+    #methods:           initialize, dynamic, final, 
     #instance variables:   a1, $a1, 
     #local variables:      A.dynamic.b, A.dynamic.c, 
     #intermediate result:  A.foo.x, (2nd call)
-    assert len(sim.attributes) == 8
+    assert len(sim.attributes) == 9
     
 
 
@@ -1473,8 +1474,12 @@ compile A
     x = flat_A.get_attribute(DotName('x'))
     x_time = flat_A.get_attribute(DotName('x$time'))
     assert isinstance(x, IFloat)
-    assert isinstance(x_time, IFloat)
-    assert len(flat_A.attributes) == 5
+    assert isinstance(x_time, IFloat)    
+    #check number of attributes, most are automatically generated
+    #global variable:     time
+    #methods:             initialize, dynamic, final, 
+    #instance variables:  x,  x$time
+    assert len(flat_A.attributes) == 6
     
 
 

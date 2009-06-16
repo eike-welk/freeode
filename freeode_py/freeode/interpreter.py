@@ -1282,7 +1282,12 @@ class IFloat(FundamentalObject):
         
 #The class object used in Siml to create instances of IFloat
 CLASS_FLOAT = IFloat.init_funcs_and_class()
-    
+  
+#create the special variable time
+TIME = IFloat()
+TIME.role = RoleAlgebraicVariable
+TIME.is_assigned = True
+   
 
 
 #-------------- Service -------------------------------------------------------------------  
@@ -1459,11 +1464,7 @@ def create_built_in_lib():
     lib.create_attribute('None', NONE)
     lib.create_attribute('True', TRUE)
     lib.create_attribute('False', FALSE)
-    
-    time = IFloat()
-    time.role = RoleAlgebraicVariable
-    time.is_assigned = True
-    lib.create_attribute('time', time)
+    lib.create_attribute('time', TIME)
     #basic data types
     lib.create_attribute('NoneType', CLASS_NONETYPE)
     lib.create_attribute('Float', CLASS_FLOAT)
@@ -2454,6 +2455,10 @@ class StatementVisitor(Visitor):
         flat_object.loc = tree_object.type().loc 
         
         #Create code: 
+        #TODO: additional main functions for changing parameters from outside
+        #      'init_xxx(this, a, b, ..., z)' 
+        #      Any method with a name starting with 'init_' is considered an alternative
+        #      initialization function, and it is created as a main function.
         #TODO: additional main function for steady-state simulations:
         #        init_steadystate(x01)
         #      The function is called repeatedly during a steady-state simulation
@@ -2538,6 +2543,8 @@ class StatementVisitor(Visitor):
         flatten(tree_object, flat_object, DotName())   
         #flatten local variables
         flatten(func_locals, flat_object, DotName('__func_local__')) 
+        #put special attribute time into flat object
+        flat_object.create_attribute('time', TIME)
         
         #TODO: test: the methods of flat object must not use any data from 
         #      outside of flat_object.
