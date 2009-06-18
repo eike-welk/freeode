@@ -254,7 +254,7 @@ class StatementGenerator(Visitor):
         #if statement --------------------------------------------------------
         ind4 = ' '*4
         index_else = len(if_stmt.clauses) - 1
-        for clause, index in zip(if_stmt.clauses, range(len(if_stmt.clauses))):
+        for index, clause  in enumerate(if_stmt.clauses):
             if index == 0:
                 keyword = 'if '
             elif index == index_else:
@@ -484,10 +484,8 @@ class SimulationClassGenerator(object):
         self.write(ind8 + '#Create mapping between variable names and array indices \n')
         #Create mapping between variable names and array indices
         self.write(ind8 + 'self.variableNameMap = {')
-        for i, varName in zip(range(len(self.state_variables) +
-                                    len(self.algebraic_variables)),
-                              self.state_variables.keys() +
-                              self.algebraic_variables.keys()):
+        for i, varName in enumerate(self.state_variables.keys() +
+                                    self.algebraic_variables.keys()):
             self.write('\'%s\':%d, ' % (str(varName), i))
         self.write('}\n')
         self.write('\n\n')
@@ -514,14 +512,14 @@ class SimulationClassGenerator(object):
         #sequence of variables in the array is determined by self.state_variables
         self.write(ind8 + '#take the state variables out of the state vector \n')
         stateVars = self.state_variables.values()
-        for var, n_var in zip(stateVars, range(len(stateVars))):
+        for n_var, var in enumerate(stateVars):
             self.write(ind8 + '%s = state[%d] \n' % (var.target_name, n_var))
         #Create all algebraic variables
-        #TODO: remove this, once proper detection of unused variables exists
-        self.write(ind8 + '#create all algebraic variables with value 0; ' +
-                           'to prevent runtime errors.\n')
-        for var in (self.algebraic_variables.values()):
-            self.write(ind8 + '%s = 0 \n' % (var.target_name))
+#        #TODO: remove this, once proper detection of unused variables exists
+#        self.write(ind8 + '#create all algebraic variables with value 0; ' +
+#                           'to prevent runtime errors.\n')
+#        for var in (self.algebraic_variables.values()):
+#            self.write(ind8 + '%s = 0 \n' % (var.target_name))
 
         #print the method's statements
         self.write(ind8 + '#do computations \n')
@@ -543,7 +541,7 @@ class SimulationClassGenerator(object):
         #assemble the time derivatives into the return vector
         self.write(ind12 + '#assemble the time derivatives into the return vector \n')
         self.write(ind12 + 'stateDt = array([')
-        for var, n_var in zip(stateVars, range(len(stateVars))):
+        for n_var, var in enumerate(stateVars):
             self.write('%s, ' % var.time_derivative().target_name)
         self.write('], \'float64\') \n')
         self.write(ind12 + 'return stateDt \n')

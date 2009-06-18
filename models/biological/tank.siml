@@ -3,6 +3,13 @@
 
 
 
+#I just checked the correctness of the formulas with a textbook, when I
+#realized that the derivation of the formula for the flowrate is really
+#simple. I wrote a detailed derivation in this file because I remembered
+#that I liked it when I took a fluid mechanics class myself. (Eike)
+
+
+
 #Tank with hole in the wall, and constant inflow.
 #After some time a constant water level will be reached.
 #
@@ -46,26 +53,31 @@
 #
 #For ease of writing the formula the pressure of the surrounding air is thought
 #to be zero.
-#- At the surface of the water there is no pressure and no speed. The Bernoulli
-#  law for a particle at the surface therefore simplifies to:
+#
+#For deriving the formula two particles (molecules) of water are examined: one
+#particle at the surface of the water and another particle in the center of the
+#hole.
+#1: At the surface of the water the pressure and speed are zero. The Bernoulli
+#   law for a particle at the surface therefore simplifies to:
 #       g*z = const
 #
-#- In hole the pressure is zero, because it is in contact to the surrounding; and
-#  the height is also zero. The particle in the hole however has a nonzero speed,
-#  which is currently unknown.
-#  For a particle in the hole the Bernoulli law simplifies to:
+#2: In hole the pressure is zero, because it is in contact to the surrounding;
+#   and the height is also zero. The particle in the hole however has a
+#   nonzero speed, which is currently unknown.
+#   For a particle in the hole the Bernoulli law simplifies to:
 #       c**2/2 = const
 #
-#As the constant is the same for all particles one can also write:
+#As the constant is the same for all particles, one can also write:
 #       g*z = c**2/2
 #
 #This equation can be rearranged to compute the speed of the water in the hole:
 #       c = sqrt(2*g*z)
 #
 #(This is interestingly the speed that a body (stone) would have if it fell
-#from the height z.) With the diameter of the hole one can, compute the flow
-#rate from the speed. As there is really an important amount of friction
-#present, the flow rate is multiplied by a correction value mu.
+#from the height z.) With the diameter of the hole and the speed of the water
+#in the hole one can compute the flow rate. As there is really an important
+#amount of friction present, the flow rate is multiplied by a correction
+#value mu.
 #
 #Flow rate:
 #       q_out = mu * A_out * c
@@ -91,7 +103,7 @@ g = 9.81 #[m/s**2]
 
 #Tank with hole at height h_out
 class Tank:
-    data V, h, p, q_out: Float
+    data V, h, q_out: Float
     data A_bott, A_out, h_out, mu, q_in: Float param
 
 

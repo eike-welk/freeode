@@ -643,7 +643,7 @@ class SimlFunction(CallableObject):
 
 
     def __call__(self, *args, **kwargs):
-        '''All functions must implement this method'''
+        '''Execute the statements in the function's body'''
         self.call_count += 1
         #parse the arguments that we get from the caller, do type checking
         parsed_args = self.argument_definition\
@@ -2182,6 +2182,11 @@ class StatementVisitor(Visitor):
         #      - Putting function arguments into the function's namespace 
         #        could be handled this way too.
         
+        #TODO: General smart infrastructure for enforcing single assignment 
+        #      and guaranteed assignment.
+        #      The multiple init_xxx(...), initialize(...) methods lead to multiple 
+        #      assignments. Allowing intermediate variables to be used in initialize
+        #      methods would lead to multiple assignments too.
         #TODO: Infrastructure to integrate protection against duplicate 
         #      assignment with the 'if' statement. 
         #      - In an 'if' statement with n clauses each variable must/should 
@@ -2189,7 +2194,7 @@ class StatementVisitor(Visitor):
         #      - Local variables of functions however, will be created 
         #      uniquely for each function invocation. They can therefore 
         #      only be assigned once, even in an 'if' statement.  
-        #Test if value has been assigned already.
+#        #Test if value has been assigned already.
 #        if target.is_assigned:
 #            raise UserException('Duplicate assignment.', loc)
         target.is_assigned = True
@@ -2428,8 +2433,10 @@ class StatementVisitor(Visitor):
         #TODO: creatation of the tree-shaped object should be done by 
         #      self.visit_NodeDataDef(...)
         #      so there is only one place where data objects are constructed.
+        #TODO: break this method up into several methods, because it's really 
+        #      too big.
         
-        #Create data:
+        #Create data: --------------------------------------------------------------
         #get the type object - a NodeIdentifier is expected as class_spec
         class_obj = self.expression_visitor.dispatch(node.class_spec)
         if not isinstance(class_obj, TypeObject):
@@ -2441,26 +2448,16 @@ class StatementVisitor(Visitor):
         #put new object also into module namespace, if name given
         if node.name is not None:
             self.environment.local_scope.create_attribute(node.name, tree_object)
-#        print 'tree_object ------------------------------------------------------'
+#        print 'tree_object ------'
 #        print tree_object
         
         #provide a module where local variables of functions can be stored
         func_locals = InterpreterObject()
         
-        #create (empty) flat object
-        flat_object = CompiledClass()
-        flat_object.instance_name = node.name
-        flat_object.class_name = class_obj.name
-        #flat_object.type = tree_object.type
-        flat_object.loc = tree_object.type().loc 
-        
-        #Create code: 
-        #TODO: additional main functions for changing parameters from outside
-        #      'init_xxx(this, a, b, ..., z)' 
-        #      Any method with a name starting with 'init_' is considered an alternative
-        #      initialization function, and it is created as a main function.
+        #specify and discover main functions ---------------------------------------
+        #TODO: Implement automatic calling of main functions in child objects.
         #TODO: additional main function for steady-state simulations:
-        #        init_steadystate(x01)
+        #        init_steadystate(this, x01)
         #      The function is called repeatedly during a steady-state simulation
         #      to initialize the system with slightly different conditions. The 
         #      argument x01 varies during the steady state simulation in small steps 
@@ -2472,19 +2469,72 @@ class StatementVisitor(Visitor):
         #      in "init":       only RoleParameter, RoleVariable, RoleConstant 
         #      in "dynamic":    only RoleAlgebraicVariable, RoleConstant 
         #      in "final":      only RoleVariable, RoleConstant 
+        
+        #TODO: Mabe replace list with template object that is a CompiledClass
+        #      The template class would include all required main functions.
+        #      This way different output objects for optimization/solution of ODE
+        #      could be realized. In principle such objects could be written in Siml
+        #      Additional special propperties could be added by pragme statements.
         main_func_specs = \
-            [Node(name=DotName('dynamic'), 
-                  roles=(RoleAlgebraicVariable, RoleTimeDifferential, RoleConstant)),
-             Node(name=DotName('initialize'), 
-                  roles=(RoleParameter, RoleVariable, RoleConstant)),
-             Node(name=DotName('final'), 
-                  roles=(RoleVariable, RoleConstant))]
+            [Node(#name=DotName('dynamic'), 
+                  target_roles=(RoleAlgebraicVariable, RoleTimeDifferential, 
+                                RoleConstant),
+                  call_argument_role=None,
+                  proto=SimlFunction('dynamic', 
+                                     ArgumentList([NodeFuncArg('this')]), 
+                                     None, statements=[], 
+                                     global_scope=BUILT_IN_LIB),
+                  #call=NodeFuncCall('dynamic', [tree_object], {})
+                  ),
+             Node(#name=DotName('initialize'), 
+                  target_roles=(RoleParameter, RoleVariable, RoleConstant),
+                  call_argument_role=RoleParameter,
+                  proto=SimlFunction('initialize', 
+                                     ArgumentList([NodeFuncArg('this')]), 
+                                     None, statements=[], 
+                                     global_scope=BUILT_IN_LIB)),
+             Node(#name=DotName('final'), 
+                  target_roles=(RoleVariable, RoleConstant),
+                  call_argument_role=None,
+                  proto=SimlFunction('final', 
+                                     ArgumentList([NodeFuncArg('this')]), 
+                                     None, statements=[], 
+                                     global_scope=BUILT_IN_LIB))]
+        #Search additional main functions for changing parameters from outside
+        #      'init_xxx(this, ...)' 
+        #      Any method with a name starting with 'init_' is considered an alternative
+        #      initialization function, and it is created as a main function.
+        for name, attr in tree_object.type().attributes.iteritems():
+            if str(name).startswith('init_') and siml_callable(attr):
+                new_spec = Node()
+                new_spec.name=name
+                new_spec.target_roles=(RoleParameter, RoleVariable, RoleConstant)
+                new_spec.call_argument_role = RoleParameter
+                new_spec.proto=SimlFunction(name, 
+                                            attr.argument_definition.copy(), 
+                                            None, statements=[], 
+                                            global_scope=BUILT_IN_LIB) 
+                main_func_specs.append(new_spec)
+         
+        #Create code: ------------------------------------------------------------------
+        #create (empty) flat object
+        flat_object = CompiledClass()
+        flat_object.instance_name = node.name
+        flat_object.class_name = class_obj.name
+        #flat_object.type = tree_object.type
+        flat_object.loc = tree_object.type().loc 
+        #put special attribute time into flat object
+        flat_object.create_attribute('time', TIME)
+            
         #call the main functions of tree_object and collect code
         for spec in main_func_specs:
-            func_name = spec.name             #IGNORE:E1101
-            legal_roles = spec.roles          #IGNORE:E1101
+            func_name = spec.proto.name             #IGNORE:E1101
+            legal_roles = spec.target_roles         #IGNORE:E1101
+            
             #get one of the main functions of the tree object
-            if not tree_object.has_attribute(func_name):
+            try:
+                func_tree = tree_object.get_attribute(func_name)
+            except UndefinedAttributeError:
                 #Create empty function for the missing main funcion
                 func_flat = SimlFunction(func_name, ArgumentList([NodeFuncArg('this')]), 
                                          None, statements=[], global_scope=BUILT_IN_LIB)
@@ -2492,13 +2542,25 @@ class StatementVisitor(Visitor):
                 print 'Warning: main function %s is not defined.' % str(func_name)
                 continue
             
+            #create argument list for call to main function
+            args_list = []
+            args_role = spec.call_argument_role
+            for i, arg_def in enumerate(spec.proto.argument_definition.arguments):
+                #ignore 'this'
+                if i == 0:
+                    continue
+                #create argument, which is always unkown. default type is Float
+                if arg_def.type is None:
+                    arg = IFloat()
+                else:
+                    arg = arg_def.type()()
+                arg.role = args_role
+                args_list.append(arg)
+            
             #call the main function and collect code
-            #TODO: remove 'is_assigned' mark from attributes
-            #TODO: Implement automatic calling of main functions in child objects.
             self.interpreter.start_collect_code(func_locals=func_locals, 
                                                 assign_target_roles=legal_roles)
-            func_tree = tree_object.get_attribute(func_name)
-            func_tree()
+            func_tree(*args_list)  #IGNORE:W0142
             stmt_list, dummy = self.interpreter.stop_collect_code()
             #create a new main function for the flat object with the collected code
             func_flat = SimlFunction(func_name, ArgumentList([NodeFuncArg('this')]), 
@@ -2507,9 +2569,8 @@ class StatementVisitor(Visitor):
             #Put new main function into flat object
             flat_object.create_attribute(func_name, func_flat)
 
-        #print 'func_locals -----------------------------------------------------'
+        #print 'func_locals ------------'
         #print func_locals
-        #return
     
         #flatten tree_object (the data) recursively.
         flattened_attributes = set()
@@ -2543,8 +2604,6 @@ class StatementVisitor(Visitor):
         flatten(tree_object, flat_object, DotName())   
         #flatten local variables
         flatten(func_locals, flat_object, DotName('__func_local__')) 
-        #put special attribute time into flat object
-        flat_object.create_attribute('time', TIME)
         
         #TODO: test: the methods of flat object must not use any data from 
         #      outside of flat_object.

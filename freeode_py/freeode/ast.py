@@ -954,6 +954,12 @@ class SimpleArgumentList(Node):
         #list of argument definitions [ast.NodeFuncArg, ...]
         self.arguments = arguments
         #--- convenience values -----------------------------------------#
+        #TODO: maybe put all code below this line into 
+        #        interpreter.ArgumentList
+        #      so that all parts of the algorithm are together.
+        #      This would also better fit to the design of other
+        #      ast.Nodes which just store some data, and do not contain
+        #      complex algorithms.
         #dictionary for quick access to argument definitions by name
         #also for testing uniqueness and existence of argument names 
         self.argument_dict = {}

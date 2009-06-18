@@ -9,8 +9,7 @@ class Batch:
     #Initialize the simulation.
     func initialize(this):
         #Specify options for the simulation algorithm.
-        #solutionParameters.simulationTime = 20;     #total simulation time
-        #solutionParameters.reportingInterval = 0.1; #time between data points
+        solution_parameters(duration=20, reporting_interval=0.1)
         #Give values to the parameters
         mu_max = 0.32; #max growth speed
         Ks     = 0.01; #at this sugar concentration growth speed is 0.5*mu_max

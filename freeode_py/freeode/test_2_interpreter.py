@@ -1272,7 +1272,6 @@ compile B
     print
     #print intp.modules['test']
     #print intp.get_compiled_objects()[0]
-    #TODO: Assertions
 
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
@@ -1403,6 +1402,84 @@ compile A
     #instance variables:   a1, $a1, 
     #local variables:      A.dynamic.b, A.dynamic.c, 
     #intermediate result:  A.foo.x, (2nd call)
+    assert len(sim.attributes) == 9
+    
+
+
+def test_compile_statement_2(): #IGNORE:C01111
+    msg = \
+    '''
+    Test the compile statement:
+    - Additional initialization methods must be recognized, and put into 
+      the flat object.
+    - These methods have names of the form: init_xxx(this, ...)
+    '''
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import Interpreter, IFloat, CallableObject
+    from freeode.ast import DotName, NodeAssignment
+
+    prog_text = \
+'''
+class A:
+    data a: Float 
+    data b: Float param
+    
+    #This is the additional initialization function.
+    func init_b(this, in_b):
+        b = in_b #set parameter
+        a = 0    #set initial value
+        
+    func initialize(this):
+        b = 0.1 #set parameter
+        a = 0   #set initial value
+        
+    func dynamic(this):
+        $a = b
+
+    func final(this):
+        pass
+        
+compile A
+'''
+
+    #create the interpreter
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+  
+    print
+    #print intp.modules['test']
+    #print intp.get_compiled_objects()[0] 
+    
+    #get flattened object
+    sim = intp.get_compiled_objects()[0] 
+    
+    #get the attributes that we have defined
+    a = sim.get_attribute(DotName('a'))
+    a_dt = sim.get_attribute(DotName('a$time'))
+    initialize = sim.get_attribute(DotName('initialize'))
+    init_b = sim.get_attribute(DotName('init_b'))
+    dynamic = sim.get_attribute(DotName('dynamic'))
+    final = sim.get_attribute(DotName('final'))
+    #test some facts about the attributes
+    assert isinstance(a, IFloat)
+    assert isinstance(a_dt, IFloat)
+    assert isinstance(initialize, CallableObject)
+    assert isinstance(dynamic, CallableObject)
+    assert isinstance(final, CallableObject)
+    #test the additional initialization method 'init_b' a little closer
+    #it must contain 2 assignments
+    assert isinstance(init_b, CallableObject)
+    init_b_stmts = init_b.statements
+    assert len(init_b_stmts) == 2
+    assert isinstance(init_b_stmts[0], NodeAssignment)
+    assert isinstance(init_b_stmts[1], NodeAssignment)
+
+    #check number of attributes, most are automatically generated
+    #global variable:     time
+    #methods:             initialize, init_b, dynamic, final, 
+    #instance variables:  a, $a, b
+    #local variables:     init_b.in_b
     assert len(sim.attributes) == 9
     
 
@@ -1860,6 +1937,6 @@ compile A
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_if_statement_5()
+    test_compile_statement_2()
     pass
 

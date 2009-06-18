@@ -126,7 +126,7 @@ def test_SimulationClassGenerator__create_sim_class_1():
     import cStringIO
     from freeode.pygenerator import SimulationClassGenerator
     from freeode.interpreter import Interpreter
-    from freeode.simulatorbase import SimulatorBase
+    #from freeode.simulatorbase import SimulatorBase
     
     prog_text = \
 '''
@@ -194,7 +194,7 @@ def test_ProgramGenerator__write_program_end():
     
 
 
-def test_ProgramGenerator__create_program():
+def test_ProgramGenerator__create_program_1():
     msg = ''' Test ProgramGenerator.create_program: 
     Just see if function does not crash.
     '''
@@ -227,10 +227,56 @@ compile A
     pg.create_program('foo.siml', intp.get_compiled_objects())
     print pg.get_buffer()
     
+    #TODO: write the buffer into a file, import the file as a module, test the module
+
+
+def test_ProgramGenerator__create_program_2():
+    msg = ''' Test ProgramGenerator.create_program: 
+    Test program with additional initialization function.
+    Just see if function does not crash.
+    '''
+    py.test.skip(msg)
+    print msg
+    
+    from freeode.pygenerator import ProgramGenerator
+    from freeode.interpreter import Interpreter
+    
+    prog_text = \
+'''
+class A:
+    data a: Float 
+    data b: Float param
+    
+    #This is the additional initialization function.
+    func init_b(this, in_b):
+        b = in_b #set parameter
+        a = 0    #set initial value
+        
+    func initialize(this):
+        b = 0.1 #set parameter
+        a = 0   #set initial value
+        
+    func dynamic(this):
+        $a = b
+        
+compile A
+'''
+    
+    #interpret the compile time code
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, 'foo.siml', '__main__')
+    #create the output text
+    pg = ProgramGenerator()
+    pg.create_program('foo.siml', intp.get_compiled_objects())
+    print pg.get_buffer()
+    assert False, 'No Python function generated for init_b.'
+    
+    #TODO: write the buffer into a file, import the file as a module, test the module
+    
 
 
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_ProgramGenerator__create_program()
+    test_ProgramGenerator__create_program_2()
     pass

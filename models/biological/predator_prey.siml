@@ -44,7 +44,6 @@
 class ClassicModel:
     data x, y: Float #state variables
     data a, b, c, d: Float param
-    data x0, y0: Float param #parameters for initial values
     data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
@@ -59,13 +58,12 @@ class ClassicModel:
         a = 1; b = 1; c = 1;
         d = b*0.2 #for each unit of prey eaten, the predators grow 0.2 units
         #initial values
-        x0 = 2
-        y0 = 2
-        x = x0; y = y0;
+        x = 2
+        y = 2
 
         #administrative parameters
         showGraph = 1
-        solution_parameters(duration = 20, reporting_interval = 0.1)
+        solution_parameters(duration = 30, reporting_interval = 0.1)
 
 
     func final(this):
@@ -85,7 +83,6 @@ class ClassicModel:
 class LogisticPrey:
     data x, y: Float #state variables
     data a, b, c, d, K: Float param
-    data x0, y0: Float param #parameters for initial values
     data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
@@ -101,9 +98,8 @@ class LogisticPrey:
         d = b*0.2 #for each unit of prey eaten, the predators grow 0.2 units
         K = 20
         #initial values
-        x0 = 2
-        y0 = 2
-        x = x0; y = y0
+        x = 2
+        y = 2
 
         #administrative parameters
         showGraph = 1
@@ -161,12 +157,12 @@ class EnhancedModel:
         Hx = 0  # 2.  #Hunting rate on prey
         Hy = 0  # 0.5 #Hunting rate on predator
         #initial values
-        x = 5
-        y = 0.5
+        x = 2
+        y = 2
 
         #administrative parameters
         showGraph = 1
-        solution_parameters(duration = 100, reporting_interval = 0.1)
+        solution_parameters(duration = 30, reporting_interval = 0.1)
 
 
     func final(this):
