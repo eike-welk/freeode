@@ -373,11 +373,17 @@ class SimulationClassGenerator(object):
         Create python names for all variables and parameters
         The python names are stored in the attribute: target_name 
         Additionally the dotted Siml name is stored in: siml_dot_name
+        
+        TODO: The external inputs get their Python names in:
+                StatementVisitor.visit_NodeCompileStmt(...)
+              this is quite a bad hack.
         '''
-        #TODO: prepend variables and parameters with different additional strings?
+        #parameters get a unique prefix, because they reside inside the 
+        #simulation object. Variables on the other hand are local objects of
+        #the main functions.
         param_prefix = 'param.'
-#        varPrefix = 'v'
-        py_names = set() #set of already existing target names.
+        #set of already existing target names.
+        py_names = set() 
 
         #loop over all attribute definitions and create an unique python name
         #for each attribute
@@ -429,17 +435,22 @@ class SimulationClassGenerator(object):
         self.write('\n\n')
 
 
-    def write_initialize_method(self):
+    def write_initialize_method(self, method_name=DotName('initialize')):
         '''Generate method that initializes variables and parameters'''
-        #get the process' init method
-        method_name = DotName('initialize')
-        if self.flat_object.has_attribute(method_name):
-            method = self.flat_object.get_attribute(method_name)
-        else:
-            return
+        #get the init method
+        method = self.flat_object.get_attribute(method_name)
+        
+        #include additional method arguments
+        meth_args = ''
+        for i, arg_def in enumerate(method.argument_definition.arguments): #IGNORE:E1103
+            #ignore 'this'
+            if i == 0:
+                continue
+            meth_args += str(arg_def.name) + ', '
+
         #write method definition
         ind8 = ' '*8
-        self.write('    def initialize(self,  *args, **kwArgs): \n')
+        self.write('    def %s(self,  %s): \n' % (str(method_name), meth_args))
         self.write(ind8 + '\'\'\' \n')
         self.write(ind8 + 'Compute parameter values and \n')
         self.write(ind8 + 'compute initial values of state variables \n')
@@ -591,7 +602,11 @@ class SimulationClassGenerator(object):
         #output program text
         self.write_class_def_start()
         self.write_constructor()
-        self.write_initialize_method()
+        self.write_initialize_method(DotName('initialize'))
+        #write initialization methods with additional arguments
+        is_additional_init = lambda name: str(name).startswith('init_')
+        for name in filter(is_additional_init, self.flat_object.attributes):
+            self.write_initialize_method(name)
         self.write_dynamic_method()
         self.write_final_method()
         #TODO: separate function to compute the algebraic variables.

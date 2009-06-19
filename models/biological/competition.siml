@@ -1,16 +1,16 @@
 #Competition of Two Species
 #
-# This is a simple model of competition of two species in a biologial system.
+# This is a simple model of competition of two species in a biological system.
 # The species compete for some common resource, which is not explicitly
 # mentioned in the equations.
-# The differential equations were propsed by Alfred J. Lotka and Vito Volterra.
+# The differential equations were proposed by Alfred J. Lotka and Vito Volterra.
 #
 #See:
 #   http://en.wikipedia.org/wiki/Lotka-Volterra_inter-specific_competition_equations
 #   Leah Edelstein-Keshet; Mathematical Models in Biology; 1988.
 #       (republished by SIAM 2005) pp. 224.
 #
-# The whole argumentations and the variable names were taken from
+# The whole argumentation and the variable names were taken from
 # [Edelstein-Keshet].
 #
 #Differential Equations:
@@ -34,6 +34,9 @@
 class CompetitionModel:
     data N1, N2: Float #state variables
     data r1, r2, k1, k2, b12, b21: Float param
+    #r1,  r2:  growth rates
+    #k1,  k2:  carrying capacities of the system
+    #b12, b21: sensitivity against presence of the other species
 
     #The system's equations
     func dynamic(this):
@@ -41,20 +44,21 @@ class CompetitionModel:
         $N1 = r1*N1 * (k1-N1 - b12*N2)/k1
         $N2 = r2*N2 * (k2-N2 - b21*N1)/k2
 
-    #Function to detect the four different cases.
-    #The simulation's final outcome is independent of the growth rate.
-    func printCase(this):
+    #TODO: This function currently crashes the parser
+    ##Function to detect the four different cases.
+    ##The simulation's final outcome is independent of the growth rate.
+    #func printCase(this):
         #if k2/b21 > k1  and  k2 > k1/b12:
             #print('Case 1: N2 will outgrow N1.')
         #elif k1 > k2/b12  and  k1/b12 > k2:
             #print('Case 2: N1 will outgrow N2.')
         #elif k1 > k2/b21  and  k2 > k1/b12:
-            #print('Case 3: species with highest inital value will survive.')
+            #print('Case 3: species with highest initial value will survive.')
         #elif k2/b12 > k1  and  k1/b12 > k2:
             #print('Case 4: Stable coexistence of both species.')
         #else:
             #print('Huh!')
-        pass
+        #pass
 
 
 
@@ -62,7 +66,6 @@ class CompetitionModel:
 #N2 will always outgrow N1.
 class Case1:
     data m: CompetitionModel
-    data N1_init, N2_init: Float param #parameters for initial values
     data showGraph: Float param #Flag if graphs should be shown
 
     func initialize(this):
@@ -71,13 +74,8 @@ class Case1:
         m.k1 = 5; m.k2 = 10  #carrying capacities
         m.b12 = 1; m.b21 = 1 #sensitivity against presence of the other species
         #initial values
-        N1_init = 0.5
-        N2_init = 0.5
-        m.N1 = N1_init; m.N2 = N2_init
-
-        #print which case it is
-        m.printCase()
-
+        m.N1 = 0.5
+        m.N2 = 0.5
         #administrative parameters
         showGraph = 1 #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
@@ -97,7 +95,6 @@ class Case1:
 #N1 will always outgrow N2.
 class Case2:
     data m: CompetitionModel
-    data N1_init, N2_init: Float param #parameters for initial values
     data showGraph: Float param #Flag if graphs should be shown
 
     func initialize(this):
@@ -106,13 +103,8 @@ class Case2:
         m.k1 = 10; m.k2 = 5  #carrying capacities
         m.b12 = 1; m.b21 = 1 #sensitivity against presence of the other species
         #initial values
-        N1_init = 0.5
-        N2_init = 0.5
-        m.N1 = N1_init; m.N2 = N2_init
-
-        #print which case it is
-        m.printCase()
-
+        m.N1 = 0.5
+        m.N2 = 0.5
         #administrative parameters
         showGraph = 1; #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
@@ -128,29 +120,37 @@ class Case2:
             pass
 
 
-#Which species will survive, depends on inital value and on growth speed.
-#High values in growth speed or inital value are good for surival
-#The steady state node in the midle of the diagram is a saddle.
+#Which species will survive, depends on initial value and on growth speed.
+#High values in growth speed or initial value are good for survival
+#The steady state node in the middle of the diagram is a saddle.
 class Case3:
     data m: CompetitionModel
-    data N1_init, N2_init: Float param #parameters for initial values
     data showGraph: Float param #Flag if graphs should be shown
 
     func initialize(this):
         #parameters
         m.r1 = 1; m.r2 = 1   #growth rates
-        m.k1 = 10; m.k2 = 10  #carrying capacities
+        m.k1 = 10; m.k2 = 10 #carrying capacities
         m.b12 = 2; m.b21 = 2 #sensitivity against presence of the other species
         #initial values
-        N1_init = 0.51
-        N2_init = 0.5
-        m.N1 = N1_init; m.N2 = N2_init
-
-        #print which case it is
-        m.printCase()
-
+        m.N1 = 0.51
+        m.N2 = 0.5
         #administrative parameters
         showGraph = 1; #yes, show the graph
+        solution_parameters(duration=20, reporting_interval=0.1)
+
+    #Additional initialization function where some information can be supplied
+    #by a Python script
+    func init_r1(this, in_r1):
+        #parameters
+        m.r1 = in_r1; m.r2 = 1 #growth rates
+        m.k1 = 10; m.k2 = 10   #carrying capacities
+        m.b12 = 2; m.b21 = 2   #sensitivity against presence of the other species
+        #initial values
+        m.N1 = 0.51
+        m.N2 = 0.5
+        #administrative parameters
+        showGraph = 0; #no graph
         solution_parameters(duration=20, reporting_interval=0.1)
 
     #this function is called repeatedly by the solver
@@ -167,26 +167,32 @@ class Case3:
 #Stable coexistence of both species.
 class Case4:
     data m: CompetitionModel
-    data N1_init, N2_init: Float param #parameters for initial values
     data showGraph: Float param #Flag if graphs should be shown
 
     func initialize(this):
         #parameters
-        m.r1 = 1; m.r2 = 1   #growth rates
-        m.k1 = 10; m.k2 = 10  #carrying capacities
+        m.r1 = 1; m.r2 = 1       #growth rates
+        m.k1 = 10; m.k2 = 10     #carrying capacities
         m.b12 = 0.5; m.b21 = 0.5 #sensitivity against presence of the other species
         #initial values
-        N1_init = 2
-        N2_init = 0.5
-        #N1_init = 0.5
-        #N2_init = 2
-        m.N1 = N1_init; m.N2 = N2_init
-
-        #print which case it is
-        m.printCase()
-
+        m.N1 = 2
+        m.N2 = 0.5
         #administrative parameters
         showGraph = 1; #yes, show the graph
+        solution_parameters(duration=20, reporting_interval=0.1)
+
+    #Additional initialization function where some information can be supplied
+    #by a Python script
+    func init_r1(this, in_r1):
+        #parameters
+        m.r1 = in_r1; m.r2 = 1   #growth rates
+        m.k1 = 10; m.k2 = 10     #carrying capacities
+        m.b12 = 0.5; m.b21 = 0.5 #sensitivity against presence of the other species
+        #initial values
+        m.N1 = 2
+        m.N2 = 0.5
+        #administrative parameters
+        showGraph = 0; #don't show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
 
     #this function is called repeatedly by the solver

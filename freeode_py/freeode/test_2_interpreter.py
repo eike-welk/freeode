@@ -1468,19 +1468,25 @@ compile A
     assert isinstance(dynamic, CallableObject)
     assert isinstance(final, CallableObject)
     #test the additional initialization method 'init_b' a little closer
-    #it must contain 2 assignments
     assert isinstance(init_b, CallableObject)
+    #'init_b' must contain 2 assignments
     init_b_stmts = init_b.statements
     assert len(init_b_stmts) == 2
     assert isinstance(init_b_stmts[0], NodeAssignment)
     assert isinstance(init_b_stmts[1], NodeAssignment)
-
+    #'init_b' must have 2 arguments: 'this', 'in_b'
+    init_b_args = init_b.argument_definition.arguments
+    assert len(init_b_args) == 2
+    assert init_b_args[0].name == DotName('this')
+    assert init_b_args[1].name == DotName('in_b')
     #check number of attributes, most are automatically generated
     #global variable:     time
     #methods:             initialize, init_b, dynamic, final, 
     #instance variables:  a, $a, b
-    #local variables:     init_b.in_b
-    assert len(sim.attributes) == 9
+    #local variables:     -
+    assert len(sim.attributes) == 8
+    #check number of external inputs. Should be one: 'in_b'
+    assert len(sim.external_inputs) == 1
     
 
 

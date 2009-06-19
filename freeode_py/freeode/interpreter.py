@@ -1738,8 +1738,18 @@ class CompiledClass(InterpreterObject):
     '''The compile statement creates this kind of object.'''
     def __init__(self):
         super(CompiledClass, self).__init__()
+        #name of compiled object (currently unused)
         self.instance_name = None
+        #classname of compiled object (For each compiled object a Python 
+        #class is created. This class has same/similar name as the Siml class)
         self.class_name = None
+        #InterpreterObject instances (usually IFloat) whose values are 
+        #supplied from the outside at runtime. Currently arguments of 
+        #initialization functions.
+        self.external_inputs = []
+#        #list of tuples: [(name, argument)] this way the arguments of main functions
+#        #can get their target name. The argument names can appear multiple times in the simulation.
+#        self.main_func_arg_names = []
         self.loc = None
         
     
@@ -2463,6 +2473,7 @@ class StatementVisitor(Visitor):
         #      argument x01 varies during the steady state simulation in small steps 
         #      from 0 to 1. It is intended to control the variations of interesting 
         #      parameters during the steady-state simulation.
+        
         #In different parts of code only variables with speciffic roles 
         #are valid targets of an assign statement.
         #      outside compile: only RoleConstant
@@ -2549,13 +2560,16 @@ class StatementVisitor(Visitor):
                 #ignore 'this'
                 if i == 0:
                     continue
-                #create argument, which is always unkown. default type is Float
+                #create argument, which is always unknown. default type is Float
                 if arg_def.type is None:
                     arg = IFloat()
                 else:
                     arg = arg_def.type()()
                 arg.role = args_role
+                arg.target_name = str(arg_def.name) #TODO: This is bad hack!
                 args_list.append(arg)
+                #The arguments are not attributes of the simulation object
+                flat_object.external_inputs.append(arg)
             
             #call the main function and collect code
             self.interpreter.start_collect_code(func_locals=func_locals, 
@@ -2563,7 +2577,7 @@ class StatementVisitor(Visitor):
             func_tree(*args_list)  #IGNORE:W0142
             stmt_list, dummy = self.interpreter.stop_collect_code()
             #create a new main function for the flat object with the collected code
-            func_flat = SimlFunction(func_name, ArgumentList([NodeFuncArg('this')]), 
+            func_flat = SimlFunction(func_name, spec.proto.argument_definition, 
                                      None, statements=stmt_list, 
                                      global_scope=BUILT_IN_LIB)                                 
             #Put new main function into flat object
@@ -2572,8 +2586,13 @@ class StatementVisitor(Visitor):
         #print 'func_locals ------------'
         #print func_locals
     
+        #The external inputs should not get regular long names. They live in
+        #their own list and are not attributes of the simulation object.
+        external_inputs = set([id(o) for o in flat_object.external_inputs])
+        
         #flatten tree_object (the data) recursively.
         flattened_attributes = set()
+        flattened_attributes.update(external_inputs)
         def flatten(tree_obj, flat_obj, prefix):
             '''
             Put all attributes (all data leaf objects) into a new flat 

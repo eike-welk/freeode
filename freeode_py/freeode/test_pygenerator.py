@@ -235,7 +235,7 @@ def test_ProgramGenerator__create_program_2():
     Test program with additional initialization function.
     Just see if function does not crash.
     '''
-    py.test.skip(msg)
+    #py.test.skip(msg)
     print msg
     
     from freeode.pygenerator import ProgramGenerator
@@ -269,7 +269,6 @@ compile A
     pg = ProgramGenerator()
     pg.create_program('foo.siml', intp.get_compiled_objects())
     print pg.get_buffer()
-    assert False, 'No Python function generated for init_b.'
     
     #TODO: write the buffer into a file, import the file as a module, test the module
     
