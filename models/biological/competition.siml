@@ -1,3 +1,8 @@
+#    Copyright (C) 2009 by Eike Welk
+#    eike.welk@post.rwth-aachen.de
+
+
+
 #Competition of Two Species
 #
 # This is a simple model of competition of two species in a biological system.
@@ -80,6 +85,20 @@ class Case1:
         showGraph = 1 #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
 
+    ##Additional initialization function where some information can be supplied
+    ##by a Python script
+    #func init_states(this, N1, N2):
+        ##parameters
+        #m.r1 = 1; m.r2 = 1   #growth rates
+        #m.k1 = 5; m.k2 = 10  #carrying capacities
+        #m.b12 = 1; m.b21 = 1 #sensitivity against presence of the other species
+        ##initial values
+        #m.N1 = N1
+        #m.N2 = N2
+        ##administrative parameters
+        #showGraph = 0 #don't show the graph
+        #solution_parameters(duration=20, reporting_interval=0.1)
+
     #this function is called repeatedly by the solver
     func dynamic(this):
         m.dynamic()
@@ -108,6 +127,20 @@ class Case2:
         #administrative parameters
         showGraph = 1; #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
+
+    ##Additional initialization function where some information can be supplied
+    ##by a Python script
+    #func init_states(this, N1, N2):
+        ##parameters
+        #m.r1 = 1; m.r2 = 1   #growth rates
+        #m.k1 = 10; m.k2 = 5  #carrying capacities
+        #m.b12 = 1; m.b21 = 1 #sensitivity against presence of the other species
+        ##initial values
+        #m.N1 = N1
+        #m.N2 = N2
+        ##administrative parameters
+        #showGraph = 1; #yes, show the graph
+        #solution_parameters(duration=20, reporting_interval=0.1)
 
     #this function is called repeatedly by the solver
     func dynamic(this):

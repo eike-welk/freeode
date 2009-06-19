@@ -1,0 +1,93 @@
+#    Copyright (C) 2009 by Eike Welk
+#    eike.welk@post.rwth-aachen.de
+
+
+
+#Relatively complex predator-prey model.
+#
+#This is the 3rd model from the file 'predator_prey.siml', however here
+#the model has been made robust against numerical problems. This has led
+#to poorer readability.
+#
+# Features:
+#   prey     : logistic growth
+#   predators: growth with maximum food uptake capacity
+#   Hunting  : predators and prey are killed by an additional super predator
+#
+# For the predators there are interesting consequences:
+# - If they are bad hunters (Ky = 30) they survive in high numbers (y ~ 5),
+#   together with high numbers of prey.
+# - If they are good hunters (Ky = 3) there are strong fluctuations in both
+#   populations. Long periods of famine alternate wit short periods of
+#   very much food. But even their peak numbers (y ~ 3.6) are lower than the
+#   numbers in the bad hunting scenario.
+#
+# Moderate hunting of any species by the super-predator stabilizes both
+# populations as expected.
+class EnhancedModel:
+    data x, y: Float #x:prey, y:predators
+    data xp, yp: Float
+    data muX, muY: Float #growth rates
+    data hunting_yield: Float #Amount of animals killed by huntiong
+    data muXMax, muYMax, Yxy, Dy, Kx, Ky, Hx, Hy: Float param
+    data showGraph: Float param #Flag if graphs should be shown
+
+    func dynamic(this):
+        xp = max(x, 0); yp = max(y, 0)
+        muX = muXMax *(Kx-xp)/Kx  #prey's growth rate (logistic growth)
+        muY = muYMax *xp/(xp+Ky)  #predator's growth rate
+        #  | growth | predation | hunting
+        $x = muX*xp - Yxy*yp*muY- Hx*xp #prey
+        #  | growth | death     | hunting
+        $y = muY*yp - Dy*yp     - Hy*yp #predator
+        hunting_yield = Hx*xp + Hy*yp
+
+
+    func initialize(this):
+        #parameters
+        muXMax = 5 #prey's max growth rate
+        Yxy = 10 #units prey necessary to produce one unit of predator
+        Dy = 0.5 #predator's death rate
+        muYMax = 2 #predator's max growth rate
+        Kx = 20 #system's carrying capacity for prey
+        Ky = 8  # 8   #Low prey concentration, hunting speed is 0.5 muYMax
+        Hx = 0  # 2.  #Hunting rate on prey
+        Hy = 0  # 0.5 #Hunting rate on predator
+        #initial values
+        x = 2
+        y = 2
+
+        #administrative parameters
+        showGraph = 1
+        solution_parameters(duration = 30, reporting_interval = 0.1)
+
+
+    func init_hunting(this, Hx_in, Hy_in, x_in, y_in, duration):
+        #parameters
+        muXMax = 5 #prey's max growth rate
+        Yxy = 10 #units prey necessary to produce one unit of predator
+        Dy = 0.5 #predator's death rate
+        muYMax = 2 #predator's max growth rate
+        Kx = 20 #system's carrying capacity for prey
+        Ky = 8  # 8   #Low prey concentration, hunting speed is 0.5 muYMax
+        Hx = Hx_in  # 2.  #Hunting rate on prey
+        Hy = Hy_in  # 0.5 #Hunting rate on predator
+        #initial values
+        x = x_in
+        y = y_in
+
+        #administrative parameters
+        showGraph = 0
+        solution_parameters(duration = duration, reporting_interval = 0.1)
+
+
+    func final(this):
+        if showGraph == 1:
+            graph(x, y, title='Strongly Modified Predator Prey Model')
+        else:
+            pass
+
+
+
+compile EnhancedModel
+

@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+#    Copyright (C) 2009 by Eike Welk
+#    eike.welk@post.rwth-aachen.de
+
+
+
 
 #Lotka and Volterra's model of competition of two species. (Not Predator-Prey)
 #
@@ -15,6 +20,8 @@
 #   Leah Edelstein-Keshet; Mathematical Models in Biology; 1988.
 #       (republished by SIAM 2005) pp. 224.
 #
+
+
 
 from __future__ import division
 #import library functions

@@ -1,10 +1,38 @@
 #!/usr/bin/env python
-#Create phase plane diagrams of the different cases of Lotka and Volterra's
-#model of competition of two species.
+#    Copyright (C) 2009 by Eike Welk
+#    eike.welk@post.rwth-aachen.de
+
+
+
+##############################################################################
+#                           CURENTLY NOT PORTED                              #
+#                                                                            #
+#       THE NECESSARY SIML PROGRAM WOULD BE TOO COMPLEX FOR THE PARSER       #
+##############################################################################
+
+
+
+#Lotka and Volterra's model of competition of two species. (Not Predator-Prey)
+#
+#                   --- Create phase plane diagrams ---
+#
+#
+# This is a simple model of competition of two species in a biological system.
+# The species compete for some common resource, which is not explicitly
+# mentioned in the equations.
+# The differential equations were proposed by Alfred J. Lotka and Vito Volterra.
+#
+#See:
+#   http://en.wikipedia.org/wiki/Lotka-Volterra_inter-specific_competition_equations
+#   Leah Edelstein-Keshet; Mathematical Models in Biology; 1988.
+#       (republished by SIAM 2005) pp. 224.
+#
+
+
 
 #import library functions
 from pylab import plot, show, figure, xlabel, ylabel, legend, title
-from numpy import array, linspace, hstack
+from numpy import array, linspace, hstack, r_
 #import the compiled simulation objects
 from competition import Case1, Case2, Case3, Case4
 

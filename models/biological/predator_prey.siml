@@ -133,17 +133,19 @@ class LogisticPrey:
 # populations as expected.
 class EnhancedModel:
     data x, y: Float #x:prey, y:predators
-    data muX, muY: Float
+    data muX, muY: Float #growth rates
+    data hunting_yield: Float #Amount of animals killed by huntiong
     data muXMax, muYMax, Yxy, Dy, Kx, Ky, Hx, Hy: Float param
     data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
-        muX = muXMax *(Kx-x)/Kx #prey's growth rate (logistic growth)
+        muX = muXMax *(Kx-x)/Kx  #prey's growth rate (logistic growth)
         muY = muYMax *x/(x+Ky)  #predator's growth rate
         #  | growth | predation | hunting
-        $x = muX*x  - Yxy*y*muY - Hx*x #prey
+        $x = muX*x - Yxy*y*muY- Hx*x #prey
         #  | growth | death     | hunting
-        $y = muY*y  - Dy*y      - Hy*y #predator
+        $y = muY*y - Dy*y     - Hy*y #predator
+        hunting_yield = Hx*x + Hy*y
 
 
     func initialize(this):
