@@ -57,7 +57,7 @@ import pyparsing
 
 
 #version of the Siml compiler.
-PROGRAM_VERSION = '0.4.0a1'
+PROGRAM_VERSION = '0.4.0a2'
 #How much debug information is printed
 # 0: No debug information; 1: some; ....
 DEBUG_LEVEL = 1

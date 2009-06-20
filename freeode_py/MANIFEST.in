@@ -21,12 +21,19 @@ include hl_siml.xml
 #example-models
 include models/biological/bioreactor_simple.siml
 include models/biological/bioreactor.siml
-include models/biological/competition.siml
-include models/biological/competition_parameter_variation1.py
+
+include models/biological/competition_parameter_variation.py
 include models/biological/competition_phase_diagrams.py
-include models/biological/predator_prey.siml
+include models/biological/competition.siml
+
+include models/biological/predator_prey_2_hunting_scenarios.py
+include models/biological/predator_prey_2_phase_diagrams.py
+include models/biological/predator_prey_2.siml
+
 include models/biological/predator_prey_phase_diagrams.py
-include models/biological/tank.siml
+include models/biological/predator_prey.siml
+
+include models/mechanical/tank.siml
 include models/mechanical/tuned_abs_damper.siml
 
 #this file
