@@ -154,7 +154,7 @@ class ExpressionGenerator(Visitor):
     @Visitor.when_type(NodeOpPrefix1, 1)
     def _createOpPrefix1(self, iltFormula):
         #Prefix operator: - not
-        opDict = {'-':' -', 'not':' not '}
+        opDict = {'-':'-', 'not':' not '}
         opStr = opDict[iltFormula.operator]
         return opStr + self.dispatch(iltFormula.arguments[0])
         
