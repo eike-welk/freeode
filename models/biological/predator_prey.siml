@@ -60,10 +60,22 @@ class ClassicModel:
         #initial values
         x = 2
         y = 2
-
         #administrative parameters
         showGraph = 1
         solution_parameters(duration = 30, reporting_interval = 0.1)
+
+
+    #To be called from python for creating phase plots.
+    func init_phase_plot(this, start_x, start_y, duration):
+        #parameters
+        a = 1; b = 1; c = 1;
+        d = b*0.2 #for each unit of prey eaten, the predators grow 0.2 units
+        #initial values
+        x = start_x
+        y = start_y
+        #administrative parameters
+        showGraph = 0
+        solution_parameters(duration = duration, reporting_interval = 0.1)
 
 
     func final(this):
@@ -100,10 +112,23 @@ class LogisticPrey:
         #initial values
         x = 2
         y = 2
-
         #administrative parameters
         showGraph = 1
         solution_parameters(duration = 30, reporting_interval = 0.1)
+
+
+    #To be called from python for creating phase plots.
+    func init_phase_plot(this, start_x, start_y, duration):
+        #parameters
+        a = 1; b = 1; c = 1
+        d = b*0.2 #for each unit of prey eaten, the predators grow 0.2 units
+        K = 20
+        #initial values
+        x = start_x
+        y = start_y
+        #administrative parameters
+        showGraph = 0
+        solution_parameters(duration = duration, reporting_interval = 0.1)
 
 
     func final(this):
@@ -161,10 +186,28 @@ class EnhancedModel:
         #initial values
         x = 2
         y = 2
-
         #administrative parameters
         showGraph = 1
         solution_parameters(duration = 30, reporting_interval = 0.1)
+
+
+    #To be called from python for creating phase plots.
+    func init_phase_plot(this, start_x, start_y, duration):
+        #parameters
+        muXMax = 5 #prey's max growth rate
+        Yxy = 10 #units prey necessary to produce one unit of predator
+        Dy = 0.5 #predator's death rate
+        muYMax = 2 #predator's max growth rate
+        Kx = 20 #system's carrying capacity for prey
+        Ky = 8  # 8   #Low prey concentration, hunting speed is 0.5 muYMax
+        Hx = 0  # 2.  #Hunting rate on prey
+        Hy = 0  # 0.5 #Hunting rate on predator
+        #initial values
+        x = start_x
+        y = start_y
+        #administrative parameters
+        showGraph = 0
+        solution_parameters(duration = duration, reporting_interval = 0.1)
 
 
     func final(this):
