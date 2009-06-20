@@ -16,8 +16,8 @@
 from __future__ import division
 #import library functions
 from pylab import (plot, show, figure, xlabel, ylabel, legend, title, autumn,
-                  hot, cm)
-from numpy import array, linspace, logspace, r_
+                  hot, cm, quiver)
+from numpy import array, linspace, r_, mgrid, zeros, amax, amin
 #import the compiled simulation objects
 from predator_prey_2 import EnhancedModel
 
@@ -40,18 +40,38 @@ def compute_phase_diagram(hunting_rate_x, hunting_rate_y, duration, start_x, sta
     model = EnhancedModel() #create a simulation object instance
     figure() #create new figure window
 
-    max_i = len(duration)-1
-    #do simulations with the different parameter values, plot results
+    #max_i = len(duration)-1
+    xmax, ymax = -1e100, -1e100
+    xmin, ymin = 1e100, 1e100
+    #do simulations with the different parameter values,
+    #plot results into phase plane
     for i in range(len(duration)):
         model.init_hunting(hunting_rate_x, hunting_rate_y,
                            start_x[i], start_y[i], duration[i])
         model.simulateDynamic()   #solve ODE
         res = model.getResults()  #get results as a storage.DictStore object
-        color_tuple = cm.jet(i/max_i)
-        plot(res['x'], res['y'], color=color_tuple, linestyle='--')
+        #color_tuple = cm.jet(i/max_i)
+        plot(res['x'], res['y'], color='black', linestyle='-')
 
-    #TODO: plot field of arrows
-    #quiver(X, Y, U, V, **kw)
+        #find maximum figure dimensions for quiver plot
+        xmax = max(xmax, amax(res['x']))
+        ymax = max(ymax, amax(res['y']))
+        xmin = min(xmin, amin(res['x']))
+        ymin = min(ymin, amin(res['y']))
+
+    #TODO: State vector should be sorted.
+    #Sample differentials at different points in phase plane,
+    #plot field of arrows
+    X, Y = mgrid[xmin:xmax:20j,ymin:ymax:20j]
+    U, V = zeros(X.shape), zeros(X.shape)
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            s_dt = model.dynamic(0, [Y[i,j], X[i,j]])
+            V[i,j],U[i,j] = s_dt[0], s_dt[1]
+    #The axes don't have the same scale, therefore scale the arrows
+    #TODO: this is a bad hack; future keyword 'angles' should do the trick
+    scale_xy = (ymin-ymax)/(xmin-xmax) * 1.3
+    quiver(X, Y, scale_xy*U, V, pivot='center', units='inches', color='red',zorder=0)
 
     #finishing touches on plot
     xlabel('x - prey')
