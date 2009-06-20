@@ -70,12 +70,17 @@ def compute_scenario(hunting_rate_x, hunting_rate_y, duration):
     title('Predator prey with hunting')
 
 
-#yield optimum around hunting_rate_x = 4 ... 4.7
+#Strong hunting on prey. Predator numbers become really low, system takes
+#long time to recover after hunting stops.
+#Yield optimum around hunting_rate_x = 4 ... 4.7
 hunting_rate_x = [0,   4.5,   0]
 hunting_rate_y = [0,   0,   0]
 duration       = [22, 100, 20]
 compute_scenario(hunting_rate_x, hunting_rate_y, duration)
 
+#Moderate hunting on both species. Number of both species relatively high
+#while hunting. System recovers in a short time after hunting stops.
+#Hunting yield is nearly as high as in strong hunting scenario.
 hunting_rate_x = [0,   2,   0]
 hunting_rate_y = [0,   0.2,   0]
 duration       = [22, 100, 20]

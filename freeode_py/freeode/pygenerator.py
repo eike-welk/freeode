@@ -305,8 +305,10 @@ class SimulationClassGenerator(object):
         self.parameters = {}
         #The algebraic variables: dict: {DotName: InterpreterObject]
         self.algebraic_variables = {}
+        self.algebraic_variables_ordered = []
         #The state variables: dict: {DotName: InterpreterObject]
         self.state_variables = {}
+        self.state_variables_ordered = []
         #generated differential variables: dict: {DotName: InterpreterObject]
         self.time_differentials = {}
         
@@ -326,7 +328,7 @@ class SimulationClassGenerator(object):
         #time_differentials = set()
         #create dicts to find and classify attributes fast
         for name, attr in self.flat_object.attributes.iteritems():
-            if not isinstance(attr, (IFloat, IString)):
+            if not isinstance(attr, (FundamentalObject)):
                 continue
             if issubclass(attr.role, RoleParameter):
                 self.parameters[name] = attr
@@ -371,8 +373,9 @@ class SimulationClassGenerator(object):
     def create_attr_py_names(self):
         '''
         Create python names for all variables and parameters
-        The python names are stored in the attribute: target_name 
-        Additionally the dotted Siml name is stored in: siml_dot_name
+        - The python names are stored in the attribute: target_name 
+        - The dotted Siml name is stored in: siml_dot_name
+        
         
         TODO: The external inputs get their Python names in:
                 StatementVisitor.visit_NodeCompileStmt(...)
@@ -385,10 +388,10 @@ class SimulationClassGenerator(object):
         #set of already existing target names.
         py_names = set() 
 
-        #loop over all attribute definitions and create an unique python name
+        #loop over all attribute definitions and create an unique Python name
         #for each attribute
         for name, attr in self.flat_object.attributes.iteritems():
-            if not isinstance(attr, (IFloat, IString)):
+            if not isinstance(attr, FundamentalObject):
                 continue
             #create underline separated name string, replace '$' with '_D'
             py_name1 = '_'.join(name)
@@ -403,6 +406,30 @@ class SimulationClassGenerator(object):
             attr.target_name = py_name1
             #store Siml name in attribute
             attr.siml_dot_name = name
+            
+            
+    def order_attributes(self):
+        '''
+        Creates the order of the vectors of state and algebraic variables.
+        
+        The attributes are sorted according to the siml_dot_name
+        
+        The ordered sequences of variables are:
+            self.algebraic_variables_ordered
+            self.state_variables_ordered
+            
+        #TODO: generalize this for functions for minimizing
+        #TODO: introduce pragma states_order
+        #TODO: introduce pragma input_order
+        #TODO: introduce pragma output_order
+        '''
+        #access the sort key for the sort function
+        get_siml_name = lambda node: node.siml_dot_name
+        #do the sorting
+        self.state_variables_ordered = self.state_variables.values()
+        self.state_variables_ordered.sort(key=get_siml_name)
+        self.algebraic_variables_ordered = self.algebraic_variables.values()
+        self.algebraic_variables_ordered.sort(key=get_siml_name)
 
 
     def write_class_def_start(self):
@@ -477,17 +504,16 @@ class SimulationClassGenerator(object):
 
         #put initial values into array and store them
         self.write(ind8 + '#assemble initial values to array and store them \n')
-        #sequence of variables in the array is determined by self.state_variables
         #create long lines with 'var_ame11, var_name12, var_name13, ...'
         self.write(ind8 + 'self.initialValues = array([')
-        for var in self.state_variables.values():
+        for var in self.state_variables_ordered:
             self.write('%s, ' % var.target_name)
         self.write('], \'float64\') \n')
         self.write(ind8 + 'self.stateVectorLen = len(self.initialValues) \n')
         #assemble vector with algebraic variables to compute their total size
         self.write(ind8 + '#put algebraic variables into array, only to compute its size \n')
         self.write(ind8 + 'algVars = array([')
-        for var in self.algebraic_variables.values():
+        for var in self.algebraic_variables_ordered:
             self.write('%s, ' % var.target_name)
         self.write('], \'float64\') \n')
         self.write(ind8 + 'self.algVectorLen = len(algVars) \n')
@@ -495,9 +521,9 @@ class SimulationClassGenerator(object):
         self.write(ind8 + '#Create mapping between variable names and array indices \n')
         #Create mapping between variable names and array indices
         self.write(ind8 + 'self.variableNameMap = {')
-        for i, varName in enumerate(self.state_variables.keys() +
-                                    self.algebraic_variables.keys()):
-            self.write('\'%s\':%d, ' % (str(varName), i))
+        for i, var in enumerate(self.state_variables_ordered +
+                                self.algebraic_variables_ordered):
+            self.write('\'%s\':%d, ' % (str(var.siml_dot_name), i))
         self.write('}\n')
         self.write('\n\n')
 
@@ -520,10 +546,8 @@ class SimulationClassGenerator(object):
         self.write(ind8 + '#Make parameters visible in dynamic method. \n')
         self.write(ind8 + 'param = self.param \n')
         #take the state variables out of the state vector
-        #sequence of variables in the array is determined by self.state_variables
         self.write(ind8 + '#take the state variables out of the state vector \n')
-        stateVars = self.state_variables.values()
-        for n_var, var in enumerate(stateVars):
+        for n_var, var in enumerate(self.state_variables_ordered):
             self.write(ind8 + '%s = state[%d] \n' % (var.target_name, n_var))
         #Create all algebraic variables
 #        #TODO: remove this, once proper detection of unused variables exists
@@ -543,16 +567,16 @@ class SimulationClassGenerator(object):
         #assemble vector with algebraic variables
         self.write(ind12 + '#put algebraic variables into array \n')
         self.write(ind12 + 'algVars = array([')
-        for var in self.algebraic_variables.values():
+        for var in self.algebraic_variables_ordered:
             self.write('%s, ' % var.target_name)
         self.write('], \'float64\') \n')
         self.write(ind12 + 'return algVars \n')
 
         self.write(ind8 + 'else: \n')
-        #assemble the time derivatives into the return vector
+        #put the time derivatives into the return vector
         self.write(ind12 + '#assemble the time derivatives into the return vector \n')
         self.write(ind12 + 'stateDt = array([')
-        for n_var, var in enumerate(stateVars):
+        for var in self.state_variables_ordered:
             self.write('%s, ' % var.time_derivative().target_name)
         self.write('], \'float64\') \n')
         self.write(ind12 + 'return stateDt \n')
@@ -598,6 +622,7 @@ class SimulationClassGenerator(object):
         self.class_py_name = class_name
         self.classify_attributes()
         self.create_attr_py_names()
+        self.order_attributes()
 
         #output program text
         self.write_class_def_start()
