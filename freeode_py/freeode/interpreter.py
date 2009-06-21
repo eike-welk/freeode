@@ -4,11 +4,19 @@
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
 #    Credits:                                                              *
+#                                                                          *
 #    Much of the semantics of this language were taken from the Python     *
 #    programming language. Most information and little bits of text were   *
 #    taken from the Python Reference Manual by Guido van Rossum.           *
+#        http://docs.python.org/reference/                                 *
 #    Many thanks to Guido and the Python team, for their excellent         *
 #    contributions to free software and free documentation.                *
+#                                                                          *
+#    The special functions for boolean variables were taken from           *
+#    PEP 335 by Greg Ewing                                                 *
+#        http://www.python.org/dev/peps/pep-0335/                          *
+#    Thank you for thinking hard about this problem, and then putting a    *
+#    nice write-up about it in the public domain.                          *
 #                                                                          *
 #                                                                          *
 #    License: GPL                                                          *
@@ -932,7 +940,7 @@ class INone(InterpreterObject):
         self.role = RoleConstant
         
     @staticmethod            
-    def init_funcs_and_class():
+    def create_class_object():
         '''
         Create the class object for Siml and create the special methods for 
         operators (+).
@@ -946,19 +954,19 @@ class INone(InterpreterObject):
 
     def __str__(self):#convenience for sane behavior from Python
         return 'NONE'
-    #called from Siml
     def _str(self):
+        '''__str__ called from Siml'''
         istr = IString('None')
         istr.role = RoleConstant
         return istr
 #The class object used in Siml for the single instance of INone
-CLASS_NONETYPE = INone.init_funcs_and_class()
+CLASS_NONETYPE = INone.create_class_object()
 #The single None instance for Siml
 NONE = INone()
 
 
 
-#TODO: Class that acts as special undetermined class. Necessary for local 
+#TODO: Class that acts as an instance of an undetermined class. Necessary for local 
 #      variables of true template functions. Currently only the arguments 
 #      of a function have this property. Instances would need to be treated 
 #      specially in assignments, similarly to RoleUnknown. It would always be 
@@ -966,11 +974,6 @@ NONE = INone()
 #
 #      class IAny(InterpreterObject): #or IUnknownType
 #          '''Instance of special undetermined class.'''
-
-
-
-#TODO: Bool class, with two constants: True, False
-#      must implement necessary functions for 'and', 'or', 'not'
 
 
 
@@ -1002,58 +1005,95 @@ class IBool(FundamentalObject):
     
     
     @staticmethod            
-    def init_funcs_and_class():
+    def create_class_object():
         '''
-        Create the class object for Siml and create the special methods for 
-        operators.
+        Create the 'Bool' class object for Siml.
         '''
         #create the class object for the Siml class system
         class_bool = BuiltInClassWrapper('Bool')
         class_bool.py_class = IBool
         IBool.type_object = class_bool
-        
-        #initialize the mathematical operators, put them into the class
-        W = BuiltInFunctionWrapper
-        #Binary operators
-        binop_args = ArgumentList([NodeFuncArg('self', class_bool), 
-                                    NodeFuncArg('other', class_bool)])
-        #TODO: comparison operators
-        #TODO: design boolean operations/operator special functions
-        #Special function for assignment
-        W('__assign__', binop_args, CLASS_NONETYPE, 
-          py_function=IBool.__assign__,
-          accept_unknown_values=True).put_into(class_bool) 
-        #Printing
-        #TODO: Bool.__str__: get the circular references right
-#        single_args = ArgumentList([NodeFuncArg('self', class_bool)])
-#        W('__str__', single_args, CLASS_STRING, 
-#          py_function=IString._str,
-#          codegen_name='Bool.__str__').put_into(class_bool)  
         #return the class object
         return class_bool
+       
+       
+    @staticmethod            
+    def update_class_object():
+        '''
+        Create all methods, put them into the class object.
+
+        Must be called separately because of circular references: 
+        IBool uses IString (IBool.__str__) and IString uses IBool 
+        (IString.__eq__)
+        '''
+        class_bool = IBool.type_object
+        W = BuiltInFunctionWrapper
+        #Argument definition for binary operators
+        binop_args = ArgumentList([NodeFuncArg('self', class_bool), 
+                                    NodeFuncArg('other', class_bool)])
+        #Argument definition for unary functions and operators
+        single_args = ArgumentList([NodeFuncArg('self', class_bool)])
+        #comparison operators
+        W('__eq__', binop_args, CLASS_BOOL, 
+          py_function=IBool.__eq__).put_into(class_bool)      
+        W('__ne__', binop_args, CLASS_BOOL, 
+          py_function=IBool.__ne__).put_into(class_bool)      
+        #special functions for boolean operations (and or not)
+        #See: http://www.python.org/dev/peps/pep-0335/
+        W('__not__', single_args, CLASS_BOOL, 
+          py_function=IBool._not).put_into(class_bool) 
+        W('__and2__', binop_args, CLASS_BOOL, 
+          py_function=IBool._and2).put_into(class_bool)      
+        W('__or2__', binop_args, CLASS_BOOL, 
+          py_function=IBool._or2).put_into(class_bool)      
+        #Special function for assignment
+        W('__assign__', binop_args, CLASS_NONETYPE, 
+          py_function=IBool._assign,
+          accept_unknown_values=True).put_into(class_bool) 
+        #Printing
+        W('__str__', single_args, CLASS_STRING, 
+          py_function=IString._str, #IGNORE:W0212
+          codegen_name='Bool.__str__').put_into(class_bool)  
 
 
-    def __assign__(self, other): 
+    #comparison operators
+    def __eq__(self, other):
+        return IBool(self.value == other.value)
+    def __ne__(self, other):
+        return IBool(self.value != other.value)
+    #special functions for boolean operations (and or not)
+    def _not(self):
+        '''Called for Siml "not".'''
+        return IBool(not self.value)
+    def _and2(self, other):
+        '''Called for Siml "and".'''
+        return IBool(self.value and other.value)
+    def _or2(self, other):
+        '''Called for Siml "or".'''
+        return IBool(self.value or other.value)
+    #assignment
+    def _assign(self, other): 
+        '''Called for Siml assignment ("=") operator.'''
         if other.value is not None:
             self.value = other.value
         else:
             raise UnknownArgumentsException()
-        
+    #printing
     def __str__(self):#convenience for sane behavior from Python
         if self.value is None:
             return '<unknown Bool>'
         else:
             return self.value
-    #called from Siml
     def _str(self):
+        '''__str__ called from Siml'''
         istr = IString(self.value)
         istr.role = RoleConstant
         return istr
 
-
-#The class object used in Siml to create instances of IFloat
-CLASS_BOOL = IBool.init_funcs_and_class()
-#global constants True and False
+#The class object used in Siml to create instances of IBool
+CLASS_BOOL = IBool.create_class_object()
+#global constants True and False (More easy than introducing additional 
+#literal values)
 TRUE = IBool(True)
 TRUE.role = RoleConstant
 TRUE.is_assigned = True
@@ -1091,7 +1131,7 @@ class IString(FundamentalObject):
     
     
     @staticmethod            
-    def init_funcs_and_class():
+    def create_class_object():
         '''
         Create the class object for Siml and create the special methods for 
         operators (+).
@@ -1101,16 +1141,21 @@ class IString(FundamentalObject):
         class_string.py_class = IString
         IString.type_object = class_string
         
-        #initialize the mathematical operators, put them into the class
+        #create all methods, put them into the class
         W = BuiltInFunctionWrapper
         #Binary operators
         binop_args = ArgumentList([NodeFuncArg('self', class_string), 
                                     NodeFuncArg('other', class_string)])
         W('__add__', binop_args, class_string, 
           py_function=IString.__add__).put_into(class_string)
+        #comparison operators == !=
+        W('__eq__', binop_args, CLASS_BOOL, 
+          py_function=IString.__eq__).put_into(class_string)      
+        W('__ne__', binop_args, CLASS_BOOL, 
+          py_function=IString.__ne__).put_into(class_string)      
         #Special function for assignment
         W('__assign__', binop_args, CLASS_NONETYPE, 
-          py_function=IString.__assign__,
+          py_function=IString._assign,
           accept_unknown_values=True).put_into(class_string) 
         #Printing
         single_args = ArgumentList([NodeFuncArg('self', class_string)])
@@ -1123,25 +1168,36 @@ class IString(FundamentalObject):
 
     def __add__(self, other):
         return IString(self.value + other.value)
-       
-    def __assign__(self, other): 
+    #comparisons
+    def __eq__(self, other):
+        return IBool(self.value == other.value)
+    def __ne__(self, other):
+        return IBool(self.value != other.value)
+    #special function for assignment   
+    def _assign(self, other): 
+        '''Called for Siml assignment ("=") operator.'''
         if isinstance(other, IString) and other.value is not None:
             self.value = other.value
         else:
             raise UnknownArgumentsException()
-        
+    #Printing    
     def __str__(self):#convenience for sane behavior from Python
         if self.value is None:
             return '<unknown String>'
         else:
             return self.value
-    #called from Siml
     def _str(self):
+        '''called from Siml'''
         return self
 
 #The class object used in Siml to create instances of IFloat
-CLASS_STRING = IString.init_funcs_and_class()
-    
+CLASS_STRING = IString.create_class_object()
+
+#Create the member functions of the Bool class.
+#Must be called here because of circular references: 
+#IBool uses IString (IBool.__str__) and IString uses IBool (IString.__eq__)
+IBool.update_class_object()
+
 
 
 class IFloat(FundamentalObject):
@@ -1171,7 +1227,7 @@ class IFloat(FundamentalObject):
     
     
     @staticmethod            
-    def init_funcs_and_class():
+    def create_class_object():
         '''
         Create the class object for Siml and create the special methods for 
         operators (+ - * / % **).
@@ -1223,7 +1279,7 @@ class IFloat(FundamentalObject):
           py_function=IFloat.__ge__).put_into(class_float)         
         #Special function for assignment
         W('__assign__', binop_args, CLASS_NONETYPE, 
-          py_function=IFloat.__assign__,
+          py_function=IFloat._assign,
           accept_unknown_values=True).put_into(class_float) 
         #Printing
         W('__str__', prefix_args, CLASS_STRING, 
@@ -1263,7 +1319,8 @@ class IFloat(FundamentalObject):
     def __ge__(self, other):
         return IBool(self.value >= other.value)
         
-    def __assign__(self, other): 
+    def _assign(self, other): 
+        '''Called for Siml assignment ("=") operator.'''
         if isinstance(other, IFloat) and other.value is not None:
             self.value = other.value
         else:
@@ -1274,14 +1331,14 @@ class IFloat(FundamentalObject):
             return '<unknown Float>'
         else:
             return str(self.value)
-    #called from Siml
     def _str(self):
+        '''Called from Siml'''
         istr = IString(self.value)
         istr.role = RoleConstant
         return istr
         
 #The class object used in Siml to create instances of IFloat
-CLASS_FLOAT = IFloat.init_funcs_and_class()
+CLASS_FLOAT = IFloat.create_class_object()
   
 #create the special variable time
 TIME = IFloat()
@@ -1879,9 +1936,9 @@ class ExpressionVisitor(Visitor):
         Unevaluated expressions (ast.Node) get the following annotations:
         - Node.type              : type of function result
         - Node.function_object   : the function object (self)
-        - Node.role              : ???
-        - Node.name              : function's name; however function_object should 
-                                   be used to identify function.
+        - Node.role              : Role of the argument
+        - Node.is_assigned=True  : For consistency; the function call can pose as an
+                                   unknown value, that has been already computed.
     
         - Node.arguments         : [ast.Node] 
             List with unevaluated expression as first element.
@@ -1890,9 +1947,11 @@ class ExpressionVisitor(Visitor):
         #compute values of expression
         val_expr = self.dispatch(node.arguments[0])
 
-        #see if there is an object between the brackets, that can potentially 
-        #have a value. No matter wether known or unknown.
-        if isinstance(val_expr, (InterpreterObject, NodeFuncCall)):
+        #see if there is an object between the brackets, that can express only 
+        #one value. No matter wether known or unknown, there are no brackets
+        #necessary in this case. Return the object without brackets
+        if isinstance(val_expr, (InterpreterObject, NodeFuncCall, 
+                                 NodeParentheses)):
             #return the object
             return val_expr
         #otherwise there is an unevaluated expression between the brackets. 
@@ -1902,6 +1961,7 @@ class ExpressionVisitor(Visitor):
             new_node.arguments = [val_expr]
             new_node.type = val_expr.type
             new_node.role = val_expr.role
+            new_node.is_assigned = True
             new_node.loc = node.loc
             return new_node
 
@@ -1918,10 +1978,10 @@ class ExpressionVisitor(Visitor):
         Unevaluated expressions (ast.Node) get the following annotations:
         - Node.type              : type of function result
         - Node.function_object   : the function object (self)
-        - Node.role              : ???
-        - Node.name              : function's name; however function_object should 
-                                   be used to identify function.
-    
+        - Node.role              : Role taken from the argument with the most variable role
+        - Node.is_assigned=True  : For consistency; the function call can pose as an
+                                   unknown value, that has been already computed.
+                                   
         - Node.arguments         : Operators are returned with positional arguments.
         - Node.keyword_arguments : For regular functions all arguments are specified
                                    keyword arguments
@@ -1945,7 +2005,7 @@ class ExpressionVisitor(Visitor):
             #new_oper.function_object = func
             new_oper.type = func.return_type
             new_oper.is_assigned = True
-            #Choose most variable role: const -> param -> variable
+            #Take the role from the argument
             new_oper.role = inst_rhs.role
             return new_oper
     
@@ -1976,6 +2036,8 @@ class ExpressionVisitor(Visitor):
         - Node.type              : type of function result
         - Node.function_object   : the function object (self)
         - Node.role              : Role taken from the argument with the most variable role
+        - Node.is_assigned=True  : For consistency; the function call can pose as an
+                                   unknown value, that has been already computed.
     
         - Node.arguments         : Operators are returned with positional arguments.
         - Node.keyword_arguments : For regular functions all arguments are specified
@@ -2038,16 +2100,18 @@ class ExpressionVisitor(Visitor):
         Evaluate a NodeFuncCall, which calls a call-able object (function).
         Execute the callable's code and return the return value.
  
-        TODO:
-        Unevaluated expressions (ast.Node) get the following annotations:
-        - Node.type              : type of function result
-        - Node.function_object   : the function object (self)
-        - Node.role              : ???
-        - Node.name              : function's name; however function_object should 
-                                   be used to identify function.
-    
+        Expressions (ast.Node) with unknown variables get the following annotations:
+        - Node.type              : type of function's result
+        - Node.role              : role of return value, the roles of the function's 
+                                   arguments are inspected, and the most variable role 
+                                   is taken as the role of the return value.
+        - Node.is_assigned=True  : For consistency; the function call can pose as an
+                                   unknown value, that has been already computed.
+                                   
+        - Node.name              : The function object that would be called if the 
+                                   arguments were known.
         - Node.arguments         : Operators are returned with positional arguments.
-        - Node.keyword_arguments : For regular functions all arguments are specified
+        - Node.keyword_arguments : For regular functions all arguments are currently
                                    keyword arguments
        '''
         #find the right call-able object   
@@ -2073,12 +2137,6 @@ class ExpressionVisitor(Visitor):
             #Some arguments were unknown create an unevaluated function call
             new_call = NodeFuncCall(func_obj, ev_args, ev_kwargs, node.loc)
             #put on decoration
-            #TODO: Maybe put func_obj into new_call.name ?
-            #      This would result in a function call, that could be 
-            #      evaluated by ExpressionVisitor.
-            #      This TODO would also allow to remove new_call.function_object at all.
-            #      However this TODO can not be implemented with NodeOpInfix2, NodeOpPrefix1.
-            #new_call.function_object = func_obj
             new_call.type = func_obj.return_type
             new_call.is_assigned = True
             #Choose most variable role: const -> param -> variable

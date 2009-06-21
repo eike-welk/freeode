@@ -83,8 +83,8 @@ def compute_phase_diagram(hunting_rate_x, hunting_rate_y, duration, start_x, sta
 hunting_rate_x = 0
 hunting_rate_y = 0
 duration       = [100, 100, 100, 100]
-start_x        = [0.1,   3,  19,  19]
-start_y        = [0.1, 2.5,   2,   4]
+start_x        = [0.1,   3,  25,  25]
+start_y        = [0.1, 2.5, 0.1,   3]
 compute_phase_diagram(hunting_rate_x, hunting_rate_y, duration, start_x, start_y)
 
 
@@ -92,9 +92,9 @@ compute_phase_diagram(hunting_rate_x, hunting_rate_y, duration, start_x, start_y
 #create phase diagram with little hunting on both species
 hunting_rate_x = 1
 hunting_rate_y = 0.1
-duration       = [100, 100, 100, 100]
-start_x        = [0.1,   3,  19,  19]
-start_y        = [0.1, 2.5,   2,   4]
+duration       = [100, 100, 100, 100, 100]
+start_x        = [0.1,   3,  19,  20,  20]
+start_y        = [0.1, 2.5,   2,   4, 0.1]
 compute_phase_diagram(hunting_rate_x, hunting_rate_y, duration, start_x, start_y)
 
 
@@ -103,7 +103,7 @@ compute_phase_diagram(hunting_rate_x, hunting_rate_y, duration, start_x, start_y
 hunting_rate_x = 0
 hunting_rate_y = 0.3
 duration       = [100, 100, 100, 100]
-start_x        = [0.1,   3,  19,  19]
+start_x        = [0.1,   3,  20,  20]
 start_y        = [0.1, 2.5,   2,   4]
 #compute_phase_diagram(hunting_rate_x, hunting_rate_y, duration, start_x, start_y)
 
@@ -118,7 +118,7 @@ hunting_rate_x = 2
 hunting_rate_y = 0.2
 duration       = [ 100, 100, 100,   100]
 start_x        = [  15,  15,  15,    15]
-start_y        = [ 0.5, 1.3,   2,     4]
+start_y        = [0.12, 1.3,   2,     4]
 compute_phase_diagram(hunting_rate_x, hunting_rate_y, duration, start_x, start_y)
 
 
