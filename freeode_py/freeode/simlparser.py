@@ -298,17 +298,10 @@ class Parser(object):
             return None #No parse result modifications for debugging
         tok_list = toks.asList()[0] #Group() ads an extra pair of brackets
         #collect the relevant data 
-        operator = tok_list[0]       #operator
+        operator = tok_list[0]        #operator
         expr_rhs = tok_list[1]        #RHS expression
-        #create correct node type
-        if operator == '$':
-            node = NodeDollarPrefix()
-        else:
-            node = NodeOpPrefix1()
-        #put data into node
-        node.loc = self.createTextLocation(loc) #Store position
-        node.operator = operator
-        node.arguments = (expr_rhs,)
+        node = NodeOpPrefix1(operator, (expr_rhs,), 
+                             self.createTextLocation(loc))
         return node
 
     def _action_op_infix_left(self, s, loc, toks): #IGNORE:W0613

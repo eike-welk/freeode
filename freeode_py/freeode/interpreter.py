@@ -579,20 +579,17 @@ class BuiltInFunctionWrapper(CallableObject):
         #Test if all arguments are known values.
         parsed_args_2 = {}
         all_python_values_exist = True
-        for name, siml_val in parsed_args.iteritems():
-            if not (isinstance(siml_val, InterpreterObject) and 
-                    hasattr(siml_val, 'value') and
-                    siml_val.value is not None):
+        for name, siml_val in parsed_args.iteritems(): 
+            if not siml_isknown(siml_val):
                 all_python_values_exist = False
             #convert the names to regular strings
             parsed_args_2[str(name)] = siml_val
         #Test: call function or generate code
+        #Generate code; there were unknown values, and we don't accept it.
         if not all_python_values_exist and not self.accept_unknown_values:
-            #Some argument values are unknown; and we don't accept it.
             #The expression visitor will create an annotated 
             #NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
             raise UnknownArgumentsException()
-        
         #call the wrapped Python function
         #all argument values are known, or we don't care about unknown values.
         if 'self' in parsed_args_2:
@@ -608,10 +605,6 @@ class BuiltInFunctionWrapper(CallableObject):
         #use Siml's None
         if retval is None:
             retval = NONE
-        #known values at compile time are constants
-        if retval is not NONE:
-            retval.role = RoleConstant
-            retval.is_assigned = True
         #Test return value.type
         if(self.return_type is not None and 
            not siml_issubclass(retval.type(), self.return_type())):
@@ -1002,6 +995,9 @@ class IBool(FundamentalObject):
             else:
                 raise TypeError('Can not initialize IBool from type: %s' 
                                 % str(type(init_val)))
+            #mark object as known at compile time
+            self.role = RoleConstant
+            self.is_assigned = True
     
     
     @staticmethod            
@@ -1128,6 +1124,9 @@ class IString(FundamentalObject):
             else:
                 raise TypeError('Can not init IString from type: %s' 
                                 % str(type(init_val)))
+            #mark object as known at compile time
+            self.role = RoleConstant
+            self.is_assigned = True
     
     
     @staticmethod            
@@ -1218,12 +1217,17 @@ class IFloat(FundamentalObject):
         if init_val is not None:
             if isinstance(init_val, (float, int)):
                 self.value = float(init_val)
-            elif isinstance(init_val, IFloat) and init_val.value is not None:
+            elif isinstance(init_val, IFloat):
+                if init_val.value is None:
+                    ValueError('Object can not be initialized from unknown value.')
                 self.value = init_val.value
             else:
                 raise TypeError('Expecting None, float, int or known IFloat in '
                                 'constructor, but received %s' 
                                 % str(type(init_val)))
+            #mark object as known at compile time
+            self.role = RoleConstant
+            self.is_assigned = True
     
     
     @staticmethod            
@@ -1277,6 +1281,10 @@ class IFloat(FundamentalObject):
           py_function=IFloat.__gt__).put_into(class_float)      
         W('__ge__', binop_args, CLASS_BOOL, 
           py_function=IFloat.__ge__).put_into(class_float)         
+        #Special function for access to derivative
+        W('__diff__', prefix_args, class_float, 
+          py_function=IFloat._diff_static,
+          accept_unknown_values=True).put_into(class_float) 
         #Special function for assignment
         W('__assign__', binop_args, CLASS_NONETYPE, 
           py_function=IFloat._assign,
@@ -1319,6 +1327,26 @@ class IFloat(FundamentalObject):
     def __ge__(self, other):
         return IBool(self.value >= other.value)
         
+    @staticmethod
+    def _diff_static(self): 
+        '''
+        Return time derivative of state variable. Called for '$' operator
+        Create the variable that contains the derivative if necessary.
+        
+        Function has to be static because self may be an ast.Node; this 
+        method is responsible to create a good error message in this case.
+        '''
+        #Precondition: $ acts upon a variable
+        if(not isinstance(self, IFloat) or #no expression(ast.Node
+           self.parent is None or          #no anonymous intermediate value
+           not issubclass(self.role, RoleVariable)): #no constant or parameter or unknown
+            raise UserException('Only named variables can have derivatives.')        
+        #create time derivative if necessary
+        if self.time_derivative is None:
+            make_derivative(self)
+        #return the associated derived variable
+        return self.time_derivative() #IGNORE:E1102
+    
     def _assign(self, other): 
         '''Called for Siml assignment ("=") operator.'''
         if isinstance(other, IFloat) and other.value is not None:
@@ -1565,6 +1593,43 @@ BUILT_IN_LIB = create_built_in_lib()
     
     
 #--------- Interpreter -------------------------------------------------------*
+def make_derivative(variable):    
+    '''
+    Create time derivative of given variable. 
+    
+    - Create derivative in variable's parent
+    - Put weak reference to it into variable.time_derivative
+    - Set the correct roles on both variables
+    
+    ARGUMENTS
+    ---------
+    variable: IFloat, ...
+        The variable for which a time derivative will be created.
+    '''
+    #create the derived variable which will be associated to variable
+    deri_var_class = variable.type()
+    deri_var = deri_var_class()
+    deri_var.role = RoleTimeDifferential
+    
+    #find state variable in parent (to get variable's name)
+    for var_name, var in variable.parent().attributes.iteritems():
+        if var is variable: 
+            break
+    else:
+        raise Exception('Broken parent reference! "variable" is not '
+                        'in "variable.parent().attributes".')
+    #put time derivative in parent, with nice name
+    deri_name = DotName(var_name[0] + '$time')         #IGNORE:W0631
+    #deri_name = make_unique_name(deri_name, variable.parent().attributes)
+    variable.parent().create_attribute(deri_name, deri_var)
+    
+    #remember time derivative also in state variable
+    variable.time_derivative = ref(deri_var)
+    #mark variable as state variable
+    variable.role = RoleStateVariable
+    return
+   
+    
 def make_proxy(in_obj):
     '''
     Return a proxy object.
@@ -1626,10 +1691,12 @@ def siml_isknown(siml_obj):
     False: argument is an unevaluated expression or an unknown variable.
     '''
     #TODO: implement protocol for values: known/unknown, assigned/unassigned
-    assert isinstance(siml_obj, (InterpreterObject, NodeOpInfix2, 
-                                 NodeOpPrefix1, NodeParentheses)), \
-           'Function only works with Siml objects.'
-    if siml_isrole(siml_obj.role, RoleConstant) and siml_obj.is_assigned:
+    assert isinstance(siml_obj, (InterpreterObject, NodeFuncCall, 
+                                 NodeOpInfix2, NodeOpPrefix1, 
+                                 NodeParentheses)), \
+           'Function only works with Siml objects and ast.Node.'
+    if(isinstance(siml_obj, InterpreterObject) and 
+       siml_isrole(siml_obj.role, RoleConstant) and siml_obj.is_assigned):
         return True
     else:
         return False
@@ -1834,33 +1901,6 @@ class ExpressionVisitor(Visitor):
         self.environment = new_env
         
         
-    def make_derivative(self, variable):    
-        '''Create time derivative of given variable. 
-        Put it into the variable's parent.'''
-        #TODO: maybe this should become a member function of IFloat?
-        #mark attribute as state variable
-        variable.role = RoleStateVariable
-        #create the associated derived variable
-        deri_var_class = variable.type()
-        deri_var = deri_var_class()
-        deri_var.role = RoleTimeDifferential
-        
-        #find state variable in parent
-        for var_name, var in variable.parent().attributes.iteritems():
-            if var is variable: 
-                break
-        else:
-            raise Exception('Broken parent reference! "variable" is not '
-                            'in "variable.parent().attributes".')
-        #put time derivative in parent, with nice name
-        #TODO: use predictable variable name, that contains special character ($).
-        deri_name = DotName(var_name[0] + '$time')         #IGNORE:W0631
-        #deri_name = make_unique_name(deri_name, variable.parent().attributes)
-        variable.parent().create_attribute(deri_name, deri_var)
-        #remember time derivative also in state variable
-        variable.time_derivative = ref(deri_var)
-   
-    
     @Visitor.when_type(InterpreterObject)
     def visit_InterpreterObject(self, node):
         '''Visit a part of the expression that was already evaluated: 
@@ -1906,25 +1946,28 @@ class ExpressionVisitor(Visitor):
         attr = inst_lhs.get_attribute(id_rhs.name)
         return attr        
         
-    @Visitor.when_type(NodeDollarPrefix)
-    def visit_NodeDollarPrefix(self, node): 
-        '''Return time derivative of state variable. 
-        Create this special attribute if necessary'''
-        #TODO: The special function '__diff__' should be called instead.
-        #TODO: Remove NodeDollarPrefix, after introducing special function.
-        #evaluate expression on RHS of operator
-        variable = self.dispatch(node.arguments[0])
-        #Precondition: $ acts upon a variable
-        if not (siml_isinstance(variable, CLASS_FLOAT) and 
-                issubclass(variable.role, RoleVariable)):
-            raise UserException('Expecting variable after "$" operator.', 
-                                node.loc)
-        #change variable into state variable if necessary
-        if variable.role is not RoleStateVariable:
-            #variable.role = RoleStateVariable
-            self.make_derivative(variable)
-        #return the associated derived variable
-        return variable.time_derivative()
+#    @Visitor.when_type(NodeDollarPrefix)
+#    def visit_NodeDollarPrefix(self, node): 
+#        '''Return time derivative of state variable. 
+#        Create this special attribute if necessary'''
+#        #TODO: The special function '__diff__' should be called instead.
+#        #TODO: Remove NodeDollarPrefix, after introducing special function.
+#        #evaluate expression on RHS of operator
+#        variable = self.dispatch(node.arguments[0])
+#        func = variable.type().get_attribute(DotName('__diff__'))
+#        return func(variable)
+#    
+##        #Precondition: $ acts upon a variable
+##        if not (siml_isinstance(variable, CLASS_FLOAT) and 
+##                issubclass(variable.role, RoleVariable)):
+##            raise UserException('Expecting variable after "$" operator.', 
+##                                node.loc)
+##            
+##        #create time derivative if necessary
+##        if variable.role is not RoleStateVariable:
+##            make_derivative(variable)
+##        #return the associated derived variable
+##        return variable.time_derivative()
 
 
     @Visitor.when_type(NodeParentheses)
@@ -1967,7 +2010,8 @@ class ExpressionVisitor(Visitor):
 
     
     _prefopt_table = { '-' :'__neg__',
-                      'not':'__not__', }
+                      'not':'__not__', 
+                      '$':'__diff__', }
 
     @Visitor.when_type(NodeOpPrefix1)
     def visit_NodeOpPrefix1(self, node):

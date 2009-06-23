@@ -195,26 +195,31 @@ def test_ProgramGenerator__write_program_end():
 
 
 def test_ProgramGenerator__create_program_1():
-    msg = ''' Test ProgramGenerator.create_program: 
-    Just see if function does not crash.
+    msg = \
+    ''' 
+    Test ProgramGenerator.create_program: 
+    Test basic functions of the compiler. Loads generated program as module.
     '''
     #py.test.skip(msg)
     print msg
     
+    import os
     from freeode.pygenerator import ProgramGenerator
     from freeode.interpreter import Interpreter
     
     prog_text = \
 '''
 class A:
-    data a: Float
+    data x: Float
     data b: Float param
     
     func initialize(this):
+        x = 0
         b = 1
+        solution_parameters(duration = 30, reporting_interval = 0.1)
     
     func dynamic(this):
-        $a = b
+        $x = b
     
 compile A
 '''
@@ -225,39 +230,134 @@ compile A
     #create the output text
     pg = ProgramGenerator()
     pg.create_program('foo.siml', intp.get_compiled_objects())
-    print pg.get_buffer()
+    #print pg.get_buffer()
     
-    #TODO: write the buffer into a file, import the file as a module, test the module
+    #write the buffer into a file, import the file as a module
+    progname = 'testprog_ProgramGenerator__create_program_1'
+    prog_text_file = open(progname + '.py','w')
+    prog_text_file.write(pg.get_buffer())
+    prog_text_file.close()
+    module = __import__(progname)
+    
+    #test the generated module
+    A = module.A
+    a = A()
+    #call generated initialize(...) function
+    a.initialize()
+    assert a.param.b == 1
+    #solve (trivial) ODE and test solution
+    a.simulateDynamic()
+    x_vals = a.getResults()['x']
+    assert x_vals[-1] - 30 < 1e-6
+    
+    #clean up
+    os.remove(progname + '.py')
+
 
 
 def test_ProgramGenerator__create_program_2():
-    msg = ''' Test ProgramGenerator.create_program: 
+    msg = \
+    ''' 
+    Test ProgramGenerator.create_program: 
     Test program with additional initialization function.
-    Just see if function does not crash.
+    Load program as module and test init_*** function.
     '''
     #py.test.skip(msg)
     print msg
     
+    import os
     from freeode.pygenerator import ProgramGenerator
     from freeode.interpreter import Interpreter
     
     prog_text = \
 '''
 class A:
-    data a: Float 
+    data x: Float 
     data b: Float param
     
     #This is the additional initialization function.
     func init_b(this, in_b):
         b = in_b #set parameter
-        a = 0    #set initial value
+        x = 0    #set initial value
         
     func initialize(this):
         b = 0.1 #set parameter
-        a = 0   #set initial value
+        x = 0   #set initial value
         
     func dynamic(this):
-        $a = b
+        $x = b
+        
+compile A
+'''
+    
+    #interpret the compile time code
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, 'foo.siml', '__main__')
+    #create the output text
+    pg = ProgramGenerator()
+    pg.create_program('foo.siml', intp.get_compiled_objects())
+    #print pg.get_buffer()
+    
+    #write the buffer into a file, import the file as a module
+    progname = 'testprog_ProgramGenerator__create_program_2'
+    prog_text_file = open(progname + '.py','w')
+    prog_text_file.write(pg.get_buffer())
+    prog_text_file.close()
+    module = __import__(progname)
+    
+    #test the generated module
+    A = module.A
+    a = A()
+    #call generated init_b(...) function
+    a.init_b(42)
+    assert a.param.b == 42
+    
+    #clean up
+    os.remove(progname + '.py')
+    
+
+
+def test_ProgramGenerator__create_program_3():
+    msg = \
+    ''' 
+    Test ProgramGenerator.create_program: 
+    Test most common language features.
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    import os
+    from freeode.pygenerator import ProgramGenerator
+    from freeode.interpreter import Interpreter
+    
+    prog_text = \
+'''
+class A:
+    data x: Float 
+    data a, b, c, d, e: Float param
+
+    func initialize(this):
+        a = 2 * (3 + 4)               # = 14, test brackets
+        b = a**0 / 0.1 % 9 - -a/a  # = 2, arithmetic operators
+        
+        #if statement should reduce to single assignment
+        if -2**-3 == -(2 ** (-3)):    # tricky operator precedence
+            c = 1                     # c = 1
+        else:
+            c = 0
+        
+        #if statement, comparison and logical operators
+        if (a != 1 and not a == 1 or a == 1) and (a < 1 or a > 1):
+            d = 1                     # d = 1
+            e = sin(d * 3.1415)       # close to 0 #test function call
+        else:
+            d = 0
+            e = sin(d * 3.1415)       # = 0  #test function call
+            
+        x = 0   #set initial value
+        
+    func dynamic(this):
+        $x = b
         
 compile A
 '''
@@ -270,12 +370,32 @@ compile A
     pg.create_program('foo.siml', intp.get_compiled_objects())
     print pg.get_buffer()
     
-    #TODO: write the buffer into a file, import the file as a module, test the module
+    #write the buffer into a file, import the file as a module
+    #progname must be unique! otherwise race condition!
+    progname = 'testprog_ProgramGenerator__create_program_3'
+    prog_text_file = open(progname + '.py','w')
+    prog_text_file.write(pg.get_buffer())
+    prog_text_file.close()
+    module = __import__(progname)
+    
+    #test the generated module
+    A = module.A
+    a = A()
+    #call generated init_b(...) function
+    a.initialize()
+    assert a.param.a == 14
+    assert a.param.b == 2
+    assert a.param.c == 1
+    assert a.param.d == 1
+    assert abs(a.param.e) < 0.001 #close to 0 
+    
+    #clean up
+    os.remove(progname + '.py')
     
 
 
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_ProgramGenerator__create_program_2()
+    test_ProgramGenerator__create_program_3()
     pass

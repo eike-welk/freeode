@@ -395,24 +395,24 @@ class NodeAttrAccess(Node):
         self.loc = None        
 
 
-class NodeDollarPrefix(Node):
-    '''
-    AST node for '$' (time derivation) operator.
-    Attributes:
-    operator: '$'  
-        For uniform handling with other operators
-    arguments: list(NodeIdentifier); list(InterpreterObject);
-        self.arguments[0]: RHS: NodeIdentifier:
-        State variable whose derivative should be returned
-    loc: 
-        Location in input string
-   '''
-    def __init__(self):
-        super(NodeDollarPrefix, self).__init__()
-        self.operator = '$'
-        self.arguments = tuple()
-        self.loc = None        
-
+#class NodeDollarPrefix(Node):
+#    '''
+#    AST node for '$' (time derivation) operator.
+#    Attributes:
+#    operator: '$'  
+#        For uniform handling with other operators
+#    arguments: list(NodeIdentifier); list(InterpreterObject);
+#        self.arguments[0]: RHS: NodeIdentifier:
+#        State variable whose derivative should be returned
+#    loc: 
+#        Location in input string
+#   '''
+#    def __init__(self):
+#        super(NodeDollarPrefix, self).__init__()
+#        self.operator = '$'
+#        self.arguments = tuple()
+#        self.loc = None        
+#
 
 class NodeParentheses(Node):
     '''
@@ -784,6 +784,9 @@ class NodeImportStmt(Node):
             List of attributes that should be imported. Special symbol "*"
             means all attributes in the module.
             if fromStmt == False, this list is ignored.
+            
+    TODO: For desingning this facility also look at:
+          http://docs.python.org/library/functions.html#__import__
     '''
     def __init__(self, kids=None, loc=None, dat=None,
                  moduleName=None, fromStmt=False, attrsToImport=None):

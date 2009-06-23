@@ -433,8 +433,9 @@ compile A
 
 
 def test_print_function_4(): #IGNORE:C01111
-    #py.test.skip('Test the print function. - code generation for: user defined class.')
-    print 'Test the print function. - code generation for: user defined class.'
+    msg = 'Test the print function. - code generation for: user defined class.'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import Interpreter
     from freeode.ast import DotName
     
@@ -1824,7 +1825,7 @@ def test_if_statement_4_2(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool, UserException)
+    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
     from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
 
     prog_text = \
@@ -1849,7 +1850,7 @@ compile A
     intp.interpret_module_string(prog_text, None, 'test')
 
     #the module
-    mod = intp.modules['test']
+    #mod = intp.modules['test']
     #print mod
     
     sim = intp.get_compiled_objects()[0]
@@ -1889,8 +1890,8 @@ def test_if_statement_5(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
-    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
+    from freeode.interpreter import (Interpreter, IFloat)
+    from freeode.ast import DotName, NodeAssignment
 
     prog_text = \
 '''
@@ -1913,7 +1914,7 @@ compile A
     intp.interpret_module_string(prog_text, None, 'test')
 
     #the module
-    mod = intp.modules['test']
+    #mod = intp.modules['test']
     #print mod
     
     sim = intp.get_compiled_objects()[0]
@@ -1943,6 +1944,6 @@ compile A
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_compile_statement_2()
+    test_print_function_4()
     pass
 
