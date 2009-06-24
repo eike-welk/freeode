@@ -33,15 +33,16 @@ from __future__ import absolute_import              #IGNORE:W0410
 # for debugging when the py library, and the py.test testing framework, are 
 # not installed. 
 try:                      
-    import py
+    import py 
 except ImportError:
     print 'No py library, many tests may fail!'
 
 
 
 def test_data_statement_simple_1(): #IGNORE:C01111
-    #py.test.skip('Test data statement: create attributes')
-    print 'Test data statement: create attributes'
+    msg = 'Test data statement: create attributes'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import Interpreter, IFloat, IString
     from freeode.ast import DotName
     
@@ -576,10 +577,12 @@ def test_interpreter_class_definition_2(): #IGNORE:C01111
     
     Interpreter Object has a __deepcopy__ function that takes care of this.
     '''
-    #py.test.skip('Test user defined classes - correctness of parent attribute.')
-    print 'Test user defined classes - correctness of parent attribute.'
-    from freeode.interpreter import (Interpreter, IFloat)
-    from freeode.ast import (DotName)
+    msg = 'Test user defined classes - correctness of parent attribute.'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import Interpreter
+    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -784,15 +787,15 @@ b = 2*a #emit this statement
     #interpret the program
     intp.interpret_module_string(prog_text, None, 'test')
     #get the results of the collection process
-    stmts, func_locals = intp.stop_collect_code()
+    stmts, dummy = intp.stop_collect_code()
   
     print
     print '--------------- main module ----------------------------------'
     #print intp.modules['test']
-    #put collected statements into Node for pretty printing
-    n = Node(statements=stmts)
     print
     print '--------------- collected statements ----------------------------------'
+    #put collected statements into Node for pretty printing
+    #n = Node(statements=stmts)
     #print n
         
     #one statement: b = 2*a    
@@ -812,7 +815,7 @@ def test_StatementVisitor_assign_emit_code_2(): #IGNORE:C01111
     #py.test.skip('Test interpreter object: emit code without the usual infrastructure.')
     print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
     from freeode.interpreter import (Interpreter, IFloat)
-    from freeode.ast import (Node, NodeAssignment, NodeOpInfix2)
+    from freeode.ast import (Node, NodeAssignment, NodeOpInfix2) 
 
     prog_text = \
 '''
@@ -834,15 +837,15 @@ c = 2*b #emit everything
     #interpret the program
     intp.interpret_module_string(prog_text, None, 'test')
     #get the results of the collection process
-    stmts, func_locals = intp.stop_collect_code()
+    stmts, dummy = intp.stop_collect_code() 
  
     print
     print '--------------- main module ----------------------------------'
     #print intp.modules['test']
-    #put collected statements into Node for pretty printing
-    n = Node(statements=stmts)
     print
     print '--------------- collected statements ----------------------------------'
+    #put collected statements into Node for pretty printing
+    #n = Node(statements=stmts)
     #print n
         
     assert len(stmts) == 2
@@ -1629,8 +1632,7 @@ def test_if_statement_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isinstance, 
-                                     CallableObject, TypeObject, IFloat)
+    from freeode.interpreter import Interpreter
     from freeode.ast import DotName
 
     prog_text = \
@@ -1694,7 +1696,7 @@ compile A
     intp.interpret_module_string(prog_text, None, 'test')
 
     #the module
-    mod = intp.modules['test']
+    #mod = intp.modules['test']
     #print mod
     
     sim = intp.get_compiled_objects()[0]
@@ -1735,8 +1737,8 @@ def test_if_statement_3(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
-    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
+    from freeode.interpreter import Interpreter
+    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -1759,7 +1761,7 @@ compile A
     intp.interpret_module_string(prog_text, None, 'test')
 
     #the module
-    mod = intp.modules['test']
+    #mod = intp.modules['test']
     #print mod
     
     sim = intp.get_compiled_objects()[0]
@@ -1783,8 +1785,7 @@ def test_if_statement_4_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool, UserException)
-    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
+    from freeode.interpreter import (Interpreter, UserException)
 
     prog_text = \
 '''
@@ -1941,9 +1942,32 @@ compile A
 
 
 
+def test_function_type_spec_1(): #IGNORE:C01111
+    msg = '''
+    Test type specifications for function arguments.
+    It must be possible to use the class-name for type specifications of the class' methods.
+    '''
+    py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import Interpreter
+
+    prog_text = \
+'''
+class A:
+    func foo(this, x:A):  
+        pass
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+ 
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_print_function_4()
+    test_function_type_spec_1()
     pass
 

@@ -672,6 +672,7 @@ class Parser(object):
             roleDict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleVariable,
                         'algebraic_variable':RoleAlgebraicVariable,
                         'state_variable':RoleStateVariable,
+                        'time_differential':RoleTimeDifferential,
                         'role_unknown':RoleUnkown}
             attrDef.role = roleDict.get(toks.attr_role, None)
             #store the default value
@@ -920,7 +921,7 @@ class Parser(object):
 #------------------ Identifiers .................................................................
 
         #Built in variables, handled specially at attribute access.
-        Parser.builtInVars = set(['time', 'this', 'diff', 'Unit'])
+        Parser.builtInVars = set(['time', 'this'])
         #identifiers
         identifierBase = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
         # identifier:    Should be used in expressions. If a keyword is used an ordinary parse error is
@@ -1064,7 +1065,7 @@ class Parser(object):
         #constant:    must be known at compile time, may be optimized away,
         #             the compiler may generate special code depending on the value.
         #TODO: maybe add role for automatically created variables
-        attrRole = (  kw('state_variable') | kw('algebraic_variable') 
+        attrRole = (  kw('state_variable') | kw('time_differential')  | kw('algebraic_variable') 
                     | kw('role_unknown') 
                     | kw('variable') | kw('param') | kw('const')      )
         #parse: 'foo, bar, baz

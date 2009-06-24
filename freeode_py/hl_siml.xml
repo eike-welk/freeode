@@ -29,6 +29,7 @@
             <item> const </item>
             <item> param </item>
             <item> variable </item>
+            <item> role_unknown </item>
 		</list>
         <list name="flow">
             <item> assert </item>
@@ -189,7 +190,7 @@
 				<DetectChar attribute="Operator" char="(" context="parenthesised" beginRegion="parenthesis"/>
 				<DetectChar attribute="Operator" char=")" context="#pop" endRegion="parenthesis"/>
 
-				<RegExpr attribute="Operator" String="[+*/%\|=;\!&lt;&gt;!^&amp;~-]" context="#stay"/>
+                <RegExpr attribute="Operator" String="[+*/%\|=;\!&lt;&gt;!^&amp;~-]" context="#stay"/>
 				<RegExpr attribute="String Substitution" String="%[a-zA-Z]" context="#stay"/>
 
 			</context>

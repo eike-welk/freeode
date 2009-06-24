@@ -540,7 +540,7 @@ def test_IFloat_2(): #IGNORE:C01111
 
     try:
         IFloat('hello')
-    except TypeError:
+    except ValueError:
         print 'expected exception: number can not be constructed from string.'
     else:
         assert False, 'object was constructed with wrong init values'

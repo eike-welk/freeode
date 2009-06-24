@@ -1215,7 +1215,7 @@ class IFloat(FundamentalObject):
         #initialize the value
         self.value = None
         if init_val is not None:
-            if isinstance(init_val, (float, int)):
+            if isinstance(init_val, (float, int, str)):
                 self.value = float(init_val)
             elif isinstance(init_val, IFloat):
                 if init_val.value is None:
@@ -1226,6 +1226,7 @@ class IFloat(FundamentalObject):
                                 'constructor, but received %s' 
                                 % str(type(init_val)))
             #mark object as known at compile time
+            siml_setknown(self)
             self.role = RoleConstant
             self.is_assigned = True
     
@@ -1577,6 +1578,10 @@ def create_built_in_lib():
           return_type=CLASS_FLOAT, 
           py_function=lambda x: IFloat(math.sin(x.value)),
           codegen_name='sin').put_into(lib)
+    WFunc('cos', ArgumentList([Arg('x', CLASS_FLOAT)]), 
+          return_type=CLASS_FLOAT, 
+          py_function=lambda x: IFloat(math.cos(x.value)),
+          codegen_name='cos').put_into(lib)
     WFunc('max', ArgumentList([Arg('a', CLASS_FLOAT), Arg('b', CLASS_FLOAT)]), 
           return_type=CLASS_FLOAT, 
           py_function=lambda a, b: IFloat(max(a.value, b.value)),
@@ -1593,6 +1598,13 @@ BUILT_IN_LIB = create_built_in_lib()
     
     
 #--------- Interpreter -------------------------------------------------------*
+#TODO: replace(a, b)
+#TODO: parent(o)
+#TODO: find_name(o, parent)
+#TODO: replace_attr(name, attr)
+#TODO: quote(expr)
+#TODO: quasi_quote(expr)
+        
 def make_derivative(variable):    
     '''
     Create time derivative of given variable. 
@@ -1681,6 +1693,14 @@ def siml_issubclass(in_type, class_or_type_or_tuple):
     return (in_type in class_or_type_or_tuple)
 
 
+def siml_setknown(siml_obj):
+    '''Set decoration to express that the object is a known value.'''
+    assert isinstance(siml_obj, InterpreterObject), \
+           'Function only works with InterpreterObject instances.'
+    siml_obj.role = RoleConstant
+    siml_obj.is_assigned = True
+    #TODO: use everywhere
+    
 def siml_isknown(siml_obj):
     '''
     Test if an object is a known value, or an unevaluated expression.
@@ -1910,19 +1930,13 @@ class ExpressionVisitor(Visitor):
     @Visitor.when_type(NodeFloat)
     def visit_NodeFloat(self, node):
         '''Create floating point number'''
-        result = CLASS_FLOAT()
-        result.value = float(node.value)
-        result.role = RoleConstant
-        result.is_assigned = True
+        result = IFloat(node.value)
         return result
         
     @Visitor.when_type(NodeString)
     def visit_NodeString(self, node):
         '''Create string'''
-        result = CLASS_STRING()
-        result.value = str(node.value)
-        result.role = RoleConstant
-        result.is_assigned = True
+        result = IString(node.value)
         return result
         
     @Visitor.when_type(NodeIdentifier)
@@ -1934,7 +1948,6 @@ class ExpressionVisitor(Visitor):
     @Visitor.when_type(NodeAttrAccess)
     def visit_NodeAttrAccess(self, node):
         '''Evaluate attribute access; ('.') operator'''
-        #TODO: make this work with unevaluated expressions
         #evaluate the object on the left hand side
         inst_lhs = self.dispatch(node.arguments[0])
         #the object on the right hand side must be an identifier
@@ -1946,29 +1959,6 @@ class ExpressionVisitor(Visitor):
         attr = inst_lhs.get_attribute(id_rhs.name)
         return attr        
         
-#    @Visitor.when_type(NodeDollarPrefix)
-#    def visit_NodeDollarPrefix(self, node): 
-#        '''Return time derivative of state variable. 
-#        Create this special attribute if necessary'''
-#        #TODO: The special function '__diff__' should be called instead.
-#        #TODO: Remove NodeDollarPrefix, after introducing special function.
-#        #evaluate expression on RHS of operator
-#        variable = self.dispatch(node.arguments[0])
-#        func = variable.type().get_attribute(DotName('__diff__'))
-#        return func(variable)
-#    
-##        #Precondition: $ acts upon a variable
-##        if not (siml_isinstance(variable, CLASS_FLOAT) and 
-##                issubclass(variable.role, RoleVariable)):
-##            raise UserException('Expecting variable after "$" operator.', 
-##                                node.loc)
-##            
-##        #create time derivative if necessary
-##        if variable.role is not RoleStateVariable:
-##            make_derivative(variable)
-##        #return the associated derived variable
-##        return variable.time_derivative()
-
 
     @Visitor.when_type(NodeParentheses)
     def visit_NodeParentheses(self, node):

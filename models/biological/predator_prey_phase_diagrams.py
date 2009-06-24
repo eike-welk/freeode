@@ -4,12 +4,11 @@
 
 
 
-#Some predator-prey models:
+#Python script that uses "predator_prey.siml"
 #
-#                   --- Plot phase diagrams. ---
+#                   --- Predator-Prey Models - Plot Phase Diagrams ---
 #
 #
-#Create phase plane diagrams of the predator-prey models.
 
 
 
@@ -82,15 +81,15 @@ init_x =   [0.5, 1.5, 2.7,  4]
 init_y =   [0.5, 0.5, 0.7,  1]
 duration = [ 10,  10,  10, 10]
 #Do several simulations and create phase plot from results
-#compute_phase_diagram(model, init_x, init_y, duration,
-                      #'Classic Predator - Prey Model')
+compute_phase_diagram(model, init_x, init_y, duration,
+                      'Classic Predator - Prey Model')
 
 
 #Predator Prey Model; Logistic Growth of Prey --------------------------------
 model = LogisticPrey() #create a simulaton object instance
 #create a couple of initial values for x and y
 init_x =   [0.5,    25]
-init_y =   [2.5,   0.01]
+init_y =   [3,   0.01]
 duration = [100,   100]
 #Do several simulations and create phase plot from results
 compute_phase_diagram(model, init_x, init_y, duration,
