@@ -1965,9 +1965,53 @@ class A:
  
 
 
+def test_isinstance_1(): #IGNORE:C01111
+    msg = '''
+    Test the builtin isinstance(...) function.
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, IFloat)
+    from freeode.ast import DotName, NodeAssignment
+
+    prog_text = \
+'''
+data s: String
+data f: Float
+data b1,b2,b3,b4: Bool
+
+b1 = isinstance(s, String)
+b2 = isinstance(s, Float)
+b3 = isinstance(f, String)
+b4 = isinstance(f, Float)
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    #the module
+    mod = intp.modules['test']
+    #print mod
+    
+    #sim = intp.get_compiled_objects()[0]
+    #print sim
+    #look at variables
+    b1 = mod.get_attribute(DotName('b1'))
+    b2 = mod.get_attribute(DotName('b2'))
+    b3 = mod.get_attribute(DotName('b3'))
+    b4 = mod.get_attribute(DotName('b4'))
+    assert b1.value == True
+    assert b2.value == False
+    assert b3.value == False
+    assert b4.value == True
+
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_function_type_spec_1()
+    test_isinstance_1()
     pass
 

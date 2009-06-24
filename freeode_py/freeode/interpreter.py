@@ -1536,6 +1536,15 @@ def solution_parameters_function(duration=None, reporting_interval=None):
     
     
     
+def wsiml_isinstance(in_object, class_or_type_or_tuple): 
+    '''
+    isinstance(...) function for Siml.
+    This function evaluates always at compile time, and never creates any code.
+    '''   
+    return IBool(siml_isinstance(in_object, class_or_type_or_tuple))
+
+
+
 def create_built_in_lib():
     '''
     Returns module with objects that are built into interpreter.
@@ -1553,8 +1562,9 @@ def create_built_in_lib():
     lib.create_attribute('time', TIME)
     #basic data types
     lib.create_attribute('NoneType', CLASS_NONETYPE)
-    lib.create_attribute('Float', CLASS_FLOAT)
+    lib.create_attribute('Bool', CLASS_BOOL)
     lib.create_attribute('String', CLASS_STRING)
+    lib.create_attribute('Float', CLASS_FLOAT)
     #built in functions
     lib.create_attribute('print', PrintFunction())
     lib.create_attribute('graph', GraphFunction())
@@ -1568,6 +1578,12 @@ def create_built_in_lib():
           return_type=CLASS_NONETYPE,
           py_function=solution_parameters_function,
           codegen_name='solution_parameters').put_into(lib)
+    WFunc('isinstance', 
+          ArgumentList([Arg('in_object'), 
+                        Arg('class_or_type_or_tuple')]), 
+          return_type=CLASS_BOOL,
+          accept_unknown_values=True,
+          py_function=wsiml_isinstance).put_into(lib)
     #math 
     #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units 
     WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 
@@ -1662,6 +1678,7 @@ def siml_callable(siml_object):
     return isinstance(siml_object, CallableObject)
 
 
+
 def siml_isinstance(in_object, class_or_type_or_tuple):    
     '''
     Check if an object's type is in class_or_type_or_tuple.
@@ -1669,11 +1686,8 @@ def siml_isinstance(in_object, class_or_type_or_tuple):
     isinstance(...) but inside the SIML language. 
     
     If in_object is an expression, which would evaluate to an object of the 
-    correct type, the function return True. 
+    correct type, the function returns True. 
     '''
-#    #precondition: must be SIML object not AST node
-#    if not isinstance(in_object, InterpreterObject):
-#        return False
     #the test: use siml_issubclass() on type attribute
     if in_object.type is not None:
         return siml_issubclass(in_object.type(), class_or_type_or_tuple)
@@ -1710,7 +1724,6 @@ def siml_isknown(siml_obj):
     True:  argument is a known Siml value.
     False: argument is an unevaluated expression or an unknown variable.
     '''
-    #TODO: implement protocol for values: known/unknown, assigned/unassigned
     assert isinstance(siml_obj, (InterpreterObject, NodeFuncCall, 
                                  NodeOpInfix2, NodeOpPrefix1, 
                                  NodeParentheses)), \
@@ -2100,7 +2113,12 @@ class ExpressionVisitor(Visitor):
             #Choose most variable role: const -> param -> variable
             new_oper.role = determine_result_role((inst_lhs, inst_rhs))
             return new_oper
-        
+        except NotImplemented:
+            #TODO: if an operator is not implemented the special function should raise 
+            #      an NotImplemented exception, for generating better error messages.
+            #TODO: Siml code can raise Siml_NotImplemented errors, they should also 
+            #      generate the same error messages.
+            raise Exception( 'Handling of "NotImplemented" exception is not yet implented!')
         #TODO: special methods for boolean operators 'and', 'or'
         #      To retain the shortcut semantics split the execution of the 
         #      operator into two phases: 
@@ -2503,8 +2521,15 @@ class StatementVisitor(Visitor):
         self.interpreter.run(node.statements)
         
     
-    #TODO: Create a nice syntax for the data/compile statement with arbitrary keywords,
-    #      and tree literals
+    #TODO: Create a nice syntax for the data/compile statement with arbitrary keywords.
+    #TODO: A syntax for constructors - literals for user defined objects is needed. 
+    #      (A constructor maybe needs builtin functions like:
+    #          set_assigned(...), setknown(...) 
+    #TODO: Maybe a syntax for anonymous types - tree literals should be introduced:
+    #      data a:
+    #          data b,c: Float param
+    #          data d: String const
+    #
     @Visitor.when_type(NodeDataDef)
     def visit_NodeDataDef(self, node):
         '''Create object and put it into symbol table'''
@@ -2532,6 +2557,17 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeCompileStmt)
     def visit_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
+        #TODO: Idea: replace the "compile" statement with a compile(...)
+        #      function. This function could be written in Siml, and call
+        #      several built in compilation functions.
+        #      - This would make cusomization of the compilation algorithm 
+        #      quite easy for advanced users. They could write their own 
+        #      compilation functions.
+        #      - Information that could be supplid by the users:
+        #        - base class of generated python class. 
+        #        - which methods are the main methods
+        #        - signatures of the main methods
+        #        - which roles are legal for assignment
         #TODO: creatation of the tree-shaped object should be done by 
         #      self.visit_NodeDataDef(...)
         #      so there is only one place where data objects are constructed.
