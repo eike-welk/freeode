@@ -240,7 +240,49 @@ class InterpreterObject(Node):
         else:
             return False
         
-    
+    def replace_attribute(self, name, newAttr, reparent=False):
+        '''
+        Replace an attribute.
+        
+        ARGUMENTS
+        ---------
+        name: DotName, str
+            Name of the attribute that will be replaced
+        newAttr: InterpreterObject
+            The new attribute that will be put into this object.
+        reparent: True/False
+            - if True: set parent attribute of newAttr in any case.
+            - if False (default): set parent attribute only if newAttr has no
+            parent.
+       
+        '''
+        name = DotName(name)
+        del self.attributes[name]
+        self.create_attribute(name, newAttr, reparent)
+        
+    def find_name(self, in_attr):
+        '''
+        Find the name of an attribute.
+        
+        ARGUMENTS
+        ---------
+        in_attr: InterpreterObject
+            Attribute whose name will be searched. It must be an attribute of 
+            this object (self). If "in_attr" is not found an Exception object
+            will be raised. 
+            
+        RETURNS
+        -------
+        DotName
+        The attribue's name.
+        '''
+        for attr_name, attr in self.attributes.iteritems():
+            if attr is in_attr: 
+                break
+        else:
+            raise Exception('"in_attr" is not attribute of this object.')
+        return attr_name #IGNORE:W0631
+
     def create_path(self, path):
         '''
         Create an attribute and sub-attributes so that 'path' can be looked 
@@ -594,6 +636,8 @@ class BuiltInFunctionWrapper(CallableObject):
         #all argument values are known, or we don't care about unknown values.
         if 'self' in parsed_args_2:
             #TODO: more consistent solution, maybe in ArgumentList class
+            #      argument list could return all arguments as positional
+            #      arguments, which would be perfect for calls to Python methods.
             #bad hack for Python implementation detail:
             #'self' must be positional argument.
             func_self = parsed_args_2['self']
@@ -605,6 +649,7 @@ class BuiltInFunctionWrapper(CallableObject):
         #use Siml's None
         if retval is None:
             retval = NONE
+        #TODO: 
         #Test return value.type
         if(self.return_type is not None and 
            not siml_issubclass(retval.type(), self.return_type())):
@@ -1485,7 +1530,7 @@ class GraphFunction(CallableObject):
      
      
      
-def save_function(file_name=None):
+def wsiml_save(file_name=None):
     '''
     The store function.
     
@@ -1509,7 +1554,7 @@ def save_function(file_name=None):
     
     
     
-def solution_parameters_function(duration=None, reporting_interval=None):
+def wsiml_solution_parameters(duration=None, reporting_interval=None):
     '''
     The solution_parameters function.
     
@@ -1545,6 +1590,29 @@ def wsiml_isinstance(in_object, class_or_type_or_tuple):
 
 
 
+def wsiml_replace_attr(old, new):
+    '''
+    Take old object out of its parent, and put new object in its place
+    
+    This function evaluates always at compile time, and never creates any code,
+    but its side effects change code that will be generated.
+    
+    The function does not change the parent attribute. Therefore objects
+    modified with replace(...) are not exactly like normally created objects.
+    '''
+    if not isinstance(old, InterpreterObject) or \
+       old.parent is None or old.parent() is None:
+        raise UserException('1st argument "old" must be an existing object '
+                            '(usually created with a "data" statement), \n'
+                            'and it must have a living parent object.')
+    if not isinstance(new, InterpreterObject):
+        raise UserException('2nd argument "new" must be an existing object'
+                            '(usually created with a "data" statement).')
+    parent = old.parent()
+    name = parent.find_name(old)
+    parent.replace_attribute(name, new)
+
+
 def create_built_in_lib():
     '''
     Returns module with objects that are built into interpreter.
@@ -1570,13 +1638,13 @@ def create_built_in_lib():
     lib.create_attribute('graph', GraphFunction())
     WFunc('save', ArgumentList([Arg('file_name', CLASS_STRING)]), 
           return_type=CLASS_NONETYPE,
-          py_function=save_function,
+          py_function=wsiml_save,
           codegen_name='save').put_into(lib)
     WFunc('solution_parameters', 
           ArgumentList([Arg('duration', CLASS_FLOAT), 
                         Arg('reporting_interval', CLASS_FLOAT)]), 
           return_type=CLASS_NONETYPE,
-          py_function=solution_parameters_function,
+          py_function=wsiml_solution_parameters,
           codegen_name='solution_parameters').put_into(lib)
     WFunc('isinstance', 
           ArgumentList([Arg('in_object'), 
@@ -1584,6 +1652,11 @@ def create_built_in_lib():
           return_type=CLASS_BOOL,
           accept_unknown_values=True,
           py_function=wsiml_isinstance).put_into(lib)
+    WFunc('replace_attr', 
+          ArgumentList([Arg('old'), Arg('new')]), 
+          return_type=CLASS_NONETYPE,
+          accept_unknown_values=True,
+          py_function=wsiml_replace_attr).put_into(lib)
     #math 
     #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units 
     WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 
@@ -1640,14 +1713,9 @@ def make_derivative(variable):
     deri_var.role = RoleTimeDifferential
     
     #find state variable in parent (to get variable's name)
-    for var_name, var in variable.parent().attributes.iteritems():
-        if var is variable: 
-            break
-    else:
-        raise Exception('Broken parent reference! "variable" is not '
-                        'in "variable.parent().attributes".')
+    var_name = variable.parent().find_name(variable)
     #put time derivative in parent, with nice name
-    deri_name = DotName(var_name[0] + '$time')         #IGNORE:W0631
+    deri_name = DotName(var_name[0] + '$time')         
     #deri_name = make_unique_name(deri_name, variable.parent().attributes)
     variable.parent().create_attribute(deri_name, deri_var)
     

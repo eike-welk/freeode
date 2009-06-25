@@ -41,7 +41,9 @@ except ImportError:
 
 # -------- Test InterpreterObject class ----------------------------------------------------------------------
 def test_InterpreterObject_1(): #IGNORE:C01111
-    print 'InterpreterObject: basic operation'
+    msg = 'InterpreterObject: basic operation'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import (InterpreterObject, DotName, UndefinedAttributeError,
                                      DuplicateAttributeError, BoundMethod, CallableObject)
 
@@ -84,8 +86,13 @@ def test_InterpreterObject_1(): #IGNORE:C01111
     
 
 def test_InterpreterObject_method_retrieval(): #IGNORE:C01111
-    print 'InterpreterObject: attributes are also searched in the class object'
-    print 'If the attributes taken from the class are call-able they are wrapped in a bound method.'
+    msg = \
+    '''
+    InterpreterObject: attributes are also searched in the class object
+    If the attributes taken from the class are call-able they are wrapped in a bound method.
+    '''
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import (InterpreterObject, DotName, UndefinedAttributeError,
                                      DuplicateAttributeError, BoundMethod, CallableObject, 
                                      ref)
@@ -132,7 +139,9 @@ def test_InterpreterObject_method_retrieval(): #IGNORE:C01111
 
 
 def test_InterpreterObject_create_path_1(): #IGNORE:C01111
-    print 'InterpreterObject: create_path method: create non-existing path.'
+    msg = 'InterpreterObject: create_path method: create non-existing path.'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import (InterpreterObject, DotName)
     
     #the root object where the long name will be created
@@ -154,7 +163,9 @@ def test_InterpreterObject_create_path_1(): #IGNORE:C01111
 
 
 def test_InterpreterObject_create_path_2(): #IGNORE:C01111
-    print 'InterpreterObject: create_path method: return existing path, extend path'
+    msg = 'InterpreterObject: create_path method: return existing path, extend path'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import (InterpreterObject, DotName)
     
     #the root object where the long name will be created
@@ -174,9 +185,52 @@ def test_InterpreterObject_create_path_2(): #IGNORE:C01111
 
 
 
+def test_InterpreterObject_replace_attribute(): #IGNORE:C01111
+    msg = 'InterpreterObject: replace_attribute method.'
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import (InterpreterObject, DotName)
+    
+    obj = InterpreterObject()
+    attr1 = InterpreterObject()
+    attr2 = InterpreterObject()
+    
+    #put an attribute into the object
+    obj.create_attribute('test', attr1)
+    assert obj.get_attribute(DotName('test')) is attr1
+    #replace the attribute with an other object
+    obj.replace_attribute('test', attr2)
+    assert obj.get_attribute(DotName('test')) is attr2
+    
+ 
+    
+def test_InterpreterObject_find_name(): #IGNORE:C01111
+    msg = 'InterpreterObject: find_name method.'
+    #py.test.skip(msg)
+    print msg
+    from freeode.interpreter import (InterpreterObject, DotName)
+    
+    obj = InterpreterObject()
+    attr1 = InterpreterObject()
+    attr2 = InterpreterObject()
+    
+    #put attributes into object
+    obj.create_attribute('attr1', attr1)
+    obj.create_attribute('attr2', attr2)
+    #find the names of the attributes
+    name1 = obj.find_name(attr1)
+    name2 = obj.find_name(attr2)
+    #verify that the found names are correct
+    assert name1 == DotName('attr1')
+    assert name2 == DotName('attr2')
+    
+    
+    
 #-------- Test IntArgumentList class ------------------------------------------------------------------------#
 def test_IntArgumentList_1(): #IGNORE:C01111
-    print 'IntArgumentList: construction'
+    msg = 'IntArgumentList: construction'
+    #py.test.skip(msg)
+    print msg
     from freeode.interpreter import (ArgumentList, NodeFuncArg, DotName, UserException, CLASS_FLOAT)
     
     #Test normal construction only positional argument: f(a, b)
@@ -1450,5 +1504,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_expression_evaluation_2()
+    test_InterpreterObject_find_name()
     pass

@@ -1,0 +1,117 @@
+#    Copyright (C) 2009 by Eike Welk
+#    eike.welk@post.rwth-aachen.de
+
+
+
+#-----------------------------------------------------------------------------
+#          Trajectory of Slanted Throw
+#-----------------------------------------------------------------------------
+
+
+
+class Vec2:
+    data x: Float role_unknown
+    data y: Float role_unknown
+
+
+    func len(this):
+        return sqrt(x**2 + y**2)
+
+
+    func __add__(this, other):
+        #vector addition or elementwise addition
+        data res: Vec2
+        if isinstance(other, Vec2):
+            res.x = x + other.x
+            res.y = y + other.y
+        elif isinstance(other, Float):
+            res.x = x + other
+            res.y = y + other
+        else:
+            ##TODO: raise NotImplemented('Arguments for "+" operator must be Vec2 or Float.')
+            return None
+        return res
+
+
+    func __sub__(this, other):
+        #vector subtraction or elementwise subtraction
+        data res: Vec2
+        if isinstance(other, Vec2):
+            res.x = x - other.x
+            res.y = y - other.y
+        elif isinstance(other, Float):
+            res.x = x - other
+            res.y = y - other
+        else:
+            ##TODO: raise NotImplemented('Arguments for "+" operator must be Vec2 or Float.')
+            return None
+        return res
+
+
+    func __mul__(this, other):
+        #dot product for two vectors; scalar product if other is a scalar
+        if isinstance(other, Vec2):
+            data res: Float
+            res = x * other.x + y * other.y
+        elif isinstance(other, Float):
+            data res: Vec2
+            res.x = x * other
+            res.y = y * other
+        else:
+            ##TODO: raise NotImplemented('Arguments for "+" operator must be Vec2 or Float.')
+            return None
+        return res
+
+
+    func __assign__(this, other):
+        x = other.x
+        y = other.y
+
+
+    func __diff__(this):
+        data res: Vec2
+        replace_attr(res.x, $x)
+        replace_attr(res.y, $y)
+        return res
+
+
+data g, pi:Float
+g = 9.81
+pi = 3.1415
+
+
+class Throw:
+    data angle0, v0: Float param
+    #p0: Vec2 param
+
+    data p, v: Vec2
+    #data dummy: Vec2
+    data fdummy: Float
+
+    func initialize(this):
+        angle0 = pi/180 * 45
+        v0 = 30
+
+        p.x = 0
+        p.y = 0
+        v.x = cos(angle0) * v0
+        v.y = sin(angle0) * v0
+        solution_parameters(duration = 4, reporting_interval = 0.1)
+
+
+    func dynamic(this):
+        $v.x = 0
+        $v.y = -g
+        #$p.x = v.x
+        #$p.y = v.y
+        $p = v
+        #dummy = p - v * 2
+        fdummy = p * v
+
+
+    func final(this):
+        graph(p.x, p.y)
+        graph(fdummy)
+        #graph(dummy.x, dummy.y)
+
+compile Throw

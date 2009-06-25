@@ -1972,8 +1972,8 @@ def test_isinstance_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, IFloat)
-    from freeode.ast import DotName, NodeAssignment
+    from freeode.interpreter import Interpreter
+    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -2009,9 +2009,53 @@ b4 = isinstance(f, Float)
 
 
 
+def test_replace_attr_1(): #IGNORE:C01111
+    msg = '''
+    Test the builtin replace_attr(...) function.
+    
+    replace_attr(...) is really meant to enable __diff__ for user defined
+    classes. 
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, IFloat)
+    from freeode.ast import DotName
+
+    prog_text = \
+'''
+class A:
+    data f: Float
+
+#create the variables especially a.f, f_new
+data a: A
+data f_new: Float
+
+#replace the original a.f and put f_new into its place
+replace_attr(a.f, f_new)
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    #the module
+    mod = intp.modules['test']
+    #print mod
+    
+    #sim = intp.get_compiled_objects()[0]
+    #print sim
+    #look at variables
+    a = mod.get_attribute(DotName('a'))
+    a_f = a.get_attribute(DotName('f'))
+    f_new = mod.get_attribute(DotName('f_new'))
+    assert f_new is a_f
+    assert isinstance(f_new, IFloat)
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_isinstance_1()
+    test_replace_attr_1()
     pass
 
