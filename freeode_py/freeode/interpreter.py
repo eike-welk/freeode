@@ -2072,12 +2072,11 @@ class ExpressionVisitor(Visitor):
         #otherwise there is an unevaluated expression between the brackets. 
         else:
             #create unevaluated parentheses node as the return value 
-            new_node = NodeParentheses()
-            new_node.arguments = [val_expr]
+            new_node = NodeParentheses((val_expr,), node.loc)
+            #put decoration on new node
             new_node.type = val_expr.type
             new_node.role = val_expr.role
             new_node.is_assigned = True
-            new_node.loc = node.loc
             return new_node
 
     
@@ -2113,17 +2112,14 @@ class ExpressionVisitor(Visitor):
             return result
         except UnknownArgumentsException:
             #Some arguments were unknown create an unevaluated expression
-            new_oper = NodeOpPrefix1()
-            new_oper.operator = node.operator
-            new_oper.arguments = (inst_rhs,)
-            new_oper.keyword_arguments = {}
+            new_node = NodeOpPrefix1(node.operator, (inst_rhs,), node.loc)
             #put on decoration
-            #new_oper.function_object = func
-            new_oper.type = func.return_type
-            new_oper.is_assigned = True
+            #new_node.function_object = func
+            new_node.type = func.return_type
+            new_node.is_assigned = True
             #Take the role from the argument
-            new_oper.role = inst_rhs.role
-            return new_oper
+            new_node.role = inst_rhs.role
+            return new_node
     
     
     _binop_table = {'+': ('__add__','__radd__'),
@@ -2171,20 +2167,17 @@ class ExpressionVisitor(Visitor):
             return result
         except UnknownArgumentsException:
             #Some arguments were unknown create an unevaluated expression
-            new_oper = NodeOpInfix2()
-            new_oper.operator = node.operator
-            new_oper.arguments = (inst_lhs, inst_rhs)
-            new_oper.keyword_arguments = {}
+            new_node = NodeOpInfix2(node.operator, (inst_lhs, inst_rhs), node.loc)
             #put on decoration
-            #new_oper.function_object = func
-            new_oper.type = func.return_type
-            new_oper.is_assigned = True
+            #new_node.function_object = func
+            new_node.type = func.return_type
+            new_node.is_assigned = True
             #Choose most variable role: const -> param -> variable
-            new_oper.role = determine_result_role((inst_lhs, inst_rhs))
-            return new_oper
-        except NotImplemented:
+            new_node.role = determine_result_role((inst_lhs, inst_rhs))
+            return new_node
+        except NotImplementedError:
             #TODO: if an operator is not implemented the special function should raise 
-            #      an NotImplemented exception, for generating better error messages.
+            #      an NotImplementedError exception, for generating better error messages.
             #TODO: Siml code can raise Siml_NotImplemented errors, they should also 
             #      generate the same error messages.
             raise Exception( 'Handling of "NotImplemented" exception is not yet implented!')

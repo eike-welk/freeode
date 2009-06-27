@@ -432,13 +432,12 @@ class NodeParentheses(Node):
         loc: TextLocation; None
             Location in input string
     '''
-    def __init__(self, arguments=None):
+    def __init__(self, arguments=None, loc=None):
         super(NodeParentheses, self).__init__()
         self.arguments = arguments if arguments is not None else tuple()
         self.type = None
-        self.type = None
         self.role = RoleUnkown
-        self.loc = None
+        self.loc = loc
 
 
 class NodeOpInfix2(Node):
