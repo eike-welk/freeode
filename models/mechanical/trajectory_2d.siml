@@ -15,7 +15,7 @@ class Vec2:
 
 
     func len(this):
-        return sqrt(x**2 + y**2)
+        return sqrt(this*this)
 
 
     func __add__(this, other):
@@ -63,6 +63,14 @@ class Vec2:
         return res
 
 
+    func __div__(this, other: Float):
+        #scalar division
+        data res: Vec2
+        res.x = x / other
+        res.y = y / other
+        return res
+
+
     func __assign__(this, other):
         x = other.x
         y = other.y
@@ -73,6 +81,23 @@ class Vec2:
         replace_attr(res.x, $x)
         replace_attr(res.y, $y)
         return res
+
+#length of the vector
+func len(v:Vec2):
+    return v.len()
+
+#Dot product of two vectors
+func dot(v1:Vec2, v2:Vec2):
+    return v1 * v2
+
+#cross product of two vectors
+#As 2D vectors have only components in the X-Y plane,
+#this product is just a scalar number. It can be thought
+#to be the length of the result vector in Z-direction.
+func cross(a:Vec2, b:Vec2):
+    return a.x*b.y - a.y*b.x
+
+#TODO: angle between two vectors
 
 
 data g, pi:Float
@@ -85,7 +110,7 @@ class Throw:
     #p0: Vec2 param
 
     data p, v: Vec2
-    #data dummy: Vec2
+    data dummy: Vec2
     data fdummy: Float
 
     func initialize(this):
@@ -102,11 +127,9 @@ class Throw:
     func dynamic(this):
         $v.x = 0
         $v.y = -g
-        #$p.x = v.x
-        #$p.y = v.y
         $p = v
-        #dummy = p - v * 2
-        fdummy = p * v
+        dummy = p - v * 2
+        fdummy = len(v)
 
 
     func final(this):

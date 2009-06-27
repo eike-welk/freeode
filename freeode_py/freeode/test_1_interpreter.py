@@ -804,7 +804,7 @@ def test_operator_dispatch_1(): #IGNORE:C01111
     from freeode.interpreter import (IFloat, ExpressionVisitor)
     from freeode.ast import NodeOpInfix2, NodeOpPrefix1
     
-    expr_visit = ExpressionVisitor(None)
+    expr_visit = ExpressionVisitor()
     
     val_2 = IFloat(2)
     val_3 = IFloat(3)
@@ -828,7 +828,7 @@ def test_operator_dispatch_2(): #IGNORE:C01111
     from freeode.interpreter import (IFloat, ExpressionVisitor)
     from freeode.ast import NodeOpInfix2, NodeOpPrefix1, RoleVariable
 
-    expr_visit = ExpressionVisitor(None)
+    expr_visit = ExpressionVisitor()
     
     val_2 = IFloat()
     val_2.role = RoleVariable
@@ -861,7 +861,7 @@ def test_expression_evaluation_1(): #IGNORE:C01111
     print ex
     
     #interpret the expression
-    exv = ExpressionVisitor(None)
+    exv = ExpressionVisitor()
     res = exv.dispatch(ex)
     print
     print 'Result object: --------------------------------------------------------------'
@@ -884,7 +884,7 @@ def test_expression_evaluation_2(): #IGNORE:C01111
     #print ex
     
     #interpret the expression
-    exv = ExpressionVisitor(None)
+    exv = ExpressionVisitor()
     res = exv.dispatch(ex)
     print
     print 'Result object: --------------------------------------------------------------'
@@ -922,7 +922,7 @@ def test_expression_evaluation_3(): #IGNORE:C01111
     env.global_scope = mod
     
     #interpret the expression
-    exv = ExpressionVisitor(None)
+    exv = ExpressionVisitor()
     exv.environment = env
     res = exv.dispatch(ex)
     print
@@ -967,7 +967,7 @@ def test_expression_evaluation_4(): #IGNORE:C01111
     env = ExecutionEnvironment()
     env.global_scope = mod
     #create visitor for evaluating the expression
-    exv = ExpressionVisitor(None)
+    exv = ExpressionVisitor()
     exv.environment = env
     #evaluate the expression
     res = exv.dispatch(ex)
@@ -1008,7 +1008,7 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     env.global_scope = mod
     
     #interpret the expression
-    exv = ExpressionVisitor(None)
+    exv = ExpressionVisitor()
     exv.environment = env
     res = exv.dispatch(ex)
     print
@@ -1049,7 +1049,7 @@ def test_ExpressionVisitor_unknown_arguments_1(): #IGNORE:C01111
     env = ExecutionEnvironment()
     env.global_scope = mod
     #create visitor for evaluating the expression
-    exv = ExpressionVisitor(None)
+    exv = ExpressionVisitor()
     exv.environment = env
     
     #create a Siml value as function argument
@@ -1075,7 +1075,7 @@ def test_ExpressionVisitor_unknown_arguments_2(): #IGNORE:C01111
     from freeode.interpreter import (Interpreter, CLASS_FLOAT, )
     from freeode.ast import (NodeFuncCall, NodeIdentifier, RoleVariable)
 
-    #create the interpreter - initializes InterpreterObject.interpreter
+    #create the interpreter - initializes INTERPRETER
     # this way SimlFunction can access the interpreter.
     intp = Interpreter()    #IGNORE:W0612
     intp.create_test_module_with_builtins()
@@ -1129,12 +1129,11 @@ c = 'Hello ' + 'world!'
     #initialize the interpreter
     intp = Interpreter()
     env = ExecutionEnvironment()
-    exv = ExpressionVisitor(None)
+    exv = ExpressionVisitor()
     exv.environment = env
-    stv = StatementVisitor(None)
+    stv = StatementVisitor(None, exv)
     stv.interpreter = intp
     stv.environment = env
-    stv.expression_visitor = exv
     #set up parsing the main module
     stv.environment.global_scope = mod
     stv.environment.local_scope = mod
@@ -1168,7 +1167,7 @@ def test_SimlFunction_1(): #IGNORE:C01111
     from freeode.ast import (NodeFuncArg, NodeReturnStmt, 
                              NodeIdentifier, UserException)
 
-    #create the interpreter - initializes InterpreterObject.interpreter
+    #create the interpreter - initializes INTERPRETER
     # this way SimlFunction can access the interpreter.
     intp = Interpreter()    #IGNORE:W0612
     #create a Siml value as function argument
@@ -1237,7 +1236,7 @@ def test_SimlFunction_3(): #IGNORE:C01111
                                      ArgumentList, CLASS_FLOAT, BUILT_IN_LIB)
     from freeode.ast import (NodeFuncArg, DotName)
 
-    #create the interpreter - initializes InterpreterObject.interpreter
+    #create the interpreter - initializes INTERPRETER
     
     intp = Interpreter()    #IGNORE:W0612
     

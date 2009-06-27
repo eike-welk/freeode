@@ -159,8 +159,8 @@ class InterpreterObject(Node):
     '''
     #let these attributes appear first in the pretty printed tree  
     aa_top = ['name', 'type']
-    #reference to interpreter - TODO: global variables are bad
-    interpreter = None
+    #reference to interpreter - TODO: global variables are bad 
+    #interpreter = None
     
     def __init__(self):
         Node.__init__(self)
@@ -174,6 +174,7 @@ class InterpreterObject(Node):
         #const, param, variable, ... (Comparable to storage class in C++)
         self.role = RoleUnkown
         #True/False was this object already assigned to
+        #TODO: rename to self.is_known ???
         self.is_assigned = False
         #TODO: self.save ??? True/False attribute is saved to disk as simulation result
         #TODO: self.default_value ??? (or into leaf types?)
@@ -704,7 +705,7 @@ class SimlFunction(CallableObject):
                                 'must be a known Siml object.')
         
         #create local name space (for function arguments and local variables)
-        if self.interpreter.is_collecting_code():
+        if INTERPRETER.is_collecting_code():
             #store local scope so local variables are accessible for 
             #code generation
             local_namespace = self.create_persistent_locals_ns()
@@ -723,7 +724,7 @@ class SimlFunction(CallableObject):
                 new_arg.role = arg_val.role
                 #put object into local name-space and assign value to it 
                 local_namespace.create_attribute(arg_name, new_arg)
-                self.interpreter.statement_visitor.assign(new_arg, arg_val, None)
+                INTERPRETER.statement_visitor.assign(new_arg, arg_val, None)
         
         #Create new environment for the function. 
         new_env = ExecutionEnvironment()
@@ -734,12 +735,12 @@ class SimlFunction(CallableObject):
         new_env.default_data_role = RoleUnkown
 
         #execute the function's code in the new environment.
-        self.interpreter.push_environment(new_env)
+        INTERPRETER.push_environment(new_env)
         try:
-            self.interpreter.run(self.statements)
+            INTERPRETER.run(self.statements)
         except ReturnFromFunctionException:           #IGNORE:W0704
             pass
-        self.interpreter.pop_environment()
+        INTERPRETER.pop_environment()
         #the return value is stored in the environment (stack frame)
         ret_val = new_env.return_value
         
@@ -795,7 +796,7 @@ class SimlFunction(CallableObject):
         #long name of function. like: bioreactor.conti.bacterial_growth
         func_path = self.get_complete_path()
         #name-space where all local variables go into
-        locals_root = self.interpreter.get_locals_storage()
+        locals_root = INTERPRETER.get_locals_storage()
         #create namespace with long name of this function
         locals_ns = locals_root.create_path(func_path[1:] + 
                                             DotName(str(self.call_count)))
@@ -867,7 +868,7 @@ class SimlClass(TypeObject):
         #Create new environment for object construction. 
         #Use global scope from class definition.
         new_env = ExecutionEnvironment()
-        new_env.global_scope = self.interpreter.get_environment().global_scope
+        new_env.global_scope = INTERPRETER.get_environment().global_scope
         new_env.this_scope = None
         new_env.local_scope = self #functions and data are created 
         #                           in the local scope - this class object
@@ -875,13 +876,13 @@ class SimlClass(TypeObject):
         new_env.default_data_role = RoleAlgebraicVariable
         
         #execute the function's code in the new environment.
-        self.interpreter.push_environment(new_env)
+        INTERPRETER.push_environment(new_env)
         try:
-            self.interpreter.run(statements)
+            INTERPRETER.run(statements)
         except ReturnFromFunctionException:           
             print 'Warning: return statement in class declaration!'
 #                raise Exception('Return statements are illegal in class bodies!')
-        self.interpreter.pop_environment()
+        INTERPRETER.pop_environment()
 
 
     def __call__(self, *args, **kwargs):
@@ -1440,7 +1441,7 @@ class PrintFunction(CallableObject):
         self.codegen_name = 'print'
         
     def __call__(self, *args, **kwargs):
-        if self.interpreter.is_collecting_code():
+        if INTERPRETER.is_collecting_code():
             #create code that prints at runtime
             new_args = []
             for arg1 in args:
@@ -1450,8 +1451,7 @@ class PrintFunction(CallableObject):
                 #into calls to fundamental __str__ methods
                 str_func = arg1.type().get_attribute(DotName('__str__'))
                 str_call = NodeFuncCall(str_func, [arg1], {}, None)
-                str_expr = self.interpreter.statement_visitor\
-                           .expression_visitor.dispatch(str_call)
+                str_expr = INTERPRETER.expression_visitor.dispatch(str_call)
                 new_args.append(str_expr) #collect the call's result
             #create a new call to the print function
             print_call = NodeFuncCall(self, new_args, {}, None)
@@ -1502,7 +1502,7 @@ class GraphFunction(CallableObject):
         self.codegen_name = 'graph'
         
     def __call__(self, *args, **kwargs):
-        if self.interpreter.is_collecting_code():
+        if INTERPRETER.is_collecting_code():
             #we generate code:
             #check arguments
             for arg_val in args:
@@ -1542,8 +1542,7 @@ def wsiml_save(file_name=None):
     file_name: String
         Filename of the stored variables.
     '''
-    dummy = InterpreterObject()
-    if dummy.interpreter.is_collecting_code():
+    if INTERPRETER.is_collecting_code():
         #create unevaluated function call indirectly
         raise UnknownArgumentsException('Raising exception to force creation '
                                         'of unevaluated function call.')
@@ -1569,8 +1568,7 @@ def wsiml_solution_parameters(duration=None, reporting_interval=None):
         Interval at which the simulation results are recorded.
         Time between data points
     '''
-    dummy = InterpreterObject()
-    if dummy.interpreter.is_collecting_code():
+    if INTERPRETER.is_collecting_code():
         #create unevaluated function call indirectly
         raise UnknownArgumentsException('Raising exception to force creation '
                                         'of unevaluated function call.')
@@ -1681,8 +1679,9 @@ def create_built_in_lib():
           codegen_name='min').put_into(lib)
     
     return lib
+
 #the module of built in objects
-BUILT_IN_LIB = create_built_in_lib()    
+#BUILT_IN_LIB = create_built_in_lib()    
     
     
     
@@ -1693,6 +1692,7 @@ BUILT_IN_LIB = create_built_in_lib()
 #TODO: replace_attr(name, attr)
 #TODO: quote(expr)
 #TODO: quasi_quote(expr)
+#TODO: operator('x-x', expr, expr, ...)
         
 def make_derivative(variable):    
     '''
@@ -1956,7 +1956,8 @@ def set_role_recursive(tree, new_role):
 class ReturnFromFunctionException(Exception):
     '''Functions return by raising this exception.'''
     #TODO: Use this exception to transport return value?
-    pass
+    def __init__(self, loc=None):
+        self.loc = loc
 
 
 class CompiledClass(InterpreterObject):
@@ -1990,10 +1991,10 @@ class ExpressionVisitor(Visitor):
     The right function is selected with the inherited function
         self.dispatch(...) 
     '''
-    def __init__(self, interpreter):
+    def __init__(self):
         Visitor.__init__(self) 
         #the interpreter top level object - necessary for function call
-        self.interpreter = interpreter
+        #self.interpreter = interpreter
         #the places where attributes are stored (the symbol tables)
         self.environment = None
         
@@ -2277,19 +2278,19 @@ class StatementVisitor(Visitor):
     The right function is selected with the inherited function
         self.dispatch(...) 
     '''
-    def __init__(self, interpreter):
+    def __init__(self, interpreter, expression_visitor):
         Visitor.__init__(self) 
         #the interpreter top level object - necessary for return statement
         self.interpreter = interpreter
         #the places where attributes are stored (the symbol tables)
         self.environment = None
         #object to evaluate expressions
-        self.expression_visitor = ExpressionVisitor(interpreter)
+        self.expression_visitor = expression_visitor
         
     def set_environment(self, new_env):
         '''Change part of the symbol table which is currently used.'''
         self.environment = new_env
-        self.expression_visitor.set_environment(new_env)
+        #self.expression_visitor.set_environment(new_env)
         
     @Visitor.when_type(NodePassStmt)
     def visit_NodePassStmt(self, node): #IGNORE:W0613
@@ -2313,7 +2314,7 @@ class StatementVisitor(Visitor):
         #Forcibly end function execution - 
         #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
         #TODO: transport return value with the exception?
-        raise ReturnFromFunctionException()
+        raise ReturnFromFunctionException(loc=node.loc)
 
 
     @Visitor.when_type(NodeExpressionStmt)
@@ -2477,46 +2478,49 @@ class StatementVisitor(Visitor):
         if self.interpreter.is_collecting_code():
             is_collecting_code = True
             new_if = NodeIfStmt(None, node.loc)
-            
-        #A clause consists of: <condition>, <list of statements>.
-        #This is inspired by Lisp's 'cond' special-function.
-        #http://www.cis.upenn.edu/~matuszek/LispText/lisp-cond.html
-        for clause in node.clauses:
-            #interpret the condition
-            condition_ev = self.expression_visitor.dispatch(clause.condition)
-            if not siml_isinstance(condition_ev, (CLASS_BOOL, CLASS_FLOAT)):
-                raise UserException('Conditions must evaluate to '
-                                    'instances equivalent to Bool.', 
-                                    loc=clause.loc)#, errno=3700510)
-            
-            #Condition evaluates to constant False: Do not enter clause.
-            if siml_isknown(condition_ev) and bool(condition_ev.value) is False:
-                continue
-            #Condition evaluates to constant True
-            #This is the last clause, the 'else' clause
-            elif siml_isknown(condition_ev) and bool(condition_ev.value) is True:
-                is_seen_else_clause = True
-            #Condition evaluates to unknown value
-            #This is only legal when code is created
-            elif not is_collecting_code:
-                raise UserException('Only conditions with constant values '
-                                    'are legal in this context.', 
-                                    loc=clause.loc)#, errno=3700520)
-            
-            #If code is created, create node for a clause
-            #Tell interpreter to put generated statements into body of clause
-            if is_collecting_code:
-                new_clause = NodeClause(condition_ev, [], clause.loc)
-                new_if.clauses.append(new_clause)
-                self.interpreter.push_statement_list(new_clause.statements)
-            #interpret the statements
-            self.interpreter.run(clause.statements)
-            #Tell interpreter to put generated statements into previous location
-            if is_collecting_code:
-                self.interpreter.pop_statement_list()
+        try:    
+            #A clause consists of: <condition>, <list of statements>.
+            #This is inspired by Lisp's 'cond' special-function.
+            #http://www.cis.upenn.edu/~matuszek/LispText/lisp-cond.html
+            for clause in node.clauses:
+                #interpret the condition
+                condition_ev = self.expression_visitor.dispatch(clause.condition)
+                if not siml_isinstance(condition_ev, (CLASS_BOOL, CLASS_FLOAT)):
+                    raise UserException('Conditions must evaluate to '
+                                        'instances equivalent to Bool.', 
+                                        loc=clause.loc)#, errno=3700510)
                 
-            if is_seen_else_clause:
-                break
+                #Condition evaluates to constant False: Do not enter clause.
+                if siml_isknown(condition_ev) and bool(condition_ev.value) is False:
+                    continue
+                #Condition evaluates to constant True
+                #This is the last clause, the 'else' clause
+                elif siml_isknown(condition_ev) and bool(condition_ev.value) is True:
+                    is_seen_else_clause = True
+                #Condition evaluates to unknown value
+                #This is only legal when code is created
+                elif not is_collecting_code:
+                    raise UserException('Only conditions with constant values '
+                                        'are legal in this context.', 
+                                        loc=clause.loc)#, errno=3700520)
+                
+                #If code is created, create node for a clause
+                #Tell interpreter to put generated statements into body of clause
+                if is_collecting_code:
+                    new_clause = NodeClause(condition_ev, [], clause.loc)
+                    new_if.clauses.append(new_clause)
+                    self.interpreter.push_statement_list(new_clause.statements)
+                #interpret the statements
+                self.interpreter.run(clause.statements)
+                #Tell interpreter to put generated statements into previous location
+                if is_collecting_code:
+                    self.interpreter.pop_statement_list()
+                    
+                if is_seen_else_clause:
+                    break
+        except ReturnFromFunctionException, e:
+            raise UserException('Return statemens are illegal inside "if" '
+                                'statements.', loc=e.loc)
         
         #Optimizations of the generated 'if' statement, and checking of 
         #special constraints.
@@ -2851,6 +2855,10 @@ class StatementVisitor(Visitor):
                                 loc=node.loc, errno=3800920)
 
 
+#the module of built in objects
+BUILT_IN_LIB = IModule() #just for pyparsings's code completion
+#The one and only interpreter
+INTERPRETER = None
 
 class Interpreter(object):
     '''
@@ -2865,9 +2873,14 @@ class Interpreter(object):
     and expression visitor).
     '''
     def __init__(self):
+        #object that interprets expressions
+        self.expression_visitor = ExpressionVisitor()
         #object that interprets a single statement
-        self.statement_visitor = StatementVisitor(self)
-        #the built in objects - Initialize with empty object.
+        self.statement_visitor = StatementVisitor(self, self.expression_visitor)
+        #the built in objects 
+        #TODO: this global variable should go away some day
+        global BUILT_IN_LIB 
+        BUILT_IN_LIB = create_built_in_lib()
         self.built_in_lib = BUILT_IN_LIB
         #directory of modules - the symbol table
         self.modules = {}
@@ -2889,9 +2902,10 @@ class Interpreter(object):
         #variables - needed for compile statement
         self.locals_storage = None
         
-        #tell all InterpreterObject instances which is their interpreter
+        #tell all objects which is their interpreter
         #TODO: this global variable should go away some day
-        InterpreterObject.interpreter = weakref.proxy(self)
+        global INTERPRETER
+        INTERPRETER = self
         
         
     # --- code collection - compile statement ------------------------------------------------------
@@ -3059,6 +3073,7 @@ class Interpreter(object):
         '''
         self.env_stack.append(new_env)
         self.statement_visitor.set_environment(new_env)
+        self.expression_visitor.set_environment(new_env)
             
     def pop_environment(self):
         '''
@@ -3068,6 +3083,7 @@ class Interpreter(object):
         old_env = self.env_stack.pop()
         new_env = self.env_stack[-1] 
         self.statement_visitor.set_environment(new_env)
+        self.expression_visitor.set_environment(new_env)
         return old_env
         
     def get_environment(self):
@@ -3075,7 +3091,7 @@ class Interpreter(object):
         return self.env_stack[-1]
     
         
-    # --- test --------------------------------------------------------------------
+    # --- testing --------------------------------------------------------------------
     def create_test_module_with_builtins(self):
         '''
         Create a module object and a stack frame for testing.
