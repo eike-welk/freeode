@@ -395,25 +395,6 @@ class NodeAttrAccess(Node):
         self.loc = None        
 
 
-#class NodeDollarPrefix(Node):
-#    '''
-#    AST node for '$' (time derivation) operator.
-#    Attributes:
-#    operator: '$'  
-#        For uniform handling with other operators
-#    arguments: list(NodeIdentifier); list(InterpreterObject);
-#        self.arguments[0]: RHS: NodeIdentifier:
-#        State variable whose derivative should be returned
-#    loc: 
-#        Location in input string
-#   '''
-#    def __init__(self):
-#        super(NodeDollarPrefix, self).__init__()
-#        self.operator = '$'
-#        self.arguments = tuple()
-#        self.loc = None        
-#
-
 class NodeParentheses(Node):
     '''
     Represent a pair of parentheses that enclose an expression, in the AST.
@@ -434,9 +415,17 @@ class NodeParentheses(Node):
     '''
     def __init__(self, arguments=None, loc=None):
         super(NodeParentheses, self).__init__()
+        #--- function call aspect -------------------------------------------#
+        #self.function = None 
         self.arguments = arguments if arguments is not None else tuple()
+        self.keyword_arguments = {}
+        #unknown variable aspect
         self.type = None
         self.role = RoleUnkown
+        self.is_assigned = None
+        #--- information flow graph construction ----------------------------#
+        self.inputs = None
+        #for error messages
         self.loc = loc
 
 
@@ -465,6 +454,8 @@ class NodeOpInfix2(Node):
     '''
     def __init__(self, operator='*_*', arguments=None, loc=None):
         super(NodeOpInfix2, self).__init__()
+        #--- function call aspect -------------------------------------------#
+        self.function = None 
         self.operator = operator
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
@@ -473,6 +464,8 @@ class NodeOpInfix2(Node):
         self.type = None
         self.role = RoleUnkown
         self.is_assigned = None
+        #--- information flow graph construction ----------------------------#
+        self.inputs = None
         #for error messages
         self.loc = loc
 
@@ -502,14 +495,17 @@ class NodeOpPrefix1(Node):
   '''
     def __init__(self, operator='*_*', arguments=None, loc=None):
         super(NodeOpPrefix1, self).__init__()
+        #--- function call aspect -------------------------------------------#
+        self.function = None 
         self.operator = operator
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
         #decorations
-        #self.function_object = None
         self.type = None
         self.role = RoleUnkown
         self.is_assigned = None
+        #--- information flow graph construction ----------------------------#
+        self.inputs = None
         #for error messages
         self.loc = loc
 
@@ -551,13 +547,11 @@ class NodeFuncCall(Node):
     TODO:    operator_placement: prefix/infix/suffix 
     '''
     #TODO: give NodeFuncCall a nice constructor
-    def __init__(self, name=None, arguments=None, keyword_arguments=None, 
+    def __init__(self, function=None, arguments=None, keyword_arguments=None, 
                  loc=None):
         super(NodeFuncCall, self).__init__()
-        #TODO: rename to callable, function, function_object, callable_object
-        #      because it may store a callable object, not just the object's 
-        #      name. This would also allow unification with operators.
-        self.name = name 
+        #--- function call aspect -------------------------------------------#
+        self.function = function 
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = keyword_arguments \
                                  if keyword_arguments is not None else {}
@@ -565,6 +559,8 @@ class NodeFuncCall(Node):
         self.type = None
         self.role = RoleUnkown
         self.is_assigned = None
+        #--- information flow graph construction ----------------------------#
+        self.inputs = None
         #--- for error messages ---------------------------------------------#
         self.loc = loc
 

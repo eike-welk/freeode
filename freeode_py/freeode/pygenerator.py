@@ -105,7 +105,7 @@ class ExpressionGenerator(Visitor):
                     'Float.__str__':'str', 'String.__str__':'str'}
 #                    'overrideParam':'self._overrideParam' }
         #get name of the corresponding Python function
-        func_name = nameDict[call.name.codegen_name] 
+        func_name = nameDict[call.function.codegen_name] 
         #special handling of the graph pseudo-function
         if func_name == '@graph':
             return self._create_graph_func_call(call)

@@ -741,7 +741,7 @@ class Parser(object):
         n_curr = NodeFuncCall() 
         n_curr.loc = self.createTextLocation(loc) #Store position
         #store function name
-        n_curr.name = toks[0]
+        n_curr.function = toks[0]
         #store function arguments:
         there_was_keyword_argument = False #For check positional arguments must come before keyword arguments
         pos_arg_list = [] #collect positional arguments

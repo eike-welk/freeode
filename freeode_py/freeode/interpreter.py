@@ -2002,7 +2002,6 @@ class ExpressionVisitor(Visitor):
         '''Change part of the symbol table which is currently used.'''
         self.environment = new_env
         
-        
     @Visitor.when_type(InterpreterObject)
     def visit_InterpreterObject(self, node):
         '''Visit a part of the expression that was already evaluated: 
@@ -2074,9 +2073,10 @@ class ExpressionVisitor(Visitor):
             #create unevaluated parentheses node as the return value 
             new_node = NodeParentheses((val_expr,), node.loc)
             #put decoration on new node
-            new_node.type = val_expr.type
-            new_node.role = val_expr.role
-            new_node.is_assigned = True
+            self.decorate_call(new_node, val_expr.type)
+#            new_node.type = val_expr.type
+#            new_node.role = val_expr.role
+#            new_node.is_assigned = True
             return new_node
 
     
@@ -2114,11 +2114,13 @@ class ExpressionVisitor(Visitor):
             #Some arguments were unknown create an unevaluated expression
             new_node = NodeOpPrefix1(node.operator, (inst_rhs,), node.loc)
             #put on decoration
-            #new_node.function_object = func
-            new_node.type = func.return_type
-            new_node.is_assigned = True
-            #Take the role from the argument
-            new_node.role = inst_rhs.role
+            new_node.function = func
+            self.decorate_call(new_node, func.return_type)
+#            #new_node.function_object = func
+#            new_node.type = func.return_type
+#            new_node.is_assigned = True
+#            #Take the role from the argument
+#            new_node.role = inst_rhs.role
             return new_node
     
     
@@ -2169,11 +2171,13 @@ class ExpressionVisitor(Visitor):
             #Some arguments were unknown create an unevaluated expression
             new_node = NodeOpInfix2(node.operator, (inst_lhs, inst_rhs), node.loc)
             #put on decoration
-            #new_node.function_object = func
-            new_node.type = func.return_type
-            new_node.is_assigned = True
-            #Choose most variable role: const -> param -> variable
-            new_node.role = determine_result_role((inst_lhs, inst_rhs))
+            new_node.function = func
+            self.decorate_call(new_node, func.return_type)
+#            #new_node.function_object = func
+#            new_node.type = func.return_type
+#            new_node.is_assigned = True
+#            #Choose most variable role: const -> param -> variable
+#            new_node.role = determine_result_role((inst_lhs, inst_rhs))
             return new_node
         except NotImplementedError:
             #TODO: if an operator is not implemented the special function should raise 
@@ -2229,7 +2233,7 @@ class ExpressionVisitor(Visitor):
                                    keyword arguments
        '''
         #find the right call-able object   
-        func_obj = self.dispatch(node.name)
+        func_obj = self.dispatch(node.function)
         if not isinstance(func_obj, CallableObject):
             raise UserException('Expecting callable object!', node.loc)
         
@@ -2251,12 +2255,29 @@ class ExpressionVisitor(Visitor):
             #Some arguments were unknown create an unevaluated function call
             new_call = NodeFuncCall(func_obj, ev_args, ev_kwargs, node.loc)
             #put on decoration
-            new_call.type = func_obj.return_type
-            new_call.is_assigned = True
-            #Choose most variable role: const -> param -> variable
-            new_call.role = determine_result_role(ev_args, ev_kwargs)
+            self.decorate_call(new_call, func_obj.return_type)
+#            new_call.type = func_obj.return_type
+#            new_call.is_assigned = True
+#            #Choose most variable role: const -> param -> variable
+#            new_call.role = determine_result_role(ev_args, ev_kwargs)
             return new_call
 
+
+    def decorate_call(self, call, return_type):
+        '''
+        Decorate function calls nodes. 
+        
+        This method works with all ast.Node objects that are similar to 
+        function calls.
+        '''
+        #The call gets the same attributes like unknown variables
+        call.type = return_type
+        #TODO: remove?
+        call.is_assigned = True
+        #Choose most variable role: const -> param -> variable
+        call.role = determine_result_role(call.arguments, call.keyword_arguments)
+        #TODO: add sets of input variables 
+        
 
         
 class StatementVisitor(Visitor):
