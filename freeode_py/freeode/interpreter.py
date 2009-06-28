@@ -2273,10 +2273,22 @@ class ExpressionVisitor(Visitor):
         #The call gets the same attributes like unknown variables
         call.type = return_type
         #TODO: remove?
-        call.is_assigned = True
+        #call.is_assigned = True
         #Choose most variable role: const -> param -> variable
         call.role = determine_result_role(call.arguments, call.keyword_arguments)
-        #TODO: add sets of input variables 
+        
+        #add sets of input variables 
+        inputs = set()
+        for arg in list(call.arguments) + call.keyword_arguments.values():
+            if isinstance(arg, InterpreterObject):
+                inputs.add(arg)
+            elif isinstance(arg, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1, 
+                                  NodeParentheses)):
+                inputs.union(arg.inputs)
+            else:
+                raise Exception('Unexpected type of argument '
+                                'for Siml function: %s' % str(type(arg)))
+        call.inputs = inputs
         
 
         

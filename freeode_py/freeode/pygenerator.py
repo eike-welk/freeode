@@ -550,13 +550,13 @@ class SimulationClassGenerator(object):
         for n_var, var in enumerate(self.state_variables_ordered):
             self.write(ind8 + '%s = state[%d] \n' % (var.target_name, n_var))
         #Create all algebraic variables
-#        #TODO: remove this, once proper detection of unused variables exists
-#        self.write(ind8 + '#create all algebraic variables with value 0; ' +
-#                           'to prevent runtime errors.\n')
-#        for var in (self.algebraic_variables.values()):
-#            self.write(ind8 + '%s = 0 \n' % (var.target_name))
+        #TODO: remove this, once proper detection of unused variables exists
+        self.write(ind8 + '#create all algebraic variables with value 0; '
+                          'to prevent runtime errors.\n')
+        for var in (self.algebraic_variables_ordered):
+            self.write(ind8 + '%s = 0 \n' % (var.target_name))
 
-        #print the method's statements
+        #emit the method's statements
         self.write(ind8 + '#do computations \n')
         stmtGen = StatementGenerator(self.out_py)
         stmtGen.create_statements(method.statements, ind8) #IGNORE:E1103
