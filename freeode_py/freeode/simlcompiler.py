@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ############################################################################
-#    Copyright (C) 2006 - 2008 by Eike Welk                                #
+#    Copyright (C) 2006 - 2009 by Eike Welk                                #
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
 #    This program is free software; you can redistribute it and#or modify  #

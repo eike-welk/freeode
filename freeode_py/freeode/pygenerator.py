@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ############################################################################
-#    Copyright (C) 2008 by Eike Welk                                       #
+#    Copyright (C) 2006 - 2009 by Eike Welk                                #
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
 #    License: GPL                                                          #
@@ -551,10 +551,10 @@ class SimulationClassGenerator(object):
             self.write(ind8 + '%s = state[%d] \n' % (var.target_name, n_var))
         #Create all algebraic variables
         #TODO: remove this, once proper detection of unused variables exists
-        self.write(ind8 + '#create all algebraic variables with value 0; '
+        self.write(ind8 + '#create all algebraic variables '
                           'to prevent runtime errors.\n')
         for var in (self.algebraic_variables_ordered):
-            self.write(ind8 + '%s = 0 \n' % (var.target_name))
+            self.write(ind8 + '%s = nan \n' % (var.target_name))
 
         #emit the method's statements
         self.write(ind8 + '#do computations \n')
@@ -699,7 +699,7 @@ class ProgramGenerator(object):
 ################################################################################
 
 
-from numpy import array
+from numpy import array, nan
 from math import pi, sin, cos, tan, sqrt, exp, log
 from freeode.simulatorbase import SimulatorBase
 from freeode.simulatorbase import simulatorMainFunc

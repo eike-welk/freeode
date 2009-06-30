@@ -3,7 +3,7 @@
 #    Copyright (C) 2007 by Vincent Nijs                                    #
 #    v-nijs at kellogg.northwestern.edu                                    #
 #                                                                          #
-#    Copyright (C) 2007 by Eike Welk                                       #
+#    Copyright (C) 2007 - 2008 by Eike Welk                                #
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
 #    License: LGPL                                                         #

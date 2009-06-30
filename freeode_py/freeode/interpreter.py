@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2006 - 2009 by Eike Welk                                *
+#    Copyright (C) 2008 - 2009 by Eike Welk                                *
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
 #    Credits:                                                              *
@@ -46,7 +46,7 @@ and it collects the statements that will be part of the compiled program.
 """
 
 from __future__ import division
-#from __future__ import absolute_import              #IGNORE:W0410
+from __future__ import absolute_import              #IGNORE:W0410
 
 #import copy
 import weakref
@@ -1434,7 +1434,7 @@ class PrintFunction(CallableObject):
     In constant sections it will immediately produce text output. If an 
     argument does not have a '__str__' function it user Python's str().
     When the compiler collects (generates) code, it will create 
-    a call to the print function. 
+    a call to the print function (in the runtime). 
     '''
     def __init__(self):
         CallableObject.__init__(self, 'print')
@@ -1455,6 +1455,7 @@ class PrintFunction(CallableObject):
                 new_args.append(str_expr) #collect the call's result
             #create a new call to the print function
             print_call = NodeFuncCall(self, new_args, {}, None)
+            #TODO: instead insert call to decorate_call(...)
             print_call.type = CLASS_NONETYPE
             print_call.is_assigned = True
             print_call.role = RoleConstant
@@ -1491,12 +1492,18 @@ class GraphFunction(CallableObject):
     not as a single value at a speciffic moment in time like variables 
     normally are interpreted.
     
+    However, the Python implementation here does nothing. The code generator
+    generates a call to a function/method of the runtime when it sees
+    a call to this function. (This case is treated specially in the code 
+    generator.)
+    
+    
     Keyword arguments:
     title: String
         The title of the graph, shown at the top.
     '''
     #TODO: express this in Siml code, needs 
-    #      *args, **kwargs, isrecoded, isinstance, all_values
+    #      *args, **kwargs, isrecorded, isinstance, all_values
     def __init__(self):
         CallableObject.__init__(self, 'graph')
         self.codegen_name = 'graph'
@@ -1519,6 +1526,7 @@ class GraphFunction(CallableObject):
             
             #create a new call to the graph function and return it (unevaluated)
             print_call = NodeFuncCall(self, args, kwargs, None)
+            #TODO: instead insert call to decorate_call(...)
             print_call.type = CLASS_NONETYPE
             print_call.is_assigned = True
             print_call.role = RoleConstant
@@ -1537,6 +1545,10 @@ def wsiml_save(file_name=None):
     At compile time the store function raises an error.
     At run time it stores all recorded variables in the file system.
     
+    However, the Python implementation here does nothing. The code generator
+    generates a call to a function/method of the runtime when it sees
+    a call to this function.
+    
     ARGUMENTS
     ---------
     file_name: String
@@ -1544,8 +1556,7 @@ def wsiml_save(file_name=None):
     '''
     if INTERPRETER.is_collecting_code():
         #create unevaluated function call indirectly
-        raise UnknownArgumentsException('Raising exception to force creation '
-                                        'of unevaluated function call.')
+        raise UnknownArgumentsException('Exception to create function call.')
     else:
         #If invoked at compile time create error.
         raise UserException('The "store" function can only be called '
@@ -1560,6 +1571,10 @@ def wsiml_solution_parameters(duration=None, reporting_interval=None):
     At compile time this function raises an error.
     At run time it changes parameters of the solution algorithm.
     
+    However, the Python implementation here does nothing. The code generator
+    generates a call to a function/method of the runtime when it sees
+    a call to this function.
+    
     ARGUMENTS
     ---------
     duration: Float
@@ -1570,8 +1585,7 @@ def wsiml_solution_parameters(duration=None, reporting_interval=None):
     '''
     if INTERPRETER.is_collecting_code():
         #create unevaluated function call indirectly
-        raise UnknownArgumentsException('Raising exception to force creation '
-                                        'of unevaluated function call.')
+        raise UnknownArgumentsException('Exception to create function call.')
     else:
         #If invoked at compile time create error.
         raise UserException('The "store" function can only be called '
@@ -2278,6 +2292,7 @@ class ExpressionVisitor(Visitor):
         call.role = determine_result_role(call.arguments, call.keyword_arguments)
         
         #add sets of input variables 
+        #TODO: maybe put this into optimizer?
         inputs = set()
         for arg in list(call.arguments) + call.keyword_arguments.values():
             if isinstance(arg, InterpreterObject):
@@ -2287,7 +2302,8 @@ class ExpressionVisitor(Visitor):
                 inputs.union(arg.inputs)
             else:
                 raise Exception('Unexpected type of argument '
-                                'for Siml function: %s' % str(type(arg)))
+                                'for Siml function. type: %s; value: %s' 
+                                % (str(type(arg)), str(arg)))
         call.inputs = inputs
         
 
@@ -2454,10 +2470,18 @@ class StatementVisitor(Visitor):
         #Generate code for one assignment (of fundamental types)
         #target is a parameter or a variable
         new_assign = NodeAssignment()
+        new_assign.loc = loc
         new_assign.target = target
         new_assign.expression = value
-        #new_assign.function_object = assign_func
-        new_assign.loc = loc
+        #create sets of input and output objects for the optimizer
+        #TODO: maybe put this into optimizer?
+        if isinstance(value, InterpreterObject):
+            new_assign.inputs = set([value])
+        else:
+            #value is an expression
+            new_assign.inputs = value.inputs 
+        new_assign.outputs = set([target])
+        #append generated assignment statement to the alredy generated code. 
         self.interpreter.collect_statement(new_assign)
 
     

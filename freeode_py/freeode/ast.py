@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ############################################################################
-#    Copyright (C) 2009 by Eike Welk                                       #
+#    Copyright (C) 2006 - 2009 by Eike Welk                                #
 #    eike.welk@post.rwth-aachen.de                                         #
 #                                                                          #
 #    License: GPL                                                          #
@@ -665,8 +665,11 @@ class NodeAssignment(Node):
         super(NodeAssignment, self).__init__()
         self.target = None
         self.expression = None
+        #--- optimization ---
+        self.inputs = None
+        self.outputs = None
+        #--- errors -----
         self.loc = None
-        #self.function_object = None
 
 
 #class NodePrintStmt(Node):
