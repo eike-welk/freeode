@@ -1703,9 +1703,10 @@ compile A
     #print sim
     #look at variables
     a = sim.get_attribute(DotName('a'))
-    assert a.is_assigned == False
     b = sim.get_attribute(DotName('b'))
-    assert b.is_assigned == True
+    #a,b are RoleVariable, so the asignments are not done at runtime
+    assert a.is_known == False
+    assert b.is_known == False
     #look at generated function and if statement
     dynamic = sim.get_attribute(DotName('dynamic'))
     assert len(dynamic.statements) == 1 #function has one statement
@@ -1768,9 +1769,9 @@ compile A
     #print sim
     #look at variables
     a = sim.get_attribute(DotName('a'))
-    assert a.is_assigned == False
+    assert a.is_known == False
     b = sim.get_attribute(DotName('b'))
-    assert b.is_assigned == False
+    assert b.is_known == False
     #look at generated function and if statement
     dynamic = sim.get_attribute(DotName('dynamic'))
     assert len(dynamic.statements) == 0 #function has no statement
@@ -1858,9 +1859,10 @@ compile A
     #print sim
     #look at variables
     a = sim.get_attribute(DotName('a'))
-    assert a.is_assigned == False
     b = sim.get_attribute(DotName('b'))
-    assert b.is_assigned == True
+    #a,b are RoleVariable, so the asignments are not done at runtime
+    assert a.is_known == False
+    assert b.is_known == False
     #look at generated function and if statement
     dynamic = sim.get_attribute(DotName('dynamic'))
     assert len(dynamic.statements) == 1 #function has one statement
@@ -1922,9 +1924,10 @@ compile A
     #print sim
     #look at variables
     a = sim.get_attribute(DotName('a'))
-    assert a.is_assigned == False
     b = sim.get_attribute(DotName('b'))
-    assert b.is_assigned == True
+    #a,b are RoleVariable, so the asignments are not done at runtime
+    assert a.is_known == False
+    assert b.is_known == False
     #look at generated function and if statement
     dynamic = sim.get_attribute(DotName('dynamic'))
     #function has one statement

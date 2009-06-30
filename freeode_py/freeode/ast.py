@@ -422,7 +422,7 @@ class NodeParentheses(Node):
         #unknown variable aspect
         self.type = None
         self.role = RoleUnkown
-        self.is_assigned = None
+        self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #for error messages
@@ -463,7 +463,7 @@ class NodeOpInfix2(Node):
         #self.function_object = None
         self.type = None
         self.role = RoleUnkown
-        self.is_assigned = None
+        self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #for error messages
@@ -503,7 +503,7 @@ class NodeOpPrefix1(Node):
         #decorations
         self.type = None
         self.role = RoleUnkown
-        self.is_assigned = None
+        self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #for error messages
@@ -533,9 +533,9 @@ class NodeFuncCall(Node):
             Type of the results of the operation. (unevaluated function call)
         role: AttributeRole
             Role of the results of the operation. (unevaluated function call)
-        is_assigned: None/True
+        is_known: None/False
             - None for calls that have not been processed by the interpreter.
-            - True for unevaluated function calls (some arguments are unknown 
+            - False for unevaluated function calls (some arguments are unknown 
             variables). Unevaluated calls can therefore be treated like 
             unknown variables.
         loc: 
@@ -558,7 +558,7 @@ class NodeFuncCall(Node):
         #--- for the type system (treatment of unevaluated calls) -----------#
         self.type = None
         self.role = RoleUnkown
-        self.is_assigned = None
+        self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #--- for error messages ---------------------------------------------#

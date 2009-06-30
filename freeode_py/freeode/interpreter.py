@@ -173,9 +173,8 @@ class InterpreterObject(Node):
         self.type = None
         #const, param, variable, ... (Comparable to storage class in C++)
         self.role = RoleUnkown
-        #True/False was this object already assigned to
-        #TODO: rename to self.is_known ???
-        self.is_assigned = False
+        #True/False is the value of this object known?
+        self.is_known = False
         #TODO: self.save ??? True/False attribute is saved to disk as simulation result
         #TODO: self.default_value ??? (or into leaf types?)
         #TODO: self.auto_created ??? for automatically created variables that should be eliminated
@@ -327,7 +326,7 @@ class CallableObject(InterpreterObject):
     def __init__(self, name):
         InterpreterObject.__init__(self)
         self.role = RoleConstant
-        self.is_assigned = True
+        self.is_known = True
         self.name = DotName(name)
         self.is_fundamental_function = False
         self.codegen_name = None
@@ -356,7 +355,7 @@ class TypeObject(InterpreterObject):
     def __init__(self, name):
         InterpreterObject.__init__(self)
         self.role = RoleConstant
-        self.is_assigned = True
+        self.is_known = True
         self.name = DotName(name)
         
     def __call__(self, *args, **kwargs):
@@ -975,7 +974,7 @@ class INone(InterpreterObject):
     def __init__(self):
         InterpreterObject.__init__(self)
         self.type = ref(INone.type_object)
-        self.is_assigned = True
+        self.is_known = True
         self.role = RoleConstant
         
     @staticmethod            
@@ -1043,7 +1042,7 @@ class IBool(FundamentalObject):
                                 % str(type(init_val)))
             #mark object as known at compile time
             self.role = RoleConstant
-            self.is_assigned = True
+            self.is_known = True
     
     
     @staticmethod            
@@ -1117,7 +1116,10 @@ class IBool(FundamentalObject):
     def _assign(self, other): 
         '''Called for Siml assignment ("=") operator.'''
         if other.value is not None:
+            if self.is_known:
+                raise UserException('Duplicate assignment.')
             self.value = other.value
+            self.is_known = True
         else:
             raise UnknownArgumentsException()
     #printing
@@ -1137,11 +1139,7 @@ CLASS_BOOL = IBool.create_class_object()
 #global constants True and False (More easy than introducing additional 
 #literal values)
 TRUE = IBool(True)
-TRUE.role = RoleConstant
-TRUE.is_assigned = True
 FALSE = IBool(False)
-FALSE.role = RoleConstant
-FALSE.is_assigned = True
 
 
 
@@ -1172,7 +1170,7 @@ class IString(FundamentalObject):
                                 % str(type(init_val)))
             #mark object as known at compile time
             self.role = RoleConstant
-            self.is_assigned = True
+            self.is_known = True
     
     
     @staticmethod            
@@ -1222,7 +1220,10 @@ class IString(FundamentalObject):
     def _assign(self, other): 
         '''Called for Siml assignment ("=") operator.'''
         if isinstance(other, IString) and other.value is not None:
+            if self.is_known:
+                raise UserException('Duplicate assignment.')
             self.value = other.value
+            self.is_known = True
         else:
             raise UnknownArgumentsException()
     #Printing    
@@ -1274,7 +1275,7 @@ class IFloat(FundamentalObject):
             #mark object as known at compile time
             siml_setknown(self)
             self.role = RoleConstant
-            self.is_assigned = True
+            self.is_known = True
     
     
     @staticmethod            
@@ -1397,7 +1398,10 @@ class IFloat(FundamentalObject):
     def _assign(self, other): 
         '''Called for Siml assignment ("=") operator.'''
         if isinstance(other, IFloat) and other.value is not None:
+            if self.is_known:
+                raise UserException('Duplicate assignment.')
             self.value = other.value
+            self.is_known = True
         else:
             raise UnknownArgumentsException()
         
@@ -1418,7 +1422,7 @@ CLASS_FLOAT = IFloat.create_class_object()
 #create the special variable time
 TIME = IFloat()
 TIME.role = RoleAlgebraicVariable
-TIME.is_assigned = True
+TIME.is_known = True
    
 
 
@@ -1457,7 +1461,7 @@ class PrintFunction(CallableObject):
             print_call = NodeFuncCall(self, new_args, {}, None)
             #TODO: instead insert call to decorate_call(...)
             print_call.type = CLASS_NONETYPE
-            print_call.is_assigned = True
+            print_call.is_known = True
             print_call.role = RoleConstant
             return print_call
         else:
@@ -1525,12 +1529,12 @@ class GraphFunction(CallableObject):
                     raise UserException('Unknown keyword argument: %s' % arg_name)
             
             #create a new call to the graph function and return it (unevaluated)
-            print_call = NodeFuncCall(self, args, kwargs, None)
+            graph_call = NodeFuncCall(self, args, kwargs, None)
             #TODO: instead insert call to decorate_call(...)
-            print_call.type = CLASS_NONETYPE
-            print_call.is_assigned = True
-            print_call.role = RoleConstant
-            return print_call
+            graph_call.type = CLASS_NONETYPE
+            graph_call.is_known = True
+            graph_call.role = RoleConstant
+            return graph_call
         else:
             #If invoked at compile time create error.
             raise UserException('The "graph" function can only be called '
@@ -1794,7 +1798,7 @@ def siml_setknown(siml_obj):
     assert isinstance(siml_obj, InterpreterObject), \
            'Function only works with InterpreterObject instances.'
     siml_obj.role = RoleConstant
-    siml_obj.is_assigned = True
+    siml_obj.is_known = True
     #TODO: use everywhere
     
 def siml_isknown(siml_obj):
@@ -1811,7 +1815,7 @@ def siml_isknown(siml_obj):
                                  NodeParentheses)), \
            'Function only works with Siml objects and ast.Node.'
     if(isinstance(siml_obj, InterpreterObject) and 
-       siml_isrole(siml_obj.role, RoleConstant) and siml_obj.is_assigned):
+       siml_isrole(siml_obj.role, RoleConstant) and siml_obj.is_known):
         return True
     else:
         return False
@@ -2065,7 +2069,7 @@ class ExpressionVisitor(Visitor):
         - Node.type              : type of function result
         - Node.function_object   : the function object (self)
         - Node.role              : Role of the argument
-        - Node.is_assigned=True  : For consistency; the function call can pose as an
+        - Node.is_known=False    : For consistency; the function call can pose as an
                                    unknown value, that has been already computed.
     
         - Node.arguments         : [ast.Node] 
@@ -2090,7 +2094,7 @@ class ExpressionVisitor(Visitor):
             self.decorate_call(new_node, val_expr.type)
 #            new_node.type = val_expr.type
 #            new_node.role = val_expr.role
-#            new_node.is_assigned = True
+#            new_node.is_known = False
             return new_node
 
     
@@ -2108,7 +2112,7 @@ class ExpressionVisitor(Visitor):
         - Node.type              : type of function result
         - Node.function_object   : the function object (self)
         - Node.role              : Role taken from the argument with the most variable role
-        - Node.is_assigned=True  : For consistency; the function call can pose as an
+        - Node.is_known=False    : For consistency; the function call can pose as an
                                    unknown value, that has been already computed.
                                    
         - Node.arguments         : Operators are returned with positional arguments.
@@ -2132,7 +2136,7 @@ class ExpressionVisitor(Visitor):
             self.decorate_call(new_node, func.return_type)
 #            #new_node.function_object = func
 #            new_node.type = func.return_type
-#            new_node.is_assigned = True
+#            new_node.is_known = False
 #            #Take the role from the argument
 #            new_node.role = inst_rhs.role
             return new_node
@@ -2164,7 +2168,7 @@ class ExpressionVisitor(Visitor):
         - Node.type              : type of function result
         - Node.function_object   : the function object (self)
         - Node.role              : Role taken from the argument with the most variable role
-        - Node.is_assigned=True  : For consistency; the function call can pose as an
+        - Node.is_known=False  : For consistency; the function call can pose as an
                                    unknown value, that has been already computed.
     
         - Node.arguments         : Operators are returned with positional arguments.
@@ -2189,7 +2193,7 @@ class ExpressionVisitor(Visitor):
             self.decorate_call(new_node, func.return_type)
 #            #new_node.function_object = func
 #            new_node.type = func.return_type
-#            new_node.is_assigned = True
+#            new_node.is_known = False
 #            #Choose most variable role: const -> param -> variable
 #            new_node.role = determine_result_role((inst_lhs, inst_rhs))
             return new_node
@@ -2237,7 +2241,7 @@ class ExpressionVisitor(Visitor):
         - Node.role              : role of return value, the roles of the function's 
                                    arguments are inspected, and the most variable role 
                                    is taken as the role of the return value.
-        - Node.is_assigned=True  : For consistency; the function call can pose as an
+        - Node.is_known=False  : For consistency; the function call can pose as an
                                    unknown value, that has been already computed.
                                    
         - Node.name              : The function object that would be called if the 
@@ -2271,7 +2275,7 @@ class ExpressionVisitor(Visitor):
             #put on decoration
             self.decorate_call(new_call, func_obj.return_type)
 #            new_call.type = func_obj.return_type
-#            new_call.is_assigned = True
+#            new_call.is_known = False
 #            #Choose most variable role: const -> param -> variable
 #            new_call.role = determine_result_role(ev_args, ev_kwargs)
             return new_call
@@ -2286,12 +2290,11 @@ class ExpressionVisitor(Visitor):
         '''
         #The call gets the same attributes like unknown variables
         call.type = return_type
-        #TODO: remove?
-        #call.is_assigned = True
+        call.is_known = False
         #Choose most variable role: const -> param -> variable
         call.role = determine_result_role(call.arguments, call.keyword_arguments)
         
-        #add sets of input variables 
+        #compute set of input variables 
         #TODO: maybe put this into optimizer?
         inputs = set()
         for arg in list(call.arguments) + call.keyword_arguments.values():
@@ -2426,9 +2429,9 @@ class StatementVisitor(Visitor):
         #      uniquely for each function invocation. They can therefore 
         #      only be assigned once, even in an 'if' statement.  
 #        #Test if value has been assigned already.
-#        if target.is_assigned:
+#        if target.is_known:
 #            raise UserException('Duplicate assignment.', loc)
-        target.is_assigned = True
+#        target.is_known = True
         #Targets with RoleUnkown are converted to the role of value.
         #(for local variables of functions)
         if target.role is RoleUnkown:
