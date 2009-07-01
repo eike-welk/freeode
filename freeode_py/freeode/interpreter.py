@@ -1459,10 +1459,7 @@ class PrintFunction(CallableObject):
                 new_args.append(str_expr) #collect the call's result
             #create a new call to the print function
             print_call = NodeFuncCall(self, new_args, {}, None)
-            #TODO: instead insert call to decorate_call(...)
-            print_call.type = CLASS_NONETYPE
-            print_call.is_known = True
-            print_call.role = RoleConstant
+            decorate_call(print_call, CLASS_NONETYPE)
             return print_call
         else:
             #execute the print statement.
@@ -1530,10 +1527,7 @@ class GraphFunction(CallableObject):
             
             #create a new call to the graph function and return it (unevaluated)
             graph_call = NodeFuncCall(self, args, kwargs, None)
-            #TODO: instead insert call to decorate_call(...)
-            graph_call.type = CLASS_NONETYPE
-            graph_call.is_known = True
-            graph_call.role = RoleConstant
+            decorate_call(graph_call, CLASS_NONETYPE)
             return graph_call
         else:
             #If invoked at compile time create error.
@@ -1941,8 +1935,41 @@ def set_role_recursive(tree, new_role):
     for attr in tree.attributes.itervalues():
         if is_role_more_variable(attr.role, new_role):
             set_role_recursive(attr, new_role)
-            
-        
+
+
+def decorate_call(call, return_type):
+    '''
+    Decorate function calls nodes. 
+    
+    This method works with all ast.Node objects that are similar to 
+    function calls.
+    '''
+    #The call gets the same attributes like unknown variables
+    call.type = return_type
+    if not return_type is CLASS_NONETYPE:
+        call.is_known = False
+        #Choose most variable role: const -> param -> variable
+        call.role = determine_result_role(call.arguments, call.keyword_arguments)
+    else:
+        #special rule for calls that return None. This value is offcourse a known constant
+        call.is_known = True
+        call.role = RoleConstant
+    
+    #compute set of input variables 
+    #TODO: maybe put this into optimizer?
+    inputs = set()
+    for arg in list(call.arguments) + call.keyword_arguments.values():
+        if isinstance(arg, InterpreterObject):
+            inputs.add(arg)
+        elif isinstance(arg, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1, 
+                              NodeParentheses)):
+            inputs.union(arg.inputs)
+        else:
+            raise Exception('Unexpected type of argument '
+                            'for Siml function. type: %s; value: %s' 
+                            % (str(type(arg)), str(arg)))
+    call.inputs = inputs
+
 
 #def make_unique_name(base_name, existing_names):
 #    '''
@@ -2091,7 +2118,7 @@ class ExpressionVisitor(Visitor):
             #create unevaluated parentheses node as the return value 
             new_node = NodeParentheses((val_expr,), node.loc)
             #put decoration on new node
-            self.decorate_call(new_node, val_expr.type)
+            decorate_call(new_node, val_expr.type)
 #            new_node.type = val_expr.type
 #            new_node.role = val_expr.role
 #            new_node.is_known = False
@@ -2133,7 +2160,7 @@ class ExpressionVisitor(Visitor):
             new_node = NodeOpPrefix1(node.operator, (inst_rhs,), node.loc)
             #put on decoration
             new_node.function = func
-            self.decorate_call(new_node, func.return_type)
+            decorate_call(new_node, func.return_type)
 #            #new_node.function_object = func
 #            new_node.type = func.return_type
 #            new_node.is_known = False
@@ -2190,7 +2217,7 @@ class ExpressionVisitor(Visitor):
             new_node = NodeOpInfix2(node.operator, (inst_lhs, inst_rhs), node.loc)
             #put on decoration
             new_node.function = func
-            self.decorate_call(new_node, func.return_type)
+            decorate_call(new_node, func.return_type)
 #            #new_node.function_object = func
 #            new_node.type = func.return_type
 #            new_node.is_known = False
@@ -2273,41 +2300,12 @@ class ExpressionVisitor(Visitor):
             #Some arguments were unknown create an unevaluated function call
             new_call = NodeFuncCall(func_obj, ev_args, ev_kwargs, node.loc)
             #put on decoration
-            self.decorate_call(new_call, func_obj.return_type)
+            decorate_call(new_call, func_obj.return_type)
 #            new_call.type = func_obj.return_type
 #            new_call.is_known = False
 #            #Choose most variable role: const -> param -> variable
 #            new_call.role = determine_result_role(ev_args, ev_kwargs)
             return new_call
-
-
-    def decorate_call(self, call, return_type):
-        '''
-        Decorate function calls nodes. 
-        
-        This method works with all ast.Node objects that are similar to 
-        function calls.
-        '''
-        #The call gets the same attributes like unknown variables
-        call.type = return_type
-        call.is_known = False
-        #Choose most variable role: const -> param -> variable
-        call.role = determine_result_role(call.arguments, call.keyword_arguments)
-        
-        #compute set of input variables 
-        #TODO: maybe put this into optimizer?
-        inputs = set()
-        for arg in list(call.arguments) + call.keyword_arguments.values():
-            if isinstance(arg, InterpreterObject):
-                inputs.add(arg)
-            elif isinstance(arg, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1, 
-                                  NodeParentheses)):
-                inputs.union(arg.inputs)
-            else:
-                raise Exception('Unexpected type of argument '
-                                'for Siml function. type: %s; value: %s' 
-                                % (str(type(arg)), str(arg)))
-        call.inputs = inputs
         
 
         
