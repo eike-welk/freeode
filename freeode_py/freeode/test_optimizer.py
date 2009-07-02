@@ -38,3 +38,46 @@ except ImportError:
 
 
 
+def test_optimizer_1(): #IGNORE:C01111
+    msg = '''
+    Simple test
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.interpreter import (Interpreter, IFloat)
+    from freeode.ast import DotName, NodeAssignment
+
+    prog_text = \
+'''
+class A:
+    data a,b,c: Float
+    
+    func dynamic(this):       
+        a = 1
+        b = a * 2
+        c = a * b + 1
+
+compile A
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    #the module
+    #mod = intp.modules['test']
+    #print mod
+    
+    sim = intp.get_compiled_objects()[0]
+    #print sim
+    #look at variables
+    a = sim.get_attribute(DotName('a'))
+    b = sim.get_attribute(DotName('b'))
+    c = sim.get_attribute(DotName('c'))
+    #look at the generated function
+    dyn = sim.get_attribute(DotName('dynamic'))
+
+
+
+

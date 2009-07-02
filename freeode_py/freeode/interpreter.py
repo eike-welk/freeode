@@ -2689,7 +2689,7 @@ class StatementVisitor(Visitor):
     @Visitor.when_type(NodeCompileStmt)
     def visit_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
-        #TODO: Idea: replace the "compile" statement with a compile(...)
+        #TODO: Idea: replace the "compile" statement with a compile(...) 
         #      function. This function could be written in Siml, and call
         #      several built in compilation functions.
         #      - This would make cusomization of the compilation algorithm 
@@ -2778,13 +2778,13 @@ class StatementVisitor(Visitor):
         for name, attr in tree_object.type().attributes.iteritems():
             if str(name).startswith('init_') and siml_callable(attr):
                 new_spec = Node()
-                new_spec.name=name
-                new_spec.target_roles=(RoleParameter, RoleVariable, RoleConstant)
+                new_spec.name = name
+                new_spec.target_roles = (RoleParameter, RoleVariable, RoleConstant)
                 new_spec.call_argument_role = RoleParameter
-                new_spec.proto=SimlFunction(name, 
-                                            attr.argument_definition.copy(), 
-                                            None, statements=[], 
-                                            global_scope=BUILT_IN_LIB) 
+                new_spec.proto = SimlFunction(name, 
+                                              attr.argument_definition.copy(), 
+                                              None, statements=[], 
+                                              global_scope=BUILT_IN_LIB) 
                 main_func_specs.append(new_spec)
          
         #Create code: ------------------------------------------------------------------

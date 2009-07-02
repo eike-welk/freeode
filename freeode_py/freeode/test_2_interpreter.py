@@ -71,7 +71,7 @@ data b: String const
 def test_data_statement_roles_1(): #IGNORE:C01111
     #py.test.skip('Test data statement: create attributes with different roles')
     print 'Test data statement: create attributes with different roles'
-    from freeode.interpreter import Interpreter
+    from freeode.interpreter import Interpreter, siml_isrole
     from freeode.ast import (DotName, RoleConstant, RoleParameter, 
                              RoleVariable)
     
@@ -96,7 +96,7 @@ data c: Float variable
     b = mod.get_attribute(DotName('b'))
     assert b.role is RoleParameter
     c = mod.get_attribute(DotName('c'))
-    assert c.role is RoleVariable
+    assert siml_isrole(c.role, RoleVariable)
     
   
 
@@ -115,7 +115,7 @@ def test_data_statement_roles_2(): #IGNORE:C01111
     msg = 'Test data statement: roles should be propagated to child attributes.'
     #py.test.skip(msg)
     print msg
-    from freeode.interpreter import Interpreter
+    from freeode.interpreter import Interpreter, siml_isrole
     from freeode.ast import (DotName, RoleConstant, RoleParameter, 
                              RoleVariable)
     
@@ -165,7 +165,7 @@ data av: A variable
     v = a_curr.get_attribute(DotName('v'))
     assert c.role is RoleConstant
     assert p.role is RoleParameter
-    assert v.role is RoleVariable
+    assert siml_isrole(v.role, RoleVariable) 
   
   
 

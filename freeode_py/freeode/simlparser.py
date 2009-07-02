@@ -669,7 +669,7 @@ class Parser(object):
             #map role string to role object, and store the role
             #If role is not specified RoleVariable is assumed.
             #Submodels will be labeled variables even though these categories don't apply to them.
-            roleDict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleVariable,
+            roleDict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleAlgebraicVariable,
                         'algebraic_variable':RoleAlgebraicVariable,
                         'state_variable':RoleStateVariable,
                         'time_differential':RoleTimeDifferential,
