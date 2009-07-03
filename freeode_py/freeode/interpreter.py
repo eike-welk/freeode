@@ -1422,7 +1422,6 @@ class IFloat(FundamentalObject):
     def _str(self):
         '''Called from Siml'''
         istr = IString(self.value)
-        istr.role = RoleConstant
         return istr
         
 #The class object used in Siml to create instances of IFloat
@@ -2233,11 +2232,12 @@ class ExpressionVisitor(Visitor):
 #            #Choose most variable role: const -> param -> variable
 #            new_node.role = determine_result_role((inst_lhs, inst_rhs))
             return new_node
-        except NotImplementedError:
+        except NotImplementedError:# IncompatibleTypeError?
             #TODO: if an operator is not implemented the special function should raise 
-            #      an NotImplementedError exception, for generating better error messages.
-            #TODO: Siml code can raise Siml_NotImplemented errors, they should also 
-            #      generate the same error messages.
+            #      an NotImplementedError ??? IncompatibleTypeError exception, for 
+            #      generating better error messages and calling the right-handed methods.
+            #TODO: Siml code can raise Siml_NotImplemented ??? Siml_IncompatibleTypeError 
+            #      errors, they should also generate the same error messages.
             raise Exception( 'Handling of "NotImplemented" exception is not yet implented!')
         #TODO: special methods for boolean operators 'and', 'or'
         #      To retain the shortcut semantics split the execution of the 
