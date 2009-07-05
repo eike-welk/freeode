@@ -39,24 +39,32 @@ except ImportError:
 
 
 def test_optimizer_1(): #IGNORE:C01111
-    msg = '''
-    Simple test
+    msg = \
+    '''
+    Test the creation of data flow annotations.
     '''
     #py.test.skip(msg)
     print msg
     
+    from freeode.optimizer import DataflowDiscovery
     from freeode.interpreter import (Interpreter, IFloat)
     from freeode.ast import DotName, NodeAssignment
 
     prog_text = \
 '''
 class A:
-    data a,b,c: Float
+    data p1,p2: Float param
+    data a,b,c,d: Float
     
     func dynamic(this):       
-        a = 1
-        b = a * 2
-        c = a * b + 1
+        a = p1
+        b = a - p2
+        if a > p1:
+            c = p1
+            d = p1
+        else:
+            c = p2 
+            d = p2
 
 compile A
 '''
@@ -69,15 +77,60 @@ compile A
     #mod = intp.modules['test']
     #print mod
     
+    #get the flattened version of the A class
     sim = intp.get_compiled_objects()[0]
     #print sim
-    #look at variables
+    #get attributes
     a = sim.get_attribute(DotName('a'))
     b = sim.get_attribute(DotName('b'))
     c = sim.get_attribute(DotName('c'))
-    #look at the generated function
+    d = sim.get_attribute(DotName('d'))
+    p1 = sim.get_attribute(DotName('p1'))
+    p2 = sim.get_attribute(DotName('p2'))
+    hexid = lambda x: hex(id(x))
+    print 'a:', hexid(a), ' b:', hexid(b),  ' c:', hexid(c),  ' d:', hexid(d), \
+          ' p1:', hexid(p1),  ' p2:', hexid(p2) 
+    
+    #get generated main function
     dyn = sim.get_attribute(DotName('dynamic'))
+    #create the input and output decorations on each statement of the 
+    #function
+    dd = DataflowDiscovery()
+    dd.decorate_main_function(dyn)
+
+    #see if the inputs and outputs were detected correctly
+    # a = p1   
+    stmt = dyn.statements[0]
+    assert stmt.inputs == set([p1])
+    assert stmt.outputs == set([a])
+    #  b = a - p2
+    stmt = dyn.statements[1]
+    assert stmt.inputs == set([a, p2])
+    assert stmt.outputs == set([b])
+    
+    #'if' statement
+    stmt = dyn.statements[2]
+    #look at inputs
+    assert stmt.inputs.issuperset(set([a, p1, p2])) 
+    #there is an additional constant IFloat(1) in the condition of the else
+    one_set = stmt.inputs - set([a, p1, p2])
+    assert len(one_set) == 1
+    one_obj = one_set.pop()
+    assert one_obj == IFloat(1)
+    #look at outputs
+    assert stmt.outputs == set([c, d])
+    
+    #the dynamic function
+    print dyn.inputs
+    assert dyn.inputs == set([p1, p2, one_obj])
+    assert dyn.outputs == set([a, b, c, d])
 
 
+
+if __name__ == '__main__':
+    # Debugging code may go here.
+    #test_expression_evaluation_1()
+    test_optimizer_1()
+    pass
 
 

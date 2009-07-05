@@ -695,6 +695,9 @@ class SimlFunction(CallableObject):
         self.call_count = 0
         #this function is no basic building block, because it must be interpreted.
         self.is_fundamental_function = False
+        #--- data flow analysis -------
+        self.inputs = None
+        self.outputs = None
 
 
     def __call__(self, *args, **kwargs):
@@ -1963,20 +1966,20 @@ def decorate_call(call, return_type):
         call.is_known = True
         call.role = RoleConstant
     
-    #compute set of input variables 
-    #TODO: maybe put this into optimizer?
-    inputs = set()
-    for arg in list(call.arguments) + call.keyword_arguments.values():
-        if isinstance(arg, InterpreterObject):
-            inputs.add(arg)
-        elif isinstance(arg, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1, 
-                              NodeParentheses)):
-            inputs.union(arg.inputs)
-        else:
-            raise Exception('Unexpected type of argument '
-                            'for Siml function. type: %s; value: %s' 
-                            % (str(type(arg)), str(arg)))
-    call.inputs = inputs
+#    #compute set of input variables 
+#    #TODO: maybe put this into optimizer?
+#    inputs = set()
+#    for arg in list(call.arguments) + call.keyword_arguments.values():
+#        if isinstance(arg, InterpreterObject):
+#            inputs.add(arg)
+#        elif isinstance(arg, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1, 
+#                              NodeParentheses)):
+#            inputs.update(arg.inputs)
+#        else:
+#            raise Exception('Unexpected type of argument '
+#                            'for Siml function. type: %s; value: %s' 
+#                            % (str(type(arg)), str(arg)))
+#    call.inputs = inputs
 
 
 #def make_unique_name(base_name, existing_names):
@@ -2236,6 +2239,8 @@ class ExpressionVisitor(Visitor):
             #TODO: if an operator is not implemented the special function should raise 
             #      an NotImplementedError ??? IncompatibleTypeError exception, for 
             #      generating better error messages and calling the right-handed methods.
+            #      Alternatively the operators could return the special value 
+            #      NotImplemented like Python operators do.
             #TODO: Siml code can raise Siml_NotImplemented ??? Siml_IncompatibleTypeError 
             #      errors, they should also generate the same error messages.
             raise Exception( 'Handling of "NotImplemented" exception is not yet implented!')
@@ -2884,9 +2889,6 @@ class StatementVisitor(Visitor):
         #flatten local variables
         flatten(func_locals, flat_object, DotName('__func_local__')) 
         
-        #TODO: test: the methods of flat object must not use any data from 
-        #      outside of flat_object.
-     
         #store new object in interpreter
         self.interpreter.add_compiled_object(flat_object)
 

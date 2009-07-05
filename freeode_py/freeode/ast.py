@@ -622,7 +622,11 @@ class NodeClause(Node):
         Node.__init__(self)
         self.condition = condition
         self.statements = statements
+        #--- errors -----
         self.loc = loc
+        #--- data flow analysis -------
+        self.inputs = None
+        self.outputs = None
         
         
 class NodeIfStmt(Node):
@@ -646,7 +650,11 @@ class NodeIfStmt(Node):
     def __init__(self, clauses=None, loc=None):
         super(NodeIfStmt, self).__init__()
         self.clauses = clauses if clauses is not None else []
+        #--- errors -----
         self.loc = loc
+        #--- data flow analysis -------
+        self.inputs = None
+        self.outputs = None
 
 
 class NodeAssignment(Node):
@@ -665,11 +673,11 @@ class NodeAssignment(Node):
         super(NodeAssignment, self).__init__()
         self.target = None
         self.expression = None
-        #--- optimization ---
-        self.inputs = None
-        self.outputs = None
         #--- errors -----
         self.loc = None
+        #--- data flow analysis -------
+        self.inputs = None
+        self.outputs = None
 
 
 #class NodePrintStmt(Node):

@@ -43,6 +43,7 @@ def test_ExpressionGenerator_1(): #IGNORE:C01111
     msg = 'Test creation of expression strings. Check all operators'
     #py.test.skip(msg)
     print msg
+    from numpy import float64
     from freeode.pygenerator import ExpressionGenerator, IFloat
     from freeode.ast import (RoleConstant,
                              NodeOpInfix2, NodeOpPrefix1, NodeParentheses)
@@ -60,25 +61,25 @@ def test_ExpressionGenerator_1(): #IGNORE:C01111
     expr = NodeOpInfix2('+', (a, NodeOpInfix2('*', (b, c))))
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':1, 'b':2}) == 5
+    assert eval(expr_str, {'a':1, 'b':2, 'float64':float64}) == 5
 
     #expression a - b / 2
     expr = NodeOpInfix2('-', (a, NodeOpInfix2('/', (b, c))))
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':1, 'b':2}) == 0
+    assert eval(expr_str, {'a':1, 'b':2, 'float64':float64}) == 0
 
     #expression a ** b % 2
     expr = NodeOpInfix2('**', (a, NodeOpInfix2('%', (b, c))))
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':2, 'b':3}) == 0
+    assert eval(expr_str, {'a':2, 'b':3, 'float64':float64}) == 0
 
     #expression - 2
     expr = NodeOpPrefix1('-', (c,))
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {}) == -2
+    assert eval(expr_str, {'float64':float64}) == -2
 
     #expression (a + b) * 2
     expr = NodeOpInfix2('*', (NodeParentheses((NodeOpInfix2('+', (a, b)),)
@@ -87,7 +88,7 @@ def test_ExpressionGenerator_1(): #IGNORE:C01111
                         )
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':1, 'b':2}) == 6
+    assert eval(expr_str, {'a':1, 'b':2, 'float64':float64}) == 6
 
 
 
