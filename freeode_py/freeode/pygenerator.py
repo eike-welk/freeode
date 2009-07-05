@@ -122,7 +122,7 @@ class ExpressionGenerator(Visitor):
     def _createNum(self, variable):
         #Number: 123.5 or variable with type float
         if variable.role is RoleConstant:
-            return str(float(variable.value))
+            return 'float64(%s)' % str(variable.value)
         else:
             return variable.target_name
         
@@ -699,7 +699,7 @@ class ProgramGenerator(object):
 ################################################################################
 
 
-from numpy import array, nan
+from numpy import array, nan, float64
 from math import pi, sin, cos, tan, sqrt, exp, log
 from freeode.simulatorbase import SimulatorBase
 from freeode.simulatorbase import simulatorMainFunc
