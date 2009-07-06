@@ -173,10 +173,10 @@ class SimlCompilerMain(object):
         except Exception: #Any other exception must be a malfunction of the compiler
             print >> sys.stderr, ('\n'
                   'Oh my golly! Compiler internal error! \n\n'
-                  'Please file a bug report at the project\'s website,'
+                  'Please file a bug report at the project\'s website, '
                   'or send an e-mail \n'
                   'with with a bug report to the developer(s).\n'
-                  'The bug report should include the traceback'
+                  'The bug report should include the traceback '
                   'at the end of this message. \n'
                   'Please include also a short description of the error. \n'
                   'Bug-website: \n'

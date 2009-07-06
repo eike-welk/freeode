@@ -35,11 +35,11 @@ from weakref import ref
 #import math
 
 from freeode.ast import *
-from freeode.interpreter import InterpreterObject
+from freeode.interpreter import InterpreterObject, CallableObject#, SimlFunction
 
 
-#TODO: rename DataFlowDecorator
-class DataflowDiscovery(object):
+
+class MakeDataFlowDecorations(object):
     '''
     Create sets of input and output variables, 
     for all statements and all function calls.
@@ -47,9 +47,6 @@ class DataflowDiscovery(object):
     
     def __init__(self):
         object.__init__(self)
-        self.all_inputs = set()
-        self.all_outputs = set()
-        
         
         
     def discover_expr_input_variables(self, expr):
@@ -83,21 +80,16 @@ class DataflowDiscovery(object):
         #decorate the assignment
         assignment.inputs = inputs
         assignment.outputs = outputs
-#        #create sets of all used inputs and outputs
-#        self.all_inputs.update(inputs)
-#        self.all_outputs.update(outputs)
         return (inputs, outputs)
         
         
-#    def decorate_if_clause(self, clause):
-#        '''Find inputs and outputs of a single clause of the if statement'''
-#        pass
     def decorate_if_statement(self, stmt):
         '''Find inputs and outputs of an 'if' statement.'''
         assert isinstance(stmt, NodeIfStmt)
         inputs, outputs = set(), set()
         for clause in stmt.clauses:
             assert isinstance(clause, NodeClause)
+            #TODO: decorate condition
             cond_inp = self.discover_expr_input_variables(clause.condition)
             stmt_inp, out = self.decorate_statement_list(clause.statements)
             inp = cond_inp | stmt_inp
@@ -139,12 +131,80 @@ class DataflowDiscovery(object):
     
     
     def decorate_main_function(self, main_function):
-        '''Put input and output decorations on all statements'''
+        '''Put input and output decorations on all elements of the class'''
+        #TODO: decorate function arguments
         inputs, outputs = self.decorate_statement_list(main_function.statements)
         main_function.inputs = inputs
         main_function.outputs = outputs
         return inputs, outputs
         
+    
+    def decorate_simulation_object(self, sim_obj):
+        '''Discover inputs and outputs of the whole flattened class.''' 
+        inputs, outputs = set(), set()
+        for attr in sim_obj.attributes.itervalues():
+            if isinstance(attr, CallableObject):
+#                print 'decorating: ', attr.name
+                inp, out = self.decorate_main_function(attr)
+                inputs.update(inp)
+                outputs.update(out)
+        sim_obj.inputs = inputs
+        sim_obj.outputs = outputs
+        return inputs, outputs
+
+
+
+class FunctionDataFlowChecker(object):
+    '''Test if data flow is possible and change function if necessary'''
+    
+    def __init__(self):
+        self.input_attrs = set()
+        self.output_attrs = set()
+        
+        
+    def check_assignment(self, assignment):
+        '''Check one assignment statement'''
+        assert isinstance(assignment, NodeAssignment)
+        #test for reading unknown values
+        #TODO: reorder statements
+        unknown_inputs = assignment.inputs - known_vals
+        #test for writing already known values
+        duplicate_assign = assignment.outputs & known_vals
+        #the outputs of the assignment become known values
+        known_vals.update(assignment.outputs)
+        
+    def check_if_statement(self):
+        '''Check an if statement'''    
+        
+    def normalize_if_statement(self):
+        '''Put the same number of assignments into each clause of an if statement'''
+#        #TODO: create dummy assignments when clauses don't assign to the same variables
+#        for clause in stmt.clauses:
+#            missing_outputs = stmt.outputs - clause.outputs
+#            for attr in missing_outputs:
+#                assert isinstance(attr, InterpreterObject)
+#                print 'dummy assignment needed for', attr.parent().find_name(attr)
+
+    def check_statement_list(self, stmt_list):
+        '''
+        Check a list of statements.
+        
+        Calls the specialized checking functions.
+        '''
+        for stmt in stmt_list:
+            if isinstance(stmt, NodeAssignment):
+                self.check_assignment(stmt)
+            elif isinstance(stmt, NodeIfStmt):
+                self.check_if_statement(stmt)
+            else:
+                raise Exception('Unexpected type of statement '
+                                'type: %s; value: %s' 
+                                % (str(type(stmt)), str(stmt)))
+        
+    def check_function(self, function):
+        self.check_statement_list(function.statements)
+    
+    
     
 #TODO: test: the methods of a flat object must not use any data from 
 #      outside of the flat_object.
@@ -152,6 +212,7 @@ class DataflowDiscovery(object):
 #TODO: test if all variables are assigned once (single assignment)     
 #TODO: test if data flow is possible
 #TODO: reorder statements
+#TODO: create missing assignments in 'if' statements
 
 #TODO: remove unused variables
 #TODO: remove assignments to unused variables from each branch of in 'if' statement separately.

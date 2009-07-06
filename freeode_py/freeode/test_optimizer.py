@@ -46,8 +46,8 @@ def test_optimizer_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    from freeode.optimizer import DataflowDiscovery
-    from freeode.interpreter import (Interpreter, IFloat)
+    from freeode.optimizer import MakeDataFlowDecorations
+    from freeode.interpreter import (Interpreter, IFloat) 
     from freeode.ast import DotName, NodeAssignment
 
     prog_text = \
@@ -87,16 +87,19 @@ compile A
     d = sim.get_attribute(DotName('d'))
     p1 = sim.get_attribute(DotName('p1'))
     p2 = sim.get_attribute(DotName('p2'))
+    #get generated main function
+    dyn = sim.get_attribute(DotName('dynamic'))    
+    #print object ids in hex (for easier manual testing)
     hexid = lambda x: hex(id(x))
     print 'a:', hexid(a), ' b:', hexid(b),  ' c:', hexid(c),  ' d:', hexid(d), \
           ' p1:', hexid(p1),  ' p2:', hexid(p2) 
-    
-    #get generated main function
-    dyn = sim.get_attribute(DotName('dynamic'))
+
+    #------- the test -------------------
     #create the input and output decorations on each statement of the 
     #function
-    dd = DataflowDiscovery()
-    dd.decorate_main_function(dyn)
+    dd = MakeDataFlowDecorations()
+    dd.decorate_simulation_object(sim)
+    #dd.decorate_main_function(dyn)
 
     #see if the inputs and outputs were detected correctly
     # a = p1   
@@ -121,10 +124,56 @@ compile A
     assert stmt.outputs == set([c, d])
     
     #the dynamic function
-    print dyn.inputs
     assert dyn.inputs == set([p1, p2, one_obj])
     assert dyn.outputs == set([a, b, c, d])
 
+
+
+def test_unknown_const_1(): #IGNORE:C01111
+    msg = '''Test correct treatment of unknown constants.'''
+    py.test.skip(msg)
+    print msg
+    
+    from freeode.optimizer import MakeDataFlowDecorations
+    from freeode.interpreter import (Interpreter, IFloat) 
+    from freeode.ast import DotName, NodeAssignment
+
+    prog_text = \
+'''
+data c1: Float const
+
+class A:
+    data a,b: Float
+    data c2: Float const
+    
+    func dynamic(this):       
+        a = c1
+
+compile A
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    #the module
+    #mod = intp.modules['test']
+    #print mod
+    
+    #get the flattened version of the A class
+    sim = intp.get_compiled_objects()[0]
+    #print sim
+    #get attributes
+    a = sim.get_attribute(DotName('a'))
+    b = sim.get_attribute(DotName('b'))
+#    c = sim.get_attribute(DotName('c1'))
+#    c = sim.get_attribute(DotName('c2'))
+    hexid = lambda x: hex(id(x))
+    print 'a:', hexid(a), ' b:', hexid(b)#,  ' c2:', hexid(c)
+    
+    #get generated main function
+    dyn = sim.get_attribute(DotName('dynamic'))
+    assert False, 'This program should raise an exceptions because unknown const attributes were used'
 
 
 if __name__ == '__main__':

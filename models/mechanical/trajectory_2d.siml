@@ -72,8 +72,17 @@ class Vec2:
 
 
     func __assign__(this, other):
-        x = other.x
-        y = other.y
+        #x = other.x
+        #y = other.y
+        if isinstance(other, Vec2):
+            x = other.x
+            y = other.y
+        elif isinstance(other, Float):
+            x = other
+            y = other
+        else:
+            ##TODO: raise NotImplemented('Arguments for "+" operator must be Vec2 or Float.')
+            return 666
 
 
     func __diff__(this):
@@ -103,10 +112,13 @@ func cross(a:Vec2, b:Vec2):
 data g, pi:Float
 g = 9.81
 pi = 3.1415
-
+data vg: Vec2
+vg.x = 0
+vg.y = -g
 
 class Throw:
     data angle0, v0: Float param
+    #data vg: Vec2 param
     #p0: Vec2 param
 
     data p, v: Vec2
@@ -116,15 +128,19 @@ class Throw:
     func initialize(this):
         angle0 = pi/180 * 45
         v0 = 30
+        #vg.x = 0
+        #vg.y = -g
 
-        p.x = 0
-        p.y = 0
+        #p.x = 0
+        #p.y = 0
+        p = 0
         v.x = cos(angle0) * v0
         v.y = sin(angle0) * v0
         solution_parameters(duration = 4, reporting_interval = 0.1)
 
 
     func dynamic(this):
+        #$v = vg
         $v.x = 0
         $v.y = -g
         $p = v
