@@ -873,7 +873,7 @@ class RoleOutputVariable(RoleVariable):
     The solution algorithm needs this variable to compute the solution.
     '''
 class RoleTimeDifferential(RoleOutputVariable):
-    '''The attribute is an algebraic variable'''
+    '''The attribute is a time derivative'''
 #    userStr = 'algebraic_variable'
 
 

@@ -30,12 +30,14 @@ from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
 #import copy
-import weakref
-from weakref import ref
+#import weakref
+#from weakref import ref
+import sys
 #import math
 
 from freeode.ast import *
-from freeode.interpreter import InterpreterObject, CallableObject#, SimlFunction
+from freeode.interpreter import (InterpreterObject, CallableObject, FundamentalObject,
+                                 siml_isrole, siml_isknown)
 
 
 
@@ -154,12 +156,67 @@ class MakeDataFlowDecorations(object):
 
 
 
-class FunctionDataFlowChecker(object):
-    '''Test if data flow is possible and change function if necessary'''
+class DataFlowChecker(object):
+    '''Test if data flow is possible and do changes to AST if necessary.'''
     
     def __init__(self):
-        self.input_attrs = set()
-        self.output_attrs = set()
+        #self.sim_obj = InterpreterObject()
+        #The data attributes get into these sets according to their roles
+        self.constants = set()
+        self.parameters = set()
+        self.iput_variables = set() #state variables
+        self.intermediate_variables = set() #algebraic variables 
+        self.output_variables = set() #time derivatives
+        #TODO: also care for the external inputs - arguments of main functions 
+        #currently known attributes - to check data flow and single assignment
+        self.known_attributes = set()
+    
+    def set_sim_object(self, sim_obj):
+        '''Put simulation object into analyzer and prepare sets.'''
+        assert isinstance(sim_obj, InterpreterObject)
+        
+        #iterate over simulation's attributes
+        #put data attributes into sets according to their role
+        for attr in sim_obj.attributes.itervalues():
+            assert isinstance(attr, InterpreterObject)
+            #only look at built in data
+            if not isinstance(attr, FundamentalObject):
+                continue
+            #classify attributes according to their role
+            if siml_isrole(attr.role, RoleConstant):
+                raise Exception('The simulation object must not have constant attributes!')
+            elif siml_isrole(attr.role, RoleParameter):
+                self.parameters.add(attr)
+            elif siml_isrole(attr.role, RoleInputVariable):
+                self.iput_variables.add(attr)
+            elif siml_isrole(attr.role, RoleIntermediateVariable):
+                self.intermediate_variables.add(attr)
+            elif siml_isrole(attr.role, RoleOutputVariable):
+                self.output_variables.add(attr)
+            else:
+                raise Exception('Unknown attribute role!')
+            
+        #Constants embedded in the code are put into a special set.
+        all_inputs = sim_obj.inputs
+        for attr in all_inputs:
+            if siml_isrole(attr.role, RoleConstant):
+                #TODO: detecting unknown constants should be handled in the interpreter
+                if not siml_isknown(attr):
+                    name = '<anonymous constant>'
+                    if attr.parent and attr.parent():
+                        name = str(attr.parent().find_name(attr))
+                    print >> sys.stderr, 'Warning! detected unknown constant: ', name
+                    continue
+                self.constants.add(attr)
+        #TODO: care for the external inputs - arguments of main functions 
+
+
+    def prepare_initialize_function(self):
+        '''Prepare checking one of thea initialization functions'''
+    def prepare_dynamic_function(self):
+        '''Prepare checking the dynamic function'''
+    def prepare_final_function(self):
+        '''Prepare checking the final function'''
         
         
     def check_assignment(self, assignment):

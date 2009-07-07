@@ -38,11 +38,8 @@ except ImportError:
 
 
 
-def test_optimizer_1(): #IGNORE:C01111
-    msg = \
-    '''
-    Test the creation of data flow annotations.
-    '''
+def test_MakeDataFlowDecorations_1(): #IGNORE:C01111
+    msg = '''Test the creation of data flow annotations.'''
     #py.test.skip(msg)
     print msg
     
@@ -131,10 +128,10 @@ compile A
 
 def test_unknown_const_1(): #IGNORE:C01111
     msg = '''Test correct treatment of unknown constants.'''
-    py.test.skip(msg)
+    #py.test.skip(msg)
     print msg
     
-    from freeode.optimizer import MakeDataFlowDecorations
+    from freeode.optimizer import MakeDataFlowDecorations, DataFlowChecker
     from freeode.interpreter import (Interpreter, IFloat) 
     from freeode.ast import DotName, NodeAssignment
 
@@ -143,11 +140,12 @@ def test_unknown_const_1(): #IGNORE:C01111
 data c1: Float const
 
 class A:
-    data a,b: Float
+    data a, b: Float
     data c2: Float const
     
     func dynamic(this):       
         a = c1
+        b = c2
 
 compile A
 '''
@@ -168,18 +166,27 @@ compile A
     b = sim.get_attribute(DotName('b'))
 #    c = sim.get_attribute(DotName('c1'))
 #    c = sim.get_attribute(DotName('c2'))
+    #get generated main function
+    dyn = sim.get_attribute(DotName('dynamic'))
     hexid = lambda x: hex(id(x))
     print 'a:', hexid(a), ' b:', hexid(b)#,  ' c2:', hexid(c)
     
-    #get generated main function
-    dyn = sim.get_attribute(DotName('dynamic'))
+    #create the input and output decorations on each statement of the 
+    #function
+    dd = MakeDataFlowDecorations()
+    dd.decorate_simulation_object(sim)
+    #check data flow of all functions
+    fc = DataFlowChecker()
+    fc.set_sim_object(sim)
+    
+    
     assert False, 'This program should raise an exceptions because unknown const attributes were used'
 
 
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_optimizer_1()
+    test_unknown_const_1()
     pass
 
 

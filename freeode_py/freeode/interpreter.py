@@ -370,6 +370,8 @@ class FundamentalObject(InterpreterObject):
     
     Only these objects, and operations with these objects, should remain in a 
     flattened simulation.
+    
+    #TODO: Rename to BuiltInData
     '''
     def __init__(self):
         InterpreterObject.__init__(self)
