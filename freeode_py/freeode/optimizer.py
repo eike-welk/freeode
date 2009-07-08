@@ -36,7 +36,8 @@ import sys
 #import math
 
 from freeode.ast import *
-from freeode.interpreter import (InterpreterObject, CallableObject, FundamentalObject,
+from freeode.interpreter import (InterpreterObject, CallableObject, 
+                                 FundamentalObject, CompiledClass,
                                  siml_isrole, siml_isknown)
 
 
@@ -170,16 +171,22 @@ class DataFlowChecker(object):
         #TODO: also care for the external inputs - arguments of main functions 
         #currently known attributes - to check data flow and single assignment
         self.known_attributes = set()
+        #attributes that can legally be the target of assignments
+        self.legal_outputs = set()
+        #these variables must be assigned by the main function;
+        #at the end of the main function these variables must be known
+        self.required_assignments = set()
+
     
     def set_sim_object(self, sim_obj):
-        '''Put simulation object into analyzer and prepare sets.'''
-        assert isinstance(sim_obj, InterpreterObject)
+        '''Prepare simulation object for data flow analysis.'''
+        assert isinstance(sim_obj, CompiledClass)
         
         #iterate over simulation's attributes
         #put data attributes into sets according to their role
         for attr in sim_obj.attributes.itervalues():
             assert isinstance(attr, InterpreterObject)
-            #only look at built in data
+            #only look at built in data (ignore functions)
             if not isinstance(attr, FundamentalObject):
                 continue
             #classify attributes according to their role
@@ -213,22 +220,48 @@ class DataFlowChecker(object):
 
     def prepare_initialize_function(self):
         '''Prepare checking one of thea initialization functions'''
+        #TODO: care for the external inputs - arguments of main functions 
+        #these attributes are already known when the main function is executed
+        self.known_attributes = self.constants 
+        #these variables are legal targets for assignments
+        self.legal_outputs = self.parameters | self.iput_variables | \
+                             self.intermediate_variables 
+        #these variables must be assigned by the main function
+        #at the end of the main function these variables must be known
+        self.required_assignments = self.parameters | self.iput_variables
+
     def prepare_dynamic_function(self):
         '''Prepare checking the dynamic function'''
+        #these attributes are already known when the main function is executed
+        self.known_attributes = self.constants | self.parameters | \
+                                self.iput_variables
+        #these variables are legal targets for assignments
+        self.legal_outputs = self.intermediate_variables | self.output_variables
+        #these variables must be assigned by the main function
+        #at the end of the main function these variables must be known
+        self.required_assignments = self.intermediate_variables | self.output_variables
+        
     def prepare_final_function(self):
         '''Prepare checking the final function'''
+        #these attributes are already known when the main function is executed
+        self.known_attributes = self.constants | self.parameters | \
+                                self.output_variables
+        #these variables are legal targets for assignments
+        self.legal_outputs = set()
+        #these variables must be assigned by the main function
+        #at the end of the main function these variables must be known
+        self.required_assignments = set()
         
         
     def check_assignment(self, assignment):
         '''Check one assignment statement'''
         assert isinstance(assignment, NodeAssignment)
         #test for reading unknown values
-        #TODO: reorder statements
-        unknown_inputs = assignment.inputs - known_vals
+        unknown_inputs = assignment.inputs - self.known_attributes
         #test for writing already known values
-        duplicate_assign = assignment.outputs & known_vals
+        duplicate_assign = assignment.outputs & self.known_attributes
         #the outputs of the assignment become known values
-        known_vals.update(assignment.outputs)
+        self.known_attributes.update(assignment.outputs)
         
     def check_if_statement(self):
         '''Check an if statement'''    
@@ -248,6 +281,7 @@ class DataFlowChecker(object):
         
         Calls the specialized checking functions.
         '''
+        #TODO: reorder statements
         for stmt in stmt_list:
             if isinstance(stmt, NodeAssignment):
                 self.check_assignment(stmt)
