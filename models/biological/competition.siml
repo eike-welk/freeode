@@ -50,20 +50,22 @@ class CompetitionModel:
         $N2 = r2*N2 * (k2-N2 - b21*N1)/k2
 
     #TODO: This function currently crashes the parser
-    ##Function to detect the four different cases.
-    ##The simulation's final outcome is independent of the growth rate.
-    #func printCase(this):
-        #if k2/b21 > k1  and  k2 > k1/b12:
-            #print('Case 1: N2 will outgrow N1.')
-        #elif k1 > k2/b12  and  k1/b12 > k2:
-            #print('Case 2: N1 will outgrow N2.')
-        #elif k1 > k2/b21  and  k2 > k1/b12:
-            #print('Case 3: species with highest initial value will survive.')
-        #elif k2/b12 > k1  and  k1/b12 > k2:
-            #print('Case 4: Stable coexistence of both species.')
-        #else:
-            #print('Huh!')
-        #pass
+    #Function to detect the four different cases.
+    #The simulation's final outcome is independent of the growth rate.
+    #Thes cases are derived from mathematical analysis of the ODE and
+    #taken from the Edelsein-Keshet book.
+    func print_case(this):
+        if k2/b21 > k1  and  k2 > k1/b12:
+            print('Case 1: N2 will outgrow N1.')
+        elif k1 > k2/b12  and  k1/b12 > k2:
+            print('Case 2: N1 will outgrow N2.')
+        elif k1 > k2/b21  and  k2 > k1/b12:
+            print('Case 3: species with highest initial value will survive.')
+        elif k2/b12 > k1  and  k1/b12 > k2:
+            print('Case 4: Stable coexistence of both species.')
+        else:
+            print('Huh!')
+        pass
 
 
 
@@ -81,6 +83,8 @@ class Case1:
         #initial values
         m.N1 = 0.5
         m.N2 = 0.5
+        #Print which case it is.
+        m.print_case()
         #administrative parameters
         showGraph = 1 #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
@@ -124,6 +128,8 @@ class Case2:
         #initial values
         m.N1 = 0.5
         m.N2 = 0.5
+        #Print which case it is.
+        m.print_case()
         #administrative parameters
         showGraph = 1; #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
@@ -168,6 +174,8 @@ class Case3:
         #initial values
         m.N1 = 0.51
         m.N2 = 0.5
+        #Print which case it is.
+        m.print_case()
         #administrative parameters
         showGraph = 1; #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
@@ -182,6 +190,8 @@ class Case3:
         #initial values
         m.N1 = 0.51
         m.N2 = 0.5
+        #Print which case it is.
+        m.print_case()
         #administrative parameters
         showGraph = 0; #no graph
         solution_parameters(duration=20, reporting_interval=0.1)
@@ -210,6 +220,8 @@ class Case4:
         #initial values
         m.N1 = 2
         m.N2 = 0.5
+        #Print which case it is.
+        m.print_case()
         #administrative parameters
         showGraph = 1; #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
