@@ -3543,7 +3543,9 @@ def indentedBlock(blockStatementExpr, indentStack, indent=True):
     UNDENT = Empty().setParseAction(checkUnindent).setNoPackrat()
     if indent:
         smExpr = Group( Optional(NL) 
-            + FollowedBy(blockStatementExpr) 
+            #Removing the following line might increase speed. See:
+            #http://pyparsing.wikispaces.com/message/view/home/13557997
+            #+ FollowedBy(blockStatementExpr) 
             + INDENT + OneOrMore( ((PEER + Group(blockStatementExpr))  .setNoPackrat() 
                                    + Optional(NL))                     .setNoPackrat() 
                                 ) 
