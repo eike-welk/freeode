@@ -219,7 +219,7 @@ class DataFlowChecker(object):
 
 
     def prepare_initialize_function(self):
-        '''Prepare checking one of thea initialization functions'''
+        '''Prepare checking one of the initialization functions'''
         #TODO: care for the external inputs - arguments of main functions 
         #these attributes are already known when the main function is executed
         self.known_attributes = self.constants 

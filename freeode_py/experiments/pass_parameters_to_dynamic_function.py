@@ -67,7 +67,7 @@ class Sim3(object):
         self.j = 10
         
     def make_dynamic(self):
-        a = self.a; b = self.b; c = self.c; d = self.d; e = self.e; 
+        a = self.a; b = self.b; c = self.c; d = self.d; e = self.e
         f = self.f; g = self.g; h = self.h; i = self.i; j = self.j
         
         def dynamic():
@@ -84,22 +84,27 @@ sim2 = Sim2()
 sim3 = Sim3()
  
 start = clock()
+dynamic = sim1.dynamic
 for i in range(iterations):
-    sim1.dynamic()
+    dynamic()
 end = clock()
-print 'Calling sim1.dynamic took %s s.' % str(end - start)
+print 'Parameters are regular instance attributes: class Sim1 \n' \
+      'Calling dynamic function repeatedly took %s s.' % str(end - start)
 
 start = clock()
+dynamic = sim2.dynamic
 for i in range(iterations):
-    sim2.dynamic()
+    dynamic()
 end = clock()
-print 'Calling sim2.dynamic took %s s.' % str(end - start)
+print 'Parameters are stored in separate object: class Sim2 \n'\
+      'Calling dynamic function repeatedly took %s s.' % str(end - start)
 
 start = clock()
 dynamic = sim3.make_dynamic()
 for i in range(iterations):
     dynamic()
 end = clock()
-print 'Calling dynamic of sim3 took %s s.' % str(end - start)
+print 'Parameters are stored in closure: class Sim3 \n'\
+      'Calling dynamic function repeatedly took %s s.' % str(end - start)
     
  
