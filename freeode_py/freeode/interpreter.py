@@ -1625,6 +1625,8 @@ def wsiml_replace_attr(old, new):
     
     The function does not change the parent attribute. Therefore objects
     modified with replace(...) are not exactly like normally created objects.
+    
+    TODO: remove this function after make_derivative(variable, derivative=None) is implemented. 
     '''
     if not isinstance(old, InterpreterObject) or \
        old.parent is None or old.parent() is None:
@@ -1717,14 +1719,14 @@ def create_built_in_lib():
 #TODO: replace(a, b)
 #TODO: parent(o)
 #TODO: find_name(o, parent)
-#TODO: replace_attr(name, attr)
 #TODO: quote(expr)
 #TODO: quasi_quote(expr)
 #TODO: operator('x-x', expr, expr, ...)
         
 def make_derivative(variable):    
     '''
-    Create time derivative of given variable. 
+    Create time derivative of a variable. 
+    TODO: Can also associate two variables as state variable and time derivative.
     
     - Create derivative in variable's parent
     - Put weak reference to it into variable.time_derivative
@@ -1733,8 +1735,17 @@ def make_derivative(variable):
     ARGUMENTS
     ---------
     variable: IFloat, ...
-        The variable for which a time derivative will be created.
+        The variable which is converted to a state variable, and for which 
+        a time derivative will be created.
+        
+    TODO: introduce second argument: derivative=None: IFloat
+          The variable which will from now on act as a derivative. 
+          If argument is None, a new variable is created. 
+    TODO: remove wsiml_replace_attr(...)
     '''
+    #TODO: Test: both arguments must be IFloat (or Array) objects. 
+    #TODO: Test if variable is already a state variable. Raise error if true.
+    #TODO: Test if variable is a time differential. Raise error if true.
     #create the derived variable which will be associated to variable
     deri_var_class = variable.type()
     deri_var = deri_var_class()
@@ -1783,6 +1794,11 @@ def siml_isinstance(in_object, class_or_type_or_tuple):
     
     If in_object is an expression, which would evaluate to an object of the 
     correct type, the function returns True. 
+    
+    TODO: rename to: siml_istype
+    TODO: create new function siml_isinstance(...) which checks at compile 
+          time if object is really an instance of a certain type; excluding 
+          unevaluated function calls.  
     '''
     #the test: use siml_issubclass() on type attribute
     if in_object.type is not None:
