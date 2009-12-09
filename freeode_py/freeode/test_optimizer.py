@@ -128,7 +128,7 @@ compile A
 
 def test_unknown_const_1(): #IGNORE:C01111
     msg = '''Test correct treatment of unknown constants.'''
-    #py.test.skip(msg)
+    py.test.skip(msg)
     print msg
     
     from freeode.optimizer import MakeDataFlowDecorations, DataFlowChecker
