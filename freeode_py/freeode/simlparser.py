@@ -356,20 +356,17 @@ class Parser(object):
         '''
         Create node for an identifier.
 
-        An identifier always means access to data. Identifiers closely work
-        together with the dot operator.
-        tokList has the following structure:
-        [<string>]
+        BNF:
+        identifierBase = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
+        identifier  =   identifierBase.copy()                       .setParseAction(self._actionCheckIdentifier)\
+                                                                    .setParseAction(self._action_identifier)
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeIdentifier()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        #The flattened system will require the use of multicomponent DotNames;
-        # therefore the DotName class is used already here.
-        nCurr.name = DotName(tokList)
-        return nCurr
+        n_id = NodeIdentifier()
+        n_id.loc = self.createTextLocation(loc) #Store position
+        n_id.name = toks[0]
+        return n_id
 
     def _action_expression_stmt(self, s, loc, toks):
         '''
@@ -609,12 +606,12 @@ class Parser(object):
          '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        nCurr = NodeCompileStmt()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.class_spec = toks.class_name
+        n_curr = NodeCompileStmt()
+        n_curr.loc = self.createTextLocation(loc) #Store position
+        n_curr.class_spec = toks.class_name
         if toks.name:
-            nCurr.name = DotName(toks.name)
-        return nCurr
+            n_curr.name = toks.name
+        return n_curr
 
 
     def _action_stmt_list(self, s, loc, toks): #IGNORE:W0613
@@ -658,35 +655,35 @@ class Parser(object):
         toks = toks[0]             #an extra pair of brackets
         #multiple attributes can be defined in a single statement
         #Create a node for each of them and put them into a special statement list
-        attrDefList = NodeStmtList()
-        attrDefList.loc = self.createTextLocation(loc)
-        nameList = toks.attr_name_list.asList()
-        for name in nameList:
-            attrDef = NodeDataDef()
-            attrDef.loc = self.createTextLocation(loc)
-            attrDef.name = DotName(name) #store attribute name
-            attrDef.class_spec = toks.class_name #toks.class_name is NodeIdenifier
+        data_def_list = NodeStmtList()
+        data_def_list.loc = self.createTextLocation(loc)
+        name_list = toks.attr_name_list.asList()
+        for name in name_list:
+            data_def = NodeDataDef()
+            data_def.loc = self.createTextLocation(loc)
+            data_def.name = name #store attribute name
+            data_def.class_spec = toks.class_name #toks.class_name is NodeIdenifier
             #map role string to role object, and store the role
             #If role is not specified RoleVariable is assumed.
             #Submodels will be labeled variables even though these categories don't apply to them.
-            roleDict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleAlgebraicVariable,
+            role_dict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleAlgebraicVariable,
                         'algebraic_variable':RoleAlgebraicVariable,
                         'state_variable':RoleStateVariable,
                         'time_differential':RoleTimeDifferential,
                         'role_unknown':RoleUnkown}
-            attrDef.role = roleDict.get(toks.attr_role, None)
+            data_def.role = role_dict.get(toks.attr_role, None)
             #store the default value
             if isinstance(toks.default_value, Node):
-                attrDef.default_value = toks.default_value
+                data_def.default_value = toks.default_value
                 raise UserException('Default values are currently unsupported!',
                                     self.createTextLocation(loc), errno=2138010)
             #store the attribute definition in the list
-            attrDefList.statements.append(attrDef)
+            data_def_list.statements.append(data_def)
         #Special case: only one attribute defined
-        if len(attrDefList.statements) == 1:
-            return attrDefList.statements[0] #take it out of the list and return it
+        if len(data_def_list.statements) == 1:
+            return data_def_list.statements[0] #take it out of the list and return it
         else:
-            return attrDefList #return list with multiple definitions
+            return data_def_list #return list with multiple definitions
 
 
     def _action_slicing(self, s, loc, toks): #IGNORE:W0613
@@ -780,7 +777,7 @@ class Parser(object):
         ncurr = NodeFuncArg()
         ncurr.loc = self.createTextLocation(loc) #Store position
         #store argument name
-        ncurr.name = DotName(toks.name.name)
+        ncurr.name = toks.name.name
         #store optional type of argument
         if toks.type:
             ncurr.type = toks.type
@@ -815,7 +812,7 @@ class Parser(object):
         ncurr = NodeFuncDef()
         ncurr.loc = self.createTextLocation(loc) #Store position
         #store function name
-        ncurr.name = DotName(toks.func_name)
+        ncurr.name = toks.func_name
         #store function arguments: SimpleArgumentList performs some checks
         if toks.arg_list:
             ncurr.arguments = SimpleArgumentList(toks.arg_list.asList(), ncurr.loc)
@@ -833,7 +830,7 @@ class Parser(object):
 
     def _action_class_def(self, s, loc, toks): #IGNORE:W0613
         '''
-        Create node for definition of a class:
+        Create class_def for definition of a class:
             class foo(a):
                 inherit Model
                 data myA: Real = a
@@ -850,17 +847,17 @@ class Parser(object):
             return None #No parse result modifications for debugging
         #tokList = toks.asList()[0] #the Group creates
         toks = toks[0]             #an extra pair of brackets
-        nCurr = NodeClassDef()
-        nCurr.loc = self.createTextLocation(loc) #Store position
+        class_def = NodeClassDef()
+        class_def.loc = self.createTextLocation(loc) #Store position
         #store class name and name of super class
-        nCurr.name = DotName(toks.classname)
-        #store function arguments: statement list of 'data' statements
+        class_def.name = toks.classname
+        #store arguments of class statement - base classes - semantics currently undefined
         if toks.arg_list:
-            nCurr.arguments = toks.arg_list.asList()
+            class_def.arguments = toks.arg_list.asList()
         #store class body; take each statement out of its sublist
         for sublist in toks.class_body_stmts:
-            nCurr.statements.append(sublist[0])
-        return nCurr
+            class_def.statements.append(sublist[0])
+        return class_def
 
 
     def _action_module(self, s, loc, toks): #IGNORE:W0613
@@ -873,15 +870,15 @@ class Parser(object):
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tokList = toks.asList()[0]
-        nCurr = NodeModule()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.name = self.moduleName
+        module = NodeModule()
+        module.loc = self.createTextLocation(loc) #Store position
+        module.name = self.moduleName
         #take the sublists out of the nested lists that indentedBlock produces
         statements = []
         for sublist in tokList:
             statements.append(sublist[0])
-        nCurr.statements = statements
-        return nCurr
+        module.statements = statements
+        return module
 
 
 #------------------- BNF ------------------------------------------------------------------------*
@@ -926,8 +923,8 @@ class Parser(object):
         identifierBase = Word(alphas+'_', alphanums+'_')            .setName('identifier')#.setDebug(True)
         # identifier:    Should be used in expressions. If a keyword is used an ordinary parse error is
         #                raised. This is needed to parse expressions containing the operators 'and', 'or', 'not'.
-        identifier  = Group(identifierBase.copy()                   .setParseAction(self._actionCheckIdentifier)
-                            )                                       .setParseAction(self._action_identifier)
+        identifier  =   identifierBase.copy()                       .setParseAction(self._actionCheckIdentifier)\
+                                                                    .setParseAction(self._action_identifier)
         # newIdentifier: Should be used in definition of new objects (data, class, function).
         #                If a keyword is used as a identifier a fatal, user visible error is raised.
         newIdentifier = identifierBase.copy()                       .setParseAction(self._actionCheckIdentifierFatal)

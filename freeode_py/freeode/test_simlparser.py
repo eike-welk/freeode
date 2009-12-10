@@ -54,6 +54,114 @@ def test_parser_construction(): #IGNORE:C01111
 
 
 
+def test_identifier_1(): #IGNORE:C01111
+    msg = 'Parse an identifier.'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser   
+    from freeode.ast import NodeIdentifier
+    
+    parser = Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+    #Parser.noTreeModification = 1
+
+    test_expression = 'a'
+    print 'expression: ', test_expression
+    
+    ast = parser.parseExpressionStr(test_expression)
+    print 'AST:'
+    print ast 
+    
+    node_id = ast
+    assert isinstance(node_id, NodeIdentifier)
+    assert isinstance(node_id.name, str)
+    assert node_id.name == 'a'
+        
+
+
+# ---------- data statement -----------------------------------------------------
+def check_single_data_statement(data_stmt, name, class_name, role):
+    '''Check the validity of a single data statement, which comes from the parser.'''
+    from freeode.ast import NodeDataDef, NodeIdentifier
+    
+    assert isinstance(data_stmt, NodeDataDef)
+    #name
+    assert isinstance(data_stmt.name, str)
+    assert data_stmt.name == name
+    #type
+    assert isinstance(data_stmt.class_spec, NodeIdentifier)
+    assert data_stmt.class_spec.name == class_name
+    #role
+    assert data_stmt.role == role
+    
+
+def test_data_def_1(): #IGNORE:C01111
+    msg = 'Parse data definition for single attribute.'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser   
+    from freeode.ast import RoleConstant
+    
+    parser = Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+    #Parser.noTreeModification = 1
+
+    test_prog = (
+'''
+data a: Float const
+''' )
+    print 'statement: --------------------------'
+    print test_prog
+
+    ast = parser.parseModuleStr(test_prog)
+    print 'AST: --------------------------------'
+    print ast 
+    
+    data_stmt = ast.statements[0]
+    check_single_data_statement(data_stmt, 'a', 'Float', RoleConstant)
+    
+    
+    
+def test_data_def_2(): #IGNORE:C01111
+    msg = 'Parse data definition for multiple attributes.'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser   
+    from freeode.ast import NodeDataDef, NodeStmtList, RoleConstant
+    
+    parser = Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+    #Parser.noTreeModification = 1
+
+    test_prog = (
+'''
+data a, b, c: Float const
+''' )
+    print 'statement: --------------------------'
+    print test_prog
+
+    ast = parser.parseModuleStr(test_prog)
+    print 'AST: --------------------------------'
+    print ast 
+    
+    #A data statement with multiple attributes is parsed into a list of 
+    #data statements for one attribute
+    data_stmt_list = ast.statements[0]
+    assert isinstance(data_stmt_list, NodeStmtList)
+    #test each data statement in the list
+    for data_stmt, name in zip(data_stmt_list.statements, ['a', 'b', 'c']):
+        assert isinstance(data_stmt, NodeDataDef)
+        check_single_data_statement(data_stmt, name, 'Float', RoleConstant)
+    
+
+
+# ---------- if statement -----------------------------------------------------
 def test_if_stmt_1(): #IGNORE:C01111
     msg = 'Test to parse an if statement.'
     #py.test.skip(msg)
@@ -127,8 +235,44 @@ if a: b
     assert isinstance(if_clause, NodeClause)
     assert len(if_clause.statements) == 1
     
+    
+    
+# ---------- class definition -----------------------------------------------------
+def test_class_def_1(): #IGNORE:C01111
+    msg = 'Parse data definition for multiple attributes.'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser   
+    from freeode.ast import NodeClassDef, NodePassStmt
+    
+    parser = Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+    #Parser.noTreeModification = 1
+
+    test_prog = (
+'''
+class A:
+    pass
+''' )
+    print 'statement: --------------------------'
+    print test_prog
+
+    ast = parser.parseModuleStr(test_prog)
+    print 'AST: --------------------------------'
+    print ast 
+    
+    class_stmt = ast.statements[0]
+    assert isinstance(class_stmt, NodeClassDef)    
+    assert class_stmt.name == 'A'
+    #the single statement in the class body
+    assert len(class_stmt.statements) == 1
+    assert isinstance(class_stmt.statements[0], NodePassStmt)
 
 
+
+# ---------- function definition -----------------------------------------------------
 def test_parse_function_definition_1(): #IGNORE:C01111
     msg = 'Test to parse a function definition without arguments.'
     #py.test.skip(msg)
@@ -280,6 +424,7 @@ func test_1() -> Float:
 #    assert False, 'Test'
     
     
+# ---------- complete program -----------------------------------------------------
 def test_parse_complete_program_1(): #IGNORE:C01111
     msg = 'Test to parse a complete program.'
     #py.test.skip(msg)
@@ -337,7 +482,8 @@ compile RunTest
 
 
 
+# ---------- call function for debugging here ---------------------------------
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_if_stmt_1()
+    test_class_def_1()
     pass
