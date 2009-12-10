@@ -48,7 +48,7 @@ import os
 from freeode.third_party.pyparsing import (
     Literal, CaselessLiteral, Keyword, Word,
     ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,
-    oneOf, LineEnd, indentedBlock, 
+    oneOf, LineEnd, indentedBlock,
     delimitedList, Suppress, operatorPrecedence, opAssoc,
     StringEnd, quotedString, Combine, Group, Optional,
     ParseException, ParseFatalException, ParserElement, )
@@ -64,23 +64,23 @@ ParserElement.enablePackrat()
 class ChMsg(object):
     '''
     Change a parser's error message.
-    
+
     Attach to parser with setFailAction
     '''
     def __init__(self, prepend=None, append=None):
         object.__init__(self)
         self.prepend_str = prepend
         self.append_str = append
-        
+
     def __call__(self, s,loc,expr,err):
         '''Change error message. Called by parser when it fails.
-        
+
         Arguments:
             - s = string being parsed
             - loc = location where expression match was attempted and failed
             - expr = the parse expression that failed
             - err = the exception thrown
-            
+
         Return:
            The function returns no value.  It may throw ParseFatalException
            if it is desired to stop parsing immediately.
@@ -93,8 +93,8 @@ class ChMsg(object):
             if self.append_str is not None:
                 err.msg = err.msg + self.append_str
             raise err
-        
-        
+
+
 #TODO: remove?
 #
 #class ParseActionException(Exception):
@@ -297,10 +297,10 @@ class Parser(object):
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
         tok_list = toks.asList()[0] #Group() ads an extra pair of brackets
-        #collect the relevant data 
+        #collect the relevant data
         operator = tok_list[0]        #operator
         expr_rhs = tok_list[1]        #RHS expression
-        node = NodeOpPrefix1(operator, (expr_rhs,), 
+        node = NodeOpPrefix1(operator, (expr_rhs,),
                              self.createTextLocation(loc))
         return node
 
@@ -310,7 +310,7 @@ class Parser(object):
 
         operatorPrecedence returns such a list for left assocative operaators.
         tokList has the following structure:
-        [<expression_1>, <operator_1>, <expression_2>, <operator_2>, ... 
+        [<expression_1>, <operator_1>, <expression_2>, <operator_2>, ...
          <expression_n+1>]
         '''
         if Parser.noTreeModification:
@@ -332,12 +332,12 @@ class Parser(object):
         #toks might be a list or a ParseResults object
         if not isinstance(toks,  list):
             #Convert parse result to list, remove extra pair of brackets
-            tokList = toks.asList()[0] 
+            tokList = toks.asList()[0]
         else:
             #function was called by _action_op_infix_left(...) toks is already
             #a list.
             tokList = toks
-        #collect the relevant data 
+        #collect the relevant data
         exprLhs = tokList[0]        #expression left hand side
         operator = tokList[1]       #operator
         exprRhs = tokList[2]        #rhs
@@ -354,10 +354,10 @@ class Parser(object):
 
     def _action_identifier(self, s, loc, toks): #IGNORE:W0613
         '''
-        Create node for an identifier. 
-        
+        Create node for an identifier.
+
         An identifier always means access to data. Identifiers closely work
-        together with the dot operator. 
+        together with the dot operator.
         tokList has the following structure:
         [<string>]
         '''
@@ -373,9 +373,9 @@ class Parser(object):
 
     def _action_expression_stmt(self, s, loc, toks):
         '''
-        Create node for a function call. Really any expression can be 
+        Create node for a function call. Really any expression can be
         present, but only function calls make sense.
-        
+
         BNF:
         expression_stmt = Group(expression)
         '''
@@ -386,14 +386,14 @@ class Parser(object):
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.expression = toks[0][0]
         return nCurr
-    
-    def _action_if_clause(self, s, loc, toks): #IGNORE:W0613 
+
+    def _action_if_clause(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for one clause of the if statement.
-        
+
         Each clause is stored as a pair: <condition, statement list>. The 'else'
         clause has a condition that is always true.
-        
+
         A clause is:
             if condition:
                 statement
@@ -404,7 +404,7 @@ class Parser(object):
         or:
             else:
                 ...
-                
+
         For BNF look at: _action_if_statement
         '''
         if Parser.noTreeModification:
@@ -423,19 +423,19 @@ class Parser(object):
         #repackage statements; they are stored in nested lists
         stmts_flat = []
         for sublist in statements:
-            stmts_flat.append(sublist[0])        
+            stmts_flat.append(sublist[0])
         #create node for this clause and return it
         node = NodeClause(condition, stmts_flat, loc_ex)
         return node
-        
-    def _action_if_statement(self, s, loc, toks): #IGNORE:W0613 
+
+    def _action_if_statement(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for if ... : ... else: ... statement.
-        
+
         BNF:
         if_stmt = Group \
             (             (kw('if')   - expression + ':' + suite)   .setParseAction(self._action_if_clause)
-             + ZeroOrMore((kw('elif') - expression + ':' + suite)   .setParseAction(self._action_if_clause) 
+             + ZeroOrMore((kw('elif') - expression + ':' + suite)   .setParseAction(self._action_if_clause)
                                                                     .setFailAction(ChMsg(prepend='elif: ')))
              + Optional(  (kw('else') - ':' + suite)                .setParseAction(self._action_if_clause)
                                                                     .setFailAction(ChMsg(prepend='else: ')))
@@ -460,8 +460,8 @@ class Parser(object):
         tokList = toks.asList()[0] #Group() ads an extra pair of brackets
         nCurr = NodeAssignment()
         nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.target = tokList[0]   
-        nCurr.expression = tokList[2]   
+        nCurr.target = tokList[0]
+        nCurr.expression = tokList[2]
         return nCurr
 
 #    def _action_print_stmt(self, s, loc, toks): #IGNORE:W0613
@@ -472,12 +472,12 @@ class Parser(object):
 #        expression_list = delimitedList(expression, ',')            .setName('exprList')
 #        print_stmt = Group(kw('print')
 #                          - Optional(expression_list)               .setResultsName('arg_list')
-#                          + Optional(',')                           .setResultsName('trail_comma')                       
+#                          + Optional(',')                           .setResultsName('trail_comma')
 #                          )                                         .setParseAction(self._action_print_stmt)\
 #        '''
 #        if Parser.noTreeModification:
 #            return None #No parse result modifications for debugging
-#        #tokList = toks.asList()[0] #Group adds 
+#        #tokList = toks.asList()[0] #Group adds
 #        toks = toks[0]             #an extra pair of brackets
 #        nCurr = NodePrintStmt()
 #        nCurr.loc = self.createTextLocation(loc) #Store position
@@ -525,7 +525,7 @@ class Parser(object):
     def _action_pass_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for pass statement (which does nothing):
-        
+
         BNF:
         pass_stmt = kw('pass')                                      .setParseAction(self._action_pass_stmt)
         '''
@@ -534,9 +534,9 @@ class Parser(object):
         n_curr = NodePassStmt()
         n_curr.loc = self.createTextLocation(loc) #Store position
         return n_curr
-      
-      
-      
+
+
+
     def _action_return_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for return statement:
@@ -599,11 +599,11 @@ class Parser(object):
     def _action_compile_stmt(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for compile statement.
-        
+
         BNF:
-        compile_stmt = (kw('compile') 
+        compile_stmt = (kw('compile')
                         - Optional(newIdentifier                    .setResultsName('name')
-                                   + ':') 
+                                   + ':')
                         + expression                                .setResultsName('class_name')
                         )                                           .setParseAction(self._action_compile_stmt)\
          '''
@@ -615,14 +615,14 @@ class Parser(object):
         if toks.name:
             nCurr.name = DotName(toks.name)
         return nCurr
-    
+
 
     def _action_stmt_list(self, s, loc, toks): #IGNORE:W0613
         '''
         Create node for list of statements: a=1; b=2; ...
         BNF:
-        stmt_list = Group(delimitedList(Group(simple_stmt), ';') 
-                             + Optional(Suppress(";")) )                  
+        stmt_list = Group(delimitedList(Group(simple_stmt), ';')
+                             + Optional(Suppress(";")) )
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
@@ -643,7 +643,7 @@ class Parser(object):
         NodeDataDef is created for each. They are returned together inside a
         list node of type NodeStmtList.
         BNF:
-        newAttrList = delimitedList(newIdentifier)   
+        newAttrList = delimitedList(newIdentifier)
         data_stmt = Group(kw('data')
                           - newAttrList                             .setResultsName('attr_name_list')
                           + ':' + expression                        .setResultsName('class_name')
@@ -738,7 +738,7 @@ class Parser(object):
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         toks = toks[0] #remove extra bracket of group
-        n_curr = NodeFuncCall() 
+        n_curr = NodeFuncCall()
         n_curr.loc = self.createTextLocation(loc) #Store position
         #store function name
         n_curr.function = toks[0]
@@ -787,7 +787,7 @@ class Parser(object):
         #store optional default value
         if toks.default_value:
             ncurr.default_value = toks.default_value
-            
+
         return ncurr
 
 
@@ -797,7 +797,7 @@ class Parser(object):
             func doFoo(a:Real=2.5, b) -> Real: {... }
         BNF:
         func_def_arg_list = (delimitedList(func_def_arg, ',')
-                             + Optional(','))                
+                             + Optional(','))
         #the function: func doFoo(a:Real=2.5, b) -> Real {...}
         func_def_stmt = Group(kw('func') - newIdentifier            .setResultsName('func_name')
                         + ('(' - Optional(func_def_arg_list         .setResultsName('arg_list'))
@@ -837,7 +837,7 @@ class Parser(object):
             class foo(a):
                 inherit Model
                 data myA: Real = a
-            
+
         BNF:
         class_stmt = Group(kw('class')
                          - newIdentifier                            .setResultsName('classname')
@@ -857,7 +857,7 @@ class Parser(object):
         #store function arguments: statement list of 'data' statements
         if toks.arg_list:
             nCurr.arguments = toks.arg_list.asList()
-        #store class body; take each statement out of its sublist 
+        #store class body; take each statement out of its sublist
         for sublist in toks.class_body_stmts:
             nCurr.statements.append(sublist[0])
         return nCurr
@@ -867,12 +867,12 @@ class Parser(object):
         '''
         Create the root node of a module.
         BNF:
-        module = (indentedBlock(statement, self.indentStack, indent=False) 
+        module = (indentedBlock(statement, self.indentStack, indent=False)
                   + StringEnd())                                      .setParseAction(self._action_module)
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] 
+        tokList = toks.asList()[0]
         nCurr = NodeModule()
         nCurr.loc = self.createTextLocation(loc) #Store position
         nCurr.name = self.moduleName
@@ -881,7 +881,7 @@ class Parser(object):
         for sublist in tokList:
             statements.append(sublist[0])
         nCurr.statements = statements
-        return nCurr 
+        return nCurr
 
 
 #------------------- BNF ------------------------------------------------------------------------*
@@ -898,9 +898,9 @@ class Parser(object):
 
         #end of line terminates statements, so it is not regular whitespace
         ParserElement.setDefaultWhitespaceChars('\t ')
-        #the matching end of line token 
+        #the matching end of line token
         newline = LineEnd().suppress()
-        
+
 #------------------ Literals .................................................................
 
         #Integer (unsigned).
@@ -935,7 +935,7 @@ class Parser(object):
 #------------------ Mathematical expression .............................................................
         #Expression: mathematical, logtical, and comparison operators;
         # together with attribute access, function call, and slicing.
-        #Forward declaration for recursive top level rule 
+        #Forward declaration for recursive top level rule
         expression = Forward()
 
         #Atoms are the most basic elements of expressions.
@@ -945,7 +945,7 @@ class Parser(object):
         #      Look at setWhitespaceChars().
         enclosure = (S('(') - expression + S(')'))                  .setParseAction(self._action_parentheses_pair)
         atom = identifier | literal | enclosure
-      
+
         #TODO: Inside brackets any number of newlines should be allowed!
         #      Look at setWhitespaceChars().
         #Function/method call: everything within the round brackets is parsed here;
@@ -991,10 +991,10 @@ class Parser(object):
         power << (power1 | expression_ex)
         #Unary arithmetic operations: -a; +a
         u_expr1 = Group(oneOf('- +') + u_expr)                      .setParseAction(self._action_op_prefix)
-        u_expr << (u_expr1 | power)             
-             
+        u_expr << (u_expr1 | power)
+
         #arithmetic, logtical, and comparison operators; the top level parser
-        expression << operatorPrecedence(u_expr, 
+        expression << operatorPrecedence(u_expr,
             [(oneOf('* / %'), 2, opAssoc.LEFT,           self._action_op_infix_left),
              (oneOf('+ -'), 2, opAssoc.LEFT,             self._action_op_infix_left),
              (oneOf('< > <= >= == !='), 2, opAssoc.LEFT, self._action_op_infix_left),
@@ -1006,13 +1006,13 @@ class Parser(object):
 #------------------- STATEMEMTS -------------------------------------------------------------------------*
 #------------------- Simple statements ..................................................................
 
-        #Return values from a function 
+        #Return values from a function
         return_stmt = (kw('return') - Optional(expression           .setResultsName('ret_val'))
                       )                                             .setParseAction(self._action_return_stmt) \
                                                                     .setFailAction(ChMsg(prepend='return statement: '))
 
         #pragma statement: tell any kind of options to the compiler
-        pragma_stmt = (kw('pragma') 
+        pragma_stmt = (kw('pragma')
                        - OneOrMore(Word(alphanums+'_')))            .setParseAction(self._actionPragmaStmt) \
                                                                     .setFailAction(ChMsg(prepend='pragma statement: '))
 
@@ -1041,9 +1041,9 @@ class Parser(object):
         pass_stmt = kw('pass')                                      .setParseAction(self._action_pass_stmt)
 
         #compile a class
-        compile_stmt = (kw('compile') 
+        compile_stmt = (kw('compile')
                         - Optional(newIdentifier                    .setResultsName('name')
-                                   + ':') 
+                                   + ':')
                         + expression                                .setResultsName('class_name')
                         )                                           .setParseAction(self._action_compile_stmt)\
                                                                     .setFailAction(ChMsg(prepend='compile statement: '))
@@ -1054,10 +1054,10 @@ class Parser(object):
 
         #Evaluate an expression (usually call a fuction); the result is discarded.
         expression_stmt = Group(expression)                         .setParseAction(self._action_expression_stmt)
-        
+
         #------------ data statemnt -------------------------------------------------------------------------
         #define parameters, variables, constants and submodels
-        #TODO: add 'save' - 'no_save' keywords 
+        #TODO: add 'save' - 'no_save' keywords
         #The roles of data (maybe call it storage class?):
         #variable:    changes during the simulation
         #parameter:   constant during a (dynamic?) simulation, can change beween simulations,
@@ -1065,11 +1065,11 @@ class Parser(object):
         #constant:    must be known at compile time, may be optimized away,
         #             the compiler may generate special code depending on the value.
         #TODO: maybe add role for automatically created variables
-        attrRole = (  kw('state_variable') | kw('time_differential')  | kw('algebraic_variable') 
-                    | kw('role_unknown') 
+        attrRole = (  kw('state_variable') | kw('time_differential')  | kw('algebraic_variable')
+                    | kw('role_unknown')
                     | kw('variable') | kw('param') | kw('const')      )
         #parse: 'foo, bar, baz
-        newAttrList = delimitedList(newIdentifier)         
+        newAttrList = delimitedList(newIdentifier)
         #parse 'data foo, bar: baz.boo parameter;
         data_stmt = Group(kw('data')
                           - newAttrList                             .setResultsName('attr_name_list')
@@ -1079,27 +1079,27 @@ class Parser(object):
                                      )                              .setFailAction(ChMsg(prepend='default value: '))
                           )                                         .setParseAction(self._action_data_def)\
                                                                     .setFailAction(ChMsg(prepend='data definition: '))
-                                                                   
-        simple_stmt = (data_stmt| pass_stmt |#print_stmt | 
-                       return_stmt | pragma_stmt | #store_stmt | graph_stmt |                                    
+
+        simple_stmt = (data_stmt| pass_stmt |#print_stmt |
+                       return_stmt | pragma_stmt | #store_stmt | graph_stmt |
                        compile_stmt | assign_stmt |expression_stmt ).setName('simple statement')
 
 #------------- Compound statements ............................................................................
         #body of compound statements
         suite = Forward()
-        
+
         #------------- if ...........................................................................................
         #Flow control - if then else
         if_stmt = Group \
             (             (kw('if')   - expression + ':' + suite)   .setParseAction(self._action_if_clause)
-             + ZeroOrMore((kw('elif') - expression + ':' + suite)   .setParseAction(self._action_if_clause) 
+             + ZeroOrMore((kw('elif') - expression + ':' + suite)   .setParseAction(self._action_if_clause)
                                                                     .setFailAction(ChMsg(prepend='elif: ')))
              + Optional(  (kw('else') - ':' + suite)                .setParseAction(self._action_if_clause)
                                                                     .setFailAction(ChMsg(prepend='else: ')))
              )                                                      .setParseAction(self._action_if_statement) \
                                                                     .setFailAction(ChMsg(prepend='if statement: ')) \
                                                                     .setName('if statement')
-        
+
         #------------- Function / Method ............................................................................
         #Function definition (class method or global function)
         #one argument of the definition: inX:Real=2.5
@@ -1124,7 +1124,7 @@ class Parser(object):
                                                                     .setName('function definition')#.setDebug(True)
 
         #---------- class  ......................................................................
-        #definition of a class 
+        #definition of a class
         #TODO: "inherit" statement
         class_stmt = Group(kw('class')
                            - newIdentifier                          .setResultsName('classname')
@@ -1133,44 +1133,44 @@ class Parser(object):
                            + ':' + suite                            .setResultsName('class_body_stmts')
                            )                                        .setParseAction(self._action_class_def)\
                                                                     .setFailAction(ChMsg(prepend='class definition: '))
-                                      
-        
+
+
         compound_stmt = (class_stmt | func_def_stmt | if_stmt)
-        
-        
+
+
         #------ Statement, Suite -------------------------------------------------------------------------
         # See: http://docs.python.org/ref/compound.html
         #list of simple statements, separated by semicolon: a=1; b=2; print a, b
-        stmt_list = Group(delimitedList(Group(simple_stmt), ';') 
-                     + Optional(Suppress(";")) )          
-        #necessary for statement list (stmt_list) inside of block (stmt_block)        
+        stmt_list = Group(delimitedList(Group(simple_stmt), ';')
+                     + Optional(Suppress(";")) )
+        #necessary for statement list (stmt_list) inside of block (stmt_block)
         stmt_list_1 = stmt_list.copy()                              .setParseAction(self._action_stmt_list)
         #Statement: one line of code, or a compound (if, class, func) statement
-        #TODO: set a fail action that says 'Expected statement here.' ('Expected end of file' is misleading.) 
+        #TODO: set a fail action that says 'Expected statement here.' ('Expected end of file' is misleading.)
         #TODO: good error messages for the parser are important.
-        statement = (  simple_stmt + newline 
-                     | stmt_list_1 + newline 
+        statement = (  simple_stmt + newline
+                     | stmt_list_1 + newline
                      | compound_stmt         )
         #And indented block of statements
         stmt_block = indentedBlock(statement, self.indentStack)     #.setParseAction(self._action_stmt_list)
         #Body of class or function; the dependent code of 'if'
         # Statement list and indented block of statements lead to the same AST
-        suite << ( stmt_list + newline | newline + stmt_block )     #IGNORE:W0104                                           
-        
-#        #simple definition for debuging
+        suite << ( stmt_list + newline | newline + stmt_block )     #IGNORE:W0104
+
+#        #simple definition for debuging:
 #        #simple statements are terminated by newline
 #        #while the indented block eats all newlines after the compound statement
-#        statement = simple_stmt + newline | compound_stmt 
+#        statement = simple_stmt + newline | compound_stmt
 #        #a suite is an indented block of statements
 #        suite << indentedBlock(statement, self.indentStack)
-        
+
 #---------- module ------------------------------------------------------------------------------------#
-        module = (indentedBlock(statement, self.indentStack, indent=False) 
+        module = (indentedBlock(statement, self.indentStack, indent=False)
                   + StringEnd())                                      .setParseAction(self._action_module)
-        
-        #workaround for pyparsing bug ???         
-#        module = (ZeroOrMore(newline) 
-#                  + ZeroOrMore(Group(statement) + ZeroOrMore(newline)) 
+
+        #workaround for pyparsing bug ???
+#        module = (ZeroOrMore(newline)
+#                  + ZeroOrMore(Group(statement) + ZeroOrMore(newline))
 #                  + StringEnd())
         #................ End of language definition ..................................................
 
@@ -1208,7 +1208,7 @@ class Parser(object):
         Returns
         -------
         AST: ast.Node
-           Abstract Syntax Tree (AST): A tree of ast.Node objects that 
+           Abstract Syntax Tree (AST): A tree of ast.Node objects that
            represents the program text.
         '''
         self.inputString = inProgram
@@ -1248,5 +1248,5 @@ class Parser(object):
 
 
 if __name__ == '__main__':
-    #TODO: add doctest tests. 
+    #TODO: add doctest tests.
     pass
