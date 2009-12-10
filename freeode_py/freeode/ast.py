@@ -364,14 +364,14 @@ class NodeIdentifier(Node):
           with mangeld names: $foo.bar --> foo.bar$time; deriv(foo, x) --> foo$x
     
     Data Attributes:
-        name: DotName()
-            Name of attribute: (DotName('a'); DotName('proc.model1.a'))
+        name: str()
+            Name of attribute: ('a')
         loc: 
             Location in input string
     '''
     def __init__(self, name=None, loc=None):
         Node.__init__(self)
-        self.name = DotName(name) if name is not None else None
+        self.name = name
         self.loc = loc
 
 
@@ -887,14 +887,14 @@ class NodeDataDef(Node):
                           according to context. (mathematical expression)
                           (propperty stored in kids[0])
 
-        name            : name of the attribute. DotName
+        name            : name of the attribute. str
         class_spec      : type of the new attribute; NodeIdentifier or NodeFuncCall
         role            : Is this attribute a state or algebraic variable, a constant
                           or a parameter? (AttributeRole subclass).
     '''
     def __init__(self, name=None, class_spec=None, role=RoleConstant, loc=None):
         Node.__init__(self)
-        self.name = DotName(name) if name is not None else None
+        self.name = name
         self.class_spec = class_spec 
         self.role = role
         self.default_value = None
@@ -918,7 +918,7 @@ class NodeFuncArg(Node):
     One argument of a function 
     
     Attributes:
-        name: DotName
+        name: str
             Name of argument
         type:
             Type of argument
@@ -929,7 +929,7 @@ class NodeFuncArg(Node):
     '''
     def __init__(self, name=None, type=None, default_value=None):
         Node.__init__(self)
-        self.name = DotName(name)
+        self.name = name
         self.type = type 
         self.default_value = default_value
         self.loc = None
@@ -1002,7 +1002,7 @@ class NodeFuncDef(Node):
     The childern are the statements.
     
     Attributes:
-        name: DotName
+        name: str
             Name of the function
         arguments:
             Positional arguments
@@ -1017,7 +1017,7 @@ class NodeFuncDef(Node):
     """
     def __init__(self):
         Node.__init__(self)
-        self.name = DotName()
+        self.name = None
         self.arguments = SimpleArgumentList([])
         self.statements = []
         self.return_type = None
@@ -1050,7 +1050,7 @@ class NodeClassDef(Node):
     AST node for class definition.
     
     Data Attributes:
-    name: DotName
+    name: str
         name of the class defined here.
     arguments: list(Node())
         Constructor arguments, the expressions between the brackets

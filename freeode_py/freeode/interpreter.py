@@ -116,7 +116,7 @@ class ExecutionEnvironment(object):
         self.default_data_role = RoleUnkown
 
 
-    def get_attribute(self, dot_name, default=UndefinedAttributeError()):
+    def get_attribute(self, attr_name, default=UndefinedAttributeError()):
         '''
         Find a dot name in this environment.
 
@@ -126,10 +126,10 @@ class ExecutionEnvironment(object):
 
         Arguments
         ---------
-        dot_name : DotName
+        attr_name : str
             Dotted name that is looked up in the different name spaces.
         default : object (default value: UndefinedAttributeError())
-            Object which is returned when dot_name can not be found.
+            Object which is returned when attr_name can not be found.
             When argument is of type UndefinedAttributeError, an 
             UndefinedAttributeError is raised instead (default behavior).
         '''
@@ -141,13 +141,13 @@ class ExecutionEnvironment(object):
             if scope is None:
                 continue
             try:
-                attr = scope.get_attribute(dot_name)
+                attr = scope.get_attribute(attr_name)
                 return attr
             except UndefinedAttributeError: #IGNORE:W0704
                 pass
         #attribute could not be found in the scopes
         if isinstance(default, UndefinedAttributeError):
-            raise UndefinedAttributeError(attr_name=dot_name)
+            raise UndefinedAttributeError(attr_name=attr_name)
         else:
             return default            
 
@@ -211,7 +211,6 @@ class InterpreterObject(Node):
             - if False (default): set parent attribute only if newAttr has no
             parent.
         '''
-        name = DotName(name)
         if name in self.attributes:
             raise DuplicateAttributeError(attr_name=name)
         self.attributes[name] = newAttr
@@ -243,25 +242,26 @@ class InterpreterObject(Node):
         else:
             return False
         
-    def replace_attribute(self, name, newAttr, reparent=False):
-        '''
-        Replace an attribute.
-        
-        ARGUMENTS
-        ---------
-        name: DotName, str
-            Name of the attribute that will be replaced
-        newAttr: InterpreterObject
-            The new attribute that will be put into this object.
-        reparent: True/False
-            - if True: set parent attribute of newAttr in any case.
-            - if False (default): set parent attribute only if newAttr has no
-            parent.
-       
-        '''
-        name = DotName(name)
-        del self.attributes[name]
-        self.create_attribute(name, newAttr, reparent)
+#    def replace_attribute(self, name, newAttr, reparent=False):
+#        '''
+#        Replace an attribute.
+#        
+#        ARGUMENTS
+#        ---------
+#        name: DotName, str
+#            Name of the attribute that will be replaced
+#        newAttr: InterpreterObject
+#            The new attribute that will be put into this object.
+#        reparent: True/False
+#            - if True: set parent attribute of newAttr in any case.
+#            - if False (default): set parent attribute only if newAttr has no
+#            parent.
+#       
+#        TODO: remove this function? It is only necessary for derivatives of 
+#              user defined classes which don't work.
+#        '''
+#        del self.attributes[name]
+#        self.create_attribute(name, newAttr, reparent)
         
     def find_name(self, in_attr):
         '''
@@ -276,7 +276,7 @@ class InterpreterObject(Node):
             
         RETURNS
         -------
-        DotName
+        str, DotName
         The attribue's name.
         '''
         for attr_name, attr in self.attributes.iteritems():
@@ -304,17 +304,14 @@ class InterpreterObject(Node):
         '''
         curr_object = self
         for name1 in path:
-            if not curr_object.has_attribute(DotName(name1)):
+            if not curr_object.has_attribute(name1):
                 new_obj = InterpreterObject()
                 curr_object.create_attribute(name1, new_obj)
                 curr_object = new_obj
             else:
-                curr_object = curr_object.get_attribute(DotName(name1))
+                curr_object = curr_object.get_attribute(name1)
         return curr_object
-  
-  
-        #TODO: get_name_from_parent() for ExpressionVisitor.make_derivative
-    
+   
   
     
 class CallableObject(InterpreterObject):
@@ -330,7 +327,7 @@ class CallableObject(InterpreterObject):
         InterpreterObject.__init__(self)
         self.role = RoleConstant
         self.is_known = True
-        self.name = DotName(name)
+        self.name = name
         self.is_fundamental_function = False
         self.codegen_name = None
         '''
@@ -359,7 +356,7 @@ class TypeObject(InterpreterObject):
         InterpreterObject.__init__(self)
         self.role = RoleConstant
         self.is_known = True
-        self.name = DotName(name)
+        self.name = name
         
     def __call__(self, *args, **kwargs):
         '''All Siml-classes must implement this method'''
@@ -440,14 +437,14 @@ class ArgumentList(SimpleArgumentList):
         ---------
         args_list: [<siml values, AST nodes>, ...]
             Positional arguments.
-        kwargs_dict: {DotName(): <siml values, AST nodes>, ...}
+        kwargs_dict: {str(): <siml values, AST nodes>, ...}
             Keyword arguments.
         
         RETURNS
         -------
         Dictionary of argument names and associated values.
         dict(<argument name>: <siml values, AST nodes>, ...)
-        dict(DotName(): Node(), ...)
+        dict(str(): Node(), ...)
         '''
         #TODO: offer two different formats to return the parsed arguments:
         #      - a tuple of positional arguments. (For function wrapper)
@@ -474,8 +471,7 @@ class ArgumentList(SimpleArgumentList):
             output_dict[arg_def.name] = in_val
         
         #associate keyword arguments to their name
-        for in_name_s, in_val in kwargs_dict.iteritems():
-            in_name = DotName(in_name_s)
+        for in_name, in_val in kwargs_dict.iteritems():
             #test: argument name must exist in function definition
             if in_name not in self.argument_dict:
                 raise UserException('Unknown argument "%s". \n' 
@@ -714,7 +710,7 @@ class SimlFunction(CallableObject):
 
         #Take 'this' name-space from the 'this' argument. 
         # 'this' must be a Siml object, no unevaluated expression
-        this_namespace = parsed_args.get(DotName('this'), None)
+        this_namespace = parsed_args.get('this', None)
         if ( (this_namespace is not None) and 
              (not isinstance(this_namespace, InterpreterObject))):
             raise UserException('The "this" argument (1st argument) '
@@ -833,7 +829,7 @@ class BoundMethod(CallableObject):
     
     ARGUMENTS
     ---------
-    name: DotName
+    name: str
         name of function
     function: CallableObject or (Python) function
         Wrapped function that will be called.
@@ -918,8 +914,8 @@ class SimlClass(TypeObject):
                 new_attr = attr.copy()
                 new_obj.create_attribute(attr_name, new_attr, reparent=True)
         #run the __init__ compile time constructor
-        if new_obj.has_attribute(DotName('__init__')):
-            init_meth = new_obj.get_attribute(DotName('__init__'))
+        if new_obj.has_attribute('__init__'):
+            init_meth = new_obj.get_attribute('__init__')
             if not siml_callable(init_meth):
                 raise UserException('"__init__" attribute must be a method (callable)!')
             #run the constructor
@@ -1469,7 +1465,7 @@ class PrintFunction(CallableObject):
                 #may (will probably) return an unevaluated function call.
                 #This will transform a call to a user-defined __str__ method
                 #into calls to fundamental __str__ methods
-                str_func = arg1.type().get_attribute(DotName('__str__'))
+                str_func = arg1.type().get_attribute('__str__')
                 str_call = NodeFuncCall(str_func, [arg1], {}, None)
                 str_expr = INTERPRETER.expression_visitor.dispatch(str_call)
                 new_args.append(str_expr) #collect the call's result
@@ -1483,7 +1479,7 @@ class PrintFunction(CallableObject):
             for arg1 in args:
                 try:
                     #Try to call the Siml '__str__' function
-                    str_func = arg1.get_attribute(DotName('__str__'))
+                    str_func = arg1.get_attribute('__str__')
                     arg1_str = str_func().value 
                 except (UndefinedAttributeError, AttributeError, 
                         UnknownArgumentsException):
@@ -1616,29 +1612,29 @@ def wsiml_isinstance(in_object, class_or_type_or_tuple):
 
 
 
-def wsiml_replace_attr(old, new):
-    '''
-    Take old object out of its parent, and put new object in its place
-    
-    This function evaluates always at compile time, and never creates any code,
-    but its side effects change code that will be generated.
-    
-    The function does not change the parent attribute. Therefore objects
-    modified with replace(...) are not exactly like normally created objects.
-    
-    TODO: remove this function after make_derivative(variable, derivative=None) is implemented. 
-    '''
-    if not isinstance(old, InterpreterObject) or \
-       old.parent is None or old.parent() is None:
-        raise UserException('1st argument "old" must be an existing object '
-                            '(usually created with a "data" statement), \n'
-                            'and it must have a living parent object.')
-    if not isinstance(new, InterpreterObject):
-        raise UserException('2nd argument "new" must be an existing object'
-                            '(usually created with a "data" statement).')
-    parent = old.parent()
-    name = parent.find_name(old)
-    parent.replace_attribute(name, new)
+#def wsiml_replace_attr(old, new):
+#    '''
+#    Take old object out of its parent, and put new object in its place
+#    
+#    This function evaluates always at compile time, and never creates any code,
+#    but its side effects change code that will be generated.
+#    
+#    The function does not change the parent attribute. Therefore objects
+#    modified with replace(...) are not exactly like normally created objects.
+#    
+#    TODO: remove this function after make_derivative(variable, derivative=None) is implemented. 
+#    '''
+#    if not isinstance(old, InterpreterObject) or \
+#       old.parent is None or old.parent() is None:
+#        raise UserException('1st argument "old" must be an existing object '
+#                            '(usually created with a "data" statement), \n'
+#                            'and it must have a living parent object.')
+#    if not isinstance(new, InterpreterObject):
+#        raise UserException('2nd argument "new" must be an existing object'
+#                            '(usually created with a "data" statement).')
+#    parent = old.parent()
+#    name = parent.find_name(old)
+#    parent.replace_attribute(name, new)
 
 
 def create_built_in_lib():
@@ -1649,7 +1645,7 @@ def create_built_in_lib():
     WFunc = BuiltInFunctionWrapper
     
     lib = IModule()
-    lib.name = DotName('__built_in__')
+    lib.name = '__built_in__'
 
     #built in constants
     lib.create_attribute('None', NONE)
@@ -1680,11 +1676,11 @@ def create_built_in_lib():
           return_type=CLASS_BOOL,
           accept_unknown_values=True,
           py_function=wsiml_isinstance).put_into(lib)
-    WFunc('replace_attr', 
-          ArgumentList([Arg('old'), Arg('new')]), 
-          return_type=CLASS_NONETYPE,
-          accept_unknown_values=True,
-          py_function=wsiml_replace_attr).put_into(lib)
+#    WFunc('replace_attr', 
+#          ArgumentList([Arg('old'), Arg('new')]), 
+#          return_type=CLASS_NONETYPE,
+#          accept_unknown_values=True,
+#          py_function=wsiml_replace_attr).put_into(lib)
     #math 
     #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units 
     WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]), 
@@ -1754,7 +1750,7 @@ def make_derivative(variable):
     #find state variable in parent (to get variable's name)
     var_name = variable.parent().find_name(variable)
     #put time derivative in parent, with nice name
-    deri_name = DotName(var_name[0] + '$time')         
+    deri_name = var_name + '$time'        
     #deri_name = make_unique_name(deri_name, variable.parent().attributes)
     variable.parent().create_attribute(deri_name, deri_var)
     
@@ -2183,7 +2179,7 @@ class ExpressionVisitor(Visitor):
         #look at the operator symbol and determine the right method name(s)
         func_name = ExpressionVisitor._prefopt_table[node.operator]
         #get the special method from the operand's class and try to call the method.
-        func = inst_rhs.type().get_attribute(DotName(func_name))
+        func = inst_rhs.type().get_attribute(func_name)
         try:
             result = func(inst_rhs)
             return result
@@ -2240,7 +2236,7 @@ class ExpressionVisitor(Visitor):
         #look at the operator symbol and determine the right method name(s)
         lfunc_name, rfunc_name = ExpressionVisitor._binop_table[node.operator]
         #get the special method from the LHS's class and try to call the method.
-        func = inst_lhs.type().get_attribute(DotName(lfunc_name))
+        func = inst_lhs.type().get_attribute(lfunc_name)
         try:
             result = func(inst_lhs, inst_rhs)
             return result
@@ -2470,7 +2466,7 @@ class StatementVisitor(Visitor):
         if target.role is RoleUnkown:
             set_role_recursive(target, value.role)
         #get the assignment function
-        assign_func = target.get_attribute(DotName('__assign__'))
+        assign_func = target.get_attribute('__assign__')
         #Always call the function when it is not fundamental. The call  
         #generates statements with fundamental functions. 
         #Reason: When a function returns a user defined class, the role is 
@@ -2773,25 +2769,22 @@ class StatementVisitor(Visitor):
         #      could be realized. In principle such objects could be written in Siml
         #      Additional special propperties could be added by pragme statements.
         main_func_specs = \
-            [Node(#name=DotName('dynamic'), 
-                  target_roles=(RoleAlgebraicVariable, RoleTimeDifferential, 
+            [Node(target_roles=(RoleAlgebraicVariable, RoleTimeDifferential, 
                                 RoleConstant),
-                  call_argument_role=None,
+                  call_argument_role=RoleInputVariable,
                   proto=SimlFunction('dynamic', 
                                      ArgumentList([NodeFuncArg('this')]), 
                                      None, statements=[], 
                                      global_scope=BUILT_IN_LIB),
                   #call=NodeFuncCall('dynamic', [tree_object], {})
                   ),
-             Node(#name=DotName('initialize'), 
-                  target_roles=(RoleParameter, RoleVariable, RoleConstant),
+             Node(target_roles=(RoleParameter, RoleVariable, RoleConstant),
                   call_argument_role=RoleParameter,
                   proto=SimlFunction('initialize', 
                                      ArgumentList([NodeFuncArg('this')]), 
                                      None, statements=[], 
                                      global_scope=BUILT_IN_LIB)),
-             Node(#name=DotName('final'), 
-                  target_roles=(RoleVariable, RoleConstant),
+             Node(target_roles=(RoleVariable, RoleConstant),
                   call_argument_role=None,
                   proto=SimlFunction('final', 
                                      ArgumentList([NodeFuncArg('this')]), 
@@ -2835,7 +2828,7 @@ class StatementVisitor(Visitor):
                 #Create empty function for the missing main funcion
                 func_flat = SimlFunction(func_name, ArgumentList([NodeFuncArg('this')]), 
                                          None, statements=[], global_scope=BUILT_IN_LIB)
-                flat_object.create_attribute(func_name, func_flat)
+                flat_object.create_attribute(DotName(func_name), func_flat)
                 print 'Warning: main function %s is not defined.' % str(func_name)
                 continue
             
@@ -2867,7 +2860,7 @@ class StatementVisitor(Visitor):
                                      None, statements=stmt_list, 
                                      global_scope=BUILT_IN_LIB)                                 
             #Put new main function into flat object
-            flat_object.create_attribute(func_name, func_flat)
+            flat_object.create_attribute(DotName(func_name), func_flat)
 
         #print 'func_locals ------------'
         #print func_locals
@@ -2898,10 +2891,14 @@ class StatementVisitor(Visitor):
                     continue
                 flattened_attributes.add(id(data))
                 
-                long_name = prefix + name
-                if isinstance(data, FundamentalObject) and \
-                   issubclass(data.role, (RoleParameter, RoleVariable)):
+                long_name = prefix + DotName(name)
+                #FundamentalObject are the only data types of the compiled code 
+                if isinstance(data, FundamentalObject):
+                    #do not flatten constants
+                    if not issubclass(data.role, (RoleParameter, RoleVariable)): 
+                        continue
                     flat_obj.create_attribute(long_name, data, reparent=True)
+                #Recurse all other objects and see if they contain FundamentalObject attributes
                 else:
                     flatten(data, flat_obj, long_name)
         
@@ -3189,7 +3186,7 @@ class Interpreter(object):
               'This method must only be used for tests ***'
         #create the new module and import the built in objects
         mod = IModule()
-        mod.name = DotName('test')
+        mod.name = 'test'
         #put module into root namespace (symbol table)
         self.modules[mod.name] = mod
         mod.attributes.update(self.built_in_lib.attributes)

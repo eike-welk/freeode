@@ -29,11 +29,11 @@ Test code for the "interpreter.py" module
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
-#The py library is not standard. Preserve ability to use some test functions
-# for debugging when the py library, and the py.test testing framework, are 
-# not installed. 
+#Special construction to make PyDev and pylint happy. Both checkers can't 
+#see into the py.test namespace
 try:                      
-    import py 
+    from py.test import skip as skip_test #IGNORE:E0611
+    from py.test import fail as fail_test #IGNORE:E0611
 except ImportError:
     print 'No py library, many tests may fail!'
 
@@ -41,10 +41,9 @@ except ImportError:
 
 def test_data_statement_simple_1(): #IGNORE:C01111
     msg = 'Test data statement: create attributes'
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, IFloat, IString
-    from freeode.ast import DotName
     
     prog_text = \
 '''
@@ -61,19 +60,18 @@ data b: String const
 #    print 'module after interpreter run: ---------------------------------'
 #    print mod
     
-    a = mod.get_attribute(DotName('a'))
+    a = mod.get_attribute('a')
     assert isinstance(a, IFloat)
-    b = mod.get_attribute(DotName('b'))
+    b = mod.get_attribute('b')
     assert isinstance(b, IString)
   
   
 
 def test_data_statement_roles_1(): #IGNORE:C01111
-    #py.test.skip('Test data statement: create attributes with different roles')
+    #skip_test('Test data statement: create attributes with different roles')
     print 'Test data statement: create attributes with different roles'
     from freeode.interpreter import Interpreter, siml_isrole
-    from freeode.ast import (DotName, RoleConstant, RoleParameter, 
-                             RoleVariable)
+    from freeode.ast import (RoleConstant, RoleParameter, RoleVariable)
     
     prog_text = \
 '''
@@ -91,11 +89,11 @@ data c: Float variable
 #    print 'module after interpreter run: ---------------------------------'
 #    print mod
     
-    a = mod.get_attribute(DotName('a'))
+    a = mod.get_attribute('a')
     assert a.role is RoleConstant
-    b = mod.get_attribute(DotName('b'))
+    b = mod.get_attribute('b')
     assert b.role is RoleParameter
-    c = mod.get_attribute(DotName('c'))
+    c = mod.get_attribute('c')
     assert siml_isrole(c.role, RoleVariable)
     
   
@@ -113,11 +111,10 @@ def test_data_statement_roles_2(): #IGNORE:C01111
     const,        param,         variable,     role_unknown
     '''
     msg = 'Test data statement: roles should be propagated to child attributes.'
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, siml_isrole
-    from freeode.ast import (DotName, RoleConstant, RoleParameter, 
-                             RoleVariable)
+    from freeode.ast import (RoleConstant, RoleParameter, RoleVariable)
     
     prog_text = \
 '''
@@ -141,28 +138,28 @@ data av: A variable
 #    print mod
     
     #all attributes should be const
-    a_curr = mod.get_attribute(DotName('ac'))
-    c = a_curr.get_attribute(DotName('c'))
-    p = a_curr.get_attribute(DotName('p'))
-    v = a_curr.get_attribute(DotName('v'))
+    a_curr = mod.get_attribute('ac')
+    c = a_curr.get_attribute('c')
+    p = a_curr.get_attribute('p')
+    v = a_curr.get_attribute('v')
     assert c.role is RoleConstant
     assert p.role is RoleConstant
     assert v.role is RoleConstant
   
     #Roles: c: const; p,v: param
-    a_curr = mod.get_attribute(DotName('ap'))
-    c = a_curr.get_attribute(DotName('c'))
-    p = a_curr.get_attribute(DotName('p'))
-    v = a_curr.get_attribute(DotName('v'))
+    a_curr = mod.get_attribute('ap')
+    c = a_curr.get_attribute('c')
+    p = a_curr.get_attribute('p')
+    v = a_curr.get_attribute('v')
     assert c.role is RoleConstant
     assert p.role is RoleParameter
     assert v.role is RoleParameter
   
     #Roles: c: const; p: param; v: variable
-    a_curr = mod.get_attribute(DotName('av'))
-    c = a_curr.get_attribute(DotName('c'))
-    p = a_curr.get_attribute(DotName('p'))
-    v = a_curr.get_attribute(DotName('v'))
+    a_curr = mod.get_attribute('av')
+    c = a_curr.get_attribute('c')
+    p = a_curr.get_attribute('p')
+    v = a_curr.get_attribute('v')
     assert c.role is RoleConstant
     assert p.role is RoleParameter
     assert siml_isrole(v.role, RoleVariable) 
@@ -170,10 +167,9 @@ data av: A variable
   
 
 def test_builtin_function_call_1(): #IGNORE:C01111
-    #py.test.skip('Test disabled')
+    #skip_test('Test disabled')
     print 'Test interpreter object: call built in function sqrt...............................................................'
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
     import math
     
     prog_text = \
@@ -190,12 +186,12 @@ a = sqrt(2)
     print 'module after interpreter run: ---------------------------------'
     print intp.modules['test']
     
-    assert intp.modules['test'].get_attribute(DotName('a')).value == math.sqrt(2)
+    assert intp.modules['test'].get_attribute('a').value == math.sqrt(2)
   
   
 
 def test_builtin_function_call_2(): #IGNORE:C01111
-    #py.test.skip('Test disabled')
+    #skip_test('Test disabled')
     print 'Test interpreter object: call built in function print...............................................................'
     from freeode.interpreter import Interpreter
     
@@ -216,7 +212,7 @@ print('test')
 
 def test_function_definition_1(): #IGNORE:C01111
     msg = '''Test all legal styles of function definitions.'''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter
 
@@ -247,10 +243,9 @@ func foo4(a:Float=1, b:Float=2):
 
 def test_function_call_1(): #IGNORE:C01111
     msg = '''Test all legal styles of function calls.'''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -280,14 +275,14 @@ h = foo(b=20, a=10) # h = 30       - line 14
 #    print mod
     
     #test the results
-    a = mod.get_attribute(DotName('a'))
-    b = mod.get_attribute(DotName('b'))
-    c = mod.get_attribute(DotName('c'))
-    d = mod.get_attribute(DotName('d'))
-    e = mod.get_attribute(DotName('e'))
-    f = mod.get_attribute(DotName('f'))
-    g = mod.get_attribute(DotName('g'))
-    h = mod.get_attribute(DotName('h'))
+    a = mod.get_attribute('a')
+    b = mod.get_attribute('b')
+    c = mod.get_attribute('c')
+    d = mod.get_attribute('d')
+    e = mod.get_attribute('e')
+    f = mod.get_attribute('f')
+    g = mod.get_attribute('g')
+    h = mod.get_attribute('h')
     assert a.value == 3
     assert b.value == 7
     assert c.value == 11
@@ -300,9 +295,9 @@ h = foo(b=20, a=10) # h = 30       - line 14
   
 
 def test_function_definition_and_call_1(): #IGNORE:C01111
-    #py.test.skip('Test disabled')
+    #skip_test('Test disabled')
     print 'Test interpreter object: function definition and function call ...............................................................'
-    from freeode.interpreter import Interpreter, DotName
+    from freeode.interpreter import Interpreter
 
     prog_text = \
 '''
@@ -328,12 +323,12 @@ print('end')
     print 'module after interpreter run: ---------------------------------'
     print intp.modules['test']
     
-    assert intp.modules['test'].get_attribute(DotName('a')).value == 2*2 + (3*4)**2 + 2**2
+    assert intp.modules['test'].get_attribute('a').value == 2*2 + (3*4)**2 + 2**2
   
   
 
 def test_print_function_1(): #IGNORE:C01111
-    #py.test.skip('Test the print function. - actual printing, built in objects.')
+    #skip_test('Test the print function. - actual printing, built in objects.')
     print 'Test the print function. - actual printing: Float, String, expression.'
     from freeode.interpreter import Interpreter
     
@@ -362,7 +357,7 @@ print(a+b)
 
 
 def test_print_function_2(): #IGNORE:C01111
-    #py.test.skip('Test the print function. - actual printing, user defined class.')
+    #skip_test('Test the print function. - actual printing, user defined class.')
     print 'Test the print function. - actual printing, user defined class.'
     from freeode.interpreter import Interpreter
     
@@ -390,7 +385,7 @@ print(c)
   
 
 def test_print_function_3(): #IGNORE:C01111
-    #py.test.skip('Test the print function. - code generation for: Float, String')
+    #skip_test('Test the print function. - code generation for: Float, String')
     print 'Test the print function. - code generation for: Float, String'
     from freeode.interpreter import Interpreter
     from freeode.ast import DotName
@@ -435,7 +430,7 @@ compile A
 
 def test_print_function_4(): #IGNORE:C01111
     msg = 'Test the print function. - code generation for: user defined class.'
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter
     from freeode.ast import DotName
@@ -480,7 +475,7 @@ compile A
   
 
 def test_graph_function_1(): #IGNORE:C01111
-    #py.test.skip('Test the print function. - code generation for: user defined class.')
+    #skip_test('Test the print function. - code generation for: user defined class.')
     print 'Test the print function. - code generation for: user defined class.'
     from freeode.interpreter import Interpreter
     from freeode.ast import DotName
@@ -515,9 +510,9 @@ compile A
   
 
 def test_interpreter_class_definition_1(): #IGNORE:C01111
-    #py.test.skip('Test disabled')
-    print 'Test interpreter object: class definition ...............................................................'
-    from freeode.interpreter import Interpreter, DotName
+    #skip_test('Test disabled')
+    print 'Test interpreter object: class definition'
+    from freeode.interpreter import Interpreter
 
     prog_text = \
 '''
@@ -555,13 +550,13 @@ print('end')
     print 'module after interpreter run: ---------------------------------'
     print intp.modules['test']
   
-    assert (intp.modules['test'].get_attribute(DotName('pi')).value == 3.1415)
-    assert (intp.modules['test'].get_attribute(DotName('a'))
-                                .get_attribute(DotName('a1')).value == 1)
-    assert (intp.modules['test'].get_attribute(DotName('a'))
-                                .get_attribute(DotName('a2')).value == 2 * 3.1415)
-    assert (intp.modules['test'].get_attribute(DotName('b'))
-                                .get_attribute(DotName('b1')).value == 3.1415)
+    assert (intp.modules['test'].get_attribute('pi').value == 3.1415)
+    assert (intp.modules['test'].get_attribute('a')
+                                .get_attribute('a1').value == 1)
+    assert (intp.modules['test'].get_attribute('a')
+                                .get_attribute('a2').value == 2 * 3.1415)
+    assert (intp.modules['test'].get_attribute('b')
+                                .get_attribute('b1').value == 3.1415)
   
   
   
@@ -578,11 +573,10 @@ def test_interpreter_class_definition_2(): #IGNORE:C01111
     Interpreter Object has a __deepcopy__ function that takes care of this.
     '''
     msg = 'Test user defined classes - correctness of parent attribute.'
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -605,9 +599,9 @@ data b:B const
     
     #get the instance objects defined in this program
     mod = intp.modules['test']
-    b = mod.get_attribute(DotName('b'))
-    a = b.get_attribute(DotName('a'))
-    z = a.get_attribute(DotName('z'))
+    b = mod.get_attribute('b')
+    a = b.get_attribute('a')
+    z = a.get_attribute('z')
     
     #check the correctness of the parent attributes
     assert b.parent() is mod
@@ -617,9 +611,9 @@ data b:B const
 
 
 def test_interpreter_method_call(): #IGNORE:C01111
-    #py.test.skip('Method calls do not work! Implement method wrappers!')
-    print 'Test interpreter: method call ...............................................................'
-    from freeode.interpreter import Interpreter, DotName
+    #skip_test('Method calls do not work! Implement method wrappers!')
+    print 'Test interpreter: method call.'
+    from freeode.interpreter import Interpreter
 
     prog_text = \
 '''
@@ -649,16 +643,16 @@ print('end')
     print
     #print intp.modules['test']
   
-    assert (intp.modules['test'].get_attribute(DotName('a'))
-                                .get_attribute(DotName('a1')).value == 5)
+    assert (intp.modules['test'].get_attribute('a')
+                                .get_attribute('a1').value == 5)
 #    assert False, 'Test'
 
 
 
 def test_method_call_this_namespace_1(): #IGNORE:C01111
-    #py.test.skip('Method calls do not work! Implement method wrappers!')
+    #skip_test('Method calls do not work! Implement method wrappers!')
     print 'Test interpreter: method call, this namespace ...............................................................'
-    from freeode.interpreter import Interpreter, DotName
+    from freeode.interpreter import Interpreter
 
     prog_text = \
 '''
@@ -689,18 +683,18 @@ print('end')
     print
     print intp.modules['test']
   
-    assert (intp.modules['test'].get_attribute(DotName('a'))
-                                .get_attribute(DotName('a1')).value == 3)
-    assert (intp.modules['test'].get_attribute(DotName('a'))
-                                .get_attribute(DotName('a2')).value == 5)
+    assert (intp.modules['test'].get_attribute('a')
+                                .get_attribute('a1').value == 3)
+    assert (intp.modules['test'].get_attribute('a')
+                                .get_attribute('a2').value == 5)
 #    assert False, 'Test'
 
       
       
 def test_method_call_this_namespace_2(): #IGNORE:C01111
-    #py.test.skip('Test interpreter: method call, this namespace')
+    #skip_test('Test interpreter: method call, this namespace')
     print 'Test interpreter: method call, this namespace'
-    from freeode.interpreter import Interpreter, DotName
+    from freeode.interpreter import Interpreter
 
     prog_text = \
 '''
@@ -733,20 +727,20 @@ print('b.a.a2 = ', b.a.a2)
     print
     print intp.modules['test']
   
-    assert (intp.modules['test'].get_attribute(DotName('b'))
-                                .get_attribute(DotName('a'))
-                                .get_attribute(DotName('a1')).value == 3)
-    assert (intp.modules['test'].get_attribute(DotName('b'))
-                                .get_attribute(DotName('a'))
-                                .get_attribute(DotName('a2')).value == 5)
+    assert (intp.modules['test'].get_attribute('b')
+                                .get_attribute('a')
+                                .get_attribute('a1').value == 3)
+    assert (intp.modules['test'].get_attribute('b')
+                                .get_attribute('a')
+                                .get_attribute('a2').value == 5)
 #    assert False, 'Test'
 
       
       
 def test_StatementVisitor_assign_const_1(): #IGNORE:C01111
-    #py.test.skip('Test disabled')
+    #skip_test('Test disabled')
     print 'Test interpreter object: assignment. needs working data statement and number ...............................................................'
-    from freeode.interpreter import Interpreter, DotName
+    from freeode.interpreter import Interpreter
     
     prog_text = \
 '''
@@ -762,13 +756,13 @@ a = 2
     print 'module after interpreter run: ---------------------------------'
     print intp.modules['test']
     
-    assert intp.modules['test'].get_attribute(DotName('a')).value == 2
+    assert intp.modules['test'].get_attribute('a').value == 2
   
   
 
 # -------- Test interpreter object - emit code ----------------------------------------
 def test_StatementVisitor_assign_emit_code_1(): #IGNORE:C01111
-    #py.test.skip('Test disabled')
+    #skip_test('Test disabled')
     print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
     from freeode.interpreter import (Interpreter, IFloat)
     from freeode.ast import (Node, NodeAssignment, NodeOpInfix2)
@@ -812,7 +806,7 @@ b = 2*a #emit this statement
 
 
 def test_StatementVisitor_assign_emit_code_2(): #IGNORE:C01111
-    #py.test.skip('Test interpreter object: emit code without the usual infrastructure.')
+    #skip_test('Test interpreter object: emit code without the usual infrastructure.')
     print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
     from freeode.interpreter import (Interpreter, IFloat)
     from freeode.ast import (Node, NodeAssignment, NodeOpInfix2) 
@@ -864,10 +858,13 @@ c = 2*b #emit everything
 
 
 def test_StatementVisitor__visit_NodeCompileStmt__code_generation_1(): #IGNORE:C01111
-    #py.test.skip('Test StatementVisitor.visit_NodeCompileStmt')
-    print 'Test StatementVisitor.visit_NodeCompileStmt:'
+    msg = 'Simple compilation test. \n'\
+          'Test StatementVisitor.visit_NodeCompileStmt'
+    #skip_test(msg)
+    print msg
+    
     from freeode.interpreter import (Interpreter, IFloat, SimlFunction)
-    from freeode.ast import (DotName)
+    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -909,7 +906,7 @@ def test_interpreter_user_defined_operators_1(): #IGNORE:C01111
     
     The used Siml class simulates a geometric vector class.
     '''
-    #py.test.skip('Test user defined operators - code generation.')
+    #skip_test('Test user defined operators - code generation.')
     print 'Test user defined operators - code generation.'
     from freeode.interpreter import Interpreter, IFloat, CallableObject
     from freeode.ast import DotName
@@ -983,10 +980,10 @@ def test_interpreter_user_defined_operators_2(): #IGNORE:C01111
     
     The used Siml class simulates a geometric vector class.
     '''
-    #py.test.skip('Test user defined operators - code generation.')
+    #skip_test('Test user defined operators - code generation.')
     print 'Test user defined operators - code generation.'
     from freeode.interpreter import Interpreter 
-    from freeode.ast import DotName, RoleConstant
+    from freeode.ast import RoleConstant
 
     prog_text = \
 '''
@@ -1022,16 +1019,16 @@ c=a+b
     #print mod
     
     #get the attributes that we have defined
-    a = mod.get_attribute(DotName('a'))
-    a_x = a.get_attribute(DotName('x'))
+    a = mod.get_attribute('a')
+    a_x = a.get_attribute('x')
     assert a_x.role == RoleConstant
     assert a_x.value == 2
-    b = mod.get_attribute(DotName('b'))
-    b_x = b.get_attribute(DotName('x'))
+    b = mod.get_attribute('b')
+    b_x = b.get_attribute('x')
     assert b_x.role == RoleConstant
     assert b_x.value == 3
-    c = mod.get_attribute(DotName('c'))
-    c_x = c.get_attribute(DotName('x'))
+    c = mod.get_attribute('c')
+    c_x = c.get_attribute('x')
     assert c_x.role == RoleConstant
     assert c_x.value == 5
     
@@ -1041,7 +1038,7 @@ def test_interpreter_expression_statement_1(): #IGNORE:C01111
     '''
     Unevaluated expressions also generate code.
     '''
-    #py.test.skip('Test expression statement - code generation.')
+    #skip_test('Test expression statement - code generation.')
     print 'Test expression statement - code generation.'
     from freeode.interpreter import Interpreter, IFloat, CallableObject
     from freeode.ast import DotName, NodeExpressionStmt
@@ -1090,7 +1087,7 @@ def test_user_defined_class_roles_1(): #IGNORE:C01111
     The role keywords (const, param, variable, ...) should work with user 
     defined classes too.
     '''
-    #py.test.skip('Test user defined classes with different roles.')
+    #skip_test('Test user defined classes with different roles.')
     print 'Test user defined classes with different roles.'
     from freeode.interpreter import Interpreter
     from freeode.ast import (DotName, RoleConstant, RoleAlgebraicVariable)
@@ -1123,8 +1120,8 @@ compile B
     mod = intp.modules['test']
 #    print 'module after interpreter run: ---------------------------------'
 #    print mod
-    ac = mod.get_attribute(DotName('ac'))
-    a = ac.get_attribute(DotName('a'))
+    ac = mod.get_attribute('ac')
+    a = ac.get_attribute('a')
     assert a.role == RoleConstant
 
 #    #get flattened object
@@ -1142,7 +1139,7 @@ def test_function_return_value_roles_1(): #IGNORE:C01111
     environments. Test the roles of their return values.
     This test only involves fundamental types.
     '''
-    #py.test.skip('Test roles of return values of user defined functions.')
+    #skip_test('Test roles of return values of user defined functions.')
     print 'Test roles of return values of user defined functions.'
     from freeode.interpreter import Interpreter
     from freeode.ast import (DotName, RoleConstant, RoleAlgebraicVariable)
@@ -1175,8 +1172,8 @@ compile B
     mod = intp.modules['test']
 #    print 'module after interpreter run: ---------------------------------'
 #    print mod
-    ac = mod.get_attribute(DotName('ac'))
-    bc = mod.get_attribute(DotName('bc'))
+    ac = mod.get_attribute('ac')
+    bc = mod.get_attribute('bc')
     assert ac.role == RoleConstant
     assert bc.role == RoleConstant
     assert ac.value == 3
@@ -1195,7 +1192,7 @@ compile B
 
 def test_interpreter_dollar_operator_1(): #IGNORE:C01111
     msg = 'Test "$" operator. Basic capabililities.'
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, IFloat, CallableObject
     from freeode.ast import DotName, RoleStateVariable, RoleTimeDifferential
@@ -1247,7 +1244,7 @@ def test_interpreter_dollar_operator_2(): #IGNORE:C01111
     Bug: $ operator did not work with attributes of user defined classes.
     Background: Class instantiation did not get parent refferences right.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, CallableObject, IFloat
     from freeode.ast import DotName, RoleStateVariable, RoleTimeDifferential
@@ -1300,7 +1297,7 @@ compile B
   
 def test_compile_statement__small_simulation_program(): #IGNORE:C01111
     msg = 'Test compile statement: see if small simulation program can be compiled.'
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter
 
@@ -1358,7 +1355,7 @@ def test_compile_statement_1(): #IGNORE:C01111
     msg = '''
     Test the compile statement 
     - Flattening and storage of functions' local variables'''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, IFloat, CallableObject
     from freeode.ast import DotName
@@ -1418,7 +1415,7 @@ def test_compile_statement_2(): #IGNORE:C01111
       the flat object.
     - These methods have names of the form: init_xxx(this, ...)
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, IFloat, CallableObject
     from freeode.ast import DotName, NodeAssignment
@@ -1481,8 +1478,8 @@ compile A
     #'init_b' must have 2 arguments: 'this', 'in_b'
     init_b_args = init_b.argument_definition.arguments
     assert len(init_b_args) == 2
-    assert init_b_args[0].name == DotName('this')
-    assert init_b_args[1].name == DotName('in_b')
+    assert init_b_args[0].name == 'this'
+    assert init_b_args[1].name == 'in_b'
     #check number of attributes, most are automatically generated
     #global variable:     time
     #methods:             initialize, init_b, dynamic, final, 
@@ -1500,7 +1497,7 @@ def test_pass_statement_1(): #IGNORE:C01111
     - The pass statement does nothing it is necessary to create empty 
     functions and classes. 
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, siml_isinstance, 
@@ -1547,10 +1544,10 @@ compile A
     #test the module a bit
     mod = intp.modules['test']
     #print mod
-    class_Dummy = mod.get_attribute(DotName('Dummy'))
-    d = mod.get_attribute(DotName('d'))
-    f_dummy = mod.get_attribute(DotName('f_dummy'))
-    class_A = mod.get_attribute(DotName('A'))
+    class_Dummy = mod.get_attribute('Dummy')
+    d = mod.get_attribute('d')
+    f_dummy = mod.get_attribute('f_dummy')
+    class_A = mod.get_attribute('A')
     assert siml_isinstance(d, class_Dummy)
     assert isinstance(f_dummy, CallableObject)
     assert isinstance(class_A, TypeObject)
@@ -1575,12 +1572,11 @@ def test_pass_statement_2(): #IGNORE:C01111
     Test the pass statement. Try stupid but legal cases.
     - The pass statement should just do nothing. 
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, siml_isinstance, 
                                      CallableObject, TypeObject, IFloat)
-    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -1610,11 +1606,11 @@ four = add2(2)
     #test the module a bit
     mod = intp.modules['test']
     #print mod
-    class_A = mod.get_attribute(DotName('A'))
-    a = mod.get_attribute(DotName('a'))
-    a_x = a.get_attribute(DotName('x'))
-    add2 = mod.get_attribute(DotName('add2'))
-    four = mod.get_attribute(DotName('four'))
+    class_A = mod.get_attribute('A')
+    a = mod.get_attribute('a')
+    a_x = a.get_attribute('x')
+    add2 = mod.get_attribute('add2')
+    four = mod.get_attribute('four')
     assert isinstance(class_A, TypeObject)
     assert siml_isinstance(a, class_A)
     assert isinstance(a_x, IFloat)
@@ -1629,11 +1625,10 @@ def test_if_statement_1(): #IGNORE:C01111
     msg = '''
     Test the if statement. Just constant code, no code creation.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -1656,8 +1651,8 @@ else:
     #test the module a bit
     mod = intp.modules['test']
     #print mod
-    a = mod.get_attribute(DotName('a'))
-    b = mod.get_attribute(DotName('b'))
+    a = mod.get_attribute('a')
+    b = mod.get_attribute('b')
     print 'b = ', b.value
     assert a.value == 2
     assert b.value == 2
@@ -1669,7 +1664,7 @@ def test_if_statement_2(): #IGNORE:C01111
     Test the if statement. Code is generated and condition involves variables.
     All branches of the statement must be visited.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
@@ -1735,7 +1730,7 @@ def test_if_statement_3(): #IGNORE:C01111
     Test the if statement. Code is generated but all conditions evaluate 
     to false. No if statement is generated.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import Interpreter
@@ -1783,7 +1778,7 @@ def test_if_statement_4_1(): #IGNORE:C01111
     Test the if statement. Code is generated and condition involves variables.
     There is no catch all (else) statement. The interpreter must complain about it.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, UserException)
@@ -1824,7 +1819,7 @@ def test_if_statement_4_2(): #IGNORE:C01111
     The interpreter must accept this case. The statement which is always true 
     becomes the 'else' clause.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
@@ -1890,7 +1885,7 @@ def test_if_statement_5(): #IGNORE:C01111
     Test the if statement. Code is generated but condition involves only constants.
     Only one clause is visited, and the if statement is converted to linear code.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, IFloat)
@@ -1949,8 +1944,10 @@ def test_function_type_spec_1(): #IGNORE:C01111
     msg = '''
     Test type specifications for function arguments.
     It must be possible to use the class-name for type specifications of the class' methods.
+    
+    #FIXME: Bug #391386 - https://bugs.launchpad.net/freeode/+bug/391386
     '''
-    py.test.skip(msg)
+    skip_test(msg)
     print msg
     
     from freeode.interpreter import Interpreter
@@ -1972,11 +1969,10 @@ def test_isinstance_1(): #IGNORE:C01111
     msg = '''
     Test the builtin isinstance(...) function.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -1998,13 +1994,11 @@ b4 = isinstance(f, Float)
     mod = intp.modules['test']
     #print mod
     
-    #sim = intp.get_compiled_objects()[0]
-    #print sim
     #look at variables
-    b1 = mod.get_attribute(DotName('b1'))
-    b2 = mod.get_attribute(DotName('b2'))
-    b3 = mod.get_attribute(DotName('b3'))
-    b4 = mod.get_attribute(DotName('b4'))
+    b1 = mod.get_attribute('b1')
+    b2 = mod.get_attribute('b2')
+    b3 = mod.get_attribute('b3')
+    b4 = mod.get_attribute('b4')
     assert b1.value == True
     assert b2.value == False
     assert b3.value == False
@@ -2019,11 +2013,10 @@ def test_replace_attr_1(): #IGNORE:C01111
     replace_attr(...) is really meant to enable __diff__ for user defined
     classes. 
     '''
-    #py.test.skip(msg)
+    skip_test(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, IFloat)
-    from freeode.ast import DotName
 
     prog_text = \
 '''
@@ -2046,12 +2039,10 @@ replace_attr(a.f, f_new)
     mod = intp.modules['test']
     #print mod
     
-    #sim = intp.get_compiled_objects()[0]
-    #print sim
     #look at variables
-    a = mod.get_attribute(DotName('a'))
-    a_f = a.get_attribute(DotName('f'))
-    f_new = mod.get_attribute(DotName('f_new'))
+    a = mod.get_attribute('a')
+    a_f = a.get_attribute('f')
+    f_new = mod.get_attribute('f_new')
     assert f_new is a_f
     assert isinstance(f_new, IFloat)
 
@@ -2060,6 +2051,6 @@ replace_attr(a.f, f_new)
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_replace_attr_1()
+    test_StatementVisitor__visit_NodeCompileStmt__code_generation_1()
     pass
 
