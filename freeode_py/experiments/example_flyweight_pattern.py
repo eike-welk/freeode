@@ -8,7 +8,7 @@ from numpy import array
 class MyThing(object):
     """This object pretends to possess one self.position data member in each
        instance. In reality however, the positions are stored collectively in
-       the class' data member MyThing.position_array. 
+       the class attribute MyThing.position_array. 
        Each instance only stores an index to access the data in the 
        collectively used array."""
        
