@@ -830,7 +830,7 @@ class Parser(object):
 
     def _action_class_def(self, s, loc, toks): #IGNORE:W0613
         '''
-        Create class_def for definition of a class:
+        Create node for definition of a class:
             class foo(a):
                 inherit Model
                 data myA: Real = a
