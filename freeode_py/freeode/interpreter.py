@@ -957,7 +957,8 @@ class BuiltInClassWrapper(TypeObject):
 
 class IModule(InterpreterObject):
     '''Represent one file'''
-    #TODO: Modules have modified attribute lookup:
+    #TODO: Add self.builtin - separate module for built in attributes
+    #      Modules have modified attribute lookup:
     #      When attributes are not found in their namespace,
     #      the attributes are searched in the builtin namespace.
     #      This way the built in attributes do not need to be imported 
@@ -3122,6 +3123,7 @@ class Interpreter(object):
         mod.source_file_name = file_name
         #put module into root namespace (symbol table)
         self.modules[module_name] = mod
+        #add built in attributes to model
         mod.attributes.update(self.built_in_lib.attributes)
         #set up stack frame (execution environment)
         env = ExecutionEnvironment()
