@@ -2484,15 +2484,16 @@ class StatementVisitor(Visitor):
             raise UserException('Incompatible roles in assignment. '
                                 'LHS: %s RHS: %s' % (str(target.role), 
                                                      str(value.role)), loc)
-        #In different regions of the program only some roles are legal as 
-        #targets for assignments
-        if not issubclass(target.role, self.interpreter.assign_target_roles):
-            raise UserException('Variable has illegal role as target for '
-                                'assignment. '
-                                '\nIllegal role: %s \nLegal roles %s'
-                                % (str(target.role), 
-                                   str(self.interpreter.assign_target_roles)), 
-                                   loc)
+#        #In different regions of the program only some roles are legal as 
+#        #targets for assignments
+#        #TODO: remove; this is tested in the optimizer/checker module
+#        if not issubclass(target.role, self.interpreter.assign_target_roles):
+#            raise UserException('Variable has illegal role as target for '
+#                                'assignment. '
+#                                '\nIllegal role: %s \nLegal roles %s'
+#                                % (str(target.role), 
+#                                   str(self.interpreter.assign_target_roles)), 
+#                                   loc)
         #perform assignment - function is fundamental and target is constant
         if target.role is RoleConstant:
             try:
@@ -2770,22 +2771,21 @@ class StatementVisitor(Visitor):
         #      could be realized. In principle such objects could be written in Siml
         #      Additional special propperties could be added by pragme statements.
         main_func_specs = \
-            [Node(target_roles=(RoleAlgebraicVariable, RoleTimeDifferential, 
-                                RoleConstant),
+            [Node(#target_roles=(RoleAlgebraicVariable, RoleTimeDifferential, 
+                                #RoleConstant),
                   call_argument_role=RoleInputVariable,
                   proto=SimlFunction('dynamic', 
                                      ArgumentList([NodeFuncArg('this')]), 
                                      None, statements=[], 
                                      global_scope=BUILT_IN_LIB),
-                  #call=NodeFuncCall('dynamic', [tree_object], {})
                   ),
-             Node(target_roles=(RoleParameter, RoleVariable, RoleConstant),
+             Node(#target_roles=(RoleParameter, RoleVariable, RoleConstant),
                   call_argument_role=RoleParameter,
                   proto=SimlFunction('initialize', 
                                      ArgumentList([NodeFuncArg('this')]), 
                                      None, statements=[], 
                                      global_scope=BUILT_IN_LIB)),
-             Node(target_roles=(RoleVariable, RoleConstant),
+             Node(#target_roles=(RoleVariable, RoleConstant),
                   call_argument_role=None,
                   proto=SimlFunction('final', 
                                      ArgumentList([NodeFuncArg('this')]), 
@@ -2799,7 +2799,7 @@ class StatementVisitor(Visitor):
             if str(name).startswith('init_') and siml_callable(attr):
                 new_spec = Node()
                 new_spec.name = name
-                new_spec.target_roles = (RoleParameter, RoleVariable, RoleConstant)
+                #new_spec.target_roles = (RoleParameter, RoleVariable, RoleConstant)
                 new_spec.call_argument_role = RoleParameter
                 new_spec.proto = SimlFunction(name, 
                                               attr.argument_definition.copy(), 
@@ -2820,7 +2820,7 @@ class StatementVisitor(Visitor):
         #call the main functions of tree_object and collect code
         for spec in main_func_specs:
             func_name = spec.proto.name             #IGNORE:E1101
-            legal_roles = spec.target_roles         #IGNORE:E1101
+            #legal_roles = spec.target_roles         #IGNORE:E1101
             
             #get one of the main functions of the tree object
             try:
@@ -2852,8 +2852,8 @@ class StatementVisitor(Visitor):
                 flat_object.external_inputs.append(arg)
             
             #call the main function and collect code
-            self.interpreter.start_collect_code(func_locals=func_locals, 
-                                                assign_target_roles=legal_roles)
+            self.interpreter.start_collect_code(func_locals=func_locals) 
+                                                #assign_target_roles=legal_roles)
             func_tree(*args_list)  #IGNORE:W0142
             stmt_list, dummy = self.interpreter.stop_collect_code()
             #create a new main function for the flat object with the collected code
@@ -2969,8 +2969,8 @@ class Interpreter(object):
         # put into self.statement_visitor
         self.env_stack = []
         self.push_environment(ExecutionEnvironment())
-        #roles that are currently legal as targets in assignment statements
-        self.assign_target_roles = (RoleConstant,)
+#        #roles that are currently legal as targets in assignment statements
+#        self.assign_target_roles = (RoleConstant,)
         
         #storage for objects generated by the compile statement
         self.compiled_object_list = []
@@ -2990,8 +2990,8 @@ class Interpreter(object):
         
         
     # --- code collection - compile statement ------------------------------------------------------
-    def start_collect_code(self, stmt_list=None, func_locals=None, 
-                           assign_target_roles=(RoleVariable, RoleConstant)):
+    def start_collect_code(self, stmt_list=None, func_locals=None, ):
+#                           assign_target_roles=(RoleVariable, RoleConstant)):
         '''
         Set up everything for the code collection process
         
@@ -3001,7 +3001,7 @@ class Interpreter(object):
             List where the generated statements will be appended to.
         func_locals: InterpreterObject/None
             Namespace where each function's local variables will be stored.
-        assign_target_roles: (AttributeRole, ...)
+        TODO: remove! assign_target_roles: (AttributeRole, ...)
             Roles that are currently legal for attributes that are targets
             (LHS) of assignment statements. (For example in the dynamic(...)
             method only intermediate variables and time differentials 
@@ -3012,9 +3012,9 @@ class Interpreter(object):
                                        else [stmt_list]
         self.locals_storage = InterpreterObject() if func_locals is None \
                                                   else func_locals
-        self.assign_target_roles = assign_target_roles
+#        self.assign_target_roles = assign_target_roles
         
-    def stop_collect_code(self, assign_target_roles=(RoleConstant,)):
+    def stop_collect_code(self, ): #assign_target_roles=(RoleConstant,)):
         '''
         End the code collection process
         
@@ -3033,14 +3033,15 @@ class Interpreter(object):
         stmt_list, func_locals = self.compile_stmt_collect[0], self.locals_storage
         self.compile_stmt_collect = None
         self.locals_storage = None
-        self.assign_target_roles = assign_target_roles
+#        self.assign_target_roles = assign_target_roles
         return stmt_list, func_locals
         
     def push_statement_list(self, statement_list):
         '''
         Put a statement list on the stack of lists. 
         
-        Called by compund statents, for example the "if" statement.'''
+        Called by compund statents, for example the "if" statement.
+        '''
         if not self.is_collecting_code():
             raise Exception('Collecting statements (compilation) has not been enabled!')
         self.compile_stmt_collect.append(statement_list)
