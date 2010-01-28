@@ -328,6 +328,7 @@ class CallableObject(InterpreterObject):
         self.role = RoleConstant
         self.is_known = True
         self.name = name
+	# TODO: rename to is_runtime_function
         self.is_fundamental_function = False
         self.codegen_name = None
         '''
@@ -371,7 +372,7 @@ class FundamentalObject(InterpreterObject):
     Only these objects, and operations with these objects, should remain in a 
     flattened simulation.
     
-    #TODO: Rename to BuiltInData
+    # TODO: Rename to RuntimeObject
     '''
     def __init__(self):
         InterpreterObject.__init__(self)
@@ -2540,7 +2541,7 @@ class StatementVisitor(Visitor):
         - If statements that can be completely decided at compile time are  
           optimized away.  
         
-        There are additionally requirements for if statements when code is 
+        There are additional requirements for if statements when code is 
         generated:
         - The last clause of every if statement must have a condition that 
           evaluates to True (constant with value equivalent to True). In 

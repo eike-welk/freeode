@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ############################################################################
 #    Copyright (C) 2006 by Eike Welk                                       #
 #    eike.welk@post.rwth-aachen.de                                         #
@@ -19,12 +20,12 @@
 ############################################################################
 
 
-# Setup script for the freeode simulation software
+# Setup script for the Freeode simulation software
 #
 # Install the software by issuing on the command line:
 #    python setup.py install
 #
-# Commandline for creating distributions:
+# Command line for creating distributions:
 #    python setup.py sdist --formats=gztar,zip bdist_rpm bdist_wininst
 #
 # Small overview of frequently used commands. The command line
@@ -38,7 +39,7 @@
 #    install       : install the software
 #    --dry-run     : test the operation without doing anything
 #
-# also usefull:
+# also useful:
 #    python setup.py --help
 #    python setup.py --help-commands
 
@@ -58,11 +59,11 @@ setup(name = 'freeode',
       url = 'http://freeode.berlios.de/',
       description = 'Simulation Language for Differential Equations',
       long_description = \
-'''This package contains a compiler for a specialized language (SIML) for the
-simulation of differential equations (ODE). The compiler generates a program
-in the Python programming language, which solves the differential equations 
-numerically. The generated program uses the Numpy and Scipy libraries for 
-numerical computations.''',
+'''This package contains a compiler for the SIML language. SIML is a domain 
+specific language for solving (simulating) differential equations. The 
+compiler generates a program in the Python programming language, which solves 
+the differential equations numerically. The generated program uses the Numpy 
+and Scipy libraries for numerical computations.''',
       license = 'GPL',
       packages = ['freeode','freeode.third_party'],
       scripts = ['simlc'],
