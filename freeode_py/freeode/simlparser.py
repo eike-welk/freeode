@@ -902,6 +902,11 @@ class Parser(object):
 
         #Integer (unsigned).
         uInteger = Word(nums)                                       .setName('uInteger')#.setDebug(True)
+#        # TODO: Change for speedup
+#        #Snippet taken from: donn <donn.ingle@gmail.com> who quotes Paul McGuire:
+#        # "I'm finding that complex items like real numbers just work better
+#        # using a Regex than Combine'ing Words, Optionals, etc."
+#        floater = PP.Regex(r"-?\d+(\.\d*)?([Ee][+-]?\d+)?")
         #Floating point number (unsigned).
         eE = CaselessLiteral( 'E' )
         uFloat = Group( Combine(
