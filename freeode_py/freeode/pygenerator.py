@@ -650,7 +650,7 @@ class ProgramGenerator(object):
             pyFile : file where the program will be stored,
                      or a StringStream for debuging.
         '''
-        super(ProgramGenerator, self).__init__(self)
+        object.__init__(self)
         #filename of source file
         self.source_file_name = None
         #buffer for generated python code; with file interface

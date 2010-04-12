@@ -48,8 +48,7 @@ import copy
 import weakref
 #from weakref import proxy
 
-import pyparsing
-
+import freeode.third_party.pyparsing as pyparsing
 
 ##TODO: svn command: svn propset svn:keywords Revision ast.py
 #__fileVersion__ = "$LastChangedRevision: 43 $"

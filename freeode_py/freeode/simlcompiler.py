@@ -35,7 +35,6 @@ import sys
 import os
 import stat
 from subprocess import Popen #, PIPE, STDOUT
-import pyparsing
 import freeode.simlparser as simlparser
 import freeode.interpreter as interpreter
 import freeode.pygenerator as pygenerator

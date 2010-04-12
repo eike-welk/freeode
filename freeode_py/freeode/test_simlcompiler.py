@@ -39,7 +39,9 @@ except ImportError:
 
 def test_do_compile(): #IGNORE:C01111
     msg = 'Test do_compile: Compile and execute a program. (Bypasses program argument handling.)'
-    #py.test.skip(msg)
+    py.test.skip(msg + '\n'
+                 'The PYTHONPATH must be set to a useful value,\n'
+                 'so that the compiled program can find the SIML runtime libraries.')
     print msg
     
     from freeode.simlcompiler import SimlCompilerMain
