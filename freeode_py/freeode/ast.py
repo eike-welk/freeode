@@ -50,10 +50,6 @@ import weakref
 
 import freeode.third_party.pyparsing as pyparsing
 
-##TODO: svn command: svn propset svn:keywords Revision ast.py
-#__fileVersion__ = "$LastChangedRevision: 43 $"
-#__fileVersion__ = "$Rev: 43 $"
-
 
 #version of the Siml compiler.
 PROGRAM_VERSION = '0.4.0a3'
@@ -90,7 +86,7 @@ class Node(object):
     #string to symbolize one indent level
     aa_indent_step_str = '|' + ' '*int(aa_indent_width - 1)
     
-    #we dont own instances of these classes.
+    #we don't own instances of these classes.
     #tuple of types that are not copied deeply
     _weak_types = weakref.ProxyTypes + (weakref.ReferenceType,)
     
