@@ -27,15 +27,10 @@ Test code for the "interpreter.py" module
 """
 
 from __future__ import division
-from __future__ import absolute_import              #IGNORE:W0410
+from __future__ import absolute_import              
 
-#Special construction to make PyDev and pylint happy. Both checkers can't 
-#see into the py.test namespace
-try:                      
-    from py.test import skip as skip_test #IGNORE:E0611
-    from py.test import fail as fail_test #IGNORE:E0611
-except ImportError:
-    print 'No py library, many tests may fail!'
+from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
 
 
 
@@ -385,8 +380,9 @@ print(c)
   
 
 def test_print_function_3(): #IGNORE:C01111
-    #skip_test('Test the print function. - code generation for: Float, String')
-    print 'Test the print function. - code generation for: Float, String'
+    msg = 'Test the print function. - code generation for: Float, String'
+    #skip_test(msg)
+    print msg
     from freeode.interpreter import Interpreter
     from freeode.ast import DotName
     
@@ -2051,6 +2047,6 @@ replace_attr(a.f, f_new)
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_StatementVisitor__visit_NodeCompileStmt__code_generation_1()
+    test_print_function_3()
     pass
 

@@ -1359,6 +1359,9 @@ class TextLocation(object):
 #TODO: make class work with inherited handler methods.
 class Visitor(object):
     '''
+    #TODO: abandon this code and replace by a suitable library! (No need to invent the wheel myself again.)
+    #TODO: Replacement library should also support type checking!
+    
     Visitor for the AST
 
     This class is useful when there are decisions necessary based on the type
@@ -1464,19 +1467,20 @@ class Visitor(object):
         '''
         Call the different handler functions depending on the type of inObject
         '''
+        # pylint: disable-msg=W0212
         cls = self.__class__
         objCls = inObject.__class__
         #search handler function in cache
-        handlerFunc = cls._cache.get(objCls, None)    #IGNORE:E1101
+        handlerFunc = cls._cache.get(objCls, None)    
         if handlerFunc is None:
             #Handler function is not in cache
             #search handler function in rule table and store it in cache
             handlerFunc = self._findFuncInRuleTable(objCls)
-            cls._cache[objCls] = handlerFunc    #IGNORE:E1101
-        return handlerFunc(self, inObject, *args) #IGNORE:W0142
+            cls._cache[objCls] = handlerFunc    
+        return handlerFunc(self, inObject, *args) 
 
 
-    def _simpleDefaultFunc(self, inObject, *args):
+    def _simpleDefaultFunc(self, inObject, *_args):
         raise TypeError('No function to handle type %s in class %s'
                         % (str(type(inObject)), str(type(self))))
 

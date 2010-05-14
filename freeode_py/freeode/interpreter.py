@@ -2344,7 +2344,7 @@ class ExpressionVisitor(Visitor):
 
 
 
-class StatementVisitor(Visitor):
+class StatementVisitor(object):
     '''
     Execute statements
 
@@ -2357,7 +2357,6 @@ class StatementVisitor(Visitor):
         self.dispatch(...)
     '''
     def __init__(self, interpreter, expression_visitor):
-        Visitor.__init__(self)
         #the interpreter top level object - necessary for return statement
         self.interpreter = interpreter
         #the places where attributes are stored (the symbol tables)
@@ -2370,8 +2369,7 @@ class StatementVisitor(Visitor):
         self.environment = new_env
         #self.expression_visitor.set_environment(new_env)
 
-    @Visitor.when_type(NodePassStmt)
-    def visit_NodePassStmt(self, node): #IGNORE:W0613
+    def visit_NodePassStmt(self, _node): 
         '''
         Interpret 'pass' statement. Do nothing.
         The pass statement is necessary to define empty compound statements
@@ -2379,7 +2377,6 @@ class StatementVisitor(Visitor):
         '''
         return
 
-    @Visitor.when_type(NodeReturnStmt)
     def visit_NodeReturnStmt(self, node):
         '''Return value from function call'''
         if len(node.arguments) == 0:
@@ -2395,7 +2392,6 @@ class StatementVisitor(Visitor):
         raise ReturnFromFunctionException(loc=node.loc)
 
 
-    @Visitor.when_type(NodeExpressionStmt)
     def visit_NodeExpressionStmt(self, node):
         '''Intened to call functions. Compute expression and forget result'''
         ret_val = self.expression_visitor.dispatch(node.expression)
@@ -2417,7 +2413,6 @@ class StatementVisitor(Visitor):
             raise UserException('Illegal expression.', node.loc)
 
 
-    @Visitor.when_type(NodeAssignment)
     def visit_NodeAssignment(self, node):
         '''Assign value to a constant object, or emit assignment statement
         for code generation'''
@@ -2522,7 +2517,6 @@ class StatementVisitor(Visitor):
         self.interpreter.collect_statement(new_assign)
 
 
-    @Visitor.when_type(NodeIfStmt)
     def visit_NodeIfStmt(self, node):
         '''
         Interpret an "if" statement.
@@ -2637,7 +2631,6 @@ class StatementVisitor(Visitor):
         return
 
 
-    @Visitor.when_type(NodeFuncDef)
     def visit_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
         #ArgumentList does the argument parsing at the function call
@@ -2665,7 +2658,6 @@ class StatementVisitor(Visitor):
         self.environment.local_scope.create_attribute(node.name, new_func)
 
 
-    @Visitor.when_type(NodeClassDef)
     def visit_NodeClassDef(self, node):
         '''Define a class - create a class object in local name-space'''
         #create new class object and put it into the local name-space
@@ -2674,10 +2666,9 @@ class StatementVisitor(Visitor):
         self.environment.local_scope.create_attribute(node.name, new_class)
 
 
-    @Visitor.when_type(NodeStmtList)
     def visit_NodeStmtList(self, node):
         '''Visit node with a list of data definitions. Execute them.'''
-        self.interpreter.run(node.statements)
+        self.exec_(node.statements)
 
 
     #TODO: Create a nice syntax for the data/compile statement with arbitrary keywords.
@@ -2689,7 +2680,6 @@ class StatementVisitor(Visitor):
     #          data b,c: Float param
     #          data d: String const
     #
-    @Visitor.when_type(NodeDataDef)
     def visit_NodeDataDef(self, node):
         '''Create object and put it into symbol table'''
         #get the type object - a NodeIdentifier is expected as class_spec
@@ -2713,7 +2703,6 @@ class StatementVisitor(Visitor):
         self.environment.local_scope.create_attribute(new_name, new_object)
 
 
-    @Visitor.when_type(NodeCompileStmt)
     def visit_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
         #TODO: Idea: replace the "compile" statement with a compile(...)
@@ -2926,31 +2915,54 @@ class StatementVisitor(Visitor):
         #store new object in interpreter
         self.interpreter.add_compiled_object(flat_object)
 
-
-    def dispatch(self, node):
+    
+    def exec_(self, stmt_list):
         '''
-        Call right handler function for a single statement.
+        Interpret a list of statements.
 
-        Does also some common error handling:
-        - put good error location information into UserExceptions that
-          have none.
-        - Create user visible 'Duplicate attribute' errors.
-        - Create user visible 'Undefined attribute' errors.
+        Call right handler function for a single statement.
         '''
         try:
-            Visitor.dispatch(self, node)
+            for node in stmt_list:
+                if isinstance(node, NodePassStmt):
+                    self.visit_NodePassStmt(node)
+                elif isinstance(node, NodeReturnStmt):
+                    self.visit_NodeReturnStmt(node)
+                elif isinstance(node, NodeExpressionStmt):
+                    self.visit_NodeExpressionStmt(node)
+                elif isinstance(node, NodeAssignment):
+                    self.visit_NodeAssignment(node)
+                elif isinstance(node, NodeIfStmt):
+                    self.visit_NodeIfStmt(node)
+                elif isinstance(node, NodeFuncDef):
+                    self.visit_NodeFuncDef(node)
+                elif isinstance(node, NodeClassDef):
+                    self.visit_NodeClassDef(node)
+                elif isinstance(node, NodeStmtList):
+                    self.visit_NodeStmtList(node)
+                elif isinstance(node, NodeCompileStmt): 
+                    self.visit_NodeCompileStmt(node)
+                elif isinstance(node, NodeDataDef):
+                    self.visit_NodeDataDef(node)
+                else:
+                    raise Exception('Unknown node type: ' + str(type(node)))
+
+        # Put good location information into UserExceptions that have none.
         except UserException, e:
             if e.loc is None:
                 e.loc = node.loc
             raise
+        # Create user visible 'Duplicate attribute' errors.
         except DuplicateAttributeError, e:
             raise UserException('Duplicate attribute %s.' % e.attr_name,
                                 loc=node.loc, errno=3800910)
+        # Create user visible 'Undefined attribute' errors.
         except UndefinedAttributeError, e:
             raise UserException('Undefined attribute "%s".' % e.attr_name,
                                 loc=node.loc, errno=3800920)
 
 
+        
 #the module of built in objects
 BUILT_IN_LIB = IModule() #just for pyparsings's code completion
 #The one and only interpreter
@@ -3159,8 +3171,7 @@ class Interpreter(object):
 
     def run(self, stmt_list):
         '''Interpret a list of statements'''
-        for node in stmt_list:
-            self.statement_visitor.dispatch(node)
+        self.statement_visitor.exec_(stmt_list)
 
 
     # --- manage frame stack --------------------------------------------------------------

@@ -27,15 +27,11 @@ Test code for the "interpreter.py" module
 """
 
 from __future__ import division
-from __future__ import absolute_import              #IGNORE:W0410
+from __future__ import absolute_import              
 
-#Special construction to make PyDev and pylint happy. Both checkers can't 
-#see into the py.test namespace
-try:                      
-    from py.test import skip as skip_test #IGNORE:E0611
-    from py.test import fail as fail_test #IGNORE:E0611
-except ImportError:
-    print 'No py library, many tests may fail!'
+
+from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
 
 
 
@@ -424,7 +420,7 @@ def test_BuiltInFunctionWrapper_1(): #IGNORE:C01111
                                   py_function=sqrt)
     #call function: sqrt(2)
     siml_ret = func(val_2)
-    assert siml_ret.value == math.sqrt(2) #IGNORE:E1101
+    assert siml_ret.value == math.sqrt(2) # pylint: disable-msg=E1103
     
     
                                       
@@ -1129,8 +1125,7 @@ c = 'Hello ' + 'world!'
     module_code = ps.parseModuleStr(prog_text)
     
     #interpreter main loop
-    for stmt in module_code.statements:
-        stv.dispatch(stmt)
+    stv.exec_(module_code.statements)
         
 #    print
 #    print 'global namespace - after interpreting statements: -----------------------------------'
