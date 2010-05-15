@@ -893,6 +893,7 @@ class NodeDataDef(Node):
         self.class_spec = class_spec 
         self.role = role
         self.default_value = None
+        self.loc = None
 
 
 class NodeCompileStmt(NodeDataDef):
@@ -1172,7 +1173,7 @@ class NodeModule(Node):
 #        #remember to visit next child when we come here again
 #        self.stack[-1] = (currNode, currChild+1)
 #        #TODO: Make iterator work also with objects that are not children of Node;
-#        #TODO: or make iterator throw an erception with useful error message when
+#        #TODO: or make iterator throw an exception with useful error message when
 #        #      non Node object is discovered
 #        #get node that will be visited next
 #        nextNode = currNode[currChild]
@@ -1264,11 +1265,8 @@ class UserException(Exception):
     '''Exception that transports user visible error messages'''
     def __init__(self, message, loc=None, errno=None):
         Exception.__init__(self)
-        self.message = message
-        '''The error message'''
+        self.msg = message
         self.loc = loc
-        '''Position in the input string, where the error occured.
-        Includes input string and file name'''
         self.errno = errno
 
     def __str__(self):
@@ -1276,10 +1274,13 @@ class UserException(Exception):
             num_str = ''
         else:
             num_str = '(#%s) ' % str(self.errno) 
-        return 'Error! ' + num_str + self.message + '\n' + str(self.loc) + '\n'
+        return 'Error! ' + num_str + self.msg + '\n' + str(self.loc) + '\n'
 
-
-
+    def __repr__(self):
+        return self.__class__.__name__ + str((self.msg, self.loc, self.errno))
+    
+    
+    
 #class MultiErrorException(UserException):
 #    '''Exception with many (user visible) error messages'''
 #    def __init__(self, errTupList):
