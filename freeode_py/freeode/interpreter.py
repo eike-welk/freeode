@@ -418,10 +418,10 @@ class ArgumentList(SimpleArgumentList):
         #evaluate argument type and default arguments
         for arg in self.arguments:
             if arg.type is not None:
-                type_ev = expression_visitor.dispatch(arg.type)
+                type_ev = expression_visitor.eval(arg.type)
                 arg.type = ref(type_ev)
             if arg.default_value is not None:
-                dval_ev = expression_visitor.dispatch(arg.default_value)
+                dval_ev = expression_visitor.eval(arg.default_value)
                 arg.default_value = dval_ev
             #test type compatibility of default value and argument type
             if arg.type is not None and arg.default_value is not None:
@@ -1471,7 +1471,7 @@ class PrintFunction(CallableObject):
                 #into calls to fundamental __str__ methods
                 str_func = arg1.type().get_attribute('__str__')
                 str_call = NodeFuncCall(str_func, [arg1], {}, None)
-                str_expr = INTERPRETER.expression_visitor.dispatch(str_call)
+                str_expr = INTERPRETER.expression_visitor.eval(str_call)
                 new_args.append(str_expr) #collect the call's result
             #create a new call to the print function
             print_call = NodeFuncCall(self, new_args, {}, None)
@@ -2034,6 +2034,7 @@ class ReturnFromFunctionException(Exception):
     '''Functions return by raising this exception.'''
     #TODO: Use this exception to transport return value?
     def __init__(self, loc=None):
+        Exception.__init__(self)
         self.loc = loc
 
 
@@ -2057,7 +2058,7 @@ class CompiledClass(InterpreterObject):
 
 
 
-class ExpressionVisitor(Visitor):
+class ExpressionVisitor(object):
     '''
     Compute value of an expression.
 
@@ -2066,12 +2067,9 @@ class ExpressionVisitor(Visitor):
     an Interpreter object, or a further annotated AST-tree.
 
     The right function is selected with the inherited function
-        self.dispatch(...)
+        self.eval(...)
     '''
     def __init__(self):
-        Visitor.__init__(self)
-        #the interpreter top level object - necessary for function call
-        #self.interpreter = interpreter
         #the places where attributes are stored (the symbol tables)
         self.environment = None
 
@@ -2079,35 +2077,30 @@ class ExpressionVisitor(Visitor):
         '''Change part of the symbol table which is currently used.'''
         self.environment = new_env
 
-    @Visitor.when_type(InterpreterObject)
     def visit_InterpreterObject(self, node):
         '''Visit a part of the expression that was already evaluated:
         Do nothing, return the interpreter object.'''
         return node
 
-    @Visitor.when_type(NodeFloat)
     def visit_NodeFloat(self, node):
         '''Create floating point number'''
         result = IFloat(node.value)
         return result
 
-    @Visitor.when_type(NodeString)
     def visit_NodeString(self, node):
         '''Create string'''
         result = IString(node.value)
         return result
 
-    @Visitor.when_type(NodeIdentifier)
     def visit_NodeIdentifier(self, node):
         '''Lookup Identifier and get attribute'''
         attr = self.environment.get_attribute(node.name)
         return attr
 
-    @Visitor.when_type(NodeAttrAccess)
     def visit_NodeAttrAccess(self, node):
         '''Evaluate attribute access; ('.') operator'''
         #evaluate the object on the left hand side
-        inst_lhs = self.dispatch(node.arguments[0])
+        inst_lhs = self.eval(node.arguments[0])
         #the object on the right hand side must be an identifier
         id_rhs = node.arguments[1]
         if not isinstance(id_rhs, NodeIdentifier):
@@ -2118,7 +2111,6 @@ class ExpressionVisitor(Visitor):
         return attr
 
 
-    @Visitor.when_type(NodeParentheses)
     def visit_NodeParentheses(self, node):
         '''
         Evaluate pair of parentheses: return expression between parentheses.
@@ -2136,7 +2128,7 @@ class ExpressionVisitor(Visitor):
         - Node.keyword_arguments : {} Empty dict
         '''
         #compute values of expression
-        val_expr = self.dispatch(node.arguments[0])
+        val_expr = self.eval(node.arguments[0])
 
         #see if there is an object between the brackets, that can express only
         #one value. No matter wether known or unknown, there are no brackets
@@ -2161,7 +2153,6 @@ class ExpressionVisitor(Visitor):
                       'not':'__not__',
                       '$':'__diff__', }
 
-    @Visitor.when_type(NodeOpPrefix1)
     def visit_NodeOpPrefix1(self, node):
         '''
         Evaluate unary operator and return result
@@ -2179,7 +2170,7 @@ class ExpressionVisitor(Visitor):
                                    keyword arguments
         '''
         #compute values on rhs of operator
-        inst_rhs = self.dispatch(node.arguments[0])
+        inst_rhs = self.eval(node.arguments[0])
         #look at the operator symbol and determine the right method name(s)
         func_name = ExpressionVisitor._prefopt_table[node.operator]
         #get the special method from the operand's class and try to call the method.
@@ -2217,7 +2208,6 @@ class ExpressionVisitor(Visitor):
                     'or':('__or2__', '__ror2__'),
                     }
 
-    @Visitor.when_type(NodeOpInfix2)
     def visit_NodeOpInfix2(self, node):
         '''
         Evaluate binary operator and return result
@@ -2235,8 +2225,8 @@ class ExpressionVisitor(Visitor):
                                    keyword arguments
         '''
         #compute values on rhs and lhs of operator
-        inst_lhs = self.dispatch(node.arguments[0])
-        inst_rhs = self.dispatch(node.arguments[1])
+        inst_lhs = self.eval(node.arguments[0])
+        inst_rhs = self.eval(node.arguments[1])
         #look at the operator symbol and determine the right method name(s)
         lfunc_name, rfunc_name = ExpressionVisitor._binop_table[node.operator]
         #get the special method from the LHS's class and try to call the method.
@@ -2292,7 +2282,6 @@ class ExpressionVisitor(Visitor):
 
 
 
-    @Visitor.when_type(NodeFuncCall)
     def visit_NodeFuncCall(self, node):
         '''
         Evaluate a NodeFuncCall, which calls a call-able object (function).
@@ -2313,19 +2302,19 @@ class ExpressionVisitor(Visitor):
                                    keyword arguments
        '''
         #find the right call-able object
-        func_obj = self.dispatch(node.function)
+        func_obj = self.eval(node.function)
         if not isinstance(func_obj, CallableObject):
             raise UserException('Expecting callable object!', node.loc)
 
         #evaluate all arguments in the caller's environment.
         ev_args = []
         for arg_val in node.arguments:
-            ev_arg_val = self.dispatch(arg_val)
+            ev_arg_val = self.eval(arg_val)
             ev_args.append(ev_arg_val)
         ev_args = tuple(ev_args)
         ev_kwargs = {}
         for arg_name, arg_val in node.keyword_arguments.iteritems():
-            ev_arg_val = self.dispatch(arg_val)
+            ev_arg_val = self.eval(arg_val)
             ev_kwargs[arg_name] = ev_arg_val
 
         try:
@@ -2343,7 +2332,46 @@ class ExpressionVisitor(Visitor):
             return new_call
 
 
-
+    def eval(self, expr_node):
+        '''
+        Evaluate an expression (recursively).
+        
+        Chooses the right handler function for the given node
+        
+        PARAMETER
+        ---------
+        expression: ast.Node
+            A node that represents an expression
+        
+        RETURN
+        ------
+        ast.Node or InterpreterObject
+        Result of evaluation. 
+        '''
+        if isinstance(expr_node, InterpreterObject):
+            return self.visit_InterpreterObject(expr_node)
+        elif isinstance(expr_node, NodeFloat):
+            return self.visit_NodeFloat(expr_node)
+        elif isinstance(expr_node, NodeString):
+            return self.visit_NodeString(expr_node)
+        elif isinstance(expr_node, NodeIdentifier):
+            return self.visit_NodeIdentifier(expr_node)
+        elif isinstance(expr_node, NodeAttrAccess):
+            return self.visit_NodeAttrAccess(expr_node)
+        elif isinstance(expr_node, NodeParentheses):
+            return self.visit_NodeParentheses(expr_node)
+        elif isinstance(expr_node, NodeOpPrefix1):
+            return self.visit_NodeOpPrefix1(expr_node)
+        elif isinstance(expr_node, NodeOpInfix2):
+            return self.visit_NodeOpInfix2(expr_node)
+        elif isinstance(expr_node, NodeFuncCall):
+            return self.visit_NodeFuncCall(expr_node)
+        else:
+            raise Exception('Unknown node type for expressions: ' 
+                            + str(type(expr_node)))
+        
+        
+        
 class StatementVisitor(object):
     '''
     Execute statements
@@ -2354,7 +2382,7 @@ class StatementVisitor(object):
     local scope (self.environment.local_scope).
 
     The right function is selected with the inherited function
-        self.dispatch(...)
+        self.exec_(...)
     '''
     def __init__(self, interpreter, expression_visitor):
         #the interpreter top level object - necessary for return statement
@@ -2384,7 +2412,7 @@ class StatementVisitor(object):
             self.environment.return_value = NONE
         else:
             #evaluate expression to compute return value
-            retval = self.expression_visitor.dispatch(node.arguments[0])
+            retval = self.expression_visitor.eval(node.arguments[0])
             self.environment.return_value = retval
         #Forcibly end function execution -
         #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
@@ -2394,7 +2422,7 @@ class StatementVisitor(object):
 
     def visit_NodeExpressionStmt(self, node):
         '''Intened to call functions. Compute expression and forget result'''
-        ret_val = self.expression_visitor.dispatch(node.expression)
+        ret_val = self.expression_visitor.eval(node.expression)
         if ret_val is None or isinstance(ret_val, InterpreterObject):
             #function was evaluated at compile time, forget result
             return
@@ -2417,9 +2445,9 @@ class StatementVisitor(object):
         '''Assign value to a constant object, or emit assignment statement
         for code generation'''
         #compute value of expression on right hand side
-        expr_val = self.expression_visitor.dispatch(node.expression)
+        expr_val = self.expression_visitor.eval(node.expression)
         #get a data attribute to store the value
-        target_obj = self.expression_visitor.dispatch(node.target)
+        target_obj = self.expression_visitor.eval(node.target)
         #perform the assignment
         self.assign(target_obj, expr_val, node.loc)
 
@@ -2565,7 +2593,7 @@ class StatementVisitor(object):
             #http://www.cis.upenn.edu/~matuszek/LispText/lisp-cond.html
             for clause in node.clauses:
                 #interpret the condition
-                condition_ev = self.expression_visitor.dispatch(clause.condition)
+                condition_ev = self.expression_visitor.eval(clause.condition)
                 if not siml_isinstance(condition_ev, (CLASS_BOOL, CLASS_FLOAT)):
                     raise UserException('Conditions must evaluate to '
                                         'instances equivalent to Bool.',
@@ -2640,7 +2668,7 @@ class StatementVisitor(object):
         #Evaluate the return type
         return_type_ev = None
         if node.return_type is not None:
-            return_type_ev = self.expression_visitor.dispatch(node.return_type)
+            return_type_ev = self.expression_visitor.eval(node.return_type)
         #save the current global namespace in the function. Otherwise
         #access to global variables would have surprising results
         #TODO: Implement closures, for nested functions:
@@ -2683,7 +2711,7 @@ class StatementVisitor(object):
     def visit_NodeDataDef(self, node):
         '''Create object and put it into symbol table'''
         #get the type object - a NodeIdentifier is expected as class_spec
-        class_obj = self.expression_visitor.dispatch(node.class_spec)
+        class_obj = self.expression_visitor.eval(node.class_spec)
         if not isinstance(class_obj, TypeObject):
             raise UserException('Class expected.', node.loc)
         #Create the new object
@@ -2736,7 +2764,7 @@ class StatementVisitor(object):
         #
         #Create data: --------------------------------------------------------------
         #get the type object - a NodeIdentifier is expected as class_spec
-        class_obj = self.expression_visitor.dispatch(node.class_spec)
+        class_obj = self.expression_visitor.eval(node.class_spec)
         if not isinstance(class_obj, TypeObject):
             raise UserException('Class expected in compile statement.', node.loc)
         #Create the new object
@@ -2945,7 +2973,8 @@ class StatementVisitor(object):
                 elif isinstance(node, NodeDataDef):
                     self.visit_NodeDataDef(node)
                 else:
-                    raise Exception('Unknown node type: ' + str(type(node)))
+                    raise Exception('Unknown node type for statements: ' 
+                                    + str(type(node)))
 
         # Put good location information into UserExceptions that have none.
         except UserException, e:

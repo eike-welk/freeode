@@ -793,12 +793,12 @@ def test_operator_dispatch_1(): #IGNORE:C01111
     val_3 = IFloat(3)
     
     op_sub = NodeOpInfix2('-', [val_2, val_3])
-    res = expr_visit.dispatch(op_sub)
+    res = expr_visit.eval(op_sub)
     print res
     assert res.value == -1 
     
     op_neg = NodeOpPrefix1('-', [val_2])
-    res = expr_visit.dispatch(op_neg)
+    res = expr_visit.eval(op_neg)
     print res
     assert res.value == -2 
     
@@ -819,12 +819,12 @@ def test_operator_dispatch_2(): #IGNORE:C01111
     val_3.role = RoleVariable
     
     op_sub = NodeOpInfix2('-', [val_2, val_3])
-    res = expr_visit.dispatch(op_sub)
+    res = expr_visit.eval(op_sub)
     print res
     assert isinstance(res, NodeOpInfix2)
     
     op_neg = NodeOpPrefix1('-', [val_2])
-    res = expr_visit.dispatch(op_neg)
+    res = expr_visit.eval(op_neg)
     print res
     assert isinstance(res, NodeOpPrefix1)
     
@@ -845,7 +845,7 @@ def test_expression_evaluation_1(): #IGNORE:C01111
     
     #interpret the expression
     exv = ExpressionVisitor()
-    res = exv.dispatch(ex)
+    res = exv.eval(ex)
     print
     print 'Result object: --------------------------------------------------------------'
     print res 
@@ -868,7 +868,7 @@ def test_expression_evaluation_2(): #IGNORE:C01111
     
     #interpret the expression
     exv = ExpressionVisitor()
-    res = exv.dispatch(ex)
+    res = exv.eval(ex)
     print
     print 'Result object: --------------------------------------------------------------'
     #print res 
@@ -906,7 +906,7 @@ def test_expression_evaluation_3(): #IGNORE:C01111
     #interpret the expression
     exv = ExpressionVisitor()
     exv.environment = env
-    res = exv.dispatch(ex)
+    res = exv.eval(ex)
     print
     print 'Result object: --------------------------------------------------------------'
     print res 
@@ -952,7 +952,7 @@ def test_expression_evaluation_4(): #IGNORE:C01111
     exv = ExpressionVisitor()
     exv.environment = env
     #evaluate the expression
-    res = exv.dispatch(ex)
+    res = exv.eval(ex)
     print
     print 'Result object: --------------------------------------------------------------'
     print res 
@@ -992,7 +992,7 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     #interpret the expression
     exv = ExpressionVisitor()
     exv.environment = env
-    res = exv.dispatch(ex)
+    res = exv.eval(ex)
     print
     print 'Result object - should be an unevaluated expression: --------------------------------------------------------------'
     print res 
@@ -1041,7 +1041,7 @@ def test_ExpressionVisitor_unknown_arguments_1(): #IGNORE:C01111
     call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
     
     #evaluate the function call
-    ret_val = exv.dispatch(call)
+    ret_val = exv.eval(call)
     print
     print 'Result object: --------------------------------------------------------------'
     print ret_val 
@@ -1068,7 +1068,7 @@ def test_ExpressionVisitor_unknown_arguments_2(): #IGNORE:C01111
     #create function call with unkown argument
     call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
     #interpret call
-    ret_val = intp.statement_visitor.expression_visitor.dispatch(call)
+    ret_val = intp.statement_visitor.expression_visitor.eval(call)
     #evaluating a function call with unknown arguments must return a function call
     assert isinstance(ret_val, NodeFuncCall)
     assert ret_val.type() is CLASS_FLOAT
@@ -1484,5 +1484,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_InterpreterObject_find_name()
+    test_SimlClass_2()
     pass
