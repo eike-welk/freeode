@@ -28,13 +28,8 @@ Test code for the ast module
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
-#The py library is not standard. Preserve ability to use some test functions
-# for debugging when the py library, and the py.test testing framework, are 
-# not installed. 
-try:                      
-    import py                                       
-except ImportError:
-    print 'No py library, many tests may fail!'
+from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
 
 import unittest
 #tell the py.test framework to recognize traditional unittest tests
@@ -384,7 +379,7 @@ def test_visitor_inherited_handler_methods():
        - When the current class defines a default function, then this default 
          function is used; the default function of the base class is forgotten. 
     '''
-    py.test.skip('Inherited handler functions are currently not implemented.') #IGNORE:E1101
+    skip_test('Inherited handler functions are currently not implemented.') #IGNORE:E1101
     
     #Define class hierarchy
     class Base(object): #IGNORE:C01111
@@ -535,11 +530,28 @@ class TestDotName(unittest.TestCase): #IGNORE:C01111
         _foo = a_g[0:9:2]
 
 
+def test_UserException():
+    msg = "Test the class for user visible exceptions"
+    #skip_test(msg)
+    print msg
+    
+    #test the __repr__ function
+    err = UserException("Foo", None, None)
+    #print repr(err)
+    assert repr(err) == "UserException('Foo', None, None)"
+    
+    #test __str__ function; it must not crash
+    err = UserException("Foo", None, None)
+    print err
+    err = UserException("Foo", TextLocation(3, "Foo bar", "baz.txt"), 42)
+    print err
+    
+    
 
 if __name__ == '__main__':
     # Debugging code may go here.
 #    t1 = TestVisitor('test__dispatch')
 #    t1.run()
-    test_visitor_inherited_handler_methods()
+    test_UserException()
     
     pass
