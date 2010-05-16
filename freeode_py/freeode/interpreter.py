@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2008 - 2009 by Eike Welk                                *
+#    Copyright (C) 2008 - 2010 by Eike Welk                                *
 #    eike.welk@post.rwth-aachen.de                                         *
 #                                                                          *
 #    Credits:                                                              *
@@ -56,6 +56,7 @@ import weakref
 from weakref import ref
 import math
 import os
+import types
 
 from freeode.ast import *
 import freeode.simlparser as simlparser
@@ -596,8 +597,9 @@ class BuiltInFunctionWrapper(CallableObject):
         self.argument_definition = argument_definition
         #TypeObject or None: The type of the function's return value
         self.return_type = ref(return_type) if return_type is not None else None
-        #A Python function
-        self.py_function = py_function
+        #A Python function. Get function if argument is unbound method.
+        self.py_function = py_function if isinstance(py_function, types.FunctionType) \
+                           else  py_function.im_func
         #Call wrapped function also when arguments are unknown values
         self.accept_unknown_values = accept_unknown_values
         #If true, this function is a basic building block of the simulation
@@ -647,19 +649,9 @@ class BuiltInFunctionWrapper(CallableObject):
             raise UnknownArgumentsException()
         #call the wrapped Python function
         #all argument values are known, or we don't care about unknown values.
-        if 'self' in parsed_args_2:
-            #TODO: more consistent solution, maybe in ArgumentList class
-            #      argument list could return all arguments as positional
-            #      arguments, which would be perfect for calls to Python methods.
-            #bad hack for Python implementation detail:
-            #'self' must be positional argument.
-            func_self = parsed_args_2['self']
-            del parsed_args_2['self']
-            retval = self.py_function(func_self, **parsed_args_2) #IGNORE:W0142
-        else:
-            retval = self.py_function(**parsed_args_2)            #IGNORE:W0142
+        retval = self.py_function(**parsed_args_2)            #IGNORE:W0142
 
-        #todo maybe always convert float, str, bool --> IFloat, IString, IBool?
+        #TODO: maybe always convert float, str, bool --> IFloat, IString, IBool?
         #use Siml's None
         if retval is None:
             retval = NONE
@@ -2317,6 +2309,11 @@ class ExpressionVisitor(object):
             ev_arg_val = self.eval(arg_val)
             ev_kwargs[arg_name] = ev_arg_val
 
+        #Get function from bound method and put self into arguments
+        if isinstance(func_obj, BoundMethod):
+            ev_args = (func_obj.this,) + ev_args
+            func_obj = func_obj.function
+            
         try:
             #call the call-able object
             return func_obj(*ev_args, **ev_kwargs)     #IGNORE:W0142
@@ -2325,13 +2322,85 @@ class ExpressionVisitor(object):
             new_call = NodeFuncCall(func_obj, ev_args, ev_kwargs, node.loc)
             #put on decoration
             decorate_call(new_call, func_obj.return_type)
-#            new_call.type = func_obj.return_type
-#            new_call.is_known = False
-#            #Choose most variable role: const -> param -> variable
-#            new_call.role = determine_result_role(ev_args, ev_kwargs)
             return new_call
 
 
+    def apply_siml(self, func_obj, posargs, kwargs):
+        '''
+        Execute a user defined function.
+        
+        TODO: find common functionality with execution of built in functions
+        '''
+        #parse the arguments that we get from the caller, do type checking
+        parsed_args = func_obj.argument_definition\
+                          .parse_function_call_args(posargs, kwargs)
+
+        #Take 'this' name-space from the 'this' argument.
+        # 'this' must be a Siml object, no unevaluated expression
+        this_namespace = parsed_args.get('this', None)
+        if this_namespace and not isinstance(this_namespace, InterpreterObject):
+            raise UserException('The "this" argument of methods '
+                                'must be a known Siml object.')
+
+        #Count calls for making nice name spaces for persistant locals
+        func_obj.call_count += 1
+        #create local name space (for function arguments and local variables)
+        if INTERPRETER.is_collecting_code():
+            #store local scope so local variables are accessible for
+            #code generation
+            local_namespace = func_obj.create_persistent_locals_ns()
+        else:
+            local_namespace = InterpreterObject()
+        #put the function arguments into the local name-space
+        for arg_name, arg_val in parsed_args.iteritems():
+            #create references for existing Siml values
+            if isinstance(arg_val, InterpreterObject):
+                local_namespace.create_attribute(arg_name, arg_val)
+            #for unevaluated expressions a new variable is created,
+            #and the expression is assigned to it
+            else:
+                arg_class = arg_val.type()
+                new_arg = arg_class()
+                new_arg.role = arg_val.role
+                #put object into local name-space and assign value to it
+                local_namespace.create_attribute(arg_name, new_arg)
+                INTERPRETER.statement_visitor.assign(new_arg, arg_val, None)
+
+        #Create new environment for the function.
+        new_env = ExecutionEnvironment()
+        new_env.global_scope = func_obj.global_scope #global scope from function definition.
+        new_env.this_scope = this_namespace
+        new_env.local_scope = local_namespace
+        #local variables in functions can take any role
+        new_env.default_data_role = RoleUnkown
+
+        #execute the function's code in the new environment.
+        INTERPRETER.push_environment(new_env)
+        try:
+            INTERPRETER.run(func_obj.statements)
+        except ReturnFromFunctionException:           #IGNORE:W0704
+            pass
+        INTERPRETER.pop_environment()
+        #the return value is stored in the environment (stack frame)
+        ret_val = new_env.return_value
+
+        #Test if returned object has the right type.
+        #No return type specification present - no check
+        if func_obj.return_type is None:
+            return ret_val
+        #there is a return type specification - enforce it
+        #TODO: put type check into ArgumentList
+        elif (ret_val.type is not None and
+              siml_issubclass(ret_val.type(), func_obj.return_type())):
+            return ret_val
+        raise UserException("The type of the returned object does not match "
+                            "the function's return type specification.\n"
+                            "Type of returned object: %s \n"
+                            "Specified return type  : %s \n"
+                            % (str(ret_val.type().name),
+                               str(func_obj.return_type().name)))
+        
+        
     def eval(self, expr_node):
         '''
         Evaluate an expression (recursively).
