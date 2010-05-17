@@ -1139,9 +1139,14 @@ c = 'Hello ' + 'world!'
   
 # -------- Test interpreter object - basic --------------------------------------------------------  
 def test_SimlFunction_1(): #IGNORE:C01111
-    #skip_test('Test disabled')
-    print 'Test SimlFunction: call user defined function ...............................................................'
-    print 'User defined functions are created without parser.'
+    msg =  \
+'''
+Test SimlFunction: call user defined function 
+User defined functions are created without parser.
+'''    
+    #skip_test(msg)
+    print msg
+    
     from freeode.interpreter import (Interpreter, SimlFunction, 
                                      ArgumentList, CLASS_FLOAT, CLASS_STRING,
                                      BUILT_IN_LIB)
@@ -1160,7 +1165,7 @@ def test_SimlFunction_1(): #IGNORE:C01111
     f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
                       return_type=None, statements=[], global_scope=BUILT_IN_LIB)
     #call with existing value
-    f1(val_1)
+    intp.expression_visitor.apply(f1, (val_1,))
     
     #create a function with return statement - uses interpreter for executing the statement
     # func test(a:Float) -> Float:
@@ -1170,7 +1175,7 @@ def test_SimlFunction_1(): #IGNORE:C01111
                       statements=[NodeReturnStmt([NodeIdentifier('a')])], 
                       global_scope=BUILT_IN_LIB)
     #call function and see if value is returned
-    ret_val = f2(val_1)
+    ret_val = intp.expression_visitor.apply(f2, (val_1,))
     assert ret_val.value == 1.
 
     #create a function with wrong return type
@@ -1181,7 +1186,7 @@ def test_SimlFunction_1(): #IGNORE:C01111
                       statements=[NodeReturnStmt([NodeIdentifier('a')])], 
                       global_scope=BUILT_IN_LIB)
     try:
-        ret_val = f3(val_1)
+        ret_val = intp.expression_visitor.apply(f3, (val_1,))
     except UserException:
         print 'Getting expected exception: type mismatch at function return'
     else:
@@ -1189,8 +1194,11 @@ def test_SimlFunction_1(): #IGNORE:C01111
 
 
 
-def test_SimlFunction_2(): #IGNORE:C01111
-    print 'SimlFunction: get_complete_path method'
+def test_SimlFunction_2(): 
+    msg =  'SimlFunction: get_complete_path method'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import (SimlFunction, DotName)
     
     #the root object where the long name will be created
@@ -1210,9 +1218,14 @@ def test_SimlFunction_2(): #IGNORE:C01111
 
 
 def test_SimlFunction_3(): #IGNORE:C01111
+    msg = \
+'''
+Test SimlFunction: storage of local variables during code collection.
+User defined functions are created without parser.
+'''
     #skip_test('Test disabled')
-    print 'Test SimlFunction: storage of local variables during code collection.'
-    print 'User defined functions are created without parser.'
+    print msg
+    
     from freeode.interpreter import (Interpreter, SimlFunction, IModule,
                                      ArgumentList, CLASS_FLOAT, BUILT_IN_LIB)
     from freeode.ast import (NodeFuncArg)
@@ -1238,8 +1251,8 @@ def test_SimlFunction_3(): #IGNORE:C01111
     # and set interpreter up to collect code. In this mode local variables of all 
     # functions must become algebraic variables of the simulation object.
     intp.start_collect_code()
-    f1(val_1)
-    stmts, fn_locals = intp.stop_collect_code()
+    intp.expression_visitor.apply(f1, (val_1,))
+    _stmts, fn_locals = intp.stop_collect_code()
     
     print fn_locals
     
@@ -1484,5 +1497,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_SimlClass_2()
+    test_SimlFunction_1()
     pass

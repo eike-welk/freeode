@@ -634,7 +634,7 @@ class BuiltInFunctionWrapper(CallableObject):
         parsed_args = self.argument_definition\
                           .parse_function_call_args(args, kwargs)
         #Test if all arguments are known values.
-        parsed_args_2 = {}
+        parsed_args_2 = {} #TODO: remove! unnecessary!
         all_python_values_exist = True
         for name, siml_val in parsed_args.iteritems():
             if not siml_isknown(siml_val):
@@ -697,74 +697,7 @@ class SimlFunction(CallableObject):
 
 
     def __call__(self, *args, **kwargs):
-        '''Execute the statements in the function's body'''
-        self.call_count += 1
-        #parse the arguments that we get from the caller, do type checking
-        parsed_args = self.argument_definition\
-                          .parse_function_call_args(args, kwargs)
-
-        #Take 'this' name-space from the 'this' argument.
-        # 'this' must be a Siml object, no unevaluated expression
-        this_namespace = parsed_args.get('this', None)
-        if ( (this_namespace is not None) and
-             (not isinstance(this_namespace, InterpreterObject))):
-            raise UserException('The "this" argument (1st argument) '
-                                'must be a known Siml object.')
-
-        #create local name space (for function arguments and local variables)
-        if INTERPRETER.is_collecting_code():
-            #store local scope so local variables are accessible for
-            #code generation
-            local_namespace = self.create_persistent_locals_ns()
-        else:
-            local_namespace = InterpreterObject()
-        #put the function arguments into the local name-space
-        for arg_name, arg_val in parsed_args.iteritems():
-            #create references for existing Siml values
-            if isinstance(arg_val, InterpreterObject):
-                local_namespace.create_attribute(arg_name, arg_val)
-            #for unevaluated expressions a new variable is created,
-            #and the expression is assigned to it
-            else:
-                arg_class = arg_val.type()
-                new_arg = arg_class()
-                new_arg.role = arg_val.role
-                #put object into local name-space and assign value to it
-                local_namespace.create_attribute(arg_name, new_arg)
-                INTERPRETER.statement_visitor.assign(new_arg, arg_val, None)
-
-        #Create new environment for the function.
-        new_env = ExecutionEnvironment()
-        new_env.global_scope = self.global_scope #global scope from function definition.
-        new_env.this_scope = this_namespace
-        new_env.local_scope = local_namespace
-        #local variables in functions can take any role
-        new_env.default_data_role = RoleUnkown
-
-        #execute the function's code in the new environment.
-        INTERPRETER.push_environment(new_env)
-        try:
-            INTERPRETER.run(self.statements)
-        except ReturnFromFunctionException:           #IGNORE:W0704
-            pass
-        INTERPRETER.pop_environment()
-        #the return value is stored in the environment (stack frame)
-        ret_val = new_env.return_value
-
-        #Test if returned object has the right type.
-        #No return type specification present - no check
-        if self.return_type is None:
-            return ret_val
-        #there is a return type specification - enforce it
-        elif (ret_val.type is not None and
-              siml_issubclass(ret_val.type(), self.return_type())):
-            return ret_val
-        raise UserException("The type of the returned object does not match "
-                            "the function's return type specification.\n"
-                            "Type of returned object: %s \n"
-                            "Specified return type  : %s \n"
-                            % (str(ret_val.type().name),
-                               str(self.return_type().name)))
+        raise Exception("User defined functions must be executed with apply.")
 
 
     def get_complete_path(self):
@@ -1476,7 +1409,8 @@ class PrintFunction(CallableObject):
                 try:
                     #Try to call the Siml '__str__' function
                     str_func = arg1.get_attribute('__str__')
-                    arg1_str = str_func().value
+                    arg1_str = INTERPRETER.expression_visitor.apply(
+                                    str_func, tuple(), {}).value
                 except (UndefinedAttributeError, AttributeError,
                         UnknownArgumentsException):
                     #Convert to string with Python's 'str' function
@@ -2168,7 +2102,7 @@ class ExpressionVisitor(object):
         #get the special method from the operand's class and try to call the method.
         func = inst_rhs.type().get_attribute(func_name)
         try:
-            result = func(inst_rhs)
+            result = self.apply(func, (inst_rhs,))
             return result
         except UnknownArgumentsException:
             #Some arguments were unknown create an unevaluated expression
@@ -2224,7 +2158,7 @@ class ExpressionVisitor(object):
         #get the special method from the LHS's class and try to call the method.
         func = inst_lhs.type().get_attribute(lfunc_name)
         try:
-            result = func(inst_lhs, inst_rhs)
+            result = self.apply(func, (inst_lhs, inst_rhs))
             return result
         except UnknownArgumentsException:
             #Some arguments were unknown create an unevaluated expression
@@ -2309,22 +2243,41 @@ class ExpressionVisitor(object):
             ev_arg_val = self.eval(arg_val)
             ev_kwargs[arg_name] = ev_arg_val
 
-        #Get function from bound method and put self into arguments
-        if isinstance(func_obj, BoundMethod):
-            ev_args = (func_obj.this,) + ev_args
-            func_obj = func_obj.function
-            
         try:
             #call the call-able object
-            return func_obj(*ev_args, **ev_kwargs)     #IGNORE:W0142
+            return self.apply(func_obj, ev_args, ev_kwargs)
         except UnknownArgumentsException:
             #Some arguments were unknown create an unevaluated function call
             new_call = NodeFuncCall(func_obj, ev_args, ev_kwargs, node.loc)
-            #put on decoration
             decorate_call(new_call, func_obj.return_type)
             return new_call
 
 
+    def apply(self, func_obj, posargs=tuple(), kwargs={}): #IGNORE:W0102
+        '''
+        Execute a function. 
+        
+        User defined and built in functions are both executed here.
+        All arguments must be evaluated. 
+        
+        TODO: common functionality of function application should go here
+        '''
+        #Get function from bound method and put self into arguments
+        if isinstance(func_obj, BoundMethod):
+            posargs = (func_obj.this,) + posargs
+            func_obj = func_obj.function
+            
+        #TODO type checking of arguments (and removal from apply_***)
+        
+        if isinstance(func_obj, SimlFunction):
+            ret_val = self.apply_siml(func_obj, posargs, kwargs)
+        else:
+            ret_val = func_obj(*posargs, **kwargs) # pylint: disable-msg=W0142
+        
+        #TODO type checking of return value (and removal from apply_***)
+        return ret_val
+    
+    
     def apply_siml(self, func_obj, posargs, kwargs):
         '''
         Execute a user defined function.
@@ -2384,12 +2337,12 @@ class ExpressionVisitor(object):
         #the return value is stored in the environment (stack frame)
         ret_val = new_env.return_value
 
+        #TODO: simplify!
         #Test if returned object has the right type.
         #No return type specification present - no check
         if func_obj.return_type is None:
             return ret_val
         #there is a return type specification - enforce it
-        #TODO: put type check into ArgumentList
         elif (ret_val.type is not None and
               siml_issubclass(ret_val.type(), func_obj.return_type())):
             return ret_val
@@ -2570,7 +2523,7 @@ class StatementVisitor(object):
         #types, have correct roles.
         #Also only assignments to leaf types must get to the code generator.
         if not assign_func.is_fundamental_function:
-            assign_func(value)
+            self.expression_visitor.apply(assign_func, (value,))
             return
 
         #Only fundamental functions from here on: ------------------
@@ -2592,7 +2545,7 @@ class StatementVisitor(object):
         #perform assignment - function is fundamental and target is constant
         if target.role is RoleConstant:
             try:
-                assign_func(value)
+                self.expression_visitor.apply(assign_func, (value,))
             except UnknownArgumentsException:
                 UserException('Unknown value in assignment to constant.', loc)
             return
@@ -2955,7 +2908,7 @@ class StatementVisitor(object):
             #call the main function and collect code
             self.interpreter.start_collect_code(func_locals=func_locals)
                                                 #assign_target_roles=legal_roles)
-            func_tree(*args_list)  #IGNORE:W0142
+            self.interpreter.expression_visitor.apply(func_tree, tuple(args_list), {})  
             stmt_list, dummy = self.interpreter.stop_collect_code()
             #create a new main function for the flat object with the collected code
             func_flat = SimlFunction(func_name, spec.proto.argument_definition,
