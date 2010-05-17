@@ -1409,8 +1409,8 @@ class PrintFunction(CallableObject):
                 try:
                     #Try to call the Siml '__str__' function
                     str_func = arg1.get_attribute('__str__')
-                    arg1_str = INTERPRETER.expression_visitor.apply(
-                                    str_func, tuple(), {}).value
+                    arg1_str = INTERPRETER.expression_visitor.apply( #IGNORE:E1103
+                                    str_func, tuple()).value 
                 except (UndefinedAttributeError, AttributeError,
                         UnknownArgumentsException):
                     #Convert to string with Python's 'str' function
@@ -2304,6 +2304,7 @@ class ExpressionVisitor(object):
             local_namespace = func_obj.create_persistent_locals_ns()
         else:
             local_namespace = InterpreterObject()
+        
         #put the function arguments into the local name-space
         for arg_name, arg_val in parsed_args.iteritems():
             #create references for existing Siml values
@@ -2326,6 +2327,8 @@ class ExpressionVisitor(object):
         new_env.local_scope = local_namespace
         #local variables in functions can take any role
         new_env.default_data_role = RoleUnkown
+        #default return value is Siml-None
+        new_env.return_value = NONE
 
         #execute the function's code in the new environment.
         INTERPRETER.push_environment(new_env)
@@ -2337,23 +2340,18 @@ class ExpressionVisitor(object):
         #the return value is stored in the environment (stack frame)
         ret_val = new_env.return_value
 
-        #TODO: simplify!
         #Test if returned object has the right type.
-        #No return type specification present - no check
-        if func_obj.return_type is None:
-            return ret_val
-        #there is a return type specification - enforce it
-        elif (ret_val.type is not None and
-              siml_issubclass(ret_val.type(), func_obj.return_type())):
-            return ret_val
-        raise UserException("The type of the returned object does not match "
-                            "the function's return type specification.\n"
-                            "Type of returned object: %s \n"
-                            "Specified return type  : %s \n"
-                            % (str(ret_val.type().name),
-                               str(func_obj.return_type().name)))
-        
-        
+        if func_obj.return_type is not None and \
+           not siml_issubclass(ret_val.type(), func_obj.return_type()):
+            raise UserException("The type of the returned object does not match "
+                                "the function's return type specification.\n"
+                                "Type of returned object: %s \n"
+                                "Specified return type  : %s \n"
+                                % (str(ret_val.type().name),
+                                   str(func_obj.return_type().name)))
+        return ret_val
+    
+       
     def eval(self, expr_node):
         '''
         Evaluate an expression (recursively).
