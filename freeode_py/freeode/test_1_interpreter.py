@@ -782,36 +782,36 @@ def test_IBool_2(): #IGNORE:C01111
 
 # -------- Test expression evaluation ------------------------------------------------------------------------
 def test_operator_dispatch_1(): #IGNORE:C01111
-    #skip_test('Test ExpressionVisitor: handling of binary operators with Float values.')
-    print 'Test ExpressionVisitor: handling of binary operators with Float values.'
-    from freeode.interpreter import (IFloat, ExpressionVisitor)
+    #skip_test('Test Interpreter: handling of binary operators with Float values.')
+    print 'Test Interpreter: handling of binary operators with Float values.'
+    from freeode.interpreter import (IFloat, Interpreter)
     from freeode.ast import NodeOpInfix2, NodeOpPrefix1
     
-    expr_visit = ExpressionVisitor()
+    intp = Interpreter()
     
     val_2 = IFloat(2)
     val_3 = IFloat(3)
     
     op_sub = NodeOpInfix2('-', [val_2, val_3])
-    res = expr_visit.eval(op_sub)
+    res = intp.eval(op_sub)
     print res
     assert res.value == -1 
     
     op_neg = NodeOpPrefix1('-', [val_2])
-    res = expr_visit.eval(op_neg)
+    res = intp.eval(op_neg)
     print res
     assert res.value == -2 
     
 
 
 def test_operator_dispatch_2(): #IGNORE:C01111
-    msg = 'Test ExpressionVisitor: handling of binary operators with unknown Float values.'
+    msg = 'Test Interpreter: handling of binary operators with unknown Float values.'
     #skip_test(msg)
     print msg
-    from freeode.interpreter import (IFloat, ExpressionVisitor)
+    from freeode.interpreter import Interpreter, IFloat
     from freeode.ast import NodeOpInfix2, NodeOpPrefix1, RoleVariable
 
-    expr_visit = ExpressionVisitor()
+    intp = Interpreter()
     
     val_2 = IFloat()
     val_2.role = RoleVariable
@@ -819,12 +819,12 @@ def test_operator_dispatch_2(): #IGNORE:C01111
     val_3.role = RoleVariable
     
     op_sub = NodeOpInfix2('-', [val_2, val_3])
-    res = expr_visit.eval(op_sub)
+    res = intp.eval(op_sub)
     print res
     assert isinstance(res, NodeOpInfix2)
     
     op_neg = NodeOpPrefix1('-', [val_2])
-    res = expr_visit.eval(op_neg)
+    res = intp.eval(op_neg)
     print res
     assert isinstance(res, NodeOpPrefix1)
     
@@ -833,7 +833,7 @@ def test_operator_dispatch_2(): #IGNORE:C01111
 def test_expression_evaluation_1(): #IGNORE:C01111
     #skip_test('Test expression evaluation (only immediate values)')
     print 'Test expression evaluation (only immediate values)'
-    from freeode.interpreter import ExpressionVisitor
+    from freeode.interpreter import Interpreter
     import freeode.simlparser as simlparser
     
     #parse the expression
@@ -844,8 +844,8 @@ def test_expression_evaluation_1(): #IGNORE:C01111
     print ex
     
     #interpret the expression
-    exv = ExpressionVisitor()
-    res = exv.eval(ex)
+    intp = Interpreter()
+    res = intp.eval(ex)
     print
     print 'Result object: --------------------------------------------------------------'
     print res 
@@ -856,7 +856,7 @@ def test_expression_evaluation_1(): #IGNORE:C01111
 def test_expression_evaluation_2(): #IGNORE:C01111
     #skip_test('Test expression evaluation (only immediate values)')
     print 'Test expression evaluation, all operators and brackets (only immediate values)'
-    from freeode.interpreter import ExpressionVisitor
+    from freeode.interpreter import Interpreter
     import freeode.simlparser as simlparser
     
     #parse the expression
@@ -867,8 +867,8 @@ def test_expression_evaluation_2(): #IGNORE:C01111
     #print ex
     
     #interpret the expression
-    exv = ExpressionVisitor()
-    res = exv.eval(ex)
+    intp = Interpreter()
+    res = intp.eval(ex)
     print
     print 'Result object: --------------------------------------------------------------'
     #print res 
@@ -880,7 +880,7 @@ def test_expression_evaluation_3(): #IGNORE:C01111
     #skip_test('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (access to variables)'
     from freeode.interpreter import (IModule, CLASS_FLOAT, RoleConstant, 
-                                     ExpressionVisitor, ExecutionEnvironment)
+                                     Interpreter, ExecutionEnvironment)
     import freeode.simlparser as simlparser
     
     #parse the expression
@@ -904,9 +904,9 @@ def test_expression_evaluation_3(): #IGNORE:C01111
     env.global_scope = mod
     
     #interpret the expression
-    exv = ExpressionVisitor()
-    exv.environment = env
-    res = exv.eval(ex)
+    intp = Interpreter()
+    intp.environment = env
+    res = intp.eval(ex)
     print
     print 'Result object: --------------------------------------------------------------'
     print res 
@@ -918,7 +918,7 @@ def test_expression_evaluation_4(): #IGNORE:C01111
     #skip_test('Test expression evaluation (access to variables)')
     print 'Test expression evaluation (calling built in functions)'
     from freeode.interpreter import (simlparser, IModule, ExecutionEnvironment,
-                                     ExpressionVisitor, BuiltInFunctionWrapper, 
+                                     Interpreter, BuiltInFunctionWrapper, 
                                      ArgumentList, NodeFuncArg,
                                      CLASS_FLOAT)
     import math
@@ -949,10 +949,10 @@ def test_expression_evaluation_4(): #IGNORE:C01111
     env = ExecutionEnvironment()
     env.global_scope = mod
     #create visitor for evaluating the expression
-    exv = ExpressionVisitor()
-    exv.environment = env
+    intp = Interpreter()
+    intp.environment = env
     #evaluate the expression
-    res = exv.eval(ex)
+    res = intp.eval(ex)
     print
     print 'Result object: --------------------------------------------------------------'
     print res 
@@ -964,7 +964,7 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     #skip_test('Test disabled')
     print 'Test expression evaluation (returning of partially evaluated expression when accessing variables)'
     from freeode.interpreter import (IModule, CLASS_FLOAT, RoleVariable, 
-                                     ExecutionEnvironment, ExpressionVisitor,
+                                     ExecutionEnvironment, Interpreter,
                                      NodeOpInfix2)
     import freeode.simlparser as simlparser
     #parse the expression
@@ -990,9 +990,9 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     env.global_scope = mod
     
     #interpret the expression
-    exv = ExpressionVisitor()
-    exv.environment = env
-    res = exv.eval(ex)
+    intp = Interpreter()
+    intp.environment = env
+    res = intp.eval(ex)
     print
     print 'Result object - should be an unevaluated expression: --------------------------------------------------------------'
     print res 
@@ -1001,12 +1001,12 @@ def test_expression_evaluation_5(): #IGNORE:C01111
 
 
 
-def test_ExpressionVisitor_unknown_arguments_1(): #IGNORE:C01111
+def test_function_call_unknown_arguments_1(): #IGNORE:C01111
     msg = 'Test expression evaluation (calling built in functions), unknown arguments'
     #skip_test(msg)
     print msg
     from freeode.interpreter import (IModule, ExecutionEnvironment,
-                                     ExpressionVisitor, 
+                                     Interpreter, 
                                      BuiltInFunctionWrapper, ArgumentList,
                                      CLASS_FLOAT, RoleVariable)
     from freeode.ast import (NodeFuncCall, NodeIdentifier, NodeFuncArg)
@@ -1031,8 +1031,8 @@ def test_ExpressionVisitor_unknown_arguments_1(): #IGNORE:C01111
     env = ExecutionEnvironment()
     env.global_scope = mod
     #create visitor for evaluating the expression
-    exv = ExpressionVisitor()
-    exv.environment = env
+    intp = Interpreter()
+    intp.environment = env
     
     #create a Siml value as function argument
     val_1 = CLASS_FLOAT()    
@@ -1041,7 +1041,7 @@ def test_ExpressionVisitor_unknown_arguments_1(): #IGNORE:C01111
     call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
     
     #evaluate the function call
-    ret_val = exv.eval(call)
+    ret_val = intp.eval(call)
     print
     print 'Result object: --------------------------------------------------------------'
     print ret_val 
@@ -1051,9 +1051,9 @@ def test_ExpressionVisitor_unknown_arguments_1(): #IGNORE:C01111
     
     
 
-def test_ExpressionVisitor_unknown_arguments_2(): #IGNORE:C01111
-    #skip_test('Test ExpressionVisitor: call library function with unknown argument')
-    print 'Test ExpressionVisitor: call library function with unknown argument'
+def test_function_call_unknown_arguments_2(): #IGNORE:C01111
+    #skip_test('Test Interpreter: call library function with unknown argument')
+    print 'Test Interpreter: call library function with unknown argument'
     from freeode.interpreter import (Interpreter, CLASS_FLOAT, )
     from freeode.ast import (NodeFuncCall, NodeIdentifier, RoleVariable)
 
@@ -1068,7 +1068,7 @@ def test_ExpressionVisitor_unknown_arguments_2(): #IGNORE:C01111
     #create function call with unkown argument
     call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
     #interpret call
-    ret_val = intp.statement_visitor.expression_visitor.eval(call)
+    ret_val = intp.eval(call)
     #evaluating a function call with unknown arguments must return a function call
     assert isinstance(ret_val, NodeFuncCall)
     assert ret_val.type() is CLASS_FLOAT
@@ -1077,63 +1077,69 @@ def test_ExpressionVisitor_unknown_arguments_2(): #IGNORE:C01111
 
 # --------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
 def test_basic_execution_of_statements(): #IGNORE:C01111
-    #skip_test('Test basic execution of statements (no interpreter object)')
-    print 'Test basic execution of statements (no interpreter object) .................................'
-    from freeode.interpreter import (IModule, CLASS_FLOAT, CLASS_STRING,
-                                     ExecutionEnvironment,
-                                     ExpressionVisitor, StatementVisitor)
-    import freeode.simlparser as simlparser
-    from freeode.ast import RoleConstant
-    
-    prog_text = \
+    msg = \
 '''
-data a:Float const 
-data b:Float const 
-a = 2*2 + 3*4
-b = 2 * a
-
-data c:String const
-c = 'Hello ' + 'world!'
+Test basic execution of statements (no interpreter object)
+This low level test is now impossible
 '''
-
-    #create the built in library
-    mod = IModule()
-    mod.create_attribute('Float', CLASS_FLOAT)
-    mod.create_attribute('String', CLASS_STRING)
-#    print
-#    print 'global namespace - before interpreting statements - built in library: ---------------'
-#    print mod
-           
-    #create dummy interpreter class, needed for assignment statement
-    class Interpreter(object):
-        def __init__(self):
-            self.assign_target_roles = (RoleConstant,)
-    #initialize the interpreter
-    intp = Interpreter()
-    env = ExecutionEnvironment()
-    exv = ExpressionVisitor()
-    exv.environment = env
-    stv = StatementVisitor(None, exv)
-    stv.interpreter = intp
-    stv.environment = env
-    #set up parsing the main module
-    stv.environment.global_scope = mod
-    stv.environment.local_scope = mod
-
-    #parse the program text
-    ps = simlparser.Parser()
-    module_code = ps.parseModuleStr(prog_text)
+    skip_test(msg)
+    print msg
     
-    #interpreter main loop
-    stv.exec_(module_code.statements)
-        
-#    print
-#    print 'global namespace - after interpreting statements: -----------------------------------'
-#    print mod
-    
-    assert mod.get_attribute('a').value == 16             #IGNORE:E1103
-    assert mod.get_attribute('b').value == 2*16           #IGNORE:E1103
-    assert mod.get_attribute('c').value == 'Hello world!' #IGNORE:E1103
+#    from freeode.interpreter import (IModule, CLASS_FLOAT, CLASS_STRING,
+#                                     ExecutionEnvironment,
+#                                     ExpressionVisitor, StatementVisitor)
+#    import freeode.simlparser as simlparser
+#    from freeode.ast import RoleConstant
+#    
+#    prog_text = \
+#'''
+#data a:Float const 
+#data b:Float const 
+#a = 2*2 + 3*4
+#b = 2 * a
+#
+#data c:String const
+#c = 'Hello ' + 'world!'
+#'''
+#
+#    #create the built in library
+#    mod = IModule()
+#    mod.create_attribute('Float', CLASS_FLOAT)
+#    mod.create_attribute('String', CLASS_STRING)
+##    print
+##    print 'global namespace - before interpreting statements - built in library: ---------------'
+##    print mod
+#           
+#    #create dummy interpreter class, needed for assignment statement
+#    class Interpreter(object):
+#        def __init__(self):
+#            self.assign_target_roles = (RoleConstant,)
+#    #initialize the interpreter
+#    intp = Interpreter()
+#    env = ExecutionEnvironment()
+#    exv = ExpressionVisitor()
+#    exv.environment = env
+#    stv = StatementVisitor(None, exv)
+#    stv.interpreter = intp
+#    stv.environment = env
+#    #set up parsing the main module
+#    stv.environment.global_scope = mod
+#    stv.environment.local_scope = mod
+#
+#    #parse the program text
+#    ps = simlparser.Parser()
+#    module_code = ps.parseModuleStr(prog_text)
+#    
+#    #interpreter main loop
+#    stv.exec_(module_code.statements)
+#        
+##    print
+##    print 'global namespace - after interpreting statements: -----------------------------------'
+##    print mod
+#    
+#    assert mod.get_attribute('a').value == 16             #IGNORE:E1103
+#    assert mod.get_attribute('b').value == 2*16           #IGNORE:E1103
+#    assert mod.get_attribute('c').value == 'Hello world!' #IGNORE:E1103
   
   
   
@@ -1148,14 +1154,14 @@ User defined functions are created without parser.
     print msg
     
     from freeode.interpreter import (Interpreter, SimlFunction, 
-                                     ArgumentList, CLASS_FLOAT, CLASS_STRING,
-                                     BUILT_IN_LIB)
+                                     ArgumentList, CLASS_FLOAT, CLASS_STRING)
     from freeode.ast import (NodeFuncArg, NodeReturnStmt, 
                              NodeIdentifier, UserException)
 
     #create the interpreter - initializes INTERPRETER
     # this way SimlFunction can access the interpreter.
     intp = Interpreter()    #IGNORE:W0612
+    lib = intp.built_in_lib
     #create a Siml value as function argument
     val_1 = CLASS_FLOAT(1)
     
@@ -1163,9 +1169,9 @@ User defined functions are created without parser.
     # func test(a:Float):
     #     ** nothing **
     f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=None, statements=[], global_scope=BUILT_IN_LIB)
+                      return_type=None, statements=[], global_scope=lib)
     #call with existing value
-    intp.expression_visitor.apply(f1, (val_1,))
+    intp.apply(f1, (val_1,))
     
     #create a function with return statement - uses interpreter for executing the statement
     # func test(a:Float) -> Float:
@@ -1173,10 +1179,10 @@ User defined functions are created without parser.
     f2 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
                       return_type=CLASS_FLOAT, 
                       statements=[NodeReturnStmt([NodeIdentifier('a')])], 
-                      global_scope=BUILT_IN_LIB)
+                      global_scope=lib)
     #call function and see if value is returned
-    ret_val = intp.expression_visitor.apply(f2, (val_1,))
-    assert ret_val.value == 1.
+    ret_val = intp.apply(f2, (val_1,))
+    assert ret_val.value == 1. #IGNORE:E1103
 
     #create a function with wrong return type
     # func test(a:Float) -> String:
@@ -1184,9 +1190,9 @@ User defined functions are created without parser.
     f3= SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
                       return_type=CLASS_STRING, 
                       statements=[NodeReturnStmt([NodeIdentifier('a')])], 
-                      global_scope=BUILT_IN_LIB)
+                      global_scope=lib)
     try:
-        ret_val = intp.expression_visitor.apply(f3, (val_1,))
+        ret_val = intp.apply(f3, (val_1,))
     except UserException:
         print 'Getting expected exception: type mismatch at function return'
     else:
@@ -1227,13 +1233,11 @@ User defined functions are created without parser.
     print msg
     
     from freeode.interpreter import (Interpreter, SimlFunction, IModule,
-                                     ArgumentList, CLASS_FLOAT, BUILT_IN_LIB)
-    from freeode.ast import (NodeFuncArg)
+                                     ArgumentList, CLASS_FLOAT)
+    from freeode.ast import NodeFuncArg
 
-    #create the interpreter - initializes INTERPRETER
-    
-    intp = Interpreter()    #IGNORE:W0612
-    
+    #create the interpreter 
+    intp = Interpreter()        
     
     #create a Siml value as function argument
     val_1 = CLASS_FLOAT(1)
@@ -1242,7 +1246,8 @@ User defined functions are created without parser.
     # func test(a:Float):
     #     ** nothing **
     f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=None, statements=[], global_scope=BUILT_IN_LIB)
+                      return_type=None, statements=[], 
+                      global_scope=intp.built_in_lib)
     #create module where the function lives
     mod1 = IModule('test-module')
     mod1.create_attribute('test', f1)
@@ -1251,7 +1256,7 @@ User defined functions are created without parser.
     # and set interpreter up to collect code. In this mode local variables of all 
     # functions must become algebraic variables of the simulation object.
     intp.start_collect_code()
-    intp.expression_visitor.apply(f1, (val_1,))
+    intp.apply(f1, (val_1,))
     _stmts, fn_locals = intp.stop_collect_code()
     
     print fn_locals
