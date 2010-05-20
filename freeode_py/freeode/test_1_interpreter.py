@@ -184,18 +184,19 @@ def test_InterpreterObject_replace_attribute(): #IGNORE:C01111
     msg = 'InterpreterObject: replace_attribute method.'
     skip_test(msg)
     print msg
-    from freeode.interpreter import (InterpreterObject)
     
-    obj = InterpreterObject()
-    attr1 = InterpreterObject()
-    attr2 = InterpreterObject()
-    
-    #put an attribute into the object
-    obj.create_attribute('test', attr1)
-    assert obj.get_attribute('test') is attr1
-    #replace the attribute with an other object
-    obj.replace_attribute('test', attr2)
-    assert obj.get_attribute('test') is attr2
+#    from freeode.interpreter import (InterpreterObject)
+#    
+#    obj = InterpreterObject()
+#    attr1 = InterpreterObject()
+#    attr2 = InterpreterObject()
+#    
+#    #put an attribute into the object
+#    obj.create_attribute('test', attr1)
+#    assert obj.get_attribute('test') is attr1
+#    #replace the attribute with an other object
+#    obj.replace_attribute('test', attr2)
+#    assert obj.get_attribute('test') is attr2
     
  
     
@@ -447,7 +448,7 @@ def test_BuiltInFunctionWrapper_2(): #IGNORE:C01111
     
     #call function: sqrt( <unknown value> )
     try:
-        siml_ret = func(val_x)
+        _siml_ret = func(val_x)
     except UnknownArgumentsException:
         print 'Expected exception recieved: unknown arguments.'
     else:
@@ -455,7 +456,7 @@ def test_BuiltInFunctionWrapper_2(): #IGNORE:C01111
     
     #call function: sqrt( <expression fragment> )
     try:
-        siml_ret = func(binop_u)
+        _siml_ret = func(binop_u)
     except UnknownArgumentsException:
         print 'Expected exception recieved: unknown arguments.'
     else:
@@ -470,9 +471,9 @@ def test_SimlClass_1(): #IGNORE:C01111
     from freeode.interpreter import SimlClass, Interpreter
     
     #The SimlClass object contains the interpreter as a class variable 
-    #It uses its methods and terefore only functions after the interpreter 
+    #It uses its methods and therefore only functions after the interpreter 
     #was constructed
-    intp = Interpreter()
+    _intp = Interpreter()
     
     #construct a class with no statements and no base classes
     #class Test1:
@@ -978,7 +979,6 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     mod = IModule()
     #create attribute 'a' with no value
     val_2 = CLASS_FLOAT()
-    val_2.value = None
     val_2.role = RoleVariable
     mod.create_attribute('a', val_2)
     print

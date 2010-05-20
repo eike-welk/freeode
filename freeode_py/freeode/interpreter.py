@@ -1993,15 +1993,20 @@ INTERPRETER = None
 
 class Interpreter(object):
     '''
-    Interpret the constant parts of the program
+    Interpret the program - execute the macros
 
-    Contains some high-level entry points for the interpreter algorithm;
-    and also data that is shared between different components of the
-    interpreter. (Example: Frame stack)
-
-    These methods are used from outside (to start the interpreter) as
-    well as from inside the interpreter (to coordinate between StatementVisitor
-    and expression visitor).
+    Result of the interpretation are flattened objects. 
+    
+    Create the data (symbol table)
+    Create AST with expanded macros
+    
+    Entry points:
+        eval(...)     : evaluate expressions
+        apply(...)    : call functions
+        exec_(...)    : execute lists of statements
+        
+        interpret_module_file(...)    : interpret file 
+        interpret_module_string(...)  : interpret string
     '''
     def __init__(self):
         #the built in objects
@@ -2031,39 +2036,39 @@ class Interpreter(object):
         INTERPRETER = self
 
 
-    # --- Evaluate expressions -------------------------------------------
-    '''
-    Compute value of an expression.
+    # --- Expressions -------------------------------------------
+    #    
+    #    Compute value of an expression.
+    #
+    #    Each eval_* function evaluates one type of AST-Node recursively.
+    #    The functions return the expression's value. This value is either
+    #    an Interpreter object (value was computed at runtime), or a further 
+    #    annotated AST-tree (expression is dependent on unknown values).
+    #
+    #    The right function is selected with the function
+    #        self.eval(...)
 
-    Each vistit_* function evaluates one type of AST-Node recursively.
-    The functions return the (partial) expression's value. This value is either
-    an Interpreter object, or a further annotated AST-tree.
-
-    The right function is selected with the function
-        self.eval(...)
-    '''
-
-    def visit_InterpreterObject(self, node):
+    def eval_InterpreterObject(self, node):
         '''Visit a part of the expression that was already evaluated:
         Do nothing, return the interpreter object.'''
         return node
 
-    def visit_NodeFloat(self, node):
+    def eval_NodeFloat(self, node):
         '''Create floating point number'''
         result = IFloat(node.value)
         return result
 
-    def visit_NodeString(self, node):
+    def eval_NodeString(self, node):
         '''Create string'''
         result = IString(node.value)
         return result
 
-    def visit_NodeIdentifier(self, node):
+    def eval_NodeIdentifier(self, node):
         '''Lookup Identifier and get attribute'''
         attr = self.environment.get_attribute(node.name)
         return attr
 
-    def visit_NodeAttrAccess(self, node):
+    def eval_NodeAttrAccess(self, node):
         '''Evaluate attribute access; ('.') operator'''
         #evaluate the object on the left hand side
         inst_lhs = self.eval(node.arguments[0])
@@ -2077,7 +2082,7 @@ class Interpreter(object):
         return attr
 
 
-    def visit_NodeParentheses(self, node):
+    def eval_NodeParentheses(self, node):
         '''
         Evaluate pair of parentheses: return expression between parentheses.
 
@@ -2109,9 +2114,6 @@ class Interpreter(object):
             new_node = NodeParentheses((val_expr,), node.loc)
             #put decoration on new node
             decorate_call(new_node, val_expr.type)
-#            new_node.type = val_expr.type
-#            new_node.role = val_expr.role
-#            new_node.is_known = False
             return new_node
 
 
@@ -2119,7 +2121,7 @@ class Interpreter(object):
                       'not':'__not__',
                       '$':'__diff__', }
 
-    def visit_NodeOpPrefix1(self, node):
+    def eval_NodeOpPrefix1(self, node):
         '''
         Evaluate unary operator and return result
 
@@ -2150,11 +2152,6 @@ class Interpreter(object):
             #put on decoration
             new_node.function = func
             decorate_call(new_node, func.return_type)
-#            #new_node.function_object = func
-#            new_node.type = func.return_type
-#            new_node.is_known = False
-#            #Take the role from the argument
-#            new_node.role = inst_rhs.role
             return new_node
 
 
@@ -2174,7 +2171,7 @@ class Interpreter(object):
                     'or':('__or2__', '__ror2__'),
                     }
 
-    def visit_NodeOpInfix2(self, node):
+    def eval_NodeOpInfix2(self, node):
         '''
         Evaluate binary operator and return result
 
@@ -2190,26 +2187,21 @@ class Interpreter(object):
                                    keyword arguments
         '''
         #compute values on rhs and lhs of operator
-        inst_lhs = self.eval(node.arguments[0])
-        inst_rhs = self.eval(node.arguments[1])
+        ev_lhs = self.eval(node.arguments[0])
+        ev_rhs = self.eval(node.arguments[1])
         #look at the operator symbol and determine the right method name(s)
         lfunc_name, _rfunc_name = Interpreter._binop_table[node.operator]
         #get the special method from the LHS's class and try to call the method.
-        func = inst_lhs.type().get_attribute(lfunc_name)
+        func = ev_lhs.type().get_attribute(lfunc_name)
         try:
-            result = self.apply(func, (inst_lhs, inst_rhs))
+            result = self.apply(func, (ev_lhs, ev_rhs))
             return result
         except UnknownArgumentsException:
             #Some arguments were unknown create an unevaluated expression
-            new_node = NodeOpInfix2(node.operator, (inst_lhs, inst_rhs), node.loc)
+            new_node = NodeOpInfix2(node.operator, (ev_lhs, ev_rhs), node.loc)
             #put on decoration
             new_node.function = func
             decorate_call(new_node, func.return_type)
-#            #new_node.function_object = func
-#            new_node.type = func.return_type
-#            new_node.is_known = False
-#            #Choose most variable role: const -> param -> variable
-#            new_node.role = determine_result_role((inst_lhs, inst_rhs))
             return new_node
         except NotImplementedError:# IncompatibleTypeError?
             #TODO: if an operator is not implemented the special function should raise
@@ -2247,7 +2239,7 @@ class Interpreter(object):
 
 
 
-    def visit_NodeFuncCall(self, node):
+    def eval_NodeFuncCall(self, node):
         '''
         Evaluate a NodeFuncCall, which calls a call-able object (function).
         Execute the callable's code and return the return value.
@@ -2409,41 +2401,40 @@ class Interpreter(object):
         Result of evaluation. 
         '''
         if isinstance(expr_node, InterpreterObject):
-            return self.visit_InterpreterObject(expr_node)
+            return self.eval_InterpreterObject(expr_node)
         elif isinstance(expr_node, NodeFloat):
-            return self.visit_NodeFloat(expr_node)
+            return self.eval_NodeFloat(expr_node)
         elif isinstance(expr_node, NodeString):
-            return self.visit_NodeString(expr_node)
+            return self.eval_NodeString(expr_node)
         elif isinstance(expr_node, NodeIdentifier):
-            return self.visit_NodeIdentifier(expr_node)
+            return self.eval_NodeIdentifier(expr_node)
         elif isinstance(expr_node, NodeAttrAccess):
-            return self.visit_NodeAttrAccess(expr_node)
+            return self.eval_NodeAttrAccess(expr_node)
         elif isinstance(expr_node, NodeParentheses):
-            return self.visit_NodeParentheses(expr_node)
+            return self.eval_NodeParentheses(expr_node)
         elif isinstance(expr_node, NodeOpPrefix1):
-            return self.visit_NodeOpPrefix1(expr_node)
+            return self.eval_NodeOpPrefix1(expr_node)
         elif isinstance(expr_node, NodeOpInfix2):
-            return self.visit_NodeOpInfix2(expr_node)
+            return self.eval_NodeOpInfix2(expr_node)
         elif isinstance(expr_node, NodeFuncCall):
-            return self.visit_NodeFuncCall(expr_node)
+            return self.eval_NodeFuncCall(expr_node)
         else:
             raise Exception('Unknown node type for expressions: ' 
                             + str(type(expr_node)))
-        
-        
-    # --- Execute statements -------------------------------------------
-    '''
-    Execute statements
 
-    Each vistit_* function executes one type of statement (AST-Node).
-    The functions do not return any value, they change the state of the
-    interpreter. Usually they create or modify the attributes of the current
-    local scope (self.environment.local_scope).
-
-    The right function is selected with the inherited function
-        self.exec_(...)
-    '''
-    def visit_NodePassStmt(self, _node): 
+    
+    # --- Statements ------------------------------------------
+    #    Execute statements
+    #
+    #    Each eval_* function executes one type of statement (AST-Node).
+    #    The functions do not return any value, they change the state of the
+    #    interpreter. Usually they create or modify the attributes of the 
+    #    current local scope (self.environment.local_scope).
+    #
+    #    The right function is selected with the inherited function
+    #        self.exec_(...)
+    
+    def exec_NodePassStmt(self, _node): 
         '''
         Interpret 'pass' statement. Do nothing.
         The pass statement is necessary to define empty compound statements
@@ -2451,7 +2442,7 @@ class Interpreter(object):
         '''
         return
 
-    def visit_NodeReturnStmt(self, node):
+    def exec_NodeReturnStmt(self, node):
         '''Return value from function call'''
         if len(node.arguments) == 0:
             #no return value
@@ -2462,32 +2453,26 @@ class Interpreter(object):
             self.environment.return_value = retval
         #Forcibly end function execution -
         #exception is caught in ExpressionVisitor.visit_NodeFuncCall(...)
-        #TODO: transport return value with the exception?
         raise ReturnFromFunctionException(loc=node.loc)
 
 
-    def visit_NodeExpressionStmt(self, node):
+    def exec_NodeExpressionStmt(self, node):
         '''Intended to call functions. Compute expression and forget result'''
         ret_val = self.eval(node.expression)
         if ret_val is None or isinstance(ret_val, InterpreterObject):
             #function was evaluated at compile time, forget result
             return
-        elif isinstance(ret_val, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1,
-                                  NodeParentheses)):
-            #TODO: remove all statements that have no effect, and warn about it
-            #TODO: accept only calls to the print and graph functions
+        else:
             #there is an unevaluated expression - create some code that
-            #evaluates it at runtime
+            #executes it at runtime
             if not self.is_collecting_code():
                 raise UserException('Computations with unknown values are '
                                     'illegal here.', node.loc)
             new_stmt = NodeExpressionStmt(ret_val, node.loc)
             self.collect_statement(new_stmt)
-        else:
-            raise UserException('Illegal expression.', node.loc)
 
 
-    def visit_NodeAssignment(self, node):
+    def exec_NodeAssignment(self, node):
         '''Assign value to a constant object, or emit assignment statement
         for code generation'''
         #compute value of expression on right hand side
@@ -2591,7 +2576,7 @@ class Interpreter(object):
         self.collect_statement(new_assign)
 
 
-    def visit_NodeIfStmt(self, node):
+    def exec_NodeIfStmt(self, node):
         '''
         Interpret an "if" statement.
 
@@ -2705,7 +2690,7 @@ class Interpreter(object):
         return
 
 
-    def visit_NodeFuncDef(self, node):
+    def exec_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
         #ArgumentList does the argument parsing at the function call
         #evaluate the type specifications and the default arguments
@@ -2732,15 +2717,16 @@ class Interpreter(object):
         self.environment.local_scope.create_attribute(node.name, new_func)
 
 
-    def visit_NodeClassDef(self, node):
+    def exec_NodeClassDef(self, node):
         '''Define a class - create a class object in local name-space'''
+        #TODO: code from SimlClass.__init__ should go here!
         #create new class object and put it into the local name-space
         new_class = SimlClass(node.name, bases=None,
                               statements=node.statements, loc=node.loc)
         self.environment.local_scope.create_attribute(node.name, new_class)
 
 
-    def visit_NodeStmtList(self, node):
+    def exec_NodeStmtList(self, node):
         '''Visit node with a list of data definitions. Execute them.'''
         self.exec_(node.statements)
 
@@ -2777,7 +2763,7 @@ class Interpreter(object):
         self.environment.local_scope.create_attribute(new_name, new_object)
 
 
-    def visit_NodeCompileStmt(self, node):
+    def exec_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
         #TODO: Idea: replace the "compile" statement with a compile(...)
         #      function. This function could be written in Siml, and call
@@ -2999,23 +2985,23 @@ class Interpreter(object):
         try:
             for node in stmt_list:
                 if isinstance(node, NodePassStmt):
-                    self.visit_NodePassStmt(node)
+                    self.exec_NodePassStmt(node)
                 elif isinstance(node, NodeReturnStmt):
-                    self.visit_NodeReturnStmt(node)
+                    self.exec_NodeReturnStmt(node)
                 elif isinstance(node, NodeExpressionStmt):
-                    self.visit_NodeExpressionStmt(node)
+                    self.exec_NodeExpressionStmt(node)
                 elif isinstance(node, NodeAssignment):
-                    self.visit_NodeAssignment(node)
+                    self.exec_NodeAssignment(node)
                 elif isinstance(node, NodeIfStmt):
-                    self.visit_NodeIfStmt(node)
+                    self.exec_NodeIfStmt(node)
                 elif isinstance(node, NodeFuncDef):
-                    self.visit_NodeFuncDef(node)
+                    self.exec_NodeFuncDef(node)
                 elif isinstance(node, NodeClassDef):
-                    self.visit_NodeClassDef(node)
+                    self.exec_NodeClassDef(node)
                 elif isinstance(node, NodeStmtList):
-                    self.visit_NodeStmtList(node)
+                    self.exec_NodeStmtList(node)
                 elif isinstance(node, NodeCompileStmt): 
-                    self.visit_NodeCompileStmt(node)
+                    self.exec_NodeCompileStmt(node)
                 elif isinstance(node, NodeDataDef):
                     self.visit_NodeDataDef(node)
                 else:
@@ -3037,10 +3023,8 @@ class Interpreter(object):
                                 loc=node.loc, errno=3800920)
 
 
-    # --- code collection - compile statement --------------------------------
-    
+    # --- code collection ------------------------------------------------------   
     def start_collect_code(self, stmt_list=None, func_locals=None, ):
-#                           assign_target_roles=(RoleVariable, RoleConstant)):
         '''
         Set up everything for the code collection process
 
@@ -3050,20 +3034,13 @@ class Interpreter(object):
             List where the generated statements will be appended to.
         func_locals: InterpreterObject/None
             Namespace where each function's local variables will be stored.
-        TODO: remove! assign_target_roles: (AttributeRole, ...)
-            Roles that are currently legal for attributes that are targets
-            (LHS) of assignment statements. (For example in the dynamic(...)
-            method only intermediate variables and time differentials
-            (RoleIntermediateVariable, RoleTimeDifferential) can be assigned
-            to.
         '''
         self.compile_stmt_collect = [[]] if stmt_list is None \
                                        else [stmt_list]
         self.locals_storage = InterpreterObject() if func_locals is None \
                                                   else func_locals
-#        self.assign_target_roles = assign_target_roles
 
-    def stop_collect_code(self, ): #assign_target_roles=(RoleConstant,)):
+    def stop_collect_code(self, ): 
         '''
         End the code collection process
 
