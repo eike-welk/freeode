@@ -813,7 +813,38 @@ class NodeStmtList(Node):
         self.loc = None
 
 
-class AttributeRole(object):
+class EnumMeta(type):
+    '''Metaclass for the Enum class. Contains Enum's magic __repr__ method'''
+    def __repr__(self):
+        return self.__name__
+    
+class Enum(object):
+    '''
+    Class for use as an enum or global constant.
+    
+    Don't instantiate this class! Inherit from it, and use the child 
+    class object as the enum or constant. The class knows its name, and 
+    __repr__ returns the class name. This is nice for debugging or pretty 
+    printing.
+    
+    The class has a custom metaclass: EnumMeta.
+    >>> type(Enum)
+    <class 'freeode.ast.EnumMeta'>
+    
+    USAGE:
+    ------
+    >>> class EAST(Enum): pass
+    >>> class WEST(Enum): pass
+    >>> class NORTH(Enum): pass
+    >>> class SOUTH(Enum): pass
+    
+    >>> print NORTH, SOUTH, EAST, WEST
+    NORTH SOUTH EAST WEST
+    '''
+    __metaclass__ = EnumMeta
+    
+
+class AttributeRole(Enum):
     '''
     Constants to denote the role of an attribute.
 
