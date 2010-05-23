@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
 #    Copyright (C) 2008 - 2010 by Eike Welk                                *
-#    eike.welk@post.rwth-aachen.de                                         *
+#    eike.welk@gmx.net                                                     *
 #                                                                          *
 #    Credits:                                                              *
 #                                                                          *
@@ -331,16 +331,14 @@ class CallableObject(InterpreterObject):
         self.role = RoleConstant
         self.is_known = True
         self.name = name
-	# TODO: rename to is_runtime_function
+        # TODO: rename to is_runtime_function
         self.is_fundamental_function = False
         self.codegen_name = None
-        '''
-        If True: the function is a basic building block of the language.
-        The code generator can emit code for this function. The flattened
-        simulation object must only contain calls to these functions.
-        If False: This function must be replaced with a series of calls
-        to fundamental functions.
-        '''
+#        If True: the function is a basic building block of the language.
+#        The code generator can emit code for this function. The flattened
+#        simulation object must only contain calls to these functions.
+#        If False: This function must be replaced with a series of calls
+#        to fundamental functions.
         self.return_type = None
 
     def __call__(self, *args, **kwargs):
@@ -1958,8 +1956,6 @@ class CompiledClass(InterpreterObject):
 
 
 
-#the module of built in objects
-#BUILT_IN_LIB = IModule() #just for pyparsings's code completion
 #The one and only interpreter
 INTERPRETER = None
 
@@ -3047,7 +3043,6 @@ class Interpreter(object):
         stmt_list, func_locals = self.compile_stmt_collect[0], self.locals_storage
         self.compile_stmt_collect = None
         self.locals_storage = None
-#        self.assign_target_roles = assign_target_roles
         return stmt_list, func_locals
 
     def push_statement_list(self, statement_list):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #    Copyright (C) 2009 by Eike Welk
-#    eike.welk@post.rwth-aachen.de
+#    eike.welk@gmx.net                                                     
 
 
 

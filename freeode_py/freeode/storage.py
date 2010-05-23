@@ -4,7 +4,7 @@
 #    v-nijs at kellogg.northwestern.edu                                    #
 #                                                                          #
 #    Copyright (C) 2007 - 2008 by Eike Welk                                #
-#    eike.welk@post.rwth-aachen.de                                         #
+#    eike.welk@gmx.net                                                     #
 #                                                                          #
 #    License: LGPL                                                         #
 #                                                                          #

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #############################################################################
 #    Copyright (c) 2008  Eike Welk                                          #
-#    eike.welk@post.rwth-aachen.de                                          #
+#    eike.welk@gmx.net                                                      #
 #                                                                           #
 #    License: Expat License (X11 License)                                   #
 #                                                                           #
