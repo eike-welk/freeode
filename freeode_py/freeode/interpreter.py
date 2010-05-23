@@ -787,45 +787,14 @@ class BoundMethod(CallableObject):
 
 
 class SimlClass(TypeObject):
-    '''
-    Represents class written in Siml - usually a user defined class.
-    '''
-    def __init__(self, name, bases, statements, loc=None):
-        '''
-        Create a new class object. Called for a class statement.
-
-        The statements inside the class' body are interpreted here.
-        '''
+    '''Represents class written in Siml - usually a user defined class.'''
+    def __init__(self, name, bases, loc=None):
+        '''Create a new class object.'''
         TypeObject.__init__(self, name)
         self.bases = bases
-#        self.statements = statements
         self.loc = loc
 
-        #TODO: implement base classes
-        if self.bases is not None:
-            raise Exception('Base classes are not implemented!')
-
-        #Create new environment for object construction.
-        #Use global scope from class definition.
-        new_env = ExecutionEnvironment()
-        new_env.global_scope = INTERPRETER.environment.global_scope
-        new_env.this_scope = None
-        new_env.local_scope = self #functions and data are created
-        #                           in the local scope - this class object
-        #Data attributes of user defined objects are by default variables
-        new_env.default_data_role = RoleAlgebraicVariable
-
-        #execute the function's code in the new environment.
-        INTERPRETER.push_environment(new_env)
-        try:
-            INTERPRETER.exec_(statements)
-        except ReturnFromFunctionException:
-            print 'Warning: return statement in class declaration!'
-#                raise Exception('Return statements are illegal in class bodies!')
-        INTERPRETER.pop_environment()
-
-
-    def __call__(self, *args, **_kwargs):
+    def __call__(self, *args, **kwargs):
         '''
         Create a new instance object.
 
@@ -837,6 +806,7 @@ class SimlClass(TypeObject):
         new_obj = InterpreterObject()
         new_obj.type = ref(self)
         #copy data attributes from class to instance
+        #TODO: copy all attributes at once, to keep all relations between the data attributes
         for attr_name, attr in self.attributes.iteritems():
             if not siml_callable(attr):
                 new_attr = attr.copy()
@@ -847,7 +817,7 @@ class SimlClass(TypeObject):
             if not siml_callable(init_meth):
                 raise UserException('"__init__" attribute must be a method (callable)!')
             #run the constructor
-            init_meth(*args, **args)  #IGNORE:W0142
+            INTERPRETER.apply(init_meth, args, kwargs)
         return new_obj
 
 
@@ -1399,6 +1369,7 @@ class PrintFunction(CallableObject):
                 str_expr = INTERPRETER.eval(str_call)
                 new_args.append(str_expr) #collect the call's result
             #create a new call to the print function
+            #TODO: raise UndefinedAttributeError to generate code
             print_call = NodeFuncCall(self, new_args, {}, None)
             decorate_call(print_call, CLASS_NONETYPE)
             return print_call
@@ -1468,6 +1439,7 @@ class GraphFunction(CallableObject):
                     raise UserException('Unknown keyword argument: %s' % arg_name)
 
             #create a new call to the graph function and return it (unevaluated)
+            #TODO: raise UndefinedAttributeError to generate code
             graph_call = NodeFuncCall(self, args, kwargs, None)
             decorate_call(graph_call, CLASS_NONETYPE)
             return graph_call
@@ -2720,12 +2692,28 @@ class Interpreter(object):
     def exec_NodeClassDef(self, node):
         '''Define a class - create a class object in local name-space'''
         #TODO: code from SimlClass.__init__ should go here!
+        
         #create new class object and put it into the local name-space
-        new_class = SimlClass(node.name, bases=None,
-                              statements=node.statements, loc=node.loc)
+        new_class = SimlClass(node.name, bases=None, loc=node.loc)
         self.environment.local_scope.create_attribute(node.name, new_class)
+        
+        #Create new environment for code in class body
+        new_env = ExecutionEnvironment()
+        new_env.global_scope = self.environment.global_scope
+        new_env.this_scope = None
+        new_env.local_scope = new_class #functions and data are created inside the new class
+        #Data attributes of user defined objects are by default variables
+        new_env.default_data_role = RoleAlgebraicVariable
 
+        #execute the function's code in the new environment.
+        self.push_environment(new_env)
+        try:
+            self.exec_(node.statements)
+        except ReturnFromFunctionException:
+            print 'Warning: return statement in class declaration!'
+        self.pop_environment()
 
+        
     def exec_NodeStmtList(self, node):
         '''Visit node with a list of data definitions. Execute them.'''
         self.exec_(node.statements)

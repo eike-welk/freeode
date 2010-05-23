@@ -467,18 +467,11 @@ def test_BuiltInFunctionWrapper_2(): #IGNORE:C01111
 # -------- Test user defined class object ------------------------------------------------------------------------
 def test_SimlClass_1(): #IGNORE:C01111
     #skip_test('Test expression evaluation (only immediate values)')
-    print 'Test SimlClass: class without statements'
-    from freeode.interpreter import SimlClass, Interpreter
-    
-    #The SimlClass object contains the interpreter as a class variable 
-    #It uses its methods and therefore only functions after the interpreter 
-    #was constructed
-    _intp = Interpreter()
-    
-    #construct a class with no statements and no base classes
-    #class Test1:
-    #    <nothing; impossible in Siml>
-    c1=SimlClass('Test1', None, [], None)
+    print 'Test SimlClass: class without attributes'
+    from freeode.interpreter import SimlClass
+       
+    #construct a class object with no base classes and no location
+    c1=SimlClass('Test1', None, None)
     
     #create an instance of the class
     i1 = c1()
@@ -489,25 +482,13 @@ def test_SimlClass_1(): #IGNORE:C01111
 
 def test_SimlClass_2(): #IGNORE:C01111
     #skip_test('Test expression evaluation (only immediate values)')
-    print 'Test SimlClass: class with one data member'
-    from freeode.interpreter import SimlClass, Interpreter
-    from freeode.ast import NodeDataDef, NodeIdentifier
+    print 'Test SimlClass: class with one data attribute'
+    from freeode.interpreter import SimlClass, IFloat
     
-    #The SimlClass object contains the interpreter as a class variable 
-    #It uses its methods and therefore only functions when there is an 
-    #interpreter object.
-    intp = Interpreter()
-    #set up the built in library
-    intp.create_test_module_with_builtins()
-    
-    #construct a class with no statements and no base classes
-    #class Test1:
-    #    Data a:Float
-    data_stmt = NodeDataDef('a1', NodeIdentifier('Float'))
-    cls = SimlClass('Test1', None, 
-                 [data_stmt], 
-                 None)
-    assert cls.has_attribute('a1')
+    #construct a class object with no base classes and no location
+    cls = SimlClass('Test1', None, None)
+    #add an attribute
+    cls.create_attribute('a1', IFloat())
     
     #create an instance of the class
     inst = cls()

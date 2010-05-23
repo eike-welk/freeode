@@ -822,9 +822,9 @@ class Enum(object):
     '''
     Class for use as an enum or global constant.
     
-    Don't instantiate this class! Inherit from it, and use the child 
-    class object as the enum or constant. The class knows its name, and 
-    __repr__ returns the class name. This is nice for debugging or pretty 
+    Don't instantiate this class! Inherit from it, and use the class object 
+    itself as the enum or constant. When the class is converted to a 
+    string it becomes its own class name. This is nice for debugging or pretty 
     printing.
     
     The class has a custom metaclass: EnumMeta.
