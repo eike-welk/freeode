@@ -35,7 +35,7 @@ from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
 
 
 # -------- Test AATreeMaker class ----------------------------------------------------------------------
-def test_AATreeMaker(): #IGNORE:C01111
+def test_AATreeMaker_make_attr_lists(): #IGNORE:C01111
     msg = 'AATreeMaker.make_attr_lists: select attributes for the different \n' \
           'groups for string conversion.'
     #skip_test(msg)
@@ -43,6 +43,8 @@ def test_AATreeMaker(): #IGNORE:C01111
     
     from freeode.util import AATreeMaker
     
+    #create some classes for the tree
+    #some smaller leaves and branches
     class TestWantLong(object):
         __siml_aa_tree_maker__ = AATreeMaker()
         def __init__(self):
@@ -58,6 +60,7 @@ def test_AATreeMaker(): #IGNORE:C01111
         def __init__(self):
             self.name = 'print me short 2'
     
+    #the tree trunk
     class Test1(object):
         __siml_aa_tree_maker__ = AATreeMaker(top_names=['name', 'top'], 
                                              xshort_names=['want_xshort'], 
@@ -80,11 +83,14 @@ def test_AATreeMaker(): #IGNORE:C01111
             self.want_long3 = [TestWantLong()]
             self.want_long4 = {'foo':TestWantLong()}
         
+    #create the tree
     t1 = Test1()
     
+    #group the attributes into four groups
     top_attr, short_attr, long_attr, bottom_attr \
         = t1.__siml_aa_tree_maker__.make_attr_lists(t1)
-    print top_attr, short_attr, long_attr, bottom_attr  
+        
+    #print top_attr, short_attr, long_attr, bottom_attr  
     
     assert top_attr == ['name', 'top'] 
     assert short_attr == ['bar', 'two', 'want_short1', 'want_short2', 'want_xshort'] 
@@ -92,8 +98,89 @@ def test_AATreeMaker(): #IGNORE:C01111
     assert bottom_attr == ['bottom']
 
 
+
+def test_AATreeMaker_make_tree(): #IGNORE:C01111
+    msg = 'AATreeMaker.make_tree: test string conversion.'
+    #skip_test(msg)
+    print msg
+    
+    from freeode.util import AATreeMaker
+    
+    #create some classes for the tree
+    #some smaller leaves and branches
+    class TestWantLong(object):
+        __siml_aa_tree_maker__ = AATreeMaker()
+        def __init__(self):
+            self.name = 'print me long'
+    
+    class TestWantShort1(object):
+        __siml_aa_tree_maker__ = AATreeMaker()
+        def __init__(self):
+            self.name = 'print me short 1'
+    
+    class TestWantShort2(object):
+        __siml_aa_tree_maker__ = AATreeMaker()
+        def __init__(self):
+            self.name = 'print me short 2'
+    
+    #the tree trunk
+    class Test1(object):
+        __siml_aa_tree_maker__ = AATreeMaker(top_names=['name', 'top'], 
+                                             xshort_names=['want_xshort'], 
+                                             short_names=['want_short1'], 
+                                             long_names=['want_long2'], 
+                                             bottom_names=['bottom'], 
+                                             short_types=[TestWantShort2])
+        
+        def __init__(self):
+            self.name = 'contain multiple cases'
+            self.top = 'also want to top'
+            self.bottom = 'my bottom'
+            self.bar = 'my bar'
+            self.two = 2
+            self.want_short1 = TestWantShort1()
+            self.want_xshort = TestWantShort1()
+            self.want_short2 = TestWantShort2()
+            self.want_long1 = TestWantLong()
+            self.want_long2 = 'also want long'
+            self.want_long3 = [TestWantLong(), TestWantLong(), 'hello']
+            self.want_long4 = {'foo':TestWantLong(), 'bar':1}
+        
+    #create the tree
+    t1 = Test1()
+    
+    tree_str = t1.__siml_aa_tree_maker__.make_tree(t1)
+    print tree_str
+    
+    
+    
+def test_AATreeMaker_infinite_recursion(): #IGNORE:C01111
+    msg = 'AATreeMaker.make_tree: test protection against infinite_recursion.'
+    #skip_test(msg)
+    print msg
+    
+    from freeode.util import AATreeMaker
+
+    #TODO: test protection against infinite recursion
+    class Test1(object):
+        __siml_aa_tree_maker__ = AATreeMaker()
+        def __init__(self, name, foo=None, bar=None):
+            self.name = name
+            self.foo = foo
+            self.bar = bar
+            
+    tree = Test1('root', 
+                 Test1('branch1', Test1('branch2', 23, 42), 13), 
+                 Test1('branch3', 'hello', 'world'))
+    tree.foo.bar = tree
+    
+    tree_str = tree.__siml_aa_tree_maker__.make_tree(tree)
+    print tree_str
+    
+    
+    
 if __name__ == '__main__':
     # Debugging code may go here.
-    #test_expression_evaluation_1()
-    test_AATreeMaker()
+    test_AATreeMaker_make_tree()
+    test_AATreeMaker_infinite_recursion()
     pass
