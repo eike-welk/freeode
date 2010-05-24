@@ -84,7 +84,7 @@ def test_AATreeMaker(): #IGNORE:C01111
     
     top_attr, short_attr, long_attr, bottom_attr \
         = t1.__siml_aa_tree_maker__.make_attr_lists(t1)
-    #print top_attr, short_attr, long_attr, bottom_attr  
+    print top_attr, short_attr, long_attr, bottom_attr  
     
     assert top_attr == ['name', 'top'] 
     assert short_attr == ['bar', 'two', 'want_short1', 'want_short2', 'want_xshort'] 

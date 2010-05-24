@@ -116,68 +116,53 @@ class AATreeMaker(object):
         attr_dict = in_obj.__dict__
         attr_names = set(attr_dict.keys())
         
-        #get the attributes that are printed first. they are not sorted
-        top_attr = []
-        for name in self.top_names:
-            if name in attr_names:
-                top_attr.append(name)
-                attr_names.remove(name)
-        #get the attributes that are printed last. they are not sorted
-        bottom_attr = []
-        for name in self.bottom_names:
-            if name in attr_names:
-                bottom_attr.append(name)
-                attr_names.remove(name)
+        #Get the attributes that are displayed first and last. 
+        #They are not sorted, and they can appear twice.
+        top_attr =    [a for a in self.top_names    if a in attr_names]
+        bottom_attr = [a for a in self.bottom_names if a in attr_names]
+        attr_names -= set(top_attr) | set(bottom_attr)
         
-        #get attributes that the user wants to be converted by str
-        #specified by name
-        short_attr = [] 
-        for name in self.short_names + self.xshort_names:
-            if name in attr_names:
-                short_attr.append(name)
-                attr_names.remove(name)
-        #specified by type
+        #Get attributes that should be converted by str, specified by name
+        short_attr = [a for a in self.short_names + self.xshort_names if a in attr_names]
+        attr_names -= set(short_attr)
+        #Get attributes that should be converted to trees, specified by name
+        long_attr = [a for a in self.long_names if a in attr_names]
+        attr_names -= set(long_attr)
+        
+        #Search for attributes of certain types and put them into short_attr or 
+        #long_attr lists
         short_types = tuple(self.short_types)
-        for name, attr in attr_dict.iteritems():
-            if isinstance(attr, short_types) and name in attr_names:
-                short_attr.append(name)
-                attr_names.remove(name)
-        
-        #get attributes that the user wants to be converted to trees
-        #specified by name
-        long_attr = []
-        for name in self.long_names:
-            if name in attr_names:
-                long_attr.append(name)
-                attr_names.remove(name)
-        #attributes that contain a tree maker are converted to trees
         for name, attr in attr_dict.iteritems():
             if name not in attr_names:
                 continue
-            #Attributes that contain a tree maker
-            if hasattr(attr, self.tree_maker_name):
+            #The user can specify types that should be converted by str
+            if isinstance(attr, short_types):
+                short_attr.append(name)
+                attr_names.remove(name)
+            #Attributes that contain a tree maker are converted to trees
+            elif hasattr(attr, self.tree_maker_name):
                 long_attr.append(name)
                 attr_names.remove(name)
-            #Lists and tuples where the first element contains a tree maker
+            #Lists or tuples where an element contains a tree maker
             elif isinstance(attr, (list, tuple)):
-                elem0 = attr[0]
-                if hasattr(elem0, self.tree_maker_name):
-                    long_attr.append(name)
-                    attr_names.remove(name)
-            #dicts where the first element we see contains a tree maker
+                for elem in attr:
+                    if hasattr(elem, self.tree_maker_name):
+                        long_attr.append(name)
+                        attr_names.remove(name)
+                        break
+            #dicts where an element contains a tree maker
             elif isinstance(attr, dict):
-                elem0 = attr.values()[0]
-                if hasattr(elem0, self.tree_maker_name):
-                    long_attr.append(name)
-                    attr_names.remove(name)
-        long_attr.sort()
+                for elem in attr.itervalues():
+                    if hasattr(elem, self.tree_maker_name):
+                        long_attr.append(name)
+                        attr_names.remove(name)
+                        break
         
         #all remaining attributes are considered no tree
-        for name in attr_names:
-            short_attr.append(name)
-        short_attr.sort()
+        short_attr += list(attr_names)
             
-        #print top_attr, short_attr, long_attr, bottom_attr
+        long_attr.sort()    
+        short_attr.sort() 
         return top_attr, short_attr, long_attr, bottom_attr
         
         
