@@ -115,6 +115,9 @@ class ExecutionEnvironment(object):
         self.return_value = None
         #default role for the data statement.
         self.default_data_role = RoleUnkown
+        
+        #function which is currently executed
+        self.function = None
 
 
     def get_attribute(self, attr_name, default=UndefinedAttributeError()):
@@ -387,6 +390,12 @@ class ArgumentList(SimpleArgumentList):
     - Checks the arguments when function definition is parsed
     - Evaluates the arguments when the function definition is interpreted
     - Parses the arguments when the function is called.
+    
+    TODO: For inspiration look at 
+        (http://www.python.org/dev/peps/pep-3107)
+        http://www.python.org/dev/peps/pep-0362/
+        http://oakwinter.com/code/typecheck/
+        http://peak.telecommunity.com/PyProtocols.html
     """
     def __init__(self, arguments, loc=None):
         '''
@@ -411,16 +420,16 @@ class ArgumentList(SimpleArgumentList):
         '''
         Interpret the types and default values of the arguments.
         - default values are computed and must evaluate to constants
-        #TODO: why is this function not called from the constructor?
+        
+        #TODO: Call function from _test_type_compatible 
         '''
-        expression_visitor = interpreter
         #evaluate argument type and default arguments
         for arg in self.arguments:
             if arg.type is not None:
-                type_ev = expression_visitor.eval(arg.type)
+                type_ev = interpreter.eval(arg.type)
                 arg.type = ref(type_ev)
             if arg.default_value is not None:
-                dval_ev = expression_visitor.eval(arg.default_value)
+                dval_ev = interpreter.eval(arg.default_value)
                 arg.default_value = dval_ev
             #test type compatibility of default value and argument type
             if arg.type is not None and arg.default_value is not None:
@@ -523,6 +532,9 @@ class ArgumentList(SimpleArgumentList):
         arg_def: ast.NodeFuncArg()
             Definition object of this argument.
             If arg_def.type is None: return True; no type checking is performed.
+        
+        TODO: call this function manually after calling parse_function_call_args
+              reason Bug #391386 : https://bugs.launchpad.net/freeode/+bug/391386
         '''
         if arg_def.type is None:
             return
@@ -592,8 +604,11 @@ class BuiltInFunctionWrapper(CallableObject):
                              codegen_name=None):
         CallableObject.__init__(self, name)
         #ArgumentList(): The function's argument definition.
+        #TODO: new name __siml_arg_def__
+        #               func_annotations
         self.argument_definition = argument_definition
         #TypeObject or None: The type of the function's return value
+        #TODO: new name __siml_return_type__
         self.return_type = ref(return_type) if return_type is not None else None
         #A Python function. Get function if argument is unbound method.
         self.py_function = py_function if isinstance(py_function, types.FunctionType) \
@@ -674,7 +689,7 @@ class SimlFunction(CallableObject):
     '''
     def __init__(self, name, argument_definition=ArgumentList([]),
                              return_type=None,
-                             statements=None, global_scope=None):
+                             statements=None, global_scope=None, loc=None):
         CallableObject.__init__(self, name)
         #IntArgumentList
         self.argument_definition = argument_definition
@@ -692,6 +707,8 @@ class SimlFunction(CallableObject):
         #--- data flow analysis -------
         self.inputs = None
         self.outputs = None
+        #--- stack trace ---------
+        self.loc = loc
 
 
     def __call__(self, *args, **kwargs):
@@ -2298,7 +2315,7 @@ class Interpreter(object):
         #Count calls for making nice name spaces for persistant locals
         func_obj.call_count += 1
         #create local name space (for function arguments and local variables)
-        if INTERPRETER.is_collecting_code():
+        if self.is_collecting_code():
             #store local scope so local variables are accessible for
             #code generation
             local_namespace = func_obj.create_persistent_locals_ns()
@@ -2329,6 +2346,8 @@ class Interpreter(object):
         new_env.default_data_role = RoleUnkown
         #default return value is Siml-None
         new_env.return_value = NONE
+        #current function for macro execution stack trace
+        new_env.function = func_obj
 
         #execute the function's code in the new environment.
         self.push_environment(new_env)
@@ -2680,7 +2699,7 @@ class Interpreter(object):
 
         #create new function object and
         new_func = SimlFunction(node.name, arguments_ev, return_type_ev,
-                                node.statements, global_scope)
+                                node.statements, global_scope, node.loc)
         #put function object into the local namespace
         self.environment.local_scope.create_attribute(node.name, new_func)
 
@@ -3141,6 +3160,9 @@ class Interpreter(object):
         env.local_scope = make_proxy(mod)
         #Data attributes on module level are by default constants
         env.default_data_role = RoleConstant
+        #create dummy function for macro error stack trace
+        env.function = SimlFunction(name='__main__', 
+                                    loc=TextLocation(0, text, file_name))
         #put the frame on the frame stack
         self.push_environment(env)
         #parse the program text
