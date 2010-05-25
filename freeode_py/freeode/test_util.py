@@ -36,7 +36,7 @@ from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
 
 # -------- Test AATreeMaker class ----------------------------------------------------------------------
 def test_AATreeMaker_make_attr_lists(): #IGNORE:C01111
-    msg = 'AATreeMaker.make_attr_lists: select attributes for the different \n' \
+    msg = 'AATreeMaker._group_attributes: select attributes for the different \n' \
           'groups for string conversion.'
     #skip_test(msg)
     print msg
@@ -88,7 +88,7 @@ def test_AATreeMaker_make_attr_lists(): #IGNORE:C01111
     
     #group the attributes into four groups
     top_attr, short_attr, long_attr, bottom_attr \
-        = t1.__siml_aa_tree_maker__.make_attr_lists(t1)
+        = t1.__siml_aa_tree_maker__._group_attributes(t1)
         
     #print top_attr, short_attr, long_attr, bottom_attr  
     
@@ -149,8 +149,8 @@ def test_AATreeMaker_make_tree(): #IGNORE:C01111
     #create the tree
     t1 = Test1()
     
-    tree_str = t1.__siml_aa_tree_maker__.make_tree(t1)
-    print tree_str
+    _tree_str = t1.__siml_aa_tree_maker__.make_tree(t1)
+    #print tree_str
     
     
     
@@ -174,8 +174,8 @@ def test_AATreeMaker_infinite_recursion(): #IGNORE:C01111
                  Test1('branch3', 'hello', 'world'))
     tree.foo.bar = tree
     
-    tree_str = tree.__siml_aa_tree_maker__.make_tree(tree)
-    print tree_str
+    _tree_str = tree.__siml_aa_tree_maker__.make_tree(tree)
+    #print tree_str
     
     
     

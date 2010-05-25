@@ -31,53 +31,101 @@ from __future__ import absolute_import
 
 class AATreeMaker(object):
     '''
-    Create an ASCII string to visualize arbitrary Python objects.
+    Create an ASCII-art tree to visualize arbitrary Python objects. All of its
+    data attributes are processed recursively.
     
-    Default behavior:
-    Objects that contain an object named '__siml_aa_tree_maker__' are converted
-    to ASCII art trees; all other objects are converted to strings with the 
-    built in function str.
+    The algorithm is configurable, attributes can be exempted from the 
+    recursive traversal and only be represented by a short string. The object 
+    is protected against infinite loops by a remembering all converted objects 
+    in a set.
+    
+    To work with this class an object must have an attribute 
+        '__siml_aa_tree_maker__' of type AATreeMaker. 
+    This will usually be a class attribute. All objects that don't have such an
+    attribute are converted with the built in function 'repr'. 
+    
+    The data attributes are put into four categories. The constructor arguments  
+    customize the behavior.
+    top: 
+        Attributes that should be viewed first, like 'name'. These attributes 
+        are converted to short strings.
+    short, xshort:
+        These attributes are assumed to have a relatively small textual 
+        representation, which fits into one line:
+        - Objects which are built in types (str, int, ...). 
+        - Objects which are not owned by this node. For attributes specified 
+          in the argument 'xshort' only the class name is returned.
+    long:
+        These attributes have a big textual representation, spanning multiple 
+        lines.
+        - Objects which contain a AATreeMaker, lists and dicts of such objects.
+    bottom:  
+        Attributes that should be viewed last, like 'loc'. These attributes 
+        are converted to short strings.
+        
+    USAGE
+    -----
+    Call function 
+        make_tree 
+    to create an ASCII-art tree.
     '''
     
-    def __init__(self, top_names=['name'], xshort_names=[], short_names=[], 
+    #Name of the tree maker objects
+    tree_maker_name = '__siml_aa_tree_maker__'
+    
+    def __init__(self, 
+                  top_names=['name'], 
+                  xshort_names=[], short_names=[], short_types=[],
                   long_names=[], 
-                  bottom_names=[], short_types=[], 
-                  #long_types=[], 
-                  tree_maker_name='__siml_aa_tree_maker__', 
-                  left_margin_elem='| ', line_width=80, max_depth=50, 
-                  show_ID=True):
+                  bottom_names=['loc'],  
+                  left_margin_elem='| ', max_depth=50, 
+                  line_width=80, show_ID=True):
         '''
-        Many parameters to customize the behavior can be specified here.
+        Parameters to customize the behavior can be specified here.
         
         PARAMETER
         ---------
-        top_names: [str]
-            Attributes with these names are at the top. The short 
-            representation is used.
-        xshort_names: [str] 
-        short_names: [str]
-        long_names: [str] 
-            Important for lists.
-        bottom_names: [str]
-        short_types: [type] 
-        long_types: [type]  #??????????????
-        tree_maker_name: str
-        left_margin_elem: str
-        max_depth: int        
-        show_ID: bool
+        top_names: [str]. Default: ['name']
+            Attributes whose names are in this list are put at the top of the 
+            sub tree. The short (repr) representation is used.
+            
+        xshort_names: [str]. Default: [] 
+            Attributes in this list only represented by their class names.
+            
+        short_names: [str]. Default: [] 
+            Attributes whose names are in this list are converted by repr.
+            
+        short_types: [type]. Default: []  
+            Attributes with these types are always converted with the 'short'
+            algorithm.
+            
+        long_names: [str]. Default: []  
+            Attributes whose names are in this list are always converted with
+            the long algorithm. Important for lists that can be empty.
+            
+        bottom_names: [str]. Default: ['loc']
+            Attributes whose names are in this list are put at the top of the 
+            sub tree. The short (repr) representation is used.
+            
+        left_margin_elem: str. Default: '| '
+            The left margin is made by concatenating copies of this string.
+            
+        max_depth: int. Default: 50
+            Maximum recursion depth.
+            
+        show_ID: bool. Default: True
+            Show the ID of the current object, and of xshort objects.
         '''
         self.top_names = top_names
         self.xshort_names = xshort_names
         self.xshort_set = set(xshort_names)
         self.short_names = short_names
+        self.short_types = tuple(short_types)
         self.long_names = long_names 
         self.bottom_names = bottom_names
-        self.short_types = tuple(short_types)
-        #self.long_types = long_types #??????????????
-        self.tree_maker_name = tree_maker_name
         self.left_margin_elem = left_margin_elem
-        self.line_width = line_width
         self.max_depth = max_depth
+        self.line_width = line_width
         self.show_ID = show_ID
         
         
@@ -96,22 +144,22 @@ class AATreeMaker(object):
             return left_margin_1 + 'Max depth exceeded!\n'
         
         #put attributes into different lists
-        top_attr, short_attr, long_attr, bottom_attr = self.make_attr_lists(in_obj)
+        top_attr, short_attr, long_attr, bottom_attr = self._group_attributes(in_obj)
         
         #create the text
         tree = ''
-        tree += self.make_header_block(in_obj, left_margin_1, line_width)
+        tree += self._make_header_block(in_obj, left_margin_1, line_width)
         left_margin = left_margin_1 + left_margin_elem
-        tree += self.make_short_block(in_obj, top_attr, left_margin, memo_set, line_width)
-        tree += self.make_short_block(in_obj, short_attr, left_margin, memo_set, line_width)
-        tree += self.make_long_block(in_obj, long_attr, curr_depth, left_margin, 
+        tree += self._make_short_block(in_obj, top_attr, left_margin, memo_set, line_width)
+        tree += self._make_short_block(in_obj, short_attr, left_margin, memo_set, line_width)
+        tree += self._make_long_block(in_obj, long_attr, curr_depth, left_margin, 
                                      memo_set, line_width, left_margin_elem)
-        tree += self.make_short_block(in_obj, bottom_attr, left_margin, memo_set, line_width)
+        tree += self._make_short_block(in_obj, bottom_attr, left_margin, memo_set, line_width)
         
         return tree
     
     
-    def make_attr_lists(self, in_obj):
+    def _group_attributes(self, in_obj):
         '''
         Create lists that say where an attribute is printed and which 
         algorithm is used.
@@ -172,7 +220,7 @@ class AATreeMaker(object):
         return top_attr, short_attr, long_attr, bottom_attr
         
         
-    def make_header_block(self, in_obj, left_margin, _line_width):
+    def _make_header_block(self, in_obj, left_margin, _line_width):
         '''Create header with type information'''
         tree = left_margin + in_obj.__class__.__name__ 
         if self.show_ID:
@@ -181,7 +229,7 @@ class AATreeMaker(object):
         return tree
     
     
-    def make_short_block(self, in_obj, attr_list, left_margin, memo_set, line_width):
+    def _make_short_block(self, in_obj, attr_list, left_margin, memo_set, line_width):
         '''
         Create text block, use repr to convert attributes. 
         These are the atoms that really carry the information
@@ -192,7 +240,7 @@ class AATreeMaker(object):
             attribute = getattr(in_obj, name)
             #Convert one attribute to a string
             line += name + ' = ' \
-                    + self.make_short_string(attribute, memo_set, name) + '; '
+                    + self._make_short_string(attribute, memo_set, name) + '; '
             #do line wrapping
             if len(line) > line_width:
                 tree += line + '\n'
@@ -203,7 +251,7 @@ class AATreeMaker(object):
         return  tree
     
     
-    def make_long_block(self, in_obj, attr_list, curr_depth, left_margin, 
+    def _make_long_block(self, in_obj, attr_list, curr_depth, left_margin, 
                           memo_set, line_width, left_margin_elem):
         '''Create text block for sub trees.'''
         tree = ''
@@ -215,7 +263,7 @@ class AATreeMaker(object):
             if isinstance(attribute, (list, tuple)):
                 tree += left_margin + name + ' = [ \n'     
                 for item in attribute:
-                    tree += self.make_long_string(item, memo_set, curr_depth + 1, 
+                    tree += self._make_long_string(item, memo_set, curr_depth + 1, 
                                                   left_margin_elem, line_width, 
                                                   name)
                 tree += left_margin + '] \n'
@@ -227,20 +275,20 @@ class AATreeMaker(object):
                 for name in name_list:
                     item = attribute[name]
                     tree += left_margin + str(name) + ':\n'  #print key:
-                    tree += self.make_long_string(item, memo_set, curr_depth + 1, 
+                    tree += self._make_long_string(item, memo_set, curr_depth + 1, 
                                                   left_margin_elem, line_width, 
                                                   name)
                 tree += left_margin + '} \n'
             #Simple ttribute with tree maker
             else:
                 tree += left_margin + name + ' = \n' \
-                        + self.make_long_string(attribute, memo_set, curr_depth,  
+                        + self._make_long_string(attribute, memo_set, curr_depth,  
                                                 left_margin_elem, line_width, 
                                                 name)
         return  tree
     
 
-    def make_short_string(self, attribute, memo_set, name=None):
+    def _make_short_string(self, attribute, memo_set, name=None):
         '''Convert one object to a string, use repr for the conversion'''
         duplicate = id(attribute) in memo_set and not isinstance(attribute, str)
         memo_set.add(id(attribute)) #against infinite recursion
@@ -258,7 +306,7 @@ class AATreeMaker(object):
         return line
         
         
-    def make_long_string(self, attribute, memo_set, curr_depth, 
+    def _make_long_string(self, attribute, memo_set, curr_depth, 
                            left_margin_elem, line_width, name=None):
         '''Convert one object to a string, use tree maker for the conversion'''
         duplicate = id(attribute) in memo_set
@@ -267,7 +315,7 @@ class AATreeMaker(object):
            or isinstance(attribute, self.short_types) \
            or not hasattr(attribute, self.tree_maker_name):
             tree = left_margin_elem * (curr_depth + 1) \
-                   + self.make_short_string(attribute, memo_set, name) + '; \n'
+                   + self._make_short_string(attribute, memo_set, name) + '; \n'
         #create a subtree
         else:
             #memo_set.add(id(attribute)) #against infinite recursion

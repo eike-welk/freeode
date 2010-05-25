@@ -89,11 +89,11 @@ class TestAST(unittest.TestCase): #IGNORE:C01111
                         test9 = 'qworieoqwiruuqrw',
                         test10 = 'qworieoqwiruuqrw')
         self.tree1.kids[0].big = n_big                #IGNORE:E1101
-        _str1 = str(self.tree1)
+        _str1 = self.tree1.aa_make_tree()
 #        print
 #        print self.tree1
         #Test dicts
-        _str2 = str(self.tree2)
+        _str2 = self.tree2.aa_make_tree()
 #        print
 #        print self.tree2
 
