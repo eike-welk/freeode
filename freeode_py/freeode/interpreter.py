@@ -647,22 +647,21 @@ class BuiltInFunctionWrapper(CallableObject):
         parsed_args = self.argument_definition\
                           .parse_function_call_args(args, kwargs)
         #Test if all arguments are known values.
-        parsed_args_2 = {} #TODO: remove! unnecessary!
         all_python_values_exist = True
-        for name, siml_val in parsed_args.iteritems():
+        for siml_val in parsed_args.itervalues():
             if not siml_isknown(siml_val):
                 all_python_values_exist = False
-            #convert the names to regular strings
-            parsed_args_2[str(name)] = siml_val
+                break
         #Test: call function or generate code
         #Generate code; there were unknown values, and we don't accept it.
         if not all_python_values_exist and not self.accept_unknown_values:
-            #The expression visitor will create an annotated
+            #The interpreter will create an annotated
             #NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
             raise UnknownArgumentsException()
+        
         #call the wrapped Python function
         #all argument values are known, or we don't care about unknown values.
-        retval = self.py_function(**parsed_args_2)            #IGNORE:W0142
+        retval = self.py_function(**parsed_args)            #IGNORE:W0142
 
         #TODO: maybe always convert float, str, bool --> IFloat, IString, IBool?
         #use Siml's None
@@ -705,7 +704,7 @@ class SimlFunction(CallableObject):
         #this function is no basic building block, because it must be interpreted.
         self.is_fundamental_function = False
         #--- data flow analysis -------
-        self.inputs = None
+        self.inputs = None      #TODO: ??? Siml functions are all gone when the data flow is analyzed! ???
         self.outputs = None
         #--- stack trace ---------
         self.loc = loc
