@@ -263,10 +263,10 @@ class DataFlowChecker(object):
         #the outputs of the assignment become known values
         self.known_attributes.update(assignment.outputs)
         
-    def check_if_statement(self):
+    def check_if_statement(self, _stmt):
         '''Check an if statement'''    
         
-    def normalize_if_statement(self):
+    def normalize_if_statement(self, _stmt):
         '''Put the same number of assignments into each clause of an if statement'''
 #        #TODO: create dummy assignments when clauses don't assign to the same variables
 #        for clause in stmt.clauses:

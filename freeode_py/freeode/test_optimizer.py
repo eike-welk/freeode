@@ -28,13 +28,9 @@ Test code for the "optimizer.py" module
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
-#The py library is not standard. Preserve ability to use some test functions
-# for debugging when the py library, and the py.test testing framework, are 
-# not installed. 
-try:                      
-    import py
-except ImportError:
-    print 'No py library, many tests may fail!'
+from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import raises            # pylint: disable-msg=F0401,E0611,W0611
 
 
 
@@ -44,8 +40,9 @@ def test_MakeDataFlowDecorations_1(): #IGNORE:C01111
     print msg
     
     from freeode.optimizer import MakeDataFlowDecorations
-    from freeode.interpreter import (Interpreter, IFloat) 
-    from freeode.ast import DotName, NodeAssignment
+    from freeode.interpreter import Interpreter, IFloat
+    #from freeode.ast import NodeAssignment
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -128,12 +125,12 @@ compile A
 
 def test_unknown_const_1(): #IGNORE:C01111
     msg = '''Test correct treatment of unknown constants.'''
-    py.test.skip(msg)
+    skip_test(msg)
     print msg
     
     from freeode.optimizer import MakeDataFlowDecorations, DataFlowChecker
-    from freeode.interpreter import (Interpreter, IFloat) 
-    from freeode.ast import DotName, NodeAssignment
+    from freeode.interpreter import Interpreter
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -167,7 +164,7 @@ compile A
 #    c = sim.get_attribute(DotName('c1'))
 #    c = sim.get_attribute(DotName('c2'))
     #get generated main function
-    dyn = sim.get_attribute(DotName('dynamic'))
+    _dyn = sim.get_attribute(DotName('dynamic'))
     hexid = lambda x: hex(id(x))
     print 'a:', hexid(a), ' b:', hexid(b)#,  ' c2:', hexid(c)
     
@@ -186,7 +183,7 @@ compile A
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_unknown_const_1()
+    #test_unknown_const_1()
     pass
 
 

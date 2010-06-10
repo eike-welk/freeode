@@ -227,7 +227,8 @@ def test_IntArgumentList_1(): #IGNORE:C01111
     msg = 'IntArgumentList: construction'
     #skip_test(msg)
     print msg
-    from freeode.interpreter import (ArgumentList, NodeFuncArg, UserException, CLASS_FLOAT)
+    from freeode.util import UserException
+    from freeode.interpreter import ArgumentList, NodeFuncArg, CLASS_FLOAT
     
     #Test normal construction only positional argument: f(a, b)
     ArgumentList([NodeFuncArg('a'),
@@ -263,7 +264,8 @@ def test_IntArgumentList_1(): #IGNORE:C01111
     
 def test_IntArgumentList_2(): #IGNORE:C01111
     print 'ArgumentList: test argument processing at call site'
-    from freeode.interpreter import (ArgumentList, NodeFuncArg, UserException, CLASS_FLOAT)
+    from freeode.util import UserException
+    from freeode.interpreter import (ArgumentList, NodeFuncArg, CLASS_FLOAT)
     
     #argument list for testing
     al = ArgumentList([NodeFuncArg('a'),
@@ -1136,8 +1138,8 @@ User defined functions are created without parser.
     
     from freeode.interpreter import (Interpreter, SimlFunction, 
                                      ArgumentList, CLASS_FLOAT, CLASS_STRING)
-    from freeode.ast import (NodeFuncArg, NodeReturnStmt, 
-                             NodeIdentifier, UserException)
+    from freeode.ast import NodeFuncArg, NodeReturnStmt, NodeIdentifier
+    from freeode.util import UserException
 
     #create the interpreter - initializes INTERPRETER
     # this way SimlFunction can access the interpreter.

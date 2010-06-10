@@ -31,6 +31,7 @@ from __future__ import absolute_import
 
 from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import raises            # pylint: disable-msg=F0401,E0611,W0611
 
 
 
@@ -179,6 +180,143 @@ def test_AATreeMaker_infinite_recursion(): #IGNORE:C01111
     
     
     
+# -------- Test DotName --------------------------------------------------------  
+def test_DotName__new__():
+    msg =  'DotName: Test constructor.'
+    #skip_test(msg)
+    print msg
+
+    from freeode.util import DotName
+    
+    #create DotName object from string
+    abc = DotName('a.b.c')
+    assert(abc == ('a', 'b', 'c'))
+    assert(tuple(abc) == ('a', 'b', 'c'))
+    #create DotName from other iterable
+    abc1 = DotName(('a', 'b', 'c'))
+    assert(abc1 == ('a', 'b', 'c'))
+
+
+def test_DotName__str__():
+    msg =  '''DotName: Test conversion to string.'''
+    #skip_test(msg)
+    print msg
+
+    from freeode.util import DotName
+    
+    abc = DotName('a.b.c')
+    assert(str(abc) == 'a.b.c')
+
+
+def test_DotName__repr__():
+    msg =  '''DotName: Test repr method.'''
+    #skip_test(msg)
+    print msg
+
+    from freeode.util import DotName
+    
+    abc = DotName('a.b.c')
+    assert(repr(abc) == "DotName('a.b.c')")
+
+
+def test_DotName__add__():
+    msg =  '''DotName: Test addition (concatenating).'''
+    #skip_test(msg)
+    print msg
+
+    from freeode.util import DotName
+    
+    #addition of two DotNames
+    abc = DotName('a.b.c')
+    efg = DotName('e.f.g')
+    abcefg = abc + efg
+    assert(abcefg == DotName('a.b.c.e.f.g'))
+    assert(isinstance(abcefg, DotName))
+    #mixed addition with tuple 1
+    abcefg = abc + ('e', 'f', 'g')
+    assert(abcefg == DotName('a.b.c.e.f.g'))
+    assert(isinstance(abcefg, DotName))
+    #mixed addition with tuple 2
+    abcefg = ('a', 'b', 'c') + efg
+    assert(abcefg == DotName('a.b.c.e.f.g'))
+    assert(isinstance(abcefg, DotName))
+
+
+def test_DotName__getitem__():
+    msg =  '''DotName: Test access to parts of the object (foo[1], foo[0:4]).'''
+    #skip_test(msg)
+    print msg
+
+    from freeode.util import DotName
+    
+    a_g = DotName('a.b.c.d.e.f.g')
+    #subscription
+    b = a_g[1]
+    assert(b == 'b')
+    assert(isinstance(b, str))
+    e = a_g[4]
+    assert(e == 'e')
+    assert(isinstance(e, str))
+    #simple slicing
+    abc = a_g[0:3]
+    assert(abc == DotName('a.b.c'))
+    assert(isinstance(abc, DotName))
+    c_c = a_g[2:3]
+    assert(c_c == DotName('c'))
+    assert(isinstance(c_c, DotName))
+    empty = a_g[3:3]
+    assert(empty == DotName())
+    assert(isinstance(empty, DotName))
+    #extendet slicing
+    a_g2 = a_g[0:7:2]
+    assert(a_g2 == DotName('a.c.e.g'))
+    assert(isinstance(a_g2, DotName))
+    
+    #test boundary checking
+    def raise__getitem__1():
+        '''Subscription out of bounds'''
+        a_g = DotName('a.b.c.d.e.f.g')
+        _foo = a_g[9]
+    def raise__getitem__2():
+        '''Simple slice out of bounds'''
+        a_g = DotName('a.b.c.d.e.f.g')
+        _foo = a_g[0:9]
+    def raise__getitem__3():
+        '''Extended slice out of bounds'''
+        a_g = DotName('a.b.c.d.e.f.g')
+        _foo = a_g[0:9:2]
+    raises(IndexError, raise__getitem__1)
+    #The next tests unexpectedly work, because the tuple implementation thinks 
+    #it's OK.
+    #raises(IndexError, raise__getitem__2)
+    raise__getitem__2()
+    #raises(IndexError, raise__getitem__3)
+    raise__getitem__3()
+    return 
+
+
+
+# -------- Test UserException --------------------------------------------------------  
+def test_UserException():
+    msg = "Test the class for user visible exceptions"
+    #skip_test(msg)
+    print msg
+    
+    from freeode.util import UserException, TextLocation
+    
+    #test the __repr__ function
+    err = UserException("Foo", None, None)
+    #print repr(err)
+    assert repr(err) == "UserException('Foo', None, None)"
+    
+    #test __str__ function; it must not crash
+    err = UserException("Foo", None, None)
+    print err
+    err = UserException("Foo", TextLocation(3, "Foo bar", "baz.txt"), 42)
+    print err
+
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
     test_AATreeMaker_make_tree()

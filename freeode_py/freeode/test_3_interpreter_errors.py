@@ -29,13 +29,9 @@ Test code for the "interpreter.py" module
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
-#The py library is not standard. Preserve ability to use some test functions
-# for debugging when the py library, and the py.test testing framework, are 
-# not installed. 
-try:                      
-    import py
-except ImportError:
-    print 'No py library, many tests may fail!'
+from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import raises            # pylint: disable-msg=F0401,E0611,W0611
 
 
 
@@ -44,7 +40,7 @@ def test_argument_list_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -77,7 +73,7 @@ def test_argument_list_2(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -110,7 +106,7 @@ def test_argument_list_3(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -143,7 +139,7 @@ def test_argument_list_4(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -176,7 +172,7 @@ def test_argument_list_5(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -209,7 +205,7 @@ def test_argument_list_6(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -224,7 +220,7 @@ func foo(a=1, b):
         intp.interpret_module_string(prog_text, None, 'test')
     except UserException, e:
         print e
-        assert e.errno == 1064110
+        assert e.errno == 3200110
         print 'Correct exception was raised.'
     else:
         assert False, 'An exception should have been raised.'
@@ -235,11 +231,11 @@ func foo(a=1, b):
   
 
 def test_argument_list_7(): #IGNORE:C01111
-    msg = 'Test error in argument list - keyword arguments must come first, function definition.'
+    msg = 'Test error in argument list - duplicate argument names, function definition.'
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -254,7 +250,7 @@ func foo(a, a):
         intp.interpret_module_string(prog_text, None, 'test')
     except UserException, e:
         print e
-        assert e.errno == 1064120
+        assert e.errno == 3200120
         print 'Correct exception was raised.'
     else:
         assert False, 'An exception should have been raised.'
@@ -269,7 +265,7 @@ def test_argument_list_8(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -313,7 +309,7 @@ def test_argument_list_compile_statement_1(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
 
     prog_text = \
 '''
@@ -353,7 +349,7 @@ def test_StatementVisitor_dispatch_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -385,7 +381,7 @@ def test_StatementVisitor_dispatch_2(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
     
     prog_text = \
 '''
@@ -419,7 +415,7 @@ def test_if_statement_1(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import Interpreter
-    from freeode.ast import UserException
+    from freeode.util import UserException
 
     prog_text = \
 '''

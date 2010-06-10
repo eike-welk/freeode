@@ -41,8 +41,6 @@ from __future__ import division
 __version__ = "$Revision: $"
 # $Source$
 
-#import debugger
-#import pdb
 import os
 #import parser library
 from freeode.third_party.pyparsing import (
@@ -53,7 +51,16 @@ from freeode.third_party.pyparsing import (
     StringEnd, quotedString, Combine, Group, Optional,
     ParseException, ParseFatalException, ParserElement, )
 #import our own syntax tree classes
-from freeode.ast import *
+from freeode.ast import (NodeFloat, NodeString, NodeParentheses, NodeOpInfix2,
+                         NodeOpPrefix1, NodeAttrAccess, NodeIdentifier, 
+                         NodeExpressionStmt, NodeClause, NodeIfStmt, 
+                         NodeAssignment, NodePassStmt, NodeReturnStmt, Node,
+                         NodePragmaStmt, NodeCompileStmt, NodeStmtList, 
+                         NodeDataDef, NodeFuncCall, NodeFuncArg, NodeFuncDef, 
+                         NodeClassDef, NodeModule, SimpleArgumentList,
+                         RoleConstant, RoleParameter, RoleAlgebraicVariable, 
+                         RoleStateVariable, RoleTimeDifferential, RoleUnkown)
+from freeode.util import TextLocation, UserException
 
 
 

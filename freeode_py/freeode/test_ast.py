@@ -437,114 +437,6 @@ def test_visitor_inherited_handler_methods():
     assert visitor2.dispatch(Derived2()) == 'Base'
     assert visitor2.dispatch(2) == 'int'
     assert visitor2.dispatch(2.5) == 'default handler by derived'
-
-    
-    
-class TestDotName(unittest.TestCase): #IGNORE:C01111
-
-    def setUp(self):
-        '''perform common setup tasks for each test'''
-        pass
-
-    def test__new__(self):
-        '''DotName: Test constructor.'''
-        #create DotName object from string
-        abc = DotName('a.b.c')
-        self.assertTrue(abc == ('a', 'b', 'c'))
-        self.assertTrue(tuple(abc) == ('a', 'b', 'c'))
-        #create DotName from other iterable
-        abc1 = DotName(('a', 'b', 'c'))
-        self.assertTrue(abc1 == ('a', 'b', 'c'))
-
-    def test__str__(self):
-        '''DotName: Test conversion to string.'''
-        abc = DotName('a.b.c')
-        self.assertTrue(str(abc) == 'a.b.c')
-
-    def test__repr__(self):
-        '''DotName: Test repr method.'''
-        abc = DotName('a.b.c')
-        self.assertTrue(repr(abc) == "DotName('a.b.c')")
-
-    def test__add__(self):
-        '''DotName: Test addition (concatenating).'''
-        #addition of two DotNames
-        abc = DotName('a.b.c')
-        efg = DotName('e.f.g')
-        abcefg = abc + efg
-        self.assertTrue(abcefg == DotName('a.b.c.e.f.g'))
-        self.assertTrue(isinstance(abcefg, DotName))
-        #mixed addition with tuple 1
-        abcefg = abc + ('e', 'f', 'g')
-        self.assertTrue(abcefg == DotName('a.b.c.e.f.g'))
-        self.assertTrue(isinstance(abcefg, DotName))
-        #mixed addition with tuple 2
-        abcefg = ('a', 'b', 'c') + efg
-        self.assertTrue(abcefg == DotName('a.b.c.e.f.g'))
-        self.assertTrue(isinstance(abcefg, DotName))
-
-    def test__getitem__(self):
-        '''DotName: Test access to parts of the object (foo[1], foo[0:4]).'''
-        a_g = DotName('a.b.c.d.e.f.g')
-        #subscription
-        b = a_g[1]
-        self.assertTrue(b == 'b')
-        self.assertTrue(isinstance(b, str))
-        e = a_g[4]
-        self.assertTrue(e == 'e')
-        self.assertTrue(isinstance(e, str))
-        #simple slicing
-        abc = a_g[0:3]
-        self.assertTrue(abc == DotName('a.b.c'))
-        self.assertTrue(isinstance(abc, DotName))
-        c_c = a_g[2:3]
-        self.assertTrue(c_c == DotName('c'))
-        self.assertTrue(isinstance(c_c, DotName))
-        empty = a_g[3:3]
-        self.assertTrue(empty == DotName())
-        self.assertTrue(isinstance(empty, DotName))
-        #extendet slicing
-        a_g2 = a_g[0:7:2]
-        self.assertTrue(a_g2 == DotName('a.c.e.g'))
-        self.assertTrue(isinstance(a_g2, DotName))
-        #test boundary checking
-        self.assertRaises(IndexError, self.raise__getitem__1)
-        #This unexpectedly works, because the tuple implementation thinks 
-        #it's OK
-#        self.assertRaises(IndexError, self.raise__getitem__2)
-        self.raise__getitem__2()
-#        self.assertRaises(IndexError, self.raise__getitem__3)
-        self.raise__getitem__3()
-        return 
-    def raise__getitem__1(self):
-        '''Subscription out of bounds'''
-        a_g = DotName('a.b.c.d.e.f.g')
-        _foo = a_g[9]
-    def raise__getitem__2(self):
-        '''Simple slice out of bounds'''
-        a_g = DotName('a.b.c.d.e.f.g')
-        _foo = a_g[0:9]
-    def raise__getitem__3(self):
-        '''Extended slice out of bounds'''
-        a_g = DotName('a.b.c.d.e.f.g')
-        _foo = a_g[0:9:2]
-
-
-def test_UserException():
-    msg = "Test the class for user visible exceptions"
-    #skip_test(msg)
-    print msg
-    
-    #test the __repr__ function
-    err = UserException("Foo", None, None)
-    #print repr(err)
-    assert repr(err) == "UserException('Foo', None, None)"
-    
-    #test __str__ function; it must not crash
-    err = UserException("Foo", None, None)
-    print err
-    err = UserException("Foo", TextLocation(3, "Foo bar", "baz.txt"), 42)
-    print err
     
     
 
@@ -552,6 +444,6 @@ if __name__ == '__main__':
     # Debugging code may go here.
 #    t1 = TestVisitor('test__dispatch')
 #    t1.run()
-    test_UserException()
+    #test_UserException()
     
     pass

@@ -384,7 +384,7 @@ def test_print_function_3(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
+    from freeode.util import DotName
     
     prog_text = \
 '''
@@ -429,7 +429,7 @@ def test_print_function_4(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
+    from freeode.util import DotName
     
     prog_text = \
 '''
@@ -474,7 +474,7 @@ def test_graph_function_1(): #IGNORE:C01111
     #skip_test('Test the print function. - code generation for: user defined class.')
     print 'Test the print function. - code generation for: user defined class.'
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
+    from freeode.util import DotName
     
     prog_text = \
 '''
@@ -860,7 +860,7 @@ def test_StatementVisitor__visit_NodeCompileStmt__code_generation_1(): #IGNORE:C
     print msg
     
     from freeode.interpreter import (Interpreter, IFloat, SimlFunction)
-    from freeode.ast import DotName
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -905,7 +905,7 @@ def test_interpreter_user_defined_operators_1(): #IGNORE:C01111
     #skip_test('Test user defined operators - code generation.')
     print 'Test user defined operators - code generation.'
     from freeode.interpreter import Interpreter, IFloat, CallableObject
-    from freeode.ast import DotName
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1037,7 +1037,8 @@ def test_interpreter_expression_statement_1(): #IGNORE:C01111
     #skip_test('Test expression statement - code generation.')
     print 'Test expression statement - code generation.'
     from freeode.interpreter import Interpreter, IFloat, CallableObject
-    from freeode.ast import DotName, NodeExpressionStmt
+    from freeode.ast import NodeExpressionStmt
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1086,7 +1087,8 @@ def test_user_defined_class_roles_1(): #IGNORE:C01111
     #skip_test('Test user defined classes with different roles.')
     print 'Test user defined classes with different roles.'
     from freeode.interpreter import Interpreter
-    from freeode.ast import (DotName, RoleConstant, RoleAlgebraicVariable)
+    from freeode.ast import RoleConstant, RoleAlgebraicVariable
+    from freeode.util import DotName
     
     prog_text = \
 '''
@@ -1138,7 +1140,8 @@ def test_function_return_value_roles_1(): #IGNORE:C01111
     #skip_test('Test roles of return values of user defined functions.')
     print 'Test roles of return values of user defined functions.'
     from freeode.interpreter import Interpreter
-    from freeode.ast import (DotName, RoleConstant, RoleAlgebraicVariable)
+    from freeode.ast import RoleConstant, RoleAlgebraicVariable
+    from freeode.util import DotName
     
     prog_text = \
 '''
@@ -1191,7 +1194,8 @@ def test_interpreter_dollar_operator_1(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, IFloat, CallableObject
-    from freeode.ast import DotName, RoleStateVariable, RoleTimeDifferential
+    from freeode.ast import RoleStateVariable, RoleTimeDifferential
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1243,7 +1247,8 @@ def test_interpreter_dollar_operator_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, CallableObject, IFloat
-    from freeode.ast import DotName, RoleStateVariable, RoleTimeDifferential
+    from freeode.ast import RoleStateVariable, RoleTimeDifferential
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1354,7 +1359,7 @@ def test_compile_statement_1(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, IFloat, CallableObject
-    from freeode.ast import DotName
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1414,7 +1419,8 @@ def test_compile_statement_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, IFloat, CallableObject
-    from freeode.ast import DotName, NodeAssignment
+    from freeode.ast import NodeAssignment
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1498,7 +1504,7 @@ def test_pass_statement_1(): #IGNORE:C01111
     
     from freeode.interpreter import (Interpreter, siml_isinstance, 
                                      CallableObject, TypeObject, IFloat)
-    from freeode.ast import DotName
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1664,7 +1670,8 @@ def test_if_statement_2(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
-    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
+    from freeode.ast import NodeIfStmt, NodeAssignment, RoleConstant
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1730,7 +1737,7 @@ def test_if_statement_3(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import Interpreter
-    from freeode.ast import DotName
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1777,7 +1784,8 @@ def test_if_statement_4_1(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, UserException)
+    from freeode.util import UserException
+    from freeode.interpreter import Interpreter
 
     prog_text = \
 '''
@@ -1819,7 +1827,8 @@ def test_if_statement_4_2(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
-    from freeode.ast import DotName, NodeIfStmt, NodeAssignment, RoleConstant
+    from freeode.ast import NodeIfStmt, NodeAssignment, RoleConstant
+    from freeode.util import DotName
 
     prog_text = \
 '''
@@ -1885,7 +1894,8 @@ def test_if_statement_5(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import (Interpreter, IFloat)
-    from freeode.ast import DotName, NodeAssignment
+    from freeode.ast import NodeAssignment
+    from freeode.util import DotName
 
     prog_text = \
 '''

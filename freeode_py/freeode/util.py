@@ -26,7 +26,9 @@ Utility classes and functions.
 '''
 
 from __future__ import division
-from __future__ import absolute_import              
+from __future__ import absolute_import          
+
+import freeode.third_party.pyparsing as pyparsing     
 
 
 class AATreeMaker(object):
@@ -325,4 +327,143 @@ class AATreeMaker(object):
         return tree
         
         
-    
+
+class UserException(Exception):
+    '''Exception that transports user visible error messages'''
+    def __init__(self, message, loc=None, errno=None):
+        Exception.__init__(self)
+        self.msg = message
+        self.loc = loc
+        self.errno = errno
+
+    def __str__(self):
+        if self.errno is None:
+            num_str = ''
+        else:
+            num_str = '(#%s) ' % str(self.errno) 
+        return 'Error! ' + num_str + self.msg + '\n' + str(self.loc) + '\n'
+
+    def __repr__(self):
+        return self.__class__.__name__ + str((self.msg, self.loc, self.errno))
+
+
+
+class DotName(tuple):
+    '''
+    Class that represents a dotted name ('pr1.m1.a').
+
+    This class inherits from tuple, but can be sensibly constructed
+    from a string: The dots are used to separate tuple components.
+    >>> dn = DotName('a.b.c')
+    >>> dn
+    DotName('a.b.c')
+    >>> tuple(dn)
+    ('a', 'b', 'c')
+
+    The str() function converts the object back to a dotted name.
+    >>> str(dn)
+    'a.b.c'
+
+    The object can be freely mixed with tuples.
+    >>> dn == ('a', 'b', 'c')
+    True
+    >>> dn + ('d', 'e', 'f')
+    DotName('a.b.c.d.e.f')
+    '''
+    #Immutable classes are created by the _new_(...) method.
+    def __new__(cls, iterable=None):
+        '''Create tuple. Strings get special treatment.'''
+        #Interpret string as dot separated list (of strings)
+        if isinstance(iterable, str):
+            iterable = iterable.split('.')
+        #Special handling for no arguments (DotName())
+        if iterable == None:
+            return tuple.__new__(cls)
+        else:
+            return tuple.__new__(cls, iterable)
+
+    def __str__(self):
+        '''Create string with dots between tuple components.'''
+        return '.'.join(self)
+
+    def __repr__(self):
+        '''Create string representation that can be used in Python program'''
+        return "DotName('" + self.__str__() + "')"
+
+    def __add__(self, other):
+        '''Concatenate with tuple or DotName. Return: self + other.'''
+        if isinstance(other, str):
+            other = DotName(other)
+        return DotName(tuple.__add__(self, other))
+
+    def __radd__(self, other):
+        '''Concatenate with tuple or DotName. Return: other + self.'''
+        if isinstance(other, str):
+            other = DotName(other)
+        return DotName(tuple.__add__(other, self))
+
+    def __getitem__(self, key):
+        '''Access a part of the dotname. Called for foo[1], foo[0:4] '''
+        #slices of DotName objects should also be DotName objects (not tuple).
+        if isinstance(key, slice):
+            return DotName(tuple.__getitem__(self, key))
+        #access to single items should return the item (string not DotName).
+        else:
+            return tuple.__getitem__(self, key)
+
+    def __getslice__(self, i, j):
+        '''Implement simple slicing (because tuple implements it).'''
+        return DotName(tuple.__getslice__(self, i, j))
+
+
+
+class TextLocation(object):
+    '''
+    Store the location of a parsed pattern, or error.
+
+    Includes the file's contents and the file's name.
+    Object is intended to be stored in a Node's self.loc
+    data member.
+    '''
+
+    def __init__(self, atChar=None, textString=None, fileName=None):
+        super(TextLocation, self).__init__()
+        self.atChar = atChar
+        self.str = textString
+        self.name = fileName
+
+    def isValid(self):
+        '''
+        Return True if a meaningful line number and collumn can be computed.
+        Return False otherwise.
+        '''
+        if self.atChar and self.str:
+            return True
+        else:
+            return False
+
+    def lineNo(self):
+        '''Compute the line number of the stored location.'''
+        if self.atChar and self.str:
+            return pyparsing.lineno(self.atChar, self.str)
+        else:
+            return 0
+
+    def col(self):
+        '''Compute the column of the stored location.'''
+        if self.atChar and self.str:
+            return pyparsing.col(self.atChar, self.str)
+        else:
+            return 0
+
+    def fileName(self):
+        '''Return the filename.'''
+        return str(self.name)
+
+    def __str__(self):
+        '''Return meaningfull string'''
+        #Including the column is not useful because it is often wrong
+        #for higher level errors. Preserving the text of the original
+        #pyparsing error is transporting the column information for parsing
+        #errors. Only parsing errors have useful column information.
+        return '  File "' + self.fileName() + '", line ' + str(self.lineNo())
