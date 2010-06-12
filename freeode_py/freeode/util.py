@@ -75,7 +75,7 @@ class AATreeMaker(object):
     #Name of the tree maker objects
     tree_maker_name = '__siml_aa_tree_maker__'
     
-    def __init__(self, 
+    def __init__(self,                              #pylint: disable-msg=W0102
                   top_names=['name'], 
                   xshort_names=[], short_names=[], short_types=[],
                   long_names=[], 

@@ -453,4 +453,4 @@ if __name__ == '__main__':
     # Debugging code may go here.
     #test_argument_list_1()
     test_argument_list_compile_statement_1()
-    pass
+    pass #pylint: disable-msg=W0107

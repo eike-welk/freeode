@@ -102,13 +102,6 @@ class ChMsg(object):
             raise err
 
 
-#TODO: remove?
-#
-#class ParseActionException(Exception):
-#    '''Exception raised by the parse actions of the parser.'''
-#    pass
-
-
 
 class Parser(object):
     '''
@@ -133,20 +126,17 @@ class Parser(object):
     ast2 = parser.parseModuleFile('foo-bar.siml')
     '''
 
+    # Define how much the parse result is modified, for easier debuging.
+    #  0: normal operation. Compilation does not work otherwise.
+    #  1: Do not modify parse result from the Pyparsing library.
+    #
+    # ParseResult objects (which come from the Pyparsing library) are printed
+    # as nested lists: ['1', '+', ['2', '*', '3']]
     noTreeModification = 0
-    '''
-    Define how much the parse result is modified, for easier debuging.
-    0: normal operation. Compilation does not work otherwise.
-    1: Do not modify parse result from the Pyparsing library.
 
-    ParseResult objects (which come from the Pyparsing library) are printed
-    as nested lists: ['1', '+', ['2', '*', '3']]
-    '''
-
+    # Set of all keywords (filled by _defineLanguageSyntax() and defineKeyword(...)).
     keywords = set()
-    '''
-    Set of all keywords (filled by _defineLanguageSyntax() and defineKeyword(...)).
-    '''
+
     #Special variables, that are built into the language (filled by _defineLanguageSyntax())
     builtInVars = set()
 
@@ -375,7 +365,7 @@ class Parser(object):
         n_id.name = toks[0]
         return n_id
 
-    def _action_expression_stmt(self, s, loc, toks):
+    def _action_expression_stmt(self, _s, loc, toks):
         '''
         Create node for a function call. Really any expression can be
         present, but only function calls make sense.
@@ -997,10 +987,10 @@ class Parser(object):
         #Exponentiation: a**b;
         #Strongest binding on left side, weaker than unary operations (-a) on right side.
         power1 = Group(expression_ex + '**' + u_expr)               .setParseAction(self._action_op_infix)
-        power << (power1 | expression_ex)
+        power << (power1 | expression_ex)                                       #pylint: disable-msg=W0104
         #Unary arithmetic operations: -a; +a
         u_expr1 = Group(oneOf('- +') + u_expr)                      .setParseAction(self._action_op_prefix)
-        u_expr << (u_expr1 | power)
+        u_expr << (u_expr1 | power)                                             #pylint: disable-msg=W0104
 
         #arithmetic, logtical, and comparison operators; the top level parser
         expression << operatorPrecedence(u_expr,

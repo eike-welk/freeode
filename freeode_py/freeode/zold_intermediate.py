@@ -33,6 +33,10 @@ It is created from the abstract syntax tree (AST), and it is given to the
 generator of the output language (currently only Python). 
 '''
 
+#Disable all static error analysis
+#@PydevCodeAnalysisIgnore
+# pylint: disable-msg-cat=all
+
 #TODO: Implement namespaces. Usefull would be:
 #       - Global namespace for: classes, global functions.
 #       - Class namespace for class attributes 

@@ -200,7 +200,7 @@ class InterpreterObject(Node):
     def __deepcopy__(self, memo_dict):
         '''deepcopy that gets the parent right'''
         copied_self = super(InterpreterObject, self).__deepcopy__(memo_dict)
-        for name, copied_attr in copied_self.attributes.iteritems():
+        for copied_attr in copied_self.attributes.itervalues():
             copied_attr.parent = ref(copied_self)
         return copied_self
 
@@ -1343,7 +1343,7 @@ class IFloat(FundamentalObject):
         method is responsible to create a good error message in this case.
         '''
         #Precondition: $ acts upon a variable
-        if(not isinstance(self, IFloat) or #no expression(ast.Node
+        if(not isinstance(self, IFloat) or #no expression (ast.Node)
            self.parent is None or          #no anonymous intermediate value
            not issubclass(self.role, RoleVariable)): #no constant or parameter or unknown
             raise UserException('Only named variables can have derivatives.')
@@ -1496,7 +1496,7 @@ class GraphFunction(CallableObject):
 
 
 
-def wsiml_save(file_name=None):
+def wsiml_save(file_name=None): #pylint:disable-msg=W0613 
     '''
     The store function.
 
@@ -1522,7 +1522,7 @@ def wsiml_save(file_name=None):
 
 
 
-def wsiml_solution_parameters(duration=None, reporting_interval=None):
+def wsiml_solution_parameters(duration=None, reporting_interval=None): #pylint:disable-msg=W0613
     '''
     The solution_parameters function.
 

@@ -89,7 +89,7 @@ def test_AATreeMaker_make_attr_lists(): #IGNORE:C01111
     
     #group the attributes into four groups
     top_attr, short_attr, long_attr, bottom_attr \
-        = t1.__siml_aa_tree_maker__._group_attributes(t1)
+        = t1.__siml_aa_tree_maker__._group_attributes(t1) #pylint: disable-msg=W0212
         
     #print top_attr, short_attr, long_attr, bottom_attr  
     
@@ -321,4 +321,4 @@ if __name__ == '__main__':
     # Debugging code may go here.
     test_AATreeMaker_make_tree()
     test_AATreeMaker_infinite_recursion()
-    pass
+    pass #pylint: disable-msg=W0107

@@ -2058,5 +2058,5 @@ if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
     test_print_function_3()
-    pass
+    pass #pylint: disable-msg=W0107
 

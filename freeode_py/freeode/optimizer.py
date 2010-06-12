@@ -35,7 +35,10 @@ from __future__ import absolute_import              #IGNORE:W0410
 import sys
 #import math
 
-from freeode.ast import *
+from freeode.ast import (NodeParentheses, NodeOpInfix2, NodeOpPrefix1, 
+                         NodeFuncCall, NodeAssignment, NodeIfStmt, NodeClause, 
+                         RoleConstant, RoleParameter, RoleInputVariable, 
+                         RoleOutputVariable, RoleIntermediateVariable)
 from freeode.interpreter import (InterpreterObject, CallableObject, 
                                  FundamentalObject, CompiledClass,
                                  siml_isrole, siml_isknown)
