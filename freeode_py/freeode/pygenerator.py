@@ -184,15 +184,15 @@ class StatementGenerator(Visitor):
     of a function and convert it to Python statements.
     '''
 
-    def __init__(self, buffer):
+    def __init__(self, txt_buffer):
         '''
         ARGUMENT:
-            buffer : File like object where the Python program 
+            txt_buffer : File like object where the Python program 
                         will be stored.
         '''
         super(StatementGenerator, self).__init__()
         #File like object, where the Python program will be stored.
-        self.out_py = buffer
+        self.out_py = txt_buffer
         #Object that creates a formula from an AST sub-tree
         self.genFormula = ExpressionGenerator()
 
@@ -289,7 +289,7 @@ class StatementGenerator(Visitor):
         self.write(indent + self.create_expression(iltStmt.expression) + '\n')            
             
     @Visitor.default
-    def _ErrorUnknownNode(self, iltStmt, indent):
+    def _ErrorUnknownNode(self, iltStmt, _indent):
         #Internal error: unknown statement -----------------------------------
         raise PyGenException('Unknown node in StatementGenerator:\n'
                              + str(iltStmt))
@@ -299,16 +299,16 @@ class StatementGenerator(Visitor):
 class SimulationClassGenerator(object):
     '''create python class that simulates a process'''
 
-    def __init__(self, buffer):
+    def __init__(self, txt_buffer):
         '''
         Arguments:
-            buffer : File where the Python program will be stored.
+            txt_buffer : File where the Python program will be stored.
         '''
         super(SimulationClassGenerator, self).__init__()
         #The input: an IL-tree of the process. It has no external dependencies.
         self.flat_object = CompiledClass()
         #File where the Python program will be stored.
-        self.out_py = buffer
+        self.out_py = txt_buffer
         #Python name of the process
         self.class_py_name = ''
         #The parameters: dict: {DotName: InterpreterObject]

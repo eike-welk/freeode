@@ -260,9 +260,9 @@ class DataFlowChecker(object):
         '''Check one assignment statement'''
         assert isinstance(assignment, NodeAssignment)
         #test for reading unknown values
-        unknown_inputs = assignment.inputs - self.known_attributes
+        _unknown_inputs = assignment.inputs - self.known_attributes
         #test for writing already known values
-        duplicate_assign = assignment.outputs & self.known_attributes
+        _duplicate_assign = assignment.outputs & self.known_attributes
         #the outputs of the assignment become known values
         self.known_attributes.update(assignment.outputs)
         

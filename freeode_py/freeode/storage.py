@@ -205,7 +205,7 @@ class ArrayStore(BaseStore):
         elif fileName != None:
             self.load(fileName)
             
-	
+
 
     def createFromData(self, varArray=None, nameList=None):
         '''

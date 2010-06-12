@@ -39,7 +39,7 @@ from subprocess import Popen #, PIPE, STDOUT
 import freeode.interpreter as interpreter
 import freeode.pygenerator as pygenerator
 import freeode.ast as ast  #for ast.PROGRAM_VERSION
-from freeode.ast import UserException
+from freeode.util import UserException
 
 
 class SimlCompilerMain(object):
@@ -107,7 +107,7 @@ class SimlCompilerMain(object):
             #test if argument is a number
             try:
                 int(options.runone)
-            except:
+            except ValueError:
                 optPars.error('option "-r": argument must be number or "all". I got: %s'
                               % options.runone)
             #convert into string containing a number
