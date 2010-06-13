@@ -57,7 +57,7 @@ from freeode.ast import (NodeFloat, NodeString, NodeParentheses, NodeOpInfix2,
                          NodeAssignment, NodePassStmt, NodeReturnStmt, Node,
                          NodePragmaStmt, NodeCompileStmt, NodeStmtList, 
                          NodeDataDef, NodeFuncCall, NodeFuncArg, NodeFuncDef, 
-                         NodeClassDef, NodeModule, SimpleArgumentList,
+                         NodeClassDef, NodeModule, SimpleSignature,
                          RoleConstant, RoleParameter, RoleAlgebraicVariable, 
                          RoleStateVariable, RoleTimeDifferential, RoleUnkown)
 from freeode.util import TextLocation, UserException
@@ -240,7 +240,7 @@ class Parser(object):
 #        return nCurr
 
 
-    def _action_number(self, s, loc, toks): #IGNORE:W0613
+    def _action_number(self, _s, loc, toks): 
         '''
         Create node for a number: 5.23
         tokList has the following structure:
@@ -254,7 +254,7 @@ class Parser(object):
         nCurr.value = tokList[0] #Store the number
         return nCurr
 
-    def _action_string(self, s, loc, toks): #IGNORE:W0613
+    def _action_string(self, _s, loc, toks): 
         '''
         Create node for a string: 'qwert'
         tokList has the following structure:
@@ -268,7 +268,7 @@ class Parser(object):
         nCurr.value = tokList[1:-1] #Store the string; remove quotes
         return nCurr
 
-    def _action_parentheses_pair(self, s, loc, toks): #IGNORE:W0613
+    def _action_parentheses_pair(self, _s, loc, toks): 
         '''
         Create node for a pair of parentheses that enclose an expression: (...)
         tok_list has the following structure:
@@ -285,7 +285,7 @@ class Parser(object):
         node.arguments = (tok_list[0],) #store child expression
         return node
 
-    def _action_op_prefix(self, s, loc, toks): #IGNORE:W0613
+    def _action_op_prefix(self, _s, loc, toks): 
         '''
         Create node for math prefix operators: -
         tok_list has the following structure:
@@ -301,11 +301,11 @@ class Parser(object):
                              self.createTextLocation(loc))
         return node
 
-    def _action_op_infix_left(self, s, loc, toks): #IGNORE:W0613
+    def _action_op_infix_left(self, s, loc, toks): 
         '''
         Build tree of infix operators from list of operators and operands.
 
-        operatorPrecedence returns such a list for left assocative operaators.
+        operatorPrecedence returns such a list for left associative operators.
         tokList has the following structure:
         [<expression_1>, <operator_1>, <expression_2>, <operator_2>, ...
          <expression_n+1>]
@@ -318,7 +318,7 @@ class Parser(object):
             tree = self._action_op_infix(s,  loc,  [tree,  tokList[i],  tokList[i+1]])
         return tree
 
-    def _action_op_infix(self, s, loc, toks): #IGNORE:W0613
+    def _action_op_infix(self, _s, loc, toks): 
         '''
         Create node for math infix operators: + - * / **
         tokList has the following structure:
@@ -349,7 +349,7 @@ class Parser(object):
         nCurr.arguments = (exprLhs, exprRhs)
         return nCurr
 
-    def _action_identifier(self, s, loc, toks): #IGNORE:W0613
+    def _action_identifier(self, _s, loc, toks): 
         '''
         Create node for an identifier.
 
@@ -381,7 +381,7 @@ class Parser(object):
         nCurr.expression = toks[0][0]
         return nCurr
 
-    def _action_if_clause(self, s, loc, toks): #IGNORE:W0613
+    def _action_if_clause(self, _s, loc, toks): 
         '''
         Create node for one clause of the if statement.
 
@@ -422,7 +422,7 @@ class Parser(object):
         node = NodeClause(condition, stmts_flat, loc_ex)
         return node
 
-    def _action_if_statement(self, s, loc, toks): #IGNORE:W0613
+    def _action_if_statement(self, _s, loc, toks): 
         '''
         Create node for if ... : ... else: ... statement.
 
@@ -443,7 +443,7 @@ class Parser(object):
         node = NodeIfStmt(tokList, loc_ex)
         return node
 
-    def _action_assign_stmt(self, s, loc, toks): #IGNORE:W0613
+    def _action_assign_stmt(self, _s, loc, toks): 
         '''
         Create node for assignment: a = 2*b
         BNF:
@@ -458,65 +458,7 @@ class Parser(object):
         nCurr.expression = tokList[2]
         return nCurr
 
-#    def _action_print_stmt(self, s, loc, toks): #IGNORE:W0613
-#        '''
-#        Create node for print statement:
-#            print 'hello', foo.x
-#        BNF:
-#        expression_list = delimitedList(expression, ',')            .setName('exprList')
-#        print_stmt = Group(kw('print')
-#                          - Optional(expression_list)               .setResultsName('arg_list')
-#                          + Optional(',')                           .setResultsName('trail_comma')
-#                          )                                         .setParseAction(self._action_print_stmt)\
-#        '''
-#        if Parser.noTreeModification:
-#            return None #No parse result modifications for debugging
-#        #tokList = toks.asList()[0] #Group adds
-#        toks = toks[0]             #an extra pair of brackets
-#        nCurr = NodePrintStmt()
-#        nCurr.loc = self.createTextLocation(loc) #Store position
-#        nCurr.arguments = toks.arg_list.asList()
-#        if toks.trailComma:
-#            nCurr.newline = False
-#        else:
-#            nCurr.newline = True
-#        return nCurr
-
-#    def _actionGraphStmt(self, s, loc, toks): #IGNORE:W0613
-#        '''
-#        Create node for graph statement:
-#            graph foo.x, foo.p
-#        BNF:
-#        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
-#                          + ';')                  .setParseAction(self._actionDebug)\
-#        '''
-#        if Parser.noTreeModification:
-#            return None #No parse result modifications for debugging
-#        #tokList = toks.asList()[0] #there always seems to be
-#        toks = toks[0]             #an extra pair of brackets
-#        nCurr = NodeGraphStmt()
-#        nCurr.loc = self.createTextLocation(loc) #Store position
-#        nCurr.kids = toks.argList.asList()[0]
-#        return nCurr
-
-#    def _actionStoreStmt(self, s, loc, toks): #IGNORE:W0613
-#        '''
-#        Create node for graph statement:
-#            graph foo.x, foo.p
-#        BNF:
-#        graphStmt = Group(kw('graph') + exprList  .setResultsName('argList')
-#                          + ';')                  .setParseAction(self._actionDebug)\
-#        '''
-#        if Parser.noTreeModification:
-#            return None #No parse result modifications for debugging
-#        #tokList = toks.asList()[0] #there always seems to be
-#        toks = toks[0]             #an extra pair of brackets
-#        nCurr = NodeStoreStmt()
-#        nCurr.loc = self.createTextLocation(loc) #Store position
-#        nCurr.kids = toks.argList.asList()
-#        return nCurr
-
-    def _action_pass_stmt(self, s, loc, toks): #IGNORE:W0613
+    def _action_pass_stmt(self, _s, loc, _toks): 
         '''
         Create node for pass statement (which does nothing):
 
@@ -531,7 +473,7 @@ class Parser(object):
 
 
 
-    def _action_return_stmt(self, s, loc, toks): #IGNORE:W0613
+    def _action_return_stmt(self, _s, loc, toks): 
         '''
         Create node for return statement:
             return 2*a;
@@ -548,7 +490,7 @@ class Parser(object):
             nCurr.arguments.append(toks.ret_val)
         return nCurr
 
-    def _actionPragmaStmt(self, s, loc, toks): #IGNORE:W0613
+    def _actionPragmaStmt(self, _s, loc, toks): 
         '''
         Create node for pragma statement:
             pragma no flatten;
@@ -565,7 +507,7 @@ class Parser(object):
             nCurr.options.append(toks[i])
         return nCurr
 
-#    def _actionForeignCodeStmt(self, s, loc, toks): #IGNORE:W0613
+#    def _actionForeignCodeStmt(self, s, loc, toks): 
 #        '''
 #        Create node for foreign_code statement:
 #            foreign_code python replace_call ::{{ sin(x) }}:: ;
@@ -590,7 +532,7 @@ class Parser(object):
 #        nCurr.code = toks.code
 #        return nCurr
 
-    def _action_compile_stmt(self, s, loc, toks): #IGNORE:W0613
+    def _action_compile_stmt(self, _s, loc, toks): 
         '''
         Create node for compile statement.
 
@@ -611,7 +553,7 @@ class Parser(object):
         return n_curr
 
 
-    def _action_stmt_list(self, s, loc, toks): #IGNORE:W0613
+    def _action_stmt_list(self, _s, loc, toks): 
         '''
         Create node for list of statements: a=1; b=2; ...
         BNF:
@@ -629,7 +571,7 @@ class Parser(object):
         return node
 
 
-    def _action_data_def(self, s, loc, toks): #IGNORE:W0613
+    def _action_data_def(self, _s, loc, toks): 
         '''
         Create node for defining parameter, variable or submodel:
             'data foo, bar: baz.boo parameter;
@@ -683,7 +625,7 @@ class Parser(object):
             return data_def_list #return list with multiple definitions
 
 
-    def _action_slicing(self, s, loc, toks): #IGNORE:W0613
+    def _action_slicing(self, _s, loc, _toks): 
         '''
         Create node for slicing operation.
         '''
@@ -693,7 +635,7 @@ class Parser(object):
                             self.createTextLocation(loc), errno=2139010)
 
 
-#    def _action_func_call_arg(self, s, loc, toks): #IGNORE:W0613
+#    def _action_func_call_arg(self, s, loc, toks): 
 #        '''
 #        Create node for one argument of a function call.
 #            x=2.5  ,  x*2+sin(a)
@@ -723,7 +665,7 @@ class Parser(object):
 #                                        str(toks))
 #        return nCurr
 
-    def _action_func_call(self, s, loc, toks): #IGNORE:W0613
+    def _action_func_call(self, _s, loc, toks): 
         '''
         Create node for calling a function or method.
             bar.doFoo(10, x, a=2.5)
@@ -755,7 +697,7 @@ class Parser(object):
         return n_curr
 
 
-    def _action_func_def_arg(self, s, loc, toks): #IGNORE:W0613
+    def _action_func_def_arg(self, _s, loc, toks): 
         '''
         Create node for one function argument of a function definition.
         A NodeDataDef is created; therefore this method is quite similar
@@ -785,7 +727,7 @@ class Parser(object):
         return ncurr
 
 
-    def _action_func_def(self, s, loc, toks): #IGNORE:W0613
+    def _action_func_def(self, _s, loc, toks): 
         '''
         Create node for definition of a function or method.
             func doFoo(a:Real=2.5, b) -> Real: {... }
@@ -806,26 +748,28 @@ class Parser(object):
         if Parser.noTreeModification:
             return None #No parse result modifications for debuging
         toks = toks[0]             #Group adds an extra pair of brackets
-        ncurr = NodeFuncDef()
-        ncurr.loc = self.createTextLocation(loc) #Store position
-        #store function name
-        ncurr.name = toks.func_name
-        #store function arguments: SimpleArgumentList performs some checks
+        loc = self.createTextLocation(loc) #Store position
+
+        #Create function signature
+        arguments, return_type = [], None
+        #function arguments
         if toks.arg_list:
-            ncurr.arguments = SimpleArgumentList(toks.arg_list.asList(), ncurr.loc)
-        else:
-            #empty argument lists need a loc too.
-            ncurr.arguments = SimpleArgumentList([], ncurr.loc)
+            arguments = toks.arg_list.asList()
         #store return type
         if toks.return_type:
-            ncurr.return_type = toks.return_type
-        #store function body; take each statement out of its sublist
+            return_type = toks.return_type
+        signature = SimpleSignature(arguments, return_type, loc)
+        
+        #create list of statements in function body; take each statement out of its sublist
+        stmts = []
         for sublist in toks.func_body:
-            ncurr.statements.append(sublist[0])
+            stmts.append(sublist[0])
+    
+        ncurr = NodeFuncDef(toks.func_name, signature, stmts, loc)
         return ncurr
 
 
-    def _action_class_def(self, s, loc, toks): #IGNORE:W0613
+    def _action_class_def(self, _s, loc, toks): 
         '''
         Create node for definition of a class:
             class foo(a):
@@ -857,7 +801,7 @@ class Parser(object):
         return class_def
 
 
-    def _action_module(self, s, loc, toks): #IGNORE:W0613
+    def _action_module(self, _s, loc, toks): 
         '''
         Create the root node of a module.
         BNF:

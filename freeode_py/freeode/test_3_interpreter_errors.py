@@ -31,8 +31,9 @@ from __future__ import absolute_import              #IGNORE:W0410
 
 from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
-from py.test import raises            # pylint: disable-msg=F0401,E0611,W0611
+#from py.test import raises            # pylint: disable-msg=F0401,E0611,W0611
 
+from freeode.util import assert_raises
 
 
 def test_argument_list_1(): #IGNORE:C01111
@@ -53,15 +54,18 @@ foo(a, b)
     #create the interpreter
     intp = Interpreter()
     
-    try:
-        #run mini program
-        intp.interpret_module_string(prog_text, None, 'test')
-    except UserException, e:
-        print e
-        assert e.errno == 3200250
-        print 'Correct exception was raised.'
-    else:
-        assert False, 'An exception should have been raised.'
+    assert_raises(UserException, 3200250, 
+                  intp.interpret_module_string, (prog_text, None, 'test'))
+    
+#    try:
+#        #run mini program
+#        intp.interpret_module_string(prog_text, None, 'test')
+#    except UserException, e:
+#        print e
+#        assert e.errno == 3200250
+#        print 'Correct exception was raised.'
+#    else:
+#        assert False, 'An exception should have been raised.'
     
 #    print 'module after interpreter run: ---------------------------------'
 #    print intp.modules['test']
@@ -451,6 +455,5 @@ compile A
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    #test_argument_list_1()
-    test_argument_list_compile_statement_1()
+    test_argument_list_1()
     pass #pylint: disable-msg=W0107

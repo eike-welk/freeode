@@ -62,7 +62,7 @@ from freeode.util import UserException, DotName, TextLocation
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
                          RoleAlgebraicVariable, RoleTimeDifferential, 
                          RoleStateVariable, RoleInputVariable,
-                         SimpleArgumentList, 
+                         SimpleSignature, 
                          Node, NodeFuncArg, NodeFuncCall, NodeOpInfix2, 
                          NodeOpPrefix1, NodeParentheses, NodeIdentifier, 
                          NodeFloat, NodeString, NodeAttrAccess, 
@@ -177,8 +177,6 @@ class InterpreterObject(Node):
     '''
     #let these attributes appear first in the pretty printed tree
     aa_top = ['name', 'type']
-    #reference to interpreter - TODO: global variables are bad
-    #interpreter = None
 
     def __init__(self):
         Node.__init__(self)
@@ -192,10 +190,14 @@ class InterpreterObject(Node):
         #const, param, variable, ... (Comparable to storage class in C++)
         self.role = RoleUnkown
         #True/False is the value of this object known?
+        #TODO: remove??? each function should know by itself if it can do the 
+        #      computations or if code should be produced. Known/unknown is also 
+        #      difficult to decide for structured values. It is only meaningful
+        #      for code-generator-values (FundamentalObject). 
+        #      Maybe there should be FundamentalObject.isknown() .
         self.is_known = False
-        #TODO: self.save ??? True/False attribute is saved to disk as simulation result
+        #TODO: self.save ??? True/False or Save/Optimize/Remove attribute is saved to disk as simulation result
         #TODO: self.default_value ??? (or into leaf types?)
-        #TODO: self.auto_created ??? for automatically created variables that should be eliminated
 
     def __deepcopy__(self, memo_dict):
         '''deepcopy that gets the parent right'''
@@ -345,15 +347,16 @@ class CallableObject(InterpreterObject):
         self.role = RoleConstant
         self.is_known = True
         self.name = name
-        # TODO: rename to is_runtime_function
-        self.is_fundamental_function = False
-        self.codegen_name = None
 #        If True: the function is a basic building block of the language.
 #        The code generator can emit code for this function. The flattened
 #        simulation object must only contain calls to these functions.
 #        If False: This function must be replaced with a series of calls
 #        to fundamental functions.
-        self.return_type = None
+        # TODO: rename to is_runtime_function
+        # TODO: remove! This is unnecessary
+        self.is_fundamental_function = False
+        self.codegen_name = None
+        self.signature = None
 
     def __call__(self, *args, **kwargs):
         '''All Siml-functions must implement this method'''
@@ -393,13 +396,15 @@ class FundamentalObject(InterpreterObject):
         InterpreterObject.__init__(self)
         self.time_derivative = None
         self.target_name = None
+        #TODO: Maybe there should be FundamentalObject.isknown(). 
+        #      Isknown is really only meaningful for code-generator-objects. 
 
 
-class ArgumentList(SimpleArgumentList):
+class Signature(SimpleSignature):
     """
     Contains arguments of a function definition.
-    - Checks the arguments when function definition is parsed
-    - Evaluates the arguments when the function definition is interpreted
+    - Checks the arguments when function definition is created
+    - Evaluates the type annotations, once before the arguments are parsed. 
     - Parses the arguments when the function is called.
     
     TODO: For inspiration look at 
@@ -408,25 +413,29 @@ class ArgumentList(SimpleArgumentList):
         http://oakwinter.com/code/typecheck/
         http://peak.telecommunity.com/PyProtocols.html
     """
-    def __init__(self, arguments, loc=None):
+    def __init__(self, arguments=None, return_type=None, loc=None):
         '''
         ARGUMENTS
         ---------
-        arguments: [ast.NodeFuncArg, ...] or SimpleArgumentList
+        arguments: [ast.NodeFuncArg, ...] or SimpleSignature
             The functions arguments
         loc: ast.TextLocation
             Location where the function is defined in the program text
         '''
         #create:
         # self.arguments: [ast.NodeFuncArg, ...]
+        # self.return_type
         # self.loc
-        SimpleArgumentList.__init__(self, arguments, loc)
+        SimpleSignature.__init__(self, arguments, return_type, loc)
 
         #dictionary for quick access to argument definitions by name
         #also for testing uniqueness and existence of argument names 
         self.argument_dict = {}
         #arguments with default values (subset of self.arguments)
         self.default_args = []
+        #If True: the annotations have been evaluated; 
+        #otherwise self.evaluate_annotations must be called
+        self.is_evaluated = False
         
         there_was_keyword_argument = False
         for arg in self.arguments:
@@ -442,18 +451,21 @@ class ArgumentList(SimpleArgumentList):
                 raise UserException('Duplicate argument name "%s"!' 
                                     % str(arg.name), loc, errno=3200120) 
             self.argument_dict[arg.name] = arg
-        #replace type objects with weak references to them
-        for arg in self.arguments:
-            if isinstance(arg.type, TypeObject):
-                arg.type = ref(arg.type)
+#        #replace type objects with weak references to them
+#        for arg in self.arguments:
+#            if isinstance(arg.type, TypeObject):
+#                arg.type = ref(arg.type)
 
 
-    def evaluate_args(self, interpreter):
+    def evaluate_annotations(self, interpreter):
         '''
-        Interpret the types and default values of the arguments.
-        - default values are computed and must evaluate to constants
+        Compute the types and default values of the arguments. 
+        Compute return type.
         
-        #TODO: Call function from _test_type_compatible 
+        The ast.Nodes are replaced with InterpreterObjects; 
+        the function needs to be run only once
+        
+        - TODO: default values must evaluate to constants
         '''
         #evaluate argument type and default arguments
         for arg in self.arguments:
@@ -465,12 +477,14 @@ class ArgumentList(SimpleArgumentList):
                 arg.default_value = dval_ev
             #test type compatibility of default value and argument type
             if arg.type is not None and arg.default_value is not None:
-                self._test_type_compatible(arg.default_value, arg)
-        #raise NotImplementedError()
-        return self
+                self._test_arg_type_compatible(arg.default_value, arg)
+        #evaluate return type
+        if self.return_type is not None:
+            type_ev = interpreter.eval(self.return_type)
+            self.return_type = ref(type_ev)
 
 
-    def parse_function_call_args(self, args_list, kwargs_dict):
+    def parse_function_call_args(self, args_list, kwargs_dict, interpreter):
         '''
         Executed when a function call happens.
         Fill the arguments of the call site into the arguments of the
@@ -482,20 +496,27 @@ class ArgumentList(SimpleArgumentList):
             Positional arguments.
         kwargs_dict: {str(): <siml values, AST nodes>, ...}
             Keyword arguments.
+        interpreter: Interpreter
+            The Siml interpreter, for evaluating the type annotations
 
         RETURNS
         -------
         Dictionary of argument names and associated values.
         dict(<argument name>: <siml values, AST nodes>, ...)
         dict(str(): Node(), ...)
+        
+        TODO: test if all arguments are known values and return Bool
         '''
-        #TODO: offer two different formats to return the parsed arguments:
-        #      - a tuple of positional arguments. (For function wrapper)
-        #      - a dictionary of keyword arguments. (For Siml function)
         #TODO: implement support for *args and **kwargs
-        #      Description of semantics is here:
+        #  Description of semantics is here:
         #      http://docs.python.org/reference/expressions.html#calls
+        #  A complete implementation is here:
+        #      http://svn.python.org/view/sandbox/trunk/pep362/
 
+        if not self.is_evaluated:
+            self.evaluate_annotations(interpreter)
+            self.is_evaluated = True
+        
         output_dict = {} #dict(<argument name>: <siml values>, ...)
 
         #test too many positional arguments
@@ -509,7 +530,7 @@ class ArgumentList(SimpleArgumentList):
         #associate positional arguments to their names
         for arg_def, in_val in zip(self.arguments, args_list):
             #test for correct type
-            self._test_type_compatible(in_val, arg_def)
+            self._test_arg_type_compatible(in_val, arg_def)
             #associate argument value with name
             output_dict[arg_def.name] = in_val
 
@@ -523,12 +544,12 @@ class ArgumentList(SimpleArgumentList):
                                     loc=None, errno=3200260)
             #test for duplicate argument assignment (positional + keyword)
             if in_name in output_dict:
-                raise UserException('Duplicate argument "%s".'
+                raise UserException('Duplicate argument "%s". \n'
                                     'Function definition in: %s \n'
                                     % (str(in_name), str(self.loc)),
                                     loc=None, errno=3200270)
             #test for correct type,
-            self._test_type_compatible(in_val, self.argument_dict[in_name])
+            self._test_arg_type_compatible(in_val, self.argument_dict[in_name])
             #associate argument value with name
             output_dict[in_name] = in_val
 
@@ -551,7 +572,7 @@ class ArgumentList(SimpleArgumentList):
         return output_dict
 
 
-    def _test_type_compatible(self, in_object, arg_def):
+    def _test_arg_type_compatible(self, in_object, arg_def):
         '''
         Test if a given value has the correct type.
         Raises exception when types are incompatible.
@@ -564,9 +585,6 @@ class ArgumentList(SimpleArgumentList):
         arg_def: ast.NodeFuncArg()
             Definition object of this argument.
             If arg_def.type is None: return True; no type checking is performed.
-        
-        TODO: call this function manually after calling parse_function_call_args
-              reason Bug #391386 : https://bugs.launchpad.net/freeode/+bug/391386
         '''
         if arg_def.type is None:
             return
@@ -574,10 +592,28 @@ class ArgumentList(SimpleArgumentList):
             raise UserException(
                     'Incompatible types. \nVariable: "%s" '
                     'is defined as: %s \nHowever, argument type is: %s. \n'
-                    'Argument definition in: %s \n'
+                    'Function definition in: %s \n'
                     % (arg_def.name, str(arg_def.type().name),
                        str(in_object.type().name), str(self.loc)),
                     loc=None, errno=3200310)
+    
+    
+    def test_return_type_compatible(self, retval):
+        '''
+        Test if the function's return value has the right type.
+        '''
+        if self.return_type is None:
+            return
+        if not siml_issubclass(retval.type(), self.return_type()):
+            raise UserException("The type of the returned object does not match "
+                                "the function's return type specification.\n"
+                                "Type of returned object: %s \n"
+                                "Specified return type  : %s \n"
+                                'Function definition in: %s \n'
+                                % (str(retval.type().name),
+                                   str(self.return_type().name),
+                                   str(self.loc)), 
+                                loc=None, errno=3200320) #TODO:write test for this error!!!
 
 
 
@@ -628,20 +664,14 @@ class BuiltInFunctionWrapper(CallableObject):
     -------
     Wrapped function result (InterpreterObject) or None
     '''
-    def __init__(self, name, argument_definition=ArgumentList([]),
-                             return_type=None,
+    def __init__(self, name, signature=Signature(),
                              py_function=lambda:None,
                              accept_unknown_values=False,
                              is_fundamental_function=True,
                              codegen_name=None):
         CallableObject.__init__(self, name)
-        #ArgumentList(): The function's argument definition.
-        #TODO: new name __siml_arg_def__
-        #               func_annotations
-        self.argument_definition = argument_definition
-        #TypeObject or None: The type of the function's return value
-        #TODO: new name __siml_return_type__
-        self.return_type = ref(return_type) if return_type is not None else None
+        #The function's signature
+        self.signature = signature
         #A Python function. Get function if argument is unbound method.
         self.py_function = py_function if isinstance(py_function, types.FunctionType) \
                            else  py_function.im_func
@@ -676,8 +706,11 @@ class BuiltInFunctionWrapper(CallableObject):
         #      separately. This would make wrapper functions superfluent like
         #      like wsiml_isinstance(...)
         #try if argument definition matches
-        parsed_args = self.argument_definition\
-                          .parse_function_call_args(args, kwargs)
+        parsed_args = self.signature\
+                          .parse_function_call_args(args, kwargs, INTERPRETER)
+                          
+        #TODO: ???put into Signature
+        #TODO: ???put test into each method
         #Test if all arguments are known values.
         all_python_values_exist = True
         for siml_val in parsed_args.itervalues():
@@ -687,8 +720,7 @@ class BuiltInFunctionWrapper(CallableObject):
         #Test: call function or generate code
         #Generate code; there were unknown values, and we don't accept it.
         if not all_python_values_exist and not self.accept_unknown_values:
-            #The interpreter will create an annotated
-            #NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
+            #Interpreter will create NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
             raise UnknownArgumentsException()
         
         #call the wrapped Python function
@@ -700,9 +732,7 @@ class BuiltInFunctionWrapper(CallableObject):
         if retval is None:
             retval = NONE
         #Test return value.type
-        if(self.return_type is not None and
-           not siml_issubclass(retval.type(), self.return_type())):
-            raise Exception('Wrong return type in wrapped function.')
+        self.signature.test_return_type_compatible(retval)
 
         return retval
 
@@ -718,16 +748,13 @@ class SimlFunction(CallableObject):
     '''
     Function written in Siml (user defined function).
     '''
-    def __init__(self, name, argument_definition=ArgumentList([]),
-                             return_type=None,
-                             statements=None, global_scope=None, loc=None):
+    def __init__(self, name, signature=Signature(),
+                  statements=None, global_scope=None, loc=None):
         CallableObject.__init__(self, name)
-        #IntArgumentList
-        self.argument_definition = argument_definition
-        #ref(TypeObject) or None
-        self.return_type = ref(return_type) if return_type is not None else None
+        #Function signature including return type
+        self.signature = signature
         #the statements of the function's body
-        self.statements = statements if statements is not None else []
+        self.statements = statements if statements else []
         #global namespace, stored when the function was defined
         self.global_scope = global_scope
         #count how often the function was called (to create unique names
@@ -824,7 +851,8 @@ class BoundMethod(CallableObject):
         #if the wrapped function is fundamental, this method is fundamental too.
         self.is_fundamental_function = function.is_fundamental_function
         #the bound method has the same return type as the wrapped function
-        self.return_type = function.return_type
+        #TODO: but it doesn't have the same signature
+        self.signature = function.signature
 
     def __call__(self, *args, **kwargs):
         new_args = (self.this,) + args
@@ -1028,30 +1056,26 @@ class IBool(FundamentalObject):
         class_bool = IBool.type_object
         W = BuiltInFunctionWrapper
         #Argument definition for binary operators
-        binop_args = ArgumentList([NodeFuncArg('self', class_bool),
-                                    NodeFuncArg('other', class_bool)])
+        binop_sig = Signature([NodeFuncArg('self', class_bool),
+                                NodeFuncArg('other', class_bool)], class_bool)
         #Argument definition for unary functions and operators
-        single_args = ArgumentList([NodeFuncArg('self', class_bool)])
+        single_args = Signature([NodeFuncArg('self', class_bool)], class_bool)
         #comparison operators
-        W('__eq__', binop_args, CLASS_BOOL,
-          py_function=IBool.__eq__).put_into(class_bool)
-        W('__ne__', binop_args, CLASS_BOOL,
-          py_function=IBool.__ne__).put_into(class_bool)
+        W('__eq__', binop_sig, py_function=IBool.__eq__).put_into(class_bool)
+        W('__ne__', binop_sig, py_function=IBool.__ne__).put_into(class_bool)
         #special functions for boolean operations (and or not)
         #See: http://www.python.org/dev/peps/pep-0335/
-        W('__not__', single_args, CLASS_BOOL,
-          py_function=IBool._not).put_into(class_bool)
-        W('__and2__', binop_args, CLASS_BOOL,
-          py_function=IBool._and2).put_into(class_bool)
-        W('__or2__', binop_args, CLASS_BOOL,
-          py_function=IBool._or2).put_into(class_bool)
+        W('__not__', single_args, py_function=IBool._not).put_into(class_bool)
+        W('__and2__', binop_sig, py_function=IBool._and2).put_into(class_bool)
+        W('__or2__', binop_sig, py_function=IBool._or2).put_into(class_bool)
         #Special function for assignment
-        W('__assign__', binop_args, CLASS_NONETYPE,
-          py_function=IBool._assign,
+        assign_sig = Signature([NodeFuncArg('self', class_bool),
+                                NodeFuncArg('other', class_bool)], CLASS_NONETYPE)
+        W('__assign__', assign_sig, py_function=IBool._assign,
           accept_unknown_values=True).put_into(class_bool)
         #Printing
-        W('__str__', single_args, CLASS_STRING,
-          py_function=IString._str, #IGNORE:W0212
+        print_args = Signature([NodeFuncArg('self', class_bool)], CLASS_STRING)
+        W('__str__', print_args, py_function=IString._str, #IGNORE:W0212
           codegen_name='Bool.__str__').put_into(class_bool)
 
 
@@ -1145,23 +1169,22 @@ class IString(FundamentalObject):
         #create all methods, put them into the class
         W = BuiltInFunctionWrapper
         #Binary operators
-        binop_args = ArgumentList([NodeFuncArg('self', class_string),
-                                    NodeFuncArg('other', class_string)])
-        W('__add__', binop_args, class_string,
-          py_function=IString.__add__).put_into(class_string)
+        add_sig = Signature([NodeFuncArg('self', class_string),
+                             NodeFuncArg('other', class_string)], class_string)
+        W('__add__', add_sig, py_function=IString.__add__).put_into(class_string)
         #comparison operators == !=
-        W('__eq__', binop_args, CLASS_BOOL,
-          py_function=IString.__eq__).put_into(class_string)
-        W('__ne__', binop_args, CLASS_BOOL,
-          py_function=IString.__ne__).put_into(class_string)
+        comp_sig = Signature([NodeFuncArg('self', class_string),
+                              NodeFuncArg('other', class_string)], CLASS_BOOL)
+        W('__eq__', comp_sig, py_function=IString.__eq__).put_into(class_string)
+        W('__ne__', comp_sig, py_function=IString.__ne__).put_into(class_string)
         #Special function for assignment
-        W('__assign__', binop_args, CLASS_NONETYPE,
-          py_function=IString._assign,
+        assign_sig = Signature([NodeFuncArg('self', class_string),
+                                NodeFuncArg('other', class_string)], CLASS_NONETYPE)
+        W('__assign__', assign_sig, py_function=IString._assign,
           accept_unknown_values=True).put_into(class_string)
         #Printing
-        single_args = ArgumentList([NodeFuncArg('self', class_string)])
-        W('__str__', single_args, class_string,
-          py_function=IString._str,
+        str_sig = Signature([NodeFuncArg('self', class_string)], class_string)
+        W('__str__', str_sig, py_function=IString._str,
           codegen_name='String.__str__').put_into(class_string)
         #return the class object
         return class_string
@@ -1254,50 +1277,39 @@ class IFloat(FundamentalObject):
         W = BuiltInFunctionWrapper
         #Arithmetic operators
         #binary
-        binop_args = ArgumentList([NodeFuncArg('self', class_float),
-                                   NodeFuncArg('other', class_float)])
-        W('__add__', binop_args, class_float,
-          py_function=IFloat.__add__).put_into(class_float)
-        W('__sub__', binop_args, class_float,
-          py_function=IFloat.__sub__).put_into(class_float)
-        W('__mul__', binop_args, class_float,
-          py_function=IFloat.__mul__).put_into(class_float)
-        W('__div__', binop_args, class_float,
-          py_function=IFloat.__div__).put_into(class_float)
-        W('__mod__', binop_args, class_float,
-          py_function=IFloat.__mod__).put_into(class_float)
-        W('__pow__', binop_args, class_float,
-          py_function=IFloat.__pow__).put_into(class_float)
+        binop_sig = Signature([NodeFuncArg('self', class_float),
+                               NodeFuncArg('other', class_float)], class_float)
+        W('__add__', binop_sig, py_function=IFloat.__add__).put_into(class_float)
+        W('__sub__', binop_sig, py_function=IFloat.__sub__).put_into(class_float)
+        W('__mul__', binop_sig, py_function=IFloat.__mul__).put_into(class_float)
+        W('__div__', binop_sig, py_function=IFloat.__div__).put_into(class_float)
+        W('__mod__', binop_sig, py_function=IFloat.__mod__).put_into(class_float)
+        W('__pow__', binop_sig, py_function=IFloat.__pow__).put_into(class_float)
         #TODO: __abs__
         #TODO: __nonzero__ ??? #For truth value testing
         #The prefix operator
-        prefix_args = ArgumentList([NodeFuncArg('self', class_float)])
-        W('__neg__', prefix_args, class_float,
-          py_function=IFloat.__neg__).put_into(class_float)
+        prefix_sig = Signature([NodeFuncArg('self', class_float)], class_float)
+        W('__neg__', prefix_sig, py_function=IFloat.__neg__).put_into(class_float)
         #comparison operators
-        W('__lt__', binop_args, CLASS_BOOL,
-          py_function=IFloat.__lt__).put_into(class_float)
-        W('__le__', binop_args, CLASS_BOOL,
-          py_function=IFloat.__le__).put_into(class_float)
-        W('__eq__', binop_args, CLASS_BOOL,
-          py_function=IFloat.__eq__).put_into(class_float)
-        W('__ne__', binop_args, CLASS_BOOL,
-          py_function=IFloat.__ne__).put_into(class_float)
-        W('__gt__', binop_args, CLASS_BOOL,
-          py_function=IFloat.__gt__).put_into(class_float)
-        W('__ge__', binop_args, CLASS_BOOL,
-          py_function=IFloat.__ge__).put_into(class_float)
+        comp_sig = Signature([NodeFuncArg('self', class_float),
+                               NodeFuncArg('other', class_float)], CLASS_BOOL)
+        W('__lt__', comp_sig, py_function=IFloat.__lt__).put_into(class_float)
+        W('__le__', comp_sig, py_function=IFloat.__le__).put_into(class_float)
+        W('__eq__', comp_sig, py_function=IFloat.__eq__).put_into(class_float)
+        W('__ne__', comp_sig, py_function=IFloat.__ne__).put_into(class_float)
+        W('__gt__', comp_sig, py_function=IFloat.__gt__).put_into(class_float)
+        W('__ge__', comp_sig, py_function=IFloat.__ge__).put_into(class_float)
         #Special function for access to derivative
-        W('__diff__', prefix_args, class_float,
-          py_function=IFloat._diff_static,
+        W('__diff__', prefix_sig, py_function=IFloat._diff_static,
           accept_unknown_values=True).put_into(class_float)
         #Special function for assignment
-        W('__assign__', binop_args, CLASS_NONETYPE,
-          py_function=IFloat._assign,
+        assign_sig = Signature([NodeFuncArg('self', class_float),
+                               NodeFuncArg('other', class_float)], CLASS_NONETYPE)
+        W('__assign__', assign_sig, py_function=IFloat._assign,
           accept_unknown_values=True).put_into(class_float)
         #Printing
-        W('__str__', prefix_args, CLASS_STRING,
-          py_function=IFloat._str,
+        str_sig = Signature([NodeFuncArg('self', class_float)], CLASS_STRING)
+        W('__str__', str_sig, py_function=IFloat._str,
           codegen_name='Float.__str__').put_into(class_float)
         #return the class object
         return class_float
@@ -1608,47 +1620,38 @@ def create_built_in_lib():
     #built in functions
     lib.create_attribute('print', PrintFunction())
     lib.create_attribute('graph', GraphFunction())
-    WFunc('save', ArgumentList([Arg('file_name', CLASS_STRING)]),
-          return_type=CLASS_NONETYPE,
+    WFunc('save', Signature([Arg('file_name', CLASS_STRING)], CLASS_NONETYPE),
           py_function=wsiml_save,
           codegen_name='save').put_into(lib)
     WFunc('solution_parameters',
-          ArgumentList([Arg('duration', CLASS_FLOAT),
-                        Arg('reporting_interval', CLASS_FLOAT)]),
-          return_type=CLASS_NONETYPE,
+          Signature([Arg('duration', CLASS_FLOAT),
+                     Arg('reporting_interval', CLASS_FLOAT)], CLASS_NONETYPE),
           py_function=wsiml_solution_parameters,
           codegen_name='solution_parameters').put_into(lib)
     WFunc('isinstance',
-          ArgumentList([Arg('in_object'),
-                        Arg('class_or_type_or_tuple')]),
-          return_type=CLASS_BOOL,
+          Signature([Arg('in_object'), Arg('class_or_type_or_tuple')], CLASS_BOOL),
           accept_unknown_values=True,
           py_function=wsiml_isinstance).put_into(lib)
 #    WFunc('replace_attr',
-#          ArgumentList([Arg('old'), Arg('new')]),
+#          Signature([Arg('old'), Arg('new')]),
 #          return_type=CLASS_NONETYPE,
 #          accept_unknown_values=True,
 #          py_function=wsiml_replace_attr).put_into(lib)
     #math
     #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units
-    WFunc('sqrt', ArgumentList([Arg('x', CLASS_FLOAT)]),
-          return_type=CLASS_FLOAT,
+    WFunc('sqrt', Signature([Arg('x', CLASS_FLOAT)], CLASS_FLOAT),
           py_function=lambda x: IFloat(math.sqrt(x.value)),
           codegen_name='sqrt').put_into(lib)
-    WFunc('sin', ArgumentList([Arg('x', CLASS_FLOAT)]),
-          return_type=CLASS_FLOAT,
+    WFunc('sin', Signature([Arg('x', CLASS_FLOAT)], CLASS_FLOAT),
           py_function=lambda x: IFloat(math.sin(x.value)),
           codegen_name='sin').put_into(lib)
-    WFunc('cos', ArgumentList([Arg('x', CLASS_FLOAT)]),
-          return_type=CLASS_FLOAT,
+    WFunc('cos', Signature([Arg('x', CLASS_FLOAT)], CLASS_FLOAT),
           py_function=lambda x: IFloat(math.cos(x.value)),
           codegen_name='cos').put_into(lib)
-    WFunc('max', ArgumentList([Arg('a', CLASS_FLOAT), Arg('b', CLASS_FLOAT)]),
-          return_type=CLASS_FLOAT,
+    WFunc('max', Signature([Arg('a', CLASS_FLOAT), Arg('b', CLASS_FLOAT)], CLASS_FLOAT),
           py_function=lambda a, b: IFloat(max(a.value, b.value)),
           codegen_name='max').put_into(lib)
-    WFunc('min', ArgumentList([Arg('a', CLASS_FLOAT), Arg('b', CLASS_FLOAT)]),
-          return_type=CLASS_FLOAT,
+    WFunc('min', Signature([Arg('a', CLASS_FLOAT), Arg('b', CLASS_FLOAT)], CLASS_FLOAT),
           py_function=lambda a, b: IFloat(min(a.value, b.value)),
           codegen_name='min').put_into(lib)
 
@@ -1764,7 +1767,15 @@ def siml_issubclass(in_type, class_or_type_or_tuple):
 
 
 def siml_setknown(siml_obj):
-    '''Set decoration to express that the object is a known value.'''
+    '''
+    Set decoration to express that the object is a known value.
+
+    TODO: remove??? each function should know by itself if it can do the 
+          computations or if code should be produced. Known/unknown is also 
+          difficult to decide for structured values. It is only meaningful
+          for code-generator-values (FundamentalObject). 
+          Maybe there should be FundamentalObject.isknown() .
+    '''
     assert isinstance(siml_obj, InterpreterObject), \
            'Function only works with InterpreterObject instances.'
     siml_obj.role = RoleConstant
@@ -1779,13 +1790,20 @@ def siml_isknown(siml_obj):
     -------
     True:  argument is a known Siml value.
     False: argument is an unevaluated expression or an unknown variable.
+
+    TODO: remove??? each function should know by itself if it can do the 
+          computations or if code should be produced. Known/unknown is also 
+          difficult to decide for structured values. It is only meaningful
+          for code-generator-values (FundamentalObject). 
+          Maybe there should be FundamentalObject.isknown() .
     '''
     assert isinstance(siml_obj, (InterpreterObject, NodeFuncCall,
                                  NodeOpInfix2, NodeOpPrefix1,
                                  NodeParentheses)), \
            'Function only works with Siml objects and ast.Node.'
-    if(isinstance(siml_obj, InterpreterObject) and
-       siml_isrole(siml_obj.role, RoleConstant) and siml_obj.is_known):
+    if isinstance(siml_obj, InterpreterObject) and siml_obj.is_known:
+        assert siml_isrole(siml_obj.role, RoleConstant), \
+               'All objects that are known at compile time must be constants.'
         return True
     else:
         return False
@@ -2167,7 +2185,7 @@ class Interpreter(object):
             new_node = NodeOpPrefix1(node.operator, (inst_rhs,), node.loc)
             #put on decoration
             new_node.function = func
-            decorate_call(new_node, func.return_type)
+            decorate_call(new_node, func.signature.return_type)
             return new_node
 
 
@@ -2217,7 +2235,7 @@ class Interpreter(object):
             new_node = NodeOpInfix2(node.operator, (ev_lhs, ev_rhs), node.loc)
             #put on decoration
             new_node.function = func
-            decorate_call(new_node, func.return_type)
+            decorate_call(new_node, func.signature.return_type)
             return new_node
         except NotImplementedError:# IncompatibleTypeError?
             #TODO: if an operator is not implemented the special function should raise
@@ -2296,7 +2314,7 @@ class Interpreter(object):
         except UnknownArgumentsException:
             #Some arguments were unknown create an unevaluated function call
             new_call = NodeFuncCall(func_obj, ev_args, ev_kwargs, node.loc)
-            decorate_call(new_call, func_obj.return_type)
+            decorate_call(new_call, func_obj.signature.return_type)
             return new_call
 
 
@@ -2333,14 +2351,14 @@ class Interpreter(object):
         TODO: find common functionality with execution of built in functions
         '''
         #parse the arguments that we get from the caller, do type checking
-        parsed_args = func_obj.argument_definition\
-                          .parse_function_call_args(posargs, kwargs)
+        parsed_args = func_obj.signature\
+                              .parse_function_call_args(posargs, kwargs, self)
 
         #Take 'this' name-space from the 'this' argument.
         # 'this' must be a Siml object, no unevaluated expression
         this_namespace = parsed_args.get('this', None)
         if this_namespace and not isinstance(this_namespace, InterpreterObject):
-            raise UserException('The "this" argument of methods '
+            raise UserException('The "this" argument of a method '
                                 'must be a known Siml object.')
 
         #Count calls for making nice name spaces for persistant locals
@@ -2391,14 +2409,7 @@ class Interpreter(object):
         ret_val = new_env.return_value
 
         #Test if returned object has the right type.
-        if func_obj.return_type is not None and \
-           not siml_issubclass(ret_val.type(), func_obj.return_type()):
-            raise UserException("The type of the returned object does not match "
-                                "the function's return type specification.\n"
-                                "Type of returned object: %s \n"
-                                "Specified return type  : %s \n"
-                                % (str(ret_val.type().name),
-                                   str(func_obj.return_type().name)))
+        func_obj.signature.test_return_type_compatible(ret_val)
         return ret_val
     
        
@@ -2710,14 +2721,7 @@ class Interpreter(object):
 
     def exec_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
-        #ArgumentList does the argument parsing at the function call
-        #evaluate the type specifications and the default arguments
-        arguments_ev = ArgumentList(node.arguments)\
-                       .evaluate_args(self)
-        #Evaluate the return type
-        return_type_ev = None
-        if node.return_type is not None:
-            return_type_ev = self.eval(node.return_type)
+        func_sig = Signature(node.signature)
         #save the current global namespace in the function. Otherwise
         #access to global variables would have surprising results
         #TODO: Implement closures, for nested functions:
@@ -2727,9 +2731,8 @@ class Interpreter(object):
         #      - new ast.Node.copy mechanism for shallow copy, referencing
         #      - new pretty printer mechanism to prevent duplicate printing
         global_scope = make_proxy(self.environment.global_scope)
-
         #create new function object and
-        new_func = SimlFunction(node.name, arguments_ev, return_type_ev,
+        new_func = SimlFunction(node.name, func_sig,
                                 node.statements, global_scope, node.loc)
         #put function object into the local namespace
         self.environment.local_scope.create_attribute(node.name, new_func)
@@ -2873,21 +2876,21 @@ class Interpreter(object):
                                 #RoleConstant),
                   call_argument_role=RoleInputVariable,
                   proto=SimlFunction('dynamic',
-                                     ArgumentList([NodeFuncArg('this')]),
-                                     None, statements=[],
+                                     Signature([NodeFuncArg('this')]),
+                                     statements=[],
                                      global_scope=self.built_in_lib),
                   ),
              Node(#target_roles=(RoleParameter, RoleVariable, RoleConstant),
                   call_argument_role=RoleParameter,
                   proto=SimlFunction('initialize',
-                                     ArgumentList([NodeFuncArg('this')]),
-                                     None, statements=[],
+                                     Signature([NodeFuncArg('this')]),
+                                     statements=[],
                                      global_scope=self.built_in_lib)),
              Node(#target_roles=(RoleVariable, RoleConstant),
                   call_argument_role=None,
                   proto=SimlFunction('final',
-                                     ArgumentList([NodeFuncArg('this')]),
-                                     None, statements=[],
+                                     Signature([NodeFuncArg('this')]),
+                                     statements=[],
                                      global_scope=self.built_in_lib))]
         #Search additional main functions for changing parameters from outside
         #      'init_xxx(this, ...)'
@@ -2900,8 +2903,8 @@ class Interpreter(object):
                 #new_spec.target_roles = (RoleParameter, RoleVariable, RoleConstant)
                 new_spec.call_argument_role = RoleParameter
                 new_spec.proto = SimlFunction(name,
-                                              attr.argument_definition.copy(),
-                                              None, statements=[],
+                                              attr.signature.copy(),
+                                              statements=[],
                                               global_scope=self.built_in_lib)
                 main_func_specs.append(new_spec)
 
@@ -2925,8 +2928,8 @@ class Interpreter(object):
                 func_tree = tree_object.get_attribute(func_name)
             except UndefinedAttributeError:
                 #Create empty function for the missing main funcion
-                func_flat = SimlFunction(func_name, ArgumentList([NodeFuncArg('this')]),
-                                         None, statements=[], global_scope=self.built_in_lib)
+                func_flat = SimlFunction(func_name, Signature([NodeFuncArg('this')]),
+                                         statements=[], global_scope=self.built_in_lib)
                 flat_object.create_attribute(DotName(func_name), func_flat)
                 print 'Warning: main function %s is not defined.' % str(func_name)
                 continue
@@ -2934,7 +2937,7 @@ class Interpreter(object):
             #create argument list for call to main function
             args_list = []
             args_role = spec.call_argument_role
-            for i, arg_def in enumerate(spec.proto.argument_definition.arguments):
+            for i, arg_def in enumerate(spec.proto.signature.arguments):
                 #ignore 'this'
                 if i == 0:
                     continue
@@ -2955,8 +2958,8 @@ class Interpreter(object):
             self.apply(func_tree, tuple(args_list), {})  
             stmt_list, dummy = self.stop_collect_code()
             #create a new main function for the flat object with the collected code
-            func_flat = SimlFunction(func_name, spec.proto.argument_definition,
-                                     None, statements=stmt_list,
+            func_flat = SimlFunction(func_name, spec.proto.signature,
+                                     statements=stmt_list,
                                      global_scope=self.built_in_lib)
             #Put new main function into flat object
             flat_object.create_attribute(DotName(func_name), func_flat)

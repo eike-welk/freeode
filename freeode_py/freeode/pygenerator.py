@@ -479,7 +479,7 @@ class SimulationClassGenerator(object):
         
         #include additional method arguments
         meth_args = ''
-        for i, arg_def in enumerate(method.argument_definition.arguments): #IGNORE:E1103
+        for i, arg_def in enumerate(method.signature.arguments): #IGNORE:E1103
             #ignore 'this'
             if i == 0:
                 continue

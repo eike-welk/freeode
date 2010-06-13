@@ -1478,7 +1478,7 @@ compile A
     assert isinstance(init_b_stmts[0], NodeAssignment)
     assert isinstance(init_b_stmts[1], NodeAssignment)
     #'init_b' must have 2 arguments: 'this', 'in_b'
-    init_b_args = init_b.argument_definition.arguments
+    init_b_args = init_b.signature.arguments
     assert len(init_b_args) == 2
     assert init_b_args[0].name == 'this'
     assert init_b_args[1].name == 'in_b'

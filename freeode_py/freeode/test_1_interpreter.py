@@ -33,6 +33,8 @@ from __future__ import absolute_import
 from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
 
+from freeode.util import assert_raises
+
 
 
 # -------- Test InterpreterObject class ----------------------------------------------------------------------
@@ -227,49 +229,46 @@ def test_IntArgumentList_1(): #IGNORE:C01111
     msg = 'IntArgumentList: construction'
     #skip_test(msg)
     print msg
+    
     from freeode.util import UserException
-    from freeode.interpreter import ArgumentList, NodeFuncArg, CLASS_FLOAT
+    from freeode.interpreter import Signature, NodeFuncArg, CLASS_FLOAT
     
     #Test normal construction only positional argument: f(a, b)
-    ArgumentList([NodeFuncArg('a'),
-                  NodeFuncArg('b')], None)
+    Signature([NodeFuncArg('a'), NodeFuncArg('b')])
     #Test normal construction with keyword arguments: f(a, b=1)
     val_1 = CLASS_FLOAT()
-    ArgumentList([NodeFuncArg('a'),
-                  NodeFuncArg('b', default_value=val_1)], None)
+    Signature([NodeFuncArg('a'), NodeFuncArg('b', default_value=val_1)])
     
+    #Errors:
     #argument list with two identical argument names: f(a, a)
-    try:
-        ArgumentList([NodeFuncArg('a'),
-                      NodeFuncArg('a')], None)
-    except UserException, e:
-        print 'Caught expected exception (argument names must be unique)'
-        print e
-    else:
-        fail_test('This code should raise an exception (argument names must be unique).') #IGNORE:E1101
+    def raise_1():
+        Signature([NodeFuncArg('a'), 
+                   NodeFuncArg('a')])
+    assert_raises(UserException, 3200120, raise_1)
         
     #argument list with keyword argument before positional argument: f(a=1, b)
-    try:
+    def raise_2():
         val_1 = CLASS_FLOAT()
-        ArgumentList([NodeFuncArg('a', default_value=val_1),
-                      NodeFuncArg('b')], None)
-    except UserException, e:
-        print 'Caught expected exception (keyword argument before positional argument)'
-        print e
-    else:
-        fail_test('This code should raise an exception (keyword argument before positional argument).') #IGNORE:E1101
-#    assert 1==0
+        Signature([NodeFuncArg('a', default_value=val_1), NodeFuncArg('b')])
+    assert_raises(UserException, 3200110, raise_2)
     
     
     
 def test_IntArgumentList_2(): #IGNORE:C01111
-    print 'ArgumentList: test argument processing at call site'
+    msg = 'Signature: test argument processing at call site'
+    #skip_test(msg)
+    print msg
+    
     from freeode.util import UserException
-    from freeode.interpreter import (ArgumentList, NodeFuncArg, CLASS_FLOAT)
+    from freeode.interpreter import (Signature, NodeFuncArg, CLASS_FLOAT,
+                                     Interpreter)
+    
+    #Interpreter for initial evaluation of type annotations
+    intp = Interpreter()
     
     #argument list for testing
-    al = ArgumentList([NodeFuncArg('a'),
-                       NodeFuncArg('b')], None)
+    al = Signature([NodeFuncArg('a'),
+                    NodeFuncArg('b')])
     #some interpreter level values
     val_1 = CLASS_FLOAT()
     val_1.value = 1
@@ -277,85 +276,50 @@ def test_IntArgumentList_2(): #IGNORE:C01111
     val_2.value = 2
     
     #call with correct number of positional arguments
-    arg_vals = al.parse_function_call_args([val_1, val_2], {})
+    arg_vals = al.parse_function_call_args([val_1, val_2], {}, intp)
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 2
     
     #call with correct number of keyword arguments
     arg_vals = al.parse_function_call_args([], {'a':val_1,  
-                                                'b':val_2})
+                                                'b':val_2}, intp)
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 2
     
     #call with too few arguments
-    try:
-        al.parse_function_call_args([], {})
-    except UserException, e:
-        print 'Caught expected exception (too few arguments)'
-        print e
-    else:
-        fail_test('This code should raise an exception (too few arguments).') #IGNORE:E1101
+    def raise_1():
+        al.parse_function_call_args([], {}, intp)
+    assert_raises(UserException, 3200280, raise_1)
+
         
     #call with too many positional arguments
-    try:
-        al.parse_function_call_args([val_1, val_2, val_2], {})
-    except UserException, e:
-        print 'Caught expected exception (too many positional arguments)'
-        print e
-    else:
-        fail_test('This code should raise an exception (too many positional arguments).') #IGNORE:E1101
+    def raise_2():
+        al.parse_function_call_args([val_1, val_2, val_2], {}, intp)
+    assert_raises(UserException, 3200250, raise_2)
        
     #call with unknown keyword argument
-    try:
+    def raise_3():
         al.parse_function_call_args([], {'a':val_1,  
-                                         'c':val_2})
-    except UserException, e:
-        print 'Caught expected exception (unknown keyword argument)'
-        print e
-    else:
-        fail_test('This code should raise an exception (unknown keyword argument).') #IGNORE:E1101
+                                         'c':val_2}, intp)
+    assert_raises(UserException, 3200260, raise_3)
         
     #call with duplicate keyword argument
-    try:
-        al.parse_function_call_args([val_1, val_2], {'a':val_1})
-    except UserException, e:
-        print 'Caught expected exception (duplicate keyword argument)'
-        print e
-    else:
-        fail_test('This code should raise an exception (duplicate keyword argument).') #IGNORE:E1101
-    #assert 1==0
-    
-    
-    
-def test_IntArgumentList_2_1(): #IGNORE:C01111
-    print 'ArgumentList: __init__: strings are converted to DotName, default argument for loc'
-    from freeode.interpreter import (ArgumentList, NodeFuncArg, CLASS_FLOAT)
-    
-    #argument list for testing
-    al = ArgumentList([NodeFuncArg('a'),
-                       NodeFuncArg('b')])
-    #some interpreter level values
-    val_1 = CLASS_FLOAT()
-    val_1.value = 1
-    val_2 = CLASS_FLOAT()
-    val_2.value = 2
-    
-    #call with correct number of positional arguments
-    arg_vals = al.parse_function_call_args([val_1, val_2], {})
-    assert arg_vals['a'].value == 1
-    assert arg_vals['b'].value == 2
-    
-    #call with correct number of keyword arguments
-    arg_vals = al.parse_function_call_args([], {'a':val_1,  
-                                                'b':val_2})
-    assert arg_vals['a'].value == 1
-    assert arg_vals['b'].value == 2
+    def raise_4():
+        al.parse_function_call_args([val_1, val_2], {'a':val_1}, intp)
+    assert_raises(UserException, 3200270, raise_4)
     
     
     
 def test_IntArgumentList_3(): #IGNORE:C01111
-    print 'ArgumentList: test calling with default arguments.'
-    from freeode.interpreter import (ArgumentList, NodeFuncArg, CLASS_FLOAT)
+    msg =  'Signature: test calling with default arguments.'
+    #skip_test(msg)
+    print msg
+
+    from freeode.interpreter import (Signature, NodeFuncArg, CLASS_FLOAT, 
+                                     Interpreter)
+    
+    #Interpreter for initial evaluation of type annotations
+    intp = Interpreter()
     
     #some interpreter level values
     val_1 = CLASS_FLOAT()
@@ -363,41 +327,47 @@ def test_IntArgumentList_3(): #IGNORE:C01111
     val_2 = CLASS_FLOAT()
     val_2.value = 2
     #argument list for testing: def f(a, b=2)
-    al = ArgumentList([NodeFuncArg('a'),
-                       NodeFuncArg('b', default_value=val_2)], None)
+    al = Signature([NodeFuncArg('a'),
+                    NodeFuncArg('b', default_value=val_2)], None)
     
     #call with one positional argument: f(1). For argument 'b' default value must be used.
-    arg_vals = al.parse_function_call_args([val_1], {})
+    arg_vals = al.parse_function_call_args([val_1], {}, intp)
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 2
     
     
     
 def test_IntArgumentList_4(): #IGNORE:C01111
-    print 'ArgumentList: test type compatibility testing.'
-    from freeode.interpreter import (ArgumentList, NodeFuncArg,   
-                                     CLASS_FLOAT, CLASS_STRING)
+    msg =  'Signature: test type compatibility testing.'
+    #skip_test(msg)
+    print msg
+
+    from freeode.interpreter import (Signature, NodeFuncArg,   
+                                     CLASS_FLOAT, CLASS_STRING, Interpreter)
+    
+    #Interpreter for initial evaluation of type annotations
+    intp = Interpreter()
     
     #some interpreter level values
     val_1 = CLASS_FLOAT(1)
     val_hello = CLASS_STRING('hello')
     #argument list for testing: f(a:Float, b:String)
-    al = ArgumentList([NodeFuncArg('a', type=CLASS_FLOAT),
-                       NodeFuncArg('b', type=CLASS_STRING)], None)
+    al = Signature([NodeFuncArg('a', type=CLASS_FLOAT),
+                    NodeFuncArg('b', type=CLASS_STRING)], None)
     
     #call with correct positional arguments: f(1, 'hello')
-    arg_vals = al.parse_function_call_args([val_1, val_hello], {})
+    arg_vals = al.parse_function_call_args([val_1, val_hello], {}, intp)
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 'hello'
     
     #call with correct keyword arguments: f(a=1, b='hello')
     arg_vals = al.parse_function_call_args([], {'a':val_1, 
-                                                'b':val_hello})
+                                                'b':val_hello}, intp)
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 'hello'
     
     #call with mixed positional and keyword arguments: f(1, b='hello')
-    arg_vals = al.parse_function_call_args([val_1], {'b':val_hello})
+    arg_vals = al.parse_function_call_args([val_1], {'b':val_hello}, intp)
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 'hello'
     
@@ -405,9 +375,10 @@ def test_IntArgumentList_4(): #IGNORE:C01111
  
 # -------- Test wrapper object for Python functions ------------------------------------------------------------------------
 def test_BuiltInFunctionWrapper_1(): #IGNORE:C01111
+    skip_test('BuiltInFunctionWrapper: test function call with known arguments, no Interpreter.')
     print 'BuiltInFunctionWrapper: test function call with known arguments, no Interpreter.'
     from freeode.interpreter import (BuiltInFunctionWrapper,
-                                     ArgumentList, NodeFuncArg,   
+                                     Signature, NodeFuncArg,   
                                      CLASS_FLOAT)
     import math
     
@@ -418,7 +389,7 @@ def test_BuiltInFunctionWrapper_1(): #IGNORE:C01111
 
     #create a function object that wraps the sqrt function
     func = BuiltInFunctionWrapper('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
+                                  Signature([NodeFuncArg('x', CLASS_FLOAT)]), 
                                   return_type=CLASS_FLOAT, 
                                   py_function=sqrt)
     #call function: sqrt(2)
@@ -428,9 +399,10 @@ def test_BuiltInFunctionWrapper_1(): #IGNORE:C01111
     
                                       
 def test_BuiltInFunctionWrapper_2(): #IGNORE:C01111
+    skip_test('BuiltInFunctionWrapper: test function call with unknown arguments, no Interpreter.')
     print 'BuiltInFunctionWrapper: test function call with unknown arguments, no Interpreter.'
     from freeode.interpreter import (BuiltInFunctionWrapper,
-                                     ArgumentList, NodeFuncArg, ref,  
+                                     Signature, NodeFuncArg, ref,  
                                      CLASS_FLOAT,UnknownArgumentsException, 
                                      NodeOpInfix2,)
     import math
@@ -444,7 +416,7 @@ def test_BuiltInFunctionWrapper_2(): #IGNORE:C01111
     binop_u.type = ref(CLASS_FLOAT)
     #create a function object that wraps the sqrt function
     func = BuiltInFunctionWrapper('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
+                                  Signature([NodeFuncArg('x', CLASS_FLOAT)]), 
                                   return_type=CLASS_FLOAT, 
                                   py_function=sqrt)
     
@@ -903,7 +875,7 @@ def test_expression_evaluation_4(): #IGNORE:C01111
     print 'Test expression evaluation (calling built in functions)'
     from freeode.interpreter import (simlparser, IModule, ExecutionEnvironment,
                                      Interpreter, BuiltInFunctionWrapper, 
-                                     ArgumentList, NodeFuncArg,
+                                     Signature, NodeFuncArg,
                                      CLASS_FLOAT)
     import math
     
@@ -920,8 +892,7 @@ def test_expression_evaluation_4(): #IGNORE:C01111
     sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
     #create a function object that wraps the sqrt function
     func = BuiltInFunctionWrapper('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
-                                  return_type=CLASS_FLOAT, 
+                                  Signature([NodeFuncArg('x', CLASS_FLOAT)], CLASS_FLOAT),
                                   py_function=sqrt)
     #put function into module
     mod.create_attribute('sqrt', func)
@@ -990,7 +961,7 @@ def test_function_call_unknown_arguments_1(): #IGNORE:C01111
     print msg
     from freeode.interpreter import (IModule, ExecutionEnvironment,
                                      Interpreter, 
-                                     BuiltInFunctionWrapper, ArgumentList,
+                                     BuiltInFunctionWrapper, Signature,
                                      CLASS_FLOAT, RoleVariable)
     from freeode.ast import (NodeFuncCall, NodeIdentifier, NodeFuncArg)
     import math
@@ -1001,8 +972,7 @@ def test_function_call_unknown_arguments_1(): #IGNORE:C01111
     sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
     #create a function object that wraps the sqrt function
     func = BuiltInFunctionWrapper('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
-                                  return_type=CLASS_FLOAT, 
+                                  Signature([NodeFuncArg('x', CLASS_FLOAT)], CLASS_FLOAT), 
                                   py_function=sqrt)
     #put function into module
     mod.create_attribute('sqrt', func)
@@ -1137,7 +1107,7 @@ User defined functions are created without parser.
     print msg
     
     from freeode.interpreter import (Interpreter, SimlFunction, 
-                                     ArgumentList, CLASS_FLOAT, CLASS_STRING)
+                                     Signature, CLASS_FLOAT, CLASS_STRING)
     from freeode.ast import NodeFuncArg, NodeReturnStmt, NodeIdentifier
     from freeode.util import UserException
 
@@ -1151,16 +1121,15 @@ User defined functions are created without parser.
     #create a function without statements (impossible in Siml)
     # func test(a:Float):
     #     ** nothing **
-    f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=None, statements=[], global_scope=lib)
+    f1 = SimlFunction('test', Signature([NodeFuncArg('a', CLASS_FLOAT)]), 
+                      statements=[], global_scope=lib)
     #call with existing value
     intp.apply(f1, (val_1,))
     
     #create a function with return statement - uses interpreter for executing the statement
     # func test(a:Float) -> Float:
     #     return a
-    f2 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=CLASS_FLOAT, 
+    f2 = SimlFunction('test', Signature([NodeFuncArg('a', CLASS_FLOAT)], CLASS_FLOAT), 
                       statements=[NodeReturnStmt([NodeIdentifier('a')])], 
                       global_scope=lib)
     #call function and see if value is returned
@@ -1170,16 +1139,12 @@ User defined functions are created without parser.
     #create a function with wrong return type
     # func test(a:Float) -> String:
     #     return a
-    f3= SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=CLASS_STRING, 
+    f3= SimlFunction('test', Signature([NodeFuncArg('a', CLASS_FLOAT)], CLASS_STRING), 
                       statements=[NodeReturnStmt([NodeIdentifier('a')])], 
                       global_scope=lib)
-    try:
-        ret_val = intp.apply(f3, (val_1,))
-    except UserException:
-        print 'Getting expected exception: type mismatch at function return'
-    else:
-        fail_test('There was wrong return type, but no exception!') #IGNORE:E1101
+    def raise_1():
+        intp.apply(f3, (val_1,))
+    assert_raises(UserException, 3200320, raise_1)
 
 
 
@@ -1216,7 +1181,7 @@ User defined functions are created without parser.
     print msg
     
     from freeode.interpreter import (Interpreter, SimlFunction, IModule,
-                                     ArgumentList, CLASS_FLOAT)
+                                     Signature, CLASS_FLOAT)
     from freeode.ast import NodeFuncArg
 
     #create the interpreter 
@@ -1228,9 +1193,8 @@ User defined functions are created without parser.
     #create a function without statements (impossible in Siml)
     # func test(a:Float):
     #     ** nothing **
-    f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=None, statements=[], 
-                      global_scope=intp.built_in_lib)
+    f1 = SimlFunction('test', Signature([NodeFuncArg('a', CLASS_FLOAT)]), 
+                      statements=[], global_scope=intp.built_in_lib)
     #create module where the function lives
     mod1 = IModule('test-module')
     mod1.create_attribute('test', f1)
@@ -1485,5 +1449,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_SimlFunction_1()
+    test_IntArgumentList_4()
     pass #pylint: disable-msg=W0107

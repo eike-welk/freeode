@@ -321,7 +321,7 @@ class NodeFuncCall(Node):
     
     Data attributes:
     ----------------
-        name: NodeIdentifier/callable object
+        function: NodeIdentifier/callable object
             expression that yields the function object, or the function 
             object that will be called. 
             The function object is present when an unevaluated function call 
@@ -342,11 +342,6 @@ class NodeFuncCall(Node):
             unknown variables.
         loc: 
             Location in input string
-            
-    TODO: unify functions and operators and
-    TODO: remove NodeOpInfix2, NodeOpPrefix1
-    TODO:    is_operator: True/False
-    TODO:    operator_placement: prefix/infix/suffix 
     '''
     #TODO: give NodeFuncCall a nice constructor
     def __init__(self, function=None, arguments=None, keyword_arguments=None, 
@@ -710,9 +705,9 @@ class NodeFuncArg(Node):
     Attributes:
         name: str
             Name of argument
-        type:
+        type: ast.Node usually ast.NodeIdentifier
             Type of argument
-        default_value:
+        default_value: ast.Node usually ast.NodeAttrAccess or ast.NodeFloat
             default value
         loc:
             Location in input file
@@ -726,32 +721,31 @@ class NodeFuncArg(Node):
         
         
         
-class SimpleArgumentList(Node):
+class SimpleSignature(Node):
     """
-    Contains arguments of a function definition.
-    - Checks the arguments when function definition is parsed
+    Contains arguments of a function definition and the return type.
     """
-    def __init__(self, arguments, loc=None):
+    def __init__(self, arguments=None, return_type=None, loc=None):
         '''
         ARGUMENTS
         ---------
-        arguments: [ast.NodeFuncArg, ...] or SimpleArgumentList
+        arguments: [ast.NodeFuncArg, ...] or SimpleSignature
             The functions arguments
+        return_type: ast.Node usually ast.NodeIdentifier
+            Type of the function's return value.
         loc: ast.TextLocation 
-            Location where the function is defined in the program text
+            Location where the function is defined in the program text.
         '''
         Node.__init__(self)
         
         #special case copy construction
-        if isinstance(arguments, SimpleArgumentList):
+        if isinstance(arguments, SimpleSignature):
             loc = arguments.loc
             arguments = arguments.arguments
 
-        #--- the primary data ------------------------------------------#
-        #place in program text where function is defined
+        self.arguments = arguments if arguments is not None else []
+        self.return_type = return_type
         self.loc = loc            
-        #list of argument definitions [ast.NodeFuncArg, ...]
-        self.arguments = arguments
 
 
 
@@ -767,24 +761,20 @@ class NodeFuncDef(Node):
     Attributes:
         name: str
             Name of the function
-        arguments:
-            Positional arguments
-        keyword_arguments:
-            Keyword arguments
+        signature: SimpleSignature
+            The function arguments (positional- and keyword-arguments) with 
+            type annotations.
         statements: list(Node()]
             Statements of function body
-        return_type: 
-            Class name of return value; tuple of strings: ('Real',)???
         loc: 
             Location in input string
     """
-    def __init__(self):
+    def __init__(self, name, signature, statements, loc=None):
         Node.__init__(self)
-        self.name = None
-        self.arguments = SimpleArgumentList([])
-        self.statements = []
-        self.return_type = None
-        self.loc = None
+        self.name = name
+        self.signature = signature #SimpleSignature([])
+        self.statements = statements #[]
+        self.loc = loc
 
 
 

@@ -381,9 +381,11 @@ def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-ms
         if errno is not None:
             assert hasattr(e, 'errno'), 'Exception has no attribute "errno"!'
             assert e.errno == errno, 'Wrong errno: %s. \n' \
-                                     'Expecting errno: %s' \
-                                     % (str(e.errno), errno)
-        print 'Correct exception was raised.'
+                                     'Expecting errno: %s \n' \
+                                     'Caught exception: \n%s' \
+                                     % (e.errno, errno, e)
+        print 'Correct exception was raised:'
+        print e
     except BaseException, e:
         print >>sys.stderr, 'Wrong exception was raised! Type: %s \n' \
                             'Expected exception type: %s' \
