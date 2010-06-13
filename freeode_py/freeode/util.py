@@ -28,6 +28,7 @@ Utility classes and functions.
 from __future__ import division
 from __future__ import absolute_import          
 
+import sys
 import freeode.third_party.pyparsing as pyparsing     
 
 
@@ -348,6 +349,52 @@ class UserException(Exception):
 
 
 
+def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-msg=W0102
+    '''
+    Test if a function raises the expected exception. Can test error number of 
+    UserException.
+    
+    ARGUMENTS
+    ---------
+    exc_type: Exception
+        The type of the expected exception.
+    errno: int, None
+        The error number of the expected exception. The exception must have 
+        an attribute "errno" which is equal to this argument. 
+        Useful for UserException.
+        If errno is None it is ignored
+    func: Python function
+        The tested function which must raise an exception.
+    args: tuple
+        Positional arguments for tested function.
+    kwargs: dict
+        Keyword arguments for tested function.
+    '''
+    assert issubclass(exc_type, BaseException), \
+           'Argument exc_type must be an exception type.'
+    assert callable(func), 'Argument func must be call-able.'
+    
+    try:
+        func(*args, **kwargs) #pylint:disable-msg=W0142
+    except exc_type, e:
+        #print e
+        if errno is not None:
+            assert hasattr(e, 'errno'), 'Exception has no attribute "errno"!'
+            assert e.errno == errno, 'Wrong errno: %s. \n' \
+                                     'Expecting errno: %s' \
+                                     % (str(e.errno), errno)
+        print 'Correct exception was raised.'
+    except BaseException, e:
+        print >>sys.stderr, 'Wrong exception was raised! Type: %s \n' \
+                            'Expected exception type: %s' \
+                            % (type(e).__name__, exc_type.__name__)
+        raise
+    else:
+        assert False, 'An exception should have been raised. \n' \
+                      'Expecting exception of type: %s' % exc_type.__name__
+    
+    
+    
 class DotName(tuple):
     '''
     Class that represents a dotted name ('pr1.m1.a').

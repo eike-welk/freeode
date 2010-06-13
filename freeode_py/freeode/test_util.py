@@ -317,8 +317,63 @@ def test_UserException():
 
 
 
+def test_assert_raises():
+    msg = "Test function for checking that the correct exceptions are raised."
+    #skip_test(msg)
+    print msg
+    
+    from freeode.util import UserException, assert_raises
+    
+    class DummyException(Exception):
+        pass
+
+    #--- Correct behavior -----------------------------------------------
+    #Test case: correct exception is raised with errno
+    #Also test parameter passing
+    def raise_errno_001(a, b, c, d):
+        assert a == 1 and b == 2 and c == 3 and d == 4
+        raise UserException('Test message', None, 1)
+    assert_raises(UserException, 1, raise_errno_001, (1, 2), {'c':3, 'd':4})
+    
+    #Test case: correct exception is raised no errno
+    def raise_DummyException_1():
+        raise DummyException('Test message')
+    assert_raises(DummyException, None, raise_DummyException_1)
+    
+    #--- Errors -----------------------------------------------------------
+    #Test case: wrong errno
+    try:
+        def raise_errno_002():
+            raise UserException('Test message', None, 2)
+        assert_raises(UserException, 1, raise_errno_002)
+    except AssertionError:
+        print '--- Correct exception was raised.'
+    else:
+        assert False, 'An exception should have been raised!'
+        
+    #Test case: Wrong exception is raised
+    try:
+        def raise_DummyException_2():
+            raise DummyException('Test message')
+        assert_raises(UserException, 1, raise_DummyException_2)
+    except DummyException:
+        print '--- Correct exception was raised.'
+    else:
+        assert False, 'An exception should have been raised!'
+
+    #Test case: No exception is raised
+    try:
+        def raise_nothing():
+            pass
+        assert_raises(UserException, 1, raise_nothing)
+    except AssertionError:
+        print '--- Correct exception was raised.'
+    else:
+        assert False, 'An exception should have been raised!'
+
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_AATreeMaker_make_tree()
-    test_AATreeMaker_infinite_recursion()
+    test_assert_raises()
     pass #pylint: disable-msg=W0107
