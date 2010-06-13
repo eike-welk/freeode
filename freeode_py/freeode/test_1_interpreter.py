@@ -1486,4 +1486,4 @@ if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
     test_SimlFunction_1()
-    pass
+    pass #pylint: disable-msg=W0107

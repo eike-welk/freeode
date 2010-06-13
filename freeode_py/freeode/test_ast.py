@@ -36,14 +36,14 @@ import unittest
 pytest_plugins = "pytest_unittest"
 
 
-#import library which we want to test
-from freeode.ast import * 
+import weakref
 
 
 class TestAST(unittest.TestCase): #IGNORE:C01111
 
     def setUp(self):
         '''Node: perform common setup tasks for each test'''
+        from freeode.ast import Node
         #create a tree
         n5 = Node(name='n5', type='leaf',   kids=[])       
         n4 = Node(name='n4', type='leaf',   kids=[])       
@@ -59,6 +59,7 @@ class TestAST(unittest.TestCase): #IGNORE:C01111
 
     def test__init__(self):
         '''Node: Test the __init__ method'''
+        from freeode.ast import Node
         #The init method creates one attribute for each named argument.
         #There are no default attributes.
         n1 = Node()
@@ -69,10 +70,12 @@ class TestAST(unittest.TestCase): #IGNORE:C01111
         self.assertRaises(TypeError, self.raise__init__1)
     def raise__init__1(self):
         '''Node: Positional arguments raise exceptions'''
+        from freeode.ast import Node
         Node('test')
 
     def test__str__(self):
         '''Node: Test printing and line wraping (it must not crash)'''
+        from freeode.ast import Node
         #TODO: Make this smarter, printing and copying are the only 
         #      genuine functions of Node
         #Test wrapping and lists
@@ -117,6 +120,7 @@ class TestAST(unittest.TestCase): #IGNORE:C01111
 
     def testCopy(self):
         '''Node: Test copy function'''
+        from freeode.ast import Node
         #create additional weak attributes
         n1 = Node(name='weak1')
         n2 = Node(name='weak2')
@@ -181,9 +185,10 @@ class TestVisitor(unittest.TestCase): #IGNORE:C01111
 
     def test__dispatch(self):
         '''Visitor: Test normal operation.'''
+        from freeode.ast import Visitor
         #define visitor class
         class FooClass(Visitor): #IGNORE:C01111
-            def __init__(self):
+            def __init__(self): #pylint:disable-msg=W0231
                 Visitor.__init__(self)
             @Visitor.when_type(list)
             def visitList(self, _inObject): #IGNORE:C01111
@@ -218,6 +223,7 @@ class TestVisitor(unittest.TestCase): #IGNORE:C01111
 
     def test__switching_inheritance_priority(self):
         '''Visitor: Test switching based on inheritance and priority.'''
+        from freeode.ast import Visitor
         #Define class hierarchy
         class Base(object): #IGNORE:C01111
             pass
@@ -228,7 +234,7 @@ class TestVisitor(unittest.TestCase): #IGNORE:C01111
 
         #define visitor class
         class TestVisitorClass(Visitor): #IGNORE:C01111
-            def __init__(self):
+            def __init__(self): #pylint:disable-msg=W0231
                 Visitor.__init__(self)
             #Can handle all Base objects but has low priority
             @Visitor.when_type(Base, 1)
@@ -259,14 +265,15 @@ class TestVisitor(unittest.TestCase): #IGNORE:C01111
 
     def test_priority_2(self):
         '''Visitor: Test priority 2.'''
-
+        from freeode.ast import Visitor, Node
+        
         class A(Node): #IGNORE:C01111
             pass
         class B(Node): #IGNORE:C01111
             pass
         
         class NodeVisitor(Visitor): #IGNORE:C01111
-            def __init__(self):
+            def __init__(self): #pylint:disable-msg=W0231
                 Visitor.__init__(self)
 
             #Handlers for derived classes - specialized
@@ -311,9 +318,11 @@ class TestVisitor(unittest.TestCase): #IGNORE:C01111
 
     def test__built_in_default_func(self):
         '''Visitor: Test the built in default function.'''
+        from freeode.ast import Visitor
+        
         #define visitor class
         class FooClass(Visitor): #IGNORE:C01111
-            def __init__(self):
+            def __init__(self): #pylint:disable-msg=W0231
                 Visitor.__init__(self)
             @Visitor.when_type(list)
             def visitList(self, _inObject): #IGNORE:C01111
@@ -339,34 +348,37 @@ class TestVisitor(unittest.TestCase): #IGNORE:C01111
 
     def test__decorator_errors(self):
         '''Visitor: Test errors because of wrong decorator use.'''
-        self.assertRaises(TypeError, self.raise__decorator_error_1)
-        self.assertRaises(TypeError, self.raise__decorator_error_2)
-        self.assertRaises(TypeError, self.raise__decorator_error_3)
-        self.assertRaises(TypeError, self.raise__decorator_error_4)
-    def raise__decorator_error_1(self):
-        '''Error: No parameters for @Visitor.when_type.'''
-        class FooClass(Visitor): #IGNORE:W0612
-            @Visitor.when_type
-            def visitList(self, _inObject):
-                return 'list'
-    def raise__decorator_error_2(self):
-        '''Error: Wrong 1st parameter for @Visitor.when_type.'''
-        class FooClass(Visitor): #IGNORE:W0612
-            @Visitor.when_type([])
-            def visitList(self, _inObject):
-                return 'list'
-    def raise__decorator_error_3(self):
-        '''Error: Wrong 2nd parameter for @Visitor.when_type.'''
-        class FooClass(Visitor): #IGNORE:W0612
-            @Visitor.when_type(list, 'qwert')
-            def visitList(self, _inObject):
-                return 'list'
-    def raise__decorator_error_4(self):
-        '''Error: Parameters for @Visitor.default.'''
-        class FooClass(Visitor): #IGNORE:W0612
-            @Visitor.default(int)
-            def visitDefault(self, _inObject): #IGNORE:C01111
-                return 'default'
+        from freeode.ast import Visitor
+        
+        def raise__decorator_error_1():
+            '''Error: No parameters for @Visitor.when_type.'''
+            class FooClass(Visitor): #IGNORE:W0612
+                @Visitor.when_type
+                def visitList(self, _inObject):
+                    return 'list'
+        def raise__decorator_error_2():
+            '''Error: Wrong 1st parameter for @Visitor.when_type.'''
+            class FooClass(Visitor): #IGNORE:W0612
+                @Visitor.when_type([])
+                def visitList(self, _inObject):
+                    return 'list'
+        def raise__decorator_error_3():
+            '''Error: Wrong 2nd parameter for @Visitor.when_type.'''
+            class FooClass(Visitor): #IGNORE:W0612
+                @Visitor.when_type(list, 'qwert')
+                def visitList(self, _inObject):
+                    return 'list'
+        def raise__decorator_error_4():
+            '''Error: Parameters for @Visitor.default.'''
+            class FooClass(Visitor): #IGNORE:W0612
+                @Visitor.default(int)
+                def visitDefault(self, _inObject): #IGNORE:C01111
+                    return 'default'
+        
+        self.assertRaises(TypeError, raise__decorator_error_1)
+        self.assertRaises(TypeError, raise__decorator_error_2)
+        self.assertRaises(TypeError, raise__decorator_error_3)
+        self.assertRaises(TypeError, raise__decorator_error_4)
 
 
 
@@ -380,6 +392,7 @@ def test_visitor_inherited_handler_methods():
          function is used; the default function of the base class is forgotten. 
     '''
     skip_test('Inherited handler functions are currently not implemented.') #IGNORE:E1101
+    from freeode.ast import Visitor
     
     #Define class hierarchy
     class Base(object): #IGNORE:C01111
@@ -391,7 +404,7 @@ def test_visitor_inherited_handler_methods():
 
     #define visitor class
     class TestVisitorClass(Visitor): #IGNORE:C01111
-        def __init__(self):
+        def __init__(self): #pylint:disable-msg=W0231
             Visitor.__init__(self)
         #Can handle all Base objects but has low priority
         @Visitor.when_type(Base, 1)

@@ -47,7 +47,7 @@ from types import ClassType, FunctionType, NoneType #, TupleType, StringType
 import copy
 import weakref
 
-import freeode.third_party.pyparsing as pyparsing
+#import freeode.third_party.pyparsing as pyparsing
 from freeode.util import AATreeMaker
 
 #version of the Siml compiler.
@@ -687,7 +687,7 @@ class NodeDataDef(Node):
         self.class_spec = class_spec 
         self.role = role
         self.default_value = None
-        self.loc = None
+        self.loc = loc
 
 
 class NodeCompileStmt(NodeDataDef):
@@ -717,7 +717,7 @@ class NodeFuncArg(Node):
         loc:
             Location in input file
     '''
-    def __init__(self, name=None, type=None, default_value=None):
+    def __init__(self, name=None, type=None, default_value=None): #pylint:disable-msg=W0622
         Node.__init__(self)
         self.name = name
         self.type = type 
@@ -1216,4 +1216,4 @@ if __name__ == '__main__':
     import doctest
     doctest.testmod()
 
-    pass
+    pass #pylint: disable-msg=W0107

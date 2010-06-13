@@ -39,6 +39,10 @@ concepts. Therefore most of the standard library constists of empty
 declarations, that are treated specially by the compiler.  
 '''
 
+#Disable all static error analysis
+#@PydevCodeAnalysisIgnore
+# pylint: disable-msg-cat=all
+
 #TODO: Rename to simlbuiltinlib! This lib is comparable to the built in symbols of Python.
 #      Python's standard library is much larger, and it is also not automatically included 
 #      like this lib.

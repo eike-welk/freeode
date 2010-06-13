@@ -445,7 +445,7 @@ def parseCommandLineOptions(simulationClassList):
         simulationClassList: list of (generated) simulation classes
     '''
     import optparse
-    import sys
+    #import sys
     #import freeode.ast as ast #for version string
 
     #set up parser for the command line aruments

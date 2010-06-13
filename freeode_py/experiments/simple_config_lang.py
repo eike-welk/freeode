@@ -66,19 +66,19 @@ ENVIRONMENT = {'print':print_func, 'nop':nop_func, 'cat':cat_func,
 
 #These functions are called by the parser when a pattern in the program text is 
 #recognized. These functions then perform program's actions. (There is no AST)       
-def action_symbol(s, loc, toks):
+def action_symbol(_s, _loc, toks):
     '''Parse action for a symbol. Returns: str''' 
     if DEBUG_GRAMMAR: return
     #print "action_symbol: ", toks
     return toks[0]
 
-def action_q_symbol(s, loc, toks):
+def action_q_symbol(_s, _loc, toks):
     '''Throw away quotes, return contained string. Returns: str''' 
     if DEBUG_GRAMMAR: return
     #print "action_q_symbol: ", toks
     return toks[0][1:-1] 
     
-def action_pipeline(s, loc, toks):
+def action_pipeline(_s, _loc, toks):
     '''Return tuple of function names''' 
     if DEBUG_GRAMMAR: return
     #print "action_pipeline: ", toks
@@ -99,7 +99,7 @@ def action_func_call(s, loc, toks):
         #call the operators from right to left
         for opr_name in operators[-1::-1]:
             opr = ENVIRONMENT[opr_name]
-            operands = opr(*operands)
+            operands = opr(*operands)         #pylint: disable-msg=W0142
     except AssertionError, err:
         print 'Line: ' + str(lineno(loc, s))
         print err
@@ -267,7 +267,7 @@ def test_func_call():
 def test_language_grammar():
     '''Test the grammar, the following programs must be parsed without error'''
     #switch the parse actions off
-    global DEBUG_GRAMMAR
+    global DEBUG_GRAMMAR #pylint:disable-msg=W0603
     DEBUG_GRAMMAR = True
     
     #test that comments are ignored ------
@@ -328,4 +328,4 @@ if __name__ == '__main__':
     test_program()
     test_func_call()
     test_language_grammar()
-    pass
+    pass #pylint: disable-msg=W0107

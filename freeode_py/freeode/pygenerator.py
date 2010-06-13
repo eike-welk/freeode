@@ -38,8 +38,18 @@ generates some python classes that perform the simulations.
 from __future__ import division
 
 import cStringIO
-from freeode.ast import *
-from  freeode.interpreter import *
+from util import DotName
+from freeode.ast import (Visitor, PROGRAM_VERSION,
+                         NodeFuncCall, NodeParentheses, NodeOpInfix2, 
+                         NodeOpPrefix1, NodeAssignment, NodeIfStmt, 
+                         NodeExpressionStmt, 
+                         RoleIntermediateVariable, RoleInputVariable, 
+                         RoleOutputVariable, RoleParameter, 
+                         RoleConstant, 
+                         )
+from  freeode.interpreter import (IFloat, IString, CompiledClass, 
+                                  FundamentalObject, 
+                                  )
 
 
 
@@ -174,15 +184,15 @@ class StatementGenerator(Visitor):
     of a function and convert it to Python statements.
     '''
 
-    def __init__(self, buffer):
+    def __init__(self, txt_buffer):
         '''
         ARGUMENT:
-            buffer : File like object where the Python program 
+            txt_buffer : File like object where the Python program 
                         will be stored.
         '''
         super(StatementGenerator, self).__init__()
         #File like object, where the Python program will be stored.
-        self.out_py = buffer
+        self.out_py = txt_buffer
         #Object that creates a formula from an AST sub-tree
         self.genFormula = ExpressionGenerator()
 
@@ -279,7 +289,7 @@ class StatementGenerator(Visitor):
         self.write(indent + self.create_expression(iltStmt.expression) + '\n')            
             
     @Visitor.default
-    def _ErrorUnknownNode(self, iltStmt, indent):
+    def _ErrorUnknownNode(self, iltStmt, _indent):
         #Internal error: unknown statement -----------------------------------
         raise PyGenException('Unknown node in StatementGenerator:\n'
                              + str(iltStmt))
@@ -289,16 +299,16 @@ class StatementGenerator(Visitor):
 class SimulationClassGenerator(object):
     '''create python class that simulates a process'''
 
-    def __init__(self, buffer):
+    def __init__(self, txt_buffer):
         '''
         Arguments:
-            buffer : File where the Python program will be stored.
+            txt_buffer : File where the Python program will be stored.
         '''
         super(SimulationClassGenerator, self).__init__()
         #The input: an IL-tree of the process. It has no external dependencies.
         self.flat_object = CompiledClass()
         #File where the Python program will be stored.
-        self.out_py = buffer
+        self.out_py = txt_buffer
         #Python name of the process
         self.class_py_name = ''
         #The parameters: dict: {DotName: InterpreterObject]
@@ -613,7 +623,7 @@ class SimulationClassGenerator(object):
 
     def create_sim_class(self, class_name, flat_object):
         '''
-        Take part of ILT tree that defines one procedure and ouput definition
+        Take part of ILT tree that defines one procedure and output definition
         of python class as string
         '''
         self.flat_object = flat_object #.copy()
@@ -630,7 +640,7 @@ class SimulationClassGenerator(object):
         self.write_initialize_method(DotName('initialize'))
         #write initialization methods with additional arguments
         is_additional_init = lambda name: str(name).startswith('init_')
-        for name in filter(is_additional_init, self.flat_object.attributes):
+        for name in filter(is_additional_init, self.flat_object.attributes): #pylint: disable-msg=W0141
             self.write_initialize_method(name)
         self.write_dynamic_method()
         self.write_final_method()

@@ -761,7 +761,7 @@ def test_StatementVisitor_assign_emit_code_1(): #IGNORE:C01111
     #skip_test('Test disabled')
     print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
     from freeode.interpreter import (Interpreter, IFloat)
-    from freeode.ast import (Node, NodeAssignment, NodeOpInfix2)
+    from freeode.ast import NodeAssignment, NodeOpInfix2
 
     prog_text = \
 '''
@@ -805,7 +805,7 @@ def test_StatementVisitor_assign_emit_code_2(): #IGNORE:C01111
     #skip_test('Test interpreter object: emit code without the usual infrastructure.')
     print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
     from freeode.interpreter import (Interpreter, IFloat)
-    from freeode.ast import (Node, NodeAssignment, NodeOpInfix2) 
+    from freeode.ast import NodeAssignment, NodeOpInfix2 
 
     prog_text = \
 '''
@@ -2058,5 +2058,5 @@ if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
     test_print_function_3()
-    pass
+    pass #pylint: disable-msg=W0107
 
