@@ -356,7 +356,7 @@ class CallableObject(InterpreterObject):
         # TODO: remove! This is unnecessary
         self.is_fundamental_function = False
         self.codegen_name = None
-        self.signature = None
+        self.signature = Signature()
 
     def __call__(self, *args, **kwargs):
         '''All Siml-functions must implement this method'''
@@ -400,7 +400,7 @@ class FundamentalObject(InterpreterObject):
         #      Isknown is really only meaningful for code-generator-objects. 
 
 
-class Signature(SimpleSignature):
+class Signature(Node):
     """
     Contains arguments of a function definition.
     - Checks the arguments when function definition is created
@@ -411,32 +411,42 @@ class Signature(SimpleSignature):
         (http://www.python.org/dev/peps/pep-3107)
         http://www.python.org/dev/peps/pep-0362/
         http://oakwinter.com/code/typecheck/
-        http://peak.telecommunity.com/PyProtocols.html
     """
     def __init__(self, arguments=None, return_type=None, loc=None):
         '''
         ARGUMENTS
         ---------
-        arguments: [ast.NodeFuncArg, ...] or SimpleSignature
+        arguments: [ast.NodeFuncArg, ...] or SimpleSignature or Signature
             The functions arguments
-        loc: ast.TextLocation
-            Location where the function is defined in the program text
+        return_type: ast.Node usually ast.NodeIdentifier
+            Type of the function's return value.
+        loc: ast.TextLocation 
+            Location where the function is defined in the program text.
         '''
-        #create:
-        # self.arguments: [ast.NodeFuncArg, ...]
-        # self.return_type
-        # self.loc
-        SimpleSignature.__init__(self, arguments, return_type, loc)
+        Node.__init__(self)
+        #special case copy construction
+        if isinstance(arguments, (SimpleSignature, Signature)):
+            loc = arguments.loc
+            arguments = arguments.arguments
 
+        #The functions arguments: [ast.NodeFuncArg, ...]
+        self.arguments = arguments 
+        #Type of the function's return value.
+        self.return_type = return_type
+        #Location where the function is defined in the program text.
+        self.loc = loc            
         #dictionary for quick access to argument definitions by name
         #also for testing uniqueness and existence of argument names 
         self.argument_dict = {}
         #arguments with default values (subset of self.arguments)
         self.default_args = []
         #If True: the annotations have been evaluated; 
-        #otherwise self.evaluate_annotations must be called
+        #otherwise self._evaluate_type_specs must be called
         self.is_evaluated = False
         
+        if self.arguments is None:
+            return
+        #Check arguments and fill self.argument_dict
         there_was_keyword_argument = False
         for arg in self.arguments:
             #check that positional arguments come first
@@ -451,13 +461,9 @@ class Signature(SimpleSignature):
                 raise UserException('Duplicate argument name "%s"!' 
                                     % str(arg.name), loc, errno=3200120) 
             self.argument_dict[arg.name] = arg
-#        #replace type objects with weak references to them
-#        for arg in self.arguments:
-#            if isinstance(arg.type, TypeObject):
-#                arg.type = ref(arg.type)
 
 
-    def evaluate_annotations(self, interpreter):
+    def _evaluate_type_specs(self, interpreter):
         '''
         Compute the types and default values of the arguments. 
         Compute return type.
@@ -465,23 +471,25 @@ class Signature(SimpleSignature):
         The ast.Nodes are replaced with InterpreterObjects; 
         the function needs to be run only once
         
-        - TODO: default values must evaluate to constants
+        - TODO: Check: default values must evaluate to constants
         '''
-        #evaluate argument type and default arguments
-        for arg in self.arguments:
-            if arg.type is not None:
-                type_ev = interpreter.eval(arg.type)
-                arg.type = ref(type_ev)
-            if arg.default_value is not None:
-                dval_ev = interpreter.eval(arg.default_value)
-                arg.default_value = dval_ev
-            #test type compatibility of default value and argument type
-            if arg.type is not None and arg.default_value is not None:
-                self._test_arg_type_compatible(arg.default_value, arg)
-        #evaluate return type
+        if self.arguments is not None:
+            #evaluate argument type and default arguments
+            for arg in self.arguments:
+                if arg.type is not None:
+                    type_ev = interpreter.eval(arg.type)
+                    arg.type = ref(type_ev)
+                if arg.default_value is not None:
+                    dval_ev = interpreter.eval(arg.default_value)
+                    arg.default_value = dval_ev
+                #test type compatibility of default value and argument type
+                if arg.type is not None and arg.default_value is not None:
+                    self._test_arg_type_compatible(arg.default_value, arg)
         if self.return_type is not None:
-            type_ev = interpreter.eval(self.return_type)
-            self.return_type = ref(type_ev)
+            #evaluate return type
+            if self.return_type is not None:
+                type_ev = interpreter.eval(self.return_type)
+                self.return_type = ref(type_ev)
 
 
     def parse_function_call_args(self, args_list, kwargs_dict, interpreter):
@@ -490,6 +498,10 @@ class Signature(SimpleSignature):
         Fill the arguments of the call site into the arguments of the
         function definition. Does type-checking.
 
+        The type specifications are evaluated immediately before the first 
+        use of the object. They can't be evaluated when the object is 
+        constructed because of (mutual) recursive references.
+        
         ARGUMENTS
         ---------
         args_list: [<siml values, AST nodes>, ...]
@@ -504,8 +516,6 @@ class Signature(SimpleSignature):
         Dictionary of argument names and associated values.
         dict(<argument name>: <siml values, AST nodes>, ...)
         dict(str(): Node(), ...)
-        
-        TODO: test if all arguments are known values and return Bool
         '''
         #TODO: implement support for *args and **kwargs
         #  Description of semantics is here:
@@ -513,10 +523,13 @@ class Signature(SimpleSignature):
         #  A complete implementation is here:
         #      http://svn.python.org/view/sandbox/trunk/pep362/
 
+        #Evaluate the type specifications
         if not self.is_evaluated:
-            self.evaluate_annotations(interpreter)
+            self._evaluate_type_specs(interpreter)
             self.is_evaluated = True
         
+        if self.arguments is None:
+            return None
         output_dict = {} #dict(<argument name>: <siml values>, ...)
 
         #test too many positional arguments
@@ -598,10 +611,15 @@ class Signature(SimpleSignature):
                     loc=None, errno=3200310)
     
     
-    def test_return_type_compatible(self, retval):
+    def test_return_type_compatible(self, retval, interpreter):
         '''
         Test if the function's return value has the right type.
         '''
+        #Evaluate the type specifications
+        if not self.is_evaluated:
+            self._evaluate_type_specs(interpreter)
+            self.is_evaluated = True
+        
         if self.return_type is None:
             return
         if not siml_issubclass(retval.type(), self.return_type()):
@@ -701,19 +719,13 @@ class BuiltInFunctionWrapper(CallableObject):
         kwargs: {str: InterpreterObject}
             Keyword arguments for the wrapped function
         '''
-        #TODO: Convert float, str, bool, from and to Siml values.
-        #      Converting arguments and return values should be controlled
-        #      separately. This would make wrapper functions superfluent like
-        #      like wsiml_isinstance(...)
-        #try if argument definition matches
-        parsed_args = self.signature\
-                          .parse_function_call_args(args, kwargs, INTERPRETER)
+#        #try if argument definition matches
+#        parsed_args = self.signature\
+#                          .parse_function_call_args(args, kwargs, INTERPRETER)
                           
-        #TODO: ???put into Signature
-        #TODO: ???put test into each method
         #Test if all arguments are known values.
         all_python_values_exist = True
-        for siml_val in parsed_args.itervalues():
+        for siml_val in args + tuple(kwargs.values()):
             if not siml_isknown(siml_val):
                 all_python_values_exist = False
                 break
@@ -725,14 +737,13 @@ class BuiltInFunctionWrapper(CallableObject):
         
         #call the wrapped Python function
         #all argument values are known, or we don't care about unknown values.
-        retval = self.py_function(**parsed_args)            #IGNORE:W0142
+        retval = self.py_function(*args, **kwargs)            #IGNORE:W0142
 
-        #TODO: maybe always convert float, str, bool --> IFloat, IString, IBool?
-        #use Siml's None
-        if retval is None:
-            retval = NONE
-        #Test return value.type
-        self.signature.test_return_type_compatible(retval)
+#        #use Siml's None
+#        if retval is None:
+#            retval = NONE
+#        #Test return value.type
+#        self.signature.test_return_type_compatible(retval)
 
         return retval
 
@@ -2333,30 +2344,35 @@ class Interpreter(object):
             posargs = (func_obj.this,) + posargs
             func_obj = func_obj.function
             
-        #TODO type checking of arguments (and removal from apply_***)
+        #Type checking of arguments, and binding them to their names
+        bound_args = func_obj.signature\
+                             .parse_function_call_args(posargs, kwargs, self)
         
         if isinstance(func_obj, SimlFunction):
-            ret_val = self.apply_siml(func_obj, posargs, kwargs)
+            ret_val = self.apply_siml(func_obj, bound_args)
         else:
             ret_val = func_obj(*posargs, **kwargs) # pylint: disable-msg=W0142
         
-        #TODO type checking of return value (and removal from apply_***)
+        #use Siml's None
+        if ret_val is None:
+            ret_val = NONE
+        #type checking of return value
+        func_obj.signature.test_return_type_compatible(ret_val, self)
+
         return ret_val
     
     
-    def apply_siml(self, func_obj, posargs, kwargs):
+    def apply_siml(self, func_obj, bound_args):
         '''
         Execute a user defined function.
-        
-        TODO: find common functionality with execution of built in functions
         '''
-        #parse the arguments that we get from the caller, do type checking
-        parsed_args = func_obj.signature\
-                              .parse_function_call_args(posargs, kwargs, self)
+#        #parse the arguments that we get from the caller, do type checking
+#        parsed_args = func_obj.signature\
+#                              .parse_function_call_args(posargs, kwargs, self)
 
         #Take 'this' name-space from the 'this' argument.
         # 'this' must be a Siml object, no unevaluated expression
-        this_namespace = parsed_args.get('this', None)
+        this_namespace = bound_args.get('this', None)
         if this_namespace and not isinstance(this_namespace, InterpreterObject):
             raise UserException('The "this" argument of a method '
                                 'must be a known Siml object.')
@@ -2372,7 +2388,7 @@ class Interpreter(object):
             local_namespace = InterpreterObject()
         
         #put the function arguments into the local name-space
-        for arg_name, arg_val in parsed_args.iteritems():
+        for arg_name, arg_val in bound_args.iteritems():
             #create references for existing Siml values
             if isinstance(arg_val, InterpreterObject):
                 local_namespace.create_attribute(arg_name, arg_val)
@@ -2408,8 +2424,8 @@ class Interpreter(object):
         #the return value is stored in the environment (stack frame)
         ret_val = new_env.return_value
 
-        #Test if returned object has the right type.
-        func_obj.signature.test_return_type_compatible(ret_val)
+#        #Test if returned object has the right type.
+#        func_obj.signature.test_return_type_compatible(ret_val)
         return ret_val
     
        
