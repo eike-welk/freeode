@@ -45,9 +45,6 @@ objects (the symbol table), it executes statements that configure the program,
 and it collects the statements that will be part of the compiled program.
 """
 
-#TODO: remove DotName, everything is a simple string after all.
-#      DotName is may be needed after flattening.
-
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
