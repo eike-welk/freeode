@@ -69,10 +69,36 @@ class InterpreterObject(object):
 
 
 
+class Proxy(InterpreterObject):
+    '''
+    Place holder for an other object. Similar to a pointer but automatically
+    dereferenced by the interpreter
+
+    This class is part of the new facility for wrapping Python code:
+    Usage:
+    
+      foo_proxy = Proxy()
+      class Foo(IObject):
+          @arguments(Int, foo_proxy)
+          @returns(Int)
+          def bar(a, b):
+              return a
+      foo_proxy.set(Foo) 
+    '''
+    def __init__(self, value=None):
+        InterpreterObject.__init__(self)
+        self.value = None
+        self.set(value)
+        
+    def set(self, value):
+        '''Let Proxy point to some object.'''
+        self.value = value
+    set.siml_signature = Signature() #pylint:disable-msg=W0612
+
+
+
 def make_pyfunc_loc(py_func):
-    '''
-    Create a TextLocation object for a Python function
-    '''
+    '''Create a TextLocation object for a Python function.'''
     file_name = py_func.__code__.co_filename
     line_no = py_func.__code__.co_firstlineno
     loc = TextLocation(file_name=file_name, line_no=line_no)
@@ -94,12 +120,11 @@ def argument_type(*type_list):
         #Combine with Siml type definitions
         for arg, type1 in zip(siml_args, type_list):
             arg.type = type1
-        func_to_decorate.siml_signature.arguments = siml_args        
+        func_to_decorate.siml_signature.set_arguments(siml_args)
         return func_to_decorate
 
     return decorate_with_type
 
-    
     
 def return_type(type_obj):
     'Decorator to define return type of function.'
@@ -112,42 +137,132 @@ def return_type(type_obj):
         func_to_decorate.siml_signature.return_type = type_obj
         return func_to_decorate
     
-    
     return decorate_with_type
     
    
 
+class SimlFunction(InterpreterObject):
+    '''
+    Function written in Siml (user defined function).
+    '''
+    def __init__(self, name, signature=Signature(),
+                  statements=None, global_scope=None, loc=None):
+        #CallableObject.__init__(self, name)
+        InterpreterObject.__init__(self)
+        #The function's name
+        self.__name__ = name
+        #Function signature including return type
+        self.siml_signature = signature
+        #the statements of the function's body
+        self.statements = statements if statements else []
+        #global namespace, stored when the function was defined
+        self.global_scope = global_scope
+        #count how often the function was called (to create unique names
+        #for the local variables)
+        self.call_count = 0
+        #--- stack trace ---------
+        self.loc = loc
+
+    def __get__(self, obj, _my_type=None):
+        if obj is None:
+            print 'called from class'
+            return self
+        else:
+            print 'called from instance'
+            return SimlBoundMethod(self, obj)
+
+
+class SimlBoundMethod(InterpreterObject):
+    '''
+    Represents a method of an object.
+    Calls a function with the correct 'this' pointer.
+
+    The object is callable from Python and Siml.
+
+    No argument parsing or type checking are is done. The wrapped Function
+    is responsible for this. The handling of unevaluated/unknown arguments,
+    and unevaluated return values are left to the wrapped function.
+
+    '''
+    def __init__(self, function, this):
+        '''
+        ARGUMENTS
+        ---------
+        function: CallableObject or (Python) function
+            Wrapped function that will be called.
+        this: InterpreterObject
+            The first positional argument, that will be supplied to the wrapped
+            function.
+        '''
+        #CallableObject.__init__(self, name)
+        InterpreterObject.__init__(self)
+        #the wrapped function
+        self.im_func = function
+        #the 'this' argument
+        self.im_self = this
+
+
+
+def test_SimlFunction():
+    'Test the user defined function object'
+    
+    #TODO: create the class the dynamic way
+    class Foo(InterpreterObject):
+        pass
+    
+    Foo.func1 = SimlFunction('func1')
+    
+    foo = Foo()
+    
+    print Foo.func1
+    print foo.func1
+    
+        
+        
+        
 def test_wrappers():
     'Test wrapping facility for python functions'
     
-    @return_type(InterpreterObject) 
-    def foo():
-        return InterpreterObject()
-    #print aa_make_tree(foo)
+    class Dummy1(InterpreterObject):
+        pass
+    class Dummy2(InterpreterObject):
+        pass
+    dummy2 = Dummy2()
     
-    @argument_type(InterpreterObject, InterpreterObject)
-    def bar(a, b=2):
+    @return_type(Dummy1) 
+    def foo():
+        return Dummy1()
+    #print aa_make_tree(foo)
+    assert foo.siml_signature.arguments is None     #pylint:disable-msg=E1101
+    assert foo.siml_signature.return_type is Dummy1 #pylint:disable-msg=E1101
+    
+    @argument_type(Dummy1, Dummy2)
+    def bar(a, b=dummy2):
         pass
     #print aa_make_tree(bar)
+    args = bar.siml_signature.arguments            #pylint:disable-msg=E1101
+    assert len(args) == 2          
+    assert args[0].type is Dummy1 
+    assert args[1].type is Dummy2
+    assert args[1].default_value is dummy2
+    assert bar.siml_signature.return_type is None  #pylint:disable-msg=E1101
     
-    @argument_type(InterpreterObject, InterpreterObject)
-    @return_type(InterpreterObject) 
-    def baz(a, b=2):
+    @argument_type(Dummy1, Dummy2)
+    @return_type(Dummy1) 
+    def baz(a, b=dummy2):
         return InterpreterObject()
-    print aa_make_tree(baz)
+    #print aa_make_tree(baz)
+    args = baz.siml_signature.arguments            #pylint:disable-msg=E1101
+    assert len(args) == 2          
+    assert args[0].type is Dummy1 
+    assert args[1].type is Dummy2
+    assert args[1].default_value is dummy2
+    assert baz.siml_signature.return_type is Dummy1  #pylint:disable-msg=E1101
     
     
     
-def test_aa_tree_printing():
-    'Test the ascii art tree printing facility.'
-    #print InterpreterObject.aa_make_tree(InterpreterObject)
-    
-    #Try to create a module
-    builtin_module = InterpreterObject()
-    builtin_module.Object = InterpreterObject
-    print aa_make_tree(builtin_module)
 
 
-
+test_SimlFunction()
 test_wrappers()
 #test_aa_tree_printing()

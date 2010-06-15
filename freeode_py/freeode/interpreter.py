@@ -55,7 +55,7 @@ import math
 import os
 import types
 
-from freeode.util import UserException, DotName, TextLocation
+from freeode.util import UserException, DotName, TextLocation, AATreeMaker
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
                          RoleAlgebraicVariable, RoleTimeDifferential, 
                          RoleStateVariable, RoleInputVariable,
@@ -397,41 +397,43 @@ class FundamentalObject(InterpreterObject):
         #      Isknown is really only meaningful for code-generator-objects. 
 
 
-class Signature(Node):
+class Signature(object):
     """
-    Contains arguments of a function definition.
-    - Checks the arguments when function definition is created
+    Contains arguments and return type of a function.
+    - Checks the arguments when function is created
     - Evaluates the type annotations, once before the arguments are parsed. 
-    - Parses the arguments when the function is called.
+    - Parses the arguments and checks their type when the function is called.
+    - Checks the type of the return value.
     
     TODO: For inspiration look at 
         (http://www.python.org/dev/peps/pep-3107)
         http://www.python.org/dev/peps/pep-0362/
         http://oakwinter.com/code/typecheck/
     """
+    #Object that creates an ASCII art tree from nodes
+    __siml_aa_tree_maker__ = AATreeMaker()
+
     def __init__(self, arguments=None, return_type=None, loc=None):
         '''
         ARGUMENTS
         ---------
-        arguments: [ast.NodeFuncArg, ...] or SimpleSignature or Signature
+        arguments: [ast.NodeFuncArg, ...] or SimpleSignature or Signature or None
             The functions arguments
-        return_type: ast.Node usually ast.NodeIdentifier
+            arguments == None -> Don't check arguments.
+        return_type: ast.Node or type or None
             Type of the function's return value.
+            return_type == None -> Don't check return type.
         loc: ast.TextLocation 
             Location where the function is defined in the program text.
         '''
-        Node.__init__(self)
+        object.__init__(self)
         #special case copy construction
         if isinstance(arguments, (SimpleSignature, Signature)):
             loc = arguments.loc
+            return_type = arguments.return_type
             arguments = arguments.arguments
 
-        #The functions arguments: [ast.NodeFuncArg, ...]
-        self.arguments = arguments 
-        #Type of the function's return value.
-        self.return_type = return_type
-        #Location where the function is defined in the program text.
-        self.loc = loc            
+        #--- auxiliary data --- 
         #dictionary for quick access to argument definitions by name
         #also for testing uniqueness and existence of argument names 
         self.argument_dict = {}
@@ -441,9 +443,28 @@ class Signature(Node):
         #otherwise self._evaluate_type_specs must be called
         self.is_evaluated = False
         
-        if self.arguments is None:
+        #--- core data --------
+        #Location where the function is defined in the program text.
+        self.loc = loc            
+        #The functions arguments: [ast.NodeFuncArg, ...]
+        self.arguments = None
+        self.set_arguments(arguments) 
+        #Type of the function's return value.
+        self.return_type = return_type
+
+
+    def set_arguments(self, arguments):
+        '''
+        Put the argument specification into the Signature.
+         
+        ARGUMENTS
+        ---------
+        arguments: [ast.NodeFuncArg, ...] or SimpleSignature or Signature or None
+            The functions arguments
+        '''
+        self.arguments = arguments
+        if arguments is None:
             return
-        #TODO: deal with setting arguments outside of __init__ 
         #Check arguments and fill self.argument_dict
         there_was_keyword_argument = False
         for arg in self.arguments:
@@ -453,11 +474,11 @@ class Signature(Node):
                 self.default_args.append(arg)
             elif there_was_keyword_argument: 
                 raise UserException('Positional arguments must come before '
-                                    'keyword arguments!', loc, errno=3200110)
+                                    'keyword arguments!', self.loc, errno=3200110)
             #test: argument names must be unique
             if arg.name in self.argument_dict:
                 raise UserException('Duplicate argument name "%s"!' 
-                                    % str(arg.name), loc, errno=3200120) 
+                                    % str(arg.name), self.loc, errno=3200120) 
             self.argument_dict[arg.name] = arg
 
 
@@ -2917,7 +2938,7 @@ class Interpreter(object):
                 #new_spec.target_roles = (RoleParameter, RoleVariable, RoleConstant)
                 new_spec.call_argument_role = RoleParameter
                 new_spec.proto = SimlFunction(name,
-                                              attr.signature.copy(),
+                                              Signature(attr.signature),
                                               statements=[],
                                               global_scope=self.built_in_lib)
                 main_func_specs.append(new_spec)
