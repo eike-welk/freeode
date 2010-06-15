@@ -443,6 +443,7 @@ class Signature(Node):
         
         if self.arguments is None:
             return
+        #TODO: deal with setting arguments outside of __init__ 
         #Check arguments and fill self.argument_dict
         there_was_keyword_argument = False
         for arg in self.arguments:

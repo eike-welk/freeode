@@ -449,8 +449,8 @@ class SimulationClassGenerator(object):
 #        self.write('    Object to simulate class %s \n'
 #                         % self.flat_object.type().name)
         self.write('    Definition in\n    file: \'%s\'\n    line: %s \n'
-                         % (self.flat_object.loc.fileName(), 
-                            self.flat_object.loc.lineNo()))
+                         % (self.flat_object.loc.file_name, 
+                            self.flat_object.loc.line_no()))
         self.write('    \'\'\' \n')
         self.write('    \n')
 

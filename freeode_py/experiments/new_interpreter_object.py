@@ -40,7 +40,8 @@ TODO: Creation of new user defined class
 
 import inspect
 
-from freeode.util import AATreeMaker, TextLocation
+from freeode.ast import NodeFuncArg
+from freeode.util import AATreeMaker, TextLocation, aa_make_tree
 from freeode.interpreter import Signature
 
 
@@ -65,52 +66,52 @@ class InterpreterObject(object):
 
     #Object that creates an ASCII art tree from nodes
     __siml_aa_tree_maker__ = AATreeMaker()
-    
-    def aa_make_tree(self):       
-        '''
-        Create ASCII-art tree of this object, and of all data attributes it 
-        contains recursively.
-        '''
-        return self.__siml_aa_tree_maker__.make_tree(self)   
 
 
-def create_py_func_text_location(py_func):
+
+def make_pyfunc_loc(py_func):
     '''
-    TODO: Create a text location object for a Python function
-    See: 
-        http://docs.python.org/library/inspect.html
+    Create a TextLocation object for a Python function
     '''
-#            file_name = func_to_decorate.__code__.co_filename
-#            at_char = func_to_decorate.__code__.co_firstlineno
-#            loc = TextLocation(at_char, textString, file_name)
-    print inspect.getsourcefile(py_func)
-    return None
+    file_name = py_func.__code__.co_filename
+    line_no = py_func.__code__.co_firstlineno
+    loc = TextLocation(file_name=file_name, line_no=line_no)
+    return loc
     
     
-def arguments(*args):
-    'Decorator to define types of function arguments.'
-    #http://docs.python.org/library/inspect.html
-    #inspect.getargspec(func)
+def argument_type(*type_list):
+    'Decorator to define type_list of function arguments.'
     def decorate_with_type(func_to_decorate):
-        #Give function a signature object if it has none
+        #Create Signature object if necessary
         if not hasattr(func_to_decorate, 'siml_signature'):
-            loc = create_py_func_text_location(func_to_decorate)
+            loc = make_pyfunc_loc(func_to_decorate)
             func_to_decorate.siml_signature = Signature(loc=loc) 
+        #Get argument names and default values of Python function
+        args, _varargs, _keywords, defaults = inspect.getargspec(func_to_decorate)
+        siml_args = [NodeFuncArg(arg_name) for arg_name in args]
+        for arg, dval in zip(reversed(siml_args), reversed(defaults)):
+            arg.default_value = dval
+        #Combine with Siml type definitions
+        for arg, type1 in zip(siml_args, type_list):
+            arg.type = type1
+        func_to_decorate.siml_signature.arguments = siml_args        
         return func_to_decorate
 
     return decorate_with_type
 
     
-def returns(return_type):
+    
+def return_type(type_obj):
     'Decorator to define return type of function.'
     def decorate_with_type(func_to_decorate):
         #Give function a signature object if it has none
         if not hasattr(func_to_decorate, 'siml_signature'):
-            loc = create_py_func_text_location(func_to_decorate)
+            loc = make_pyfunc_loc(func_to_decorate)
             func_to_decorate.siml_signature = Signature(loc=loc) 
         #Put return type into signature
-        func_to_decorate.siml_signature.return_type = return_type
+        func_to_decorate.siml_signature.return_type = type_obj
         return func_to_decorate
+    
     
     return decorate_with_type
     
@@ -119,9 +120,21 @@ def returns(return_type):
 def test_wrappers():
     'Test wrapping facility for python functions'
     
-    @returns(InterpreterObject) 
+    @return_type(InterpreterObject) 
     def foo():
         return InterpreterObject()
+    #print aa_make_tree(foo)
+    
+    @argument_type(InterpreterObject, InterpreterObject)
+    def bar(a, b=2):
+        pass
+    #print aa_make_tree(bar)
+    
+    @argument_type(InterpreterObject, InterpreterObject)
+    @return_type(InterpreterObject) 
+    def baz(a, b=2):
+        return InterpreterObject()
+    print aa_make_tree(baz)
     
     
     
@@ -132,7 +145,7 @@ def test_aa_tree_printing():
     #Try to create a module
     builtin_module = InterpreterObject()
     builtin_module.Object = InterpreterObject
-    print builtin_module.aa_make_tree()
+    print aa_make_tree(builtin_module)
 
 
 

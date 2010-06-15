@@ -296,7 +296,7 @@ class AATreeMaker(object):
         duplicate = id(attribute) in memo_set and not isinstance(attribute, str)
         memo_set.add(id(attribute)) #against infinite recursion
         #make very short
-        if name in self.xshort_set or duplicate:
+        if (name in self.xshort_set or duplicate) and attribute is not None:
             line = '<' + attribute.__class__.__name__ 
             if self.show_ID:
                 line += ' at ' + hex(id(attribute))
@@ -328,6 +328,27 @@ class AATreeMaker(object):
         return tree
         
         
+
+def aa_make_tree(in_obj):       
+    '''
+    Create ASCII-art tree of an object, and of all data attributes it 
+    contains recursively. Output can be configured by putting AATreeMaker
+    instances in the tree of objects.
+    
+    ARGUMENT
+    --------
+    in_obj: any object
+        Object that should be displayed as ASCII-art tree.
+        
+    RETURNS
+    ------_
+    string
+        ASCII-art tree representing in_obj.
+    '''
+    tree_maker = getattr(in_obj, AATreeMaker.tree_maker_name, AATreeMaker())
+    return tree_maker.make_tree(in_obj)   
+
+
 
 class UserException(Exception):
     '''Exception that transports user visible error messages'''
@@ -468,51 +489,57 @@ class DotName(tuple):
 
 class TextLocation(object):
     '''
-    Store the location of a parsed pattern, or error.
+    Store the location of a part of a program. Can be converted to meaningful
+    string for error messages. 
 
-    Includes the file's contents and the file's name.
-    Object is intended to be stored in a Node's self.loc
-    data member.
+    Contains file name, information to compute the line number, and program 
+    text.
     '''
-
-    def __init__(self, atChar=None, textString=None, fileName=None):
+    def __init__(self, at_char=None, text_string=None, file_name=None, 
+                        line_no=None):
         super(TextLocation, self).__init__()
-        self.atChar = atChar
-        self.str = textString
-        self.name = fileName
+        self.at_char = at_char
+        self.text_string = text_string
+        self.file_name = file_name
+        self._line_no = line_no
 
-    def isValid(self):
+    def is_valid(self):
         '''
-        Return True if a meaningful line number and collumn can be computed.
+        Return True if a meaningful line number can be computed.
         Return False otherwise.
         '''
-        if self.atChar and self.str:
+        if self.at_char is not None and self.text_string:
+            return True
+        elif self._line_no is not None:
             return True
         else:
             return False
 
-    def lineNo(self):
+    def line_no(self):
         '''Compute the line number of the stored location.'''
-        if self.atChar and self.str:
-            return pyparsing.lineno(self.atChar, self.str)
+        if self.at_char is not None and self.text_string:
+            return pyparsing.lineno(self.at_char, self.text_string)
+        elif self._line_no is not None:
+            return self._line_no
         else:
             return 0
 
-    def col(self):
-        '''Compute the column of the stored location.'''
-        if self.atChar and self.str:
-            return pyparsing.col(self.atChar, self.str)
-        else:
-            return 0
+#    def col(self):
+#        '''Compute the column of the stored location.'''
+#        if self.atChar and self.str:
+#            return pyparsing.col(self.atChar, self.str)
+#        else:
+#            return 0
 
-    def fileName(self):
-        '''Return the filename.'''
-        return str(self.name)
+#    def get_file_name(self):
+#        '''Return the filename.'''
+#        return str(self.file_name)
 
     def __str__(self):
-        '''Return meaningfull string'''
+        '''Return meaningful string'''
         #Including the column is not useful because it is often wrong
         #for higher level errors. Preserving the text of the original
-        #pyparsing error is transporting the column information for parsing
+        #Pyparsing error is transporting the column information for parsing
         #errors. Only parsing errors have useful column information.
-        return '  File "' + self.fileName() + '", line ' + str(self.lineNo())
+        #TODO: also print one line of program text
+        return '  File "' + str(self.file_name) + '", line ' + str(self.line_no())
