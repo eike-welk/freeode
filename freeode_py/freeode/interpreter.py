@@ -42,7 +42,13 @@ Interpreter, that is run at compile time, for the SIML language.
 
 The interpreter reads the AST from the parser. It generates
 objects (the symbol table), it executes statements that configure the program,
-and it collects the statements that will be part of the compiled program.
+and it collects the statements that will be part of the compiled program. The
+interpreter can be seen as Siml's macro facility.
+
+The output of the interpreter is an other program, which only contains 
+types that are known to the code generator (float, bool, string). Currently
+there are also no functions in the interpreter's output, except for the three
+main functions: "initialize", "dynamic" and "final".
 """
 
 from __future__ import division

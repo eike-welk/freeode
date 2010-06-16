@@ -215,7 +215,7 @@ def test_SimlFunction_and_user_defined_class_creation():
     #print Foo.func1
     assert Foo.func1 is func1
     
-    #test access via a class' instance
+    #test access via a class' instance - must return SimlBoundMethod
     #print foo.func1
     assert isinstance(foo.func1, SimlBoundMethod)
     assert foo.func1.im_func is func1
@@ -240,7 +240,7 @@ def test_wrappers():
     assert foo.siml_signature.return_type is Dummy1 #pylint:disable-msg=E1101
     
     @argument_type(Dummy1, Dummy2)
-    def bar(a, b=dummy2):
+    def bar(_a, _b=dummy2):                          
         pass
     #print aa_make_tree(bar)
     args = bar.siml_signature.arguments            #pylint:disable-msg=E1101
@@ -252,8 +252,8 @@ def test_wrappers():
     
     @argument_type(Dummy1, Dummy2)
     @return_type(Dummy1) 
-    def baz(a, b=dummy2):
-        return InterpreterObject()
+    def baz(a, _b=dummy2):                         
+        return a
     #print aa_make_tree(baz)
     args = baz.siml_signature.arguments            #pylint:disable-msg=E1101
     assert len(args) == 2          

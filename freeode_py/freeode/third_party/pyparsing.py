@@ -24,6 +24,10 @@
 #
 #from __future__ import generators
 
+#Disable all static error analysis
+#@PydevCodeAnalysisIgnore
+# pylint: disable-msg-cat=all
+
 __doc__ = \
 """
 pyparsing module - Classes and methods to define and execute parsing grammars
