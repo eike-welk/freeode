@@ -24,7 +24,6 @@
 '''
 Try out infrastructure for new InterpreterObject
 
-TODO: Write wrapping facility
 Usage of new facility for wrapping Python code:
       foo_proxy = Proxy()
       class Foo(IObject):
@@ -34,14 +33,13 @@ Usage of new facility for wrapping Python code:
               return a
       foo_proxy.set(Foo) 
 
-TODO: New SimlFunction
 TODO: Creation of new user defined class
 '''
 
 import inspect
 
 from freeode.ast import NodeFuncArg
-from freeode.util import AATreeMaker, TextLocation, aa_make_tree
+from freeode.util import AATreeMaker, TextLocation
 from freeode.interpreter import Signature
 
 
@@ -165,24 +163,23 @@ class SimlFunction(InterpreterObject):
 
     def __get__(self, obj, _my_type=None):
         if obj is None:
-            print 'called from class'
+            #print 'called from class'
             return self
         else:
-            print 'called from instance'
+            #print 'called from instance'
             return SimlBoundMethod(self, obj)
 
 
 class SimlBoundMethod(InterpreterObject):
     '''
     Represents a method of an object.
-    Calls a function with the correct 'this' pointer.
+    Stores a function and the correct 'this' pointer.
 
-    The object is callable from Python and Siml.
+    The object is only call-able from Siml. It has the same attributes like 
+    Python's bound method. 
 
-    No argument parsing or type checking are is done. The wrapped Function
-    is responsible for this. The handling of unevaluated/unknown arguments,
-    and unevaluated return values are left to the wrapped function.
-
+    No argument parsing or type checking are is done. The wrapped function
+    is responsible for this. 
     '''
     def __init__(self, function, this):
         '''
@@ -203,22 +200,28 @@ class SimlBoundMethod(InterpreterObject):
 
 
 
-def test_SimlFunction():
-    'Test the user defined function object'
+def test_SimlFunction_and_user_defined_class_creation():
+    'Test the user defined function object, and creation of user defined classes.'
     
-    #TODO: create the class the dynamic way
-    class Foo(InterpreterObject):
-        pass
-    
-    Foo.func1 = SimlFunction('func1')
-    
+    #Create a new class the dynamic way, it has one user defined method: func1
+    #type(name, bases, dict) -> a new type
+    func1 = SimlFunction('func1')
+    Foo = type('Foo', (InterpreterObject,), 
+               {'func1':func1})
+    #Create instance of the new class
     foo = Foo()
     
-    print Foo.func1
-    print foo.func1
+    #test access via the class object - must return the function
+    #print Foo.func1
+    assert Foo.func1 is func1
     
-        
-        
+    #test access via a class' instance
+    #print foo.func1
+    assert isinstance(foo.func1, SimlBoundMethod)
+    assert foo.func1.im_func is func1
+    assert foo.func1.im_self is foo
+    
+    
         
 def test_wrappers():
     'Test wrapping facility for python functions'
@@ -263,6 +266,6 @@ def test_wrappers():
     
 
 
-test_SimlFunction()
+test_SimlFunction_and_user_defined_class_creation()
 test_wrappers()
 #test_aa_tree_printing()

@@ -190,8 +190,8 @@ class InterpreterObject(Node):
         #TODO: remove??? each function should know by itself if it can do the 
         #      computations or if code should be produced. Known/unknown is also 
         #      difficult to decide for structured values. It is only meaningful
-        #      for code-generator-values (FundamentalObject). 
-        #      Maybe there should be FundamentalObject.isknown() .
+        #      for code-generator-values (CodeGeneratorObject). 
+        #      Maybe there should be CodeGeneratorObject.isknown() .
         self.is_known = False
         #TODO: self.save ??? True/False or Save/Optimize/Remove attribute is saved to disk as simulation result
         #TODO: self.default_value ??? (or into leaf types?)
@@ -380,7 +380,7 @@ class TypeObject(InterpreterObject):
 
 
 
-class FundamentalObject(InterpreterObject):
+class CodeGeneratorObject(InterpreterObject):
     '''
     Objects that represent data in the code that the compiler generates.
 
@@ -393,10 +393,27 @@ class FundamentalObject(InterpreterObject):
         InterpreterObject.__init__(self)
         self.time_derivative = None
         self.target_name = None
-        #TODO: Maybe there should be FundamentalObject.isknown(). 
+        #TODO: Maybe there should be CodeGeneratorObject.isknown(). 
         #      Isknown is really only meaningful for code-generator-objects. 
+        self.is_known = False
+   
+   
+    @staticmethod
+    def test_allknown(*args):
+        '''
+        Test if all arguments are known constants, raise 
+        UnknownArgumentsException if any argument is unknown
+        '''
+        for arg in args:
+            if isinstance(arg, InterpreterObject) and arg.is_known:
+                assert siml_isrole(arg.role, RoleConstant), \
+                       'All objects that are known at compile time must be constants.'
+                return
+            else:
+                raise UnknownArgumentsException()
 
-
+        
+        
 class Signature(object):
     """
     Contains arguments and return type of a function.
@@ -1031,7 +1048,7 @@ NONE = INone()
 
 
 
-class IBool(FundamentalObject):
+class IBool(CodeGeneratorObject):
     '''
     Memory location of a boolean value.
 
@@ -1042,14 +1059,14 @@ class IBool(FundamentalObject):
     type_object = None
 
     def __init__(self, init_val=None):
-        FundamentalObject.__init__(self)
+        CodeGeneratorObject.__init__(self)
         self.type = ref(IBool.type_object)
         #initialize the value
         self.value = None
         if init_val is not None:
             if isinstance(init_val, (str, float, int, bool)):
                 self.value = bool(init_val)
-            elif isinstance(init_val, (FundamentalObject)):
+            elif isinstance(init_val, (CodeGeneratorObject)):
                 if init_val.value is None:
                     ValueError('Object can not be initialized from unknown value.')
                 self.value = bool(init_val.value)
@@ -1155,7 +1172,7 @@ FALSE = IBool(False)
 
 
 
-class IString(FundamentalObject):
+class IString(CodeGeneratorObject):
     '''
     Memory location of a string
 
@@ -1166,14 +1183,14 @@ class IString(FundamentalObject):
     type_object = None
 
     def __init__(self, init_val=None):
-        FundamentalObject.__init__(self)
+        CodeGeneratorObject.__init__(self)
         self.type = ref(IString.type_object)
         #initialize the value
         self.value = None
         if init_val is not None:
             if isinstance(init_val, (str, float, int, bool)):
                 self.value = str(init_val)
-            elif isinstance(init_val, FundamentalObject):
+            elif isinstance(init_val, CodeGeneratorObject):
                 if init_val.value is None:
                     ValueError('Object can not be initialized from unknown value.')
                 self.value = str(init_val.value)
@@ -1257,7 +1274,7 @@ IBool.update_class_object()
 
 
 
-class IFloat(FundamentalObject):
+class IFloat(CodeGeneratorObject):
     '''
     Memory location of a floating point number
 
@@ -1268,7 +1285,7 @@ class IFloat(FundamentalObject):
     type_object = None
 
     def __init__(self, init_val=None):
-        FundamentalObject.__init__(self)
+        CodeGeneratorObject.__init__(self)
         self.type = ref(IFloat.type_object)
         #initialize the value
         self.value = None
@@ -1803,8 +1820,8 @@ def siml_setknown(siml_obj):
     TODO: remove??? each function should know by itself if it can do the 
           computations or if code should be produced. Known/unknown is also 
           difficult to decide for structured values. It is only meaningful
-          for code-generator-values (FundamentalObject). 
-          Maybe there should be FundamentalObject.isknown() .
+          for code-generator-values (CodeGeneratorObject). 
+          Maybe there should be CodeGeneratorObject.isknown() .
     '''
     assert isinstance(siml_obj, InterpreterObject), \
            'Function only works with InterpreterObject instances.'
@@ -1824,8 +1841,8 @@ def siml_isknown(siml_obj):
     TODO: remove??? each function should know by itself if it can do the 
           computations or if code should be produced. Known/unknown is also 
           difficult to decide for structured values. It is only meaningful
-          for code-generator-values (FundamentalObject). 
-          Maybe there should be FundamentalObject.isknown() .
+          for code-generator-values (CodeGeneratorObject). 
+          Maybe there should be CodeGeneratorObject.isknown() .
     '''
     assert isinstance(siml_obj, (InterpreterObject, NodeFuncCall,
                                  NodeOpInfix2, NodeOpPrefix1,
@@ -1954,7 +1971,7 @@ def set_role_recursive(tree, new_role):
         The new role.
     '''
     tree.role = new_role
-    if isinstance(tree, FundamentalObject):
+    if isinstance(tree, CodeGeneratorObject):
         return
     for attr in tree.attributes.itervalues():
         if is_role_more_variable(attr.role, new_role):
@@ -3029,13 +3046,13 @@ class Interpreter(object):
                 flattened_attributes.add(id(data))
 
                 long_name = prefix + DotName(name)
-                #FundamentalObject are the only data types of the compiled code
-                if isinstance(data, FundamentalObject):
+                #CodeGeneratorObject are the only data types of the compiled code
+                if isinstance(data, CodeGeneratorObject):
                     #do not flatten constants
                     if not issubclass(data.role, (RoleParameter, RoleVariable)):
                         continue
                     flat_obj.create_attribute(long_name, data, reparent=True)
-                #Recurse all other objects and see if they contain FundamentalObject attributes
+                #Recurse all other objects and see if they contain CodeGeneratorObject attributes
                 else:
                     flatten(data, flat_obj, long_name)
 

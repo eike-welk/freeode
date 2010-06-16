@@ -48,7 +48,7 @@ from freeode.ast import (Visitor, PROGRAM_VERSION,
                          RoleConstant, 
                          )
 from  freeode.interpreter import (IFloat, IString, CompiledClass, 
-                                  FundamentalObject, 
+                                  CodeGeneratorObject, 
                                   )
 
 
@@ -338,7 +338,7 @@ class SimulationClassGenerator(object):
         #time_differentials = set()
         #create dicts to find and classify attributes fast
         for name, attr in self.flat_object.attributes.iteritems():
-            if not isinstance(attr, (FundamentalObject)):
+            if not isinstance(attr, (CodeGeneratorObject)):
                 continue
             if issubclass(attr.role, RoleParameter):
                 self.parameters[name] = attr
@@ -401,7 +401,7 @@ class SimulationClassGenerator(object):
         #loop over all attribute definitions and create an unique Python name
         #for each attribute
         for name, attr in self.flat_object.attributes.iteritems():
-            if not isinstance(attr, FundamentalObject):
+            if not isinstance(attr, CodeGeneratorObject):
                 continue
             #create underline separated name string, replace '$' with '_D'
             py_name1 = '_'.join(name)

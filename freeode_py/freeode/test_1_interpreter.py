@@ -225,8 +225,8 @@ def test_InterpreterObject_find_name(): #IGNORE:C01111
     
     
 #-------- Test IntArgumentList class ------------------------------------------------------------------------#
-def test_IntArgumentList_1(): #IGNORE:C01111
-    msg = 'IntArgumentList: construction'
+def test_Signature_1(): #IGNORE:C01111
+    msg = 'Signature: construction'
     #skip_test(msg)
     print msg
     
@@ -254,7 +254,7 @@ def test_IntArgumentList_1(): #IGNORE:C01111
     
     
     
-def test_IntArgumentList_2(): #IGNORE:C01111
+def test_Signature_2(): #IGNORE:C01111
     msg = 'Signature: test argument processing at call site'
     #skip_test(msg)
     print msg
@@ -310,7 +310,7 @@ def test_IntArgumentList_2(): #IGNORE:C01111
     
     
     
-def test_IntArgumentList_3(): #IGNORE:C01111
+def test_Signature_3(): #IGNORE:C01111
     msg =  'Signature: test calling with default arguments.'
     #skip_test(msg)
     print msg
@@ -337,7 +337,7 @@ def test_IntArgumentList_3(): #IGNORE:C01111
     
     
     
-def test_IntArgumentList_4(): #IGNORE:C01111
+def test_Signature_4(): #IGNORE:C01111
     msg =  'Signature: test type compatibility testing.'
     #skip_test(msg)
     print msg
@@ -1449,5 +1449,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_IntArgumentList_4()
+    test_Signature_4()
     pass #pylint: disable-msg=W0107

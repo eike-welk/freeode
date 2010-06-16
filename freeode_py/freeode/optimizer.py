@@ -40,7 +40,7 @@ from freeode.ast import (NodeParentheses, NodeOpInfix2, NodeOpPrefix1,
                          RoleConstant, RoleParameter, RoleInputVariable, 
                          RoleOutputVariable, RoleIntermediateVariable)
 from freeode.interpreter import (InterpreterObject, CallableObject, 
-                                 FundamentalObject, CompiledClass,
+                                 CodeGeneratorObject, CompiledClass,
                                  siml_isrole, siml_isknown)
 
 
@@ -190,7 +190,7 @@ class DataFlowChecker(object):
         for attr in sim_obj.attributes.itervalues():
             assert isinstance(attr, InterpreterObject)
             #only look at built in data (ignore functions)
-            if not isinstance(attr, FundamentalObject):
+            if not isinstance(attr, CodeGeneratorObject):
                 continue
             #classify attributes according to their role
             if siml_isrole(attr.role, RoleConstant):
