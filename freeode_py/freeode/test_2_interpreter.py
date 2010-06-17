@@ -67,7 +67,7 @@ data b: String const
 def test_data_statement_roles_1(): #IGNORE:C01111
     #skip_test('Test data statement: create attributes with different roles')
     print 'Test data statement: create attributes with different roles'
-    from freeode.interpreter import Interpreter, siml_isrole
+    from freeode.interpreter import Interpreter, i_isrole
     from freeode.ast import (RoleConstant, RoleParameter, RoleVariable)
     
     prog_text = \
@@ -91,7 +91,7 @@ data c: Float variable
     b = mod.get_attribute('b')
     assert b.role is RoleParameter
     c = mod.get_attribute('c')
-    assert siml_isrole(c.role, RoleVariable)
+    assert i_isrole(c.role, RoleVariable)
     
   
 
@@ -110,7 +110,7 @@ def test_data_statement_roles_2(): #IGNORE:C01111
     msg = 'Test data statement: roles should be propagated to child attributes.'
     #skip_test(msg)
     print msg
-    from freeode.interpreter import Interpreter, siml_isrole
+    from freeode.interpreter import Interpreter, i_isrole
     from freeode.ast import (RoleConstant, RoleParameter, RoleVariable)
     
     prog_text = \
@@ -159,7 +159,7 @@ data av: A variable
     v = a_curr.get_attribute('v')
     assert c.role is RoleConstant
     assert p.role is RoleParameter
-    assert siml_isrole(v.role, RoleVariable) 
+    assert i_isrole(v.role, RoleVariable) 
   
   
 
@@ -1504,7 +1504,7 @@ def test_pass_statement_1(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isinstance, 
+    from freeode.interpreter import (Interpreter, i_istype, 
                                      CallableObject, TypeObject, IFloat)
     from freeode.util import DotName
 
@@ -1552,7 +1552,7 @@ compile A
     d = mod.get_attribute('d')
     f_dummy = mod.get_attribute('f_dummy')
     class_A = mod.get_attribute('A')
-    assert siml_isinstance(d, class_Dummy)
+    assert i_istype(d, class_Dummy)
     assert isinstance(f_dummy, CallableObject)
     assert isinstance(class_A, TypeObject)
 
@@ -1579,7 +1579,7 @@ def test_pass_statement_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isinstance, 
+    from freeode.interpreter import (Interpreter, i_istype, 
                                      CallableObject, TypeObject, IFloat)
 
     prog_text = \
@@ -1616,7 +1616,7 @@ four = add2(2)
     add2 = mod.get_attribute('add2')
     four = mod.get_attribute('four')
     assert isinstance(class_A, TypeObject)
-    assert siml_isinstance(a, class_A)
+    assert i_istype(a, class_A)
     assert isinstance(a_x, IFloat)
     assert a_x.value == 2
     assert isinstance(add2, CallableObject)
@@ -1671,7 +1671,7 @@ def test_if_statement_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
+    from freeode.interpreter import (Interpreter, i_isrole, IFloat, IBool)
     from freeode.ast import NodeIfStmt, NodeAssignment, RoleConstant
     from freeode.util import DotName
 
@@ -1725,7 +1725,7 @@ compile A
     assert isinstance(clause_a_3.statements[0], NodeAssignment)
     #the last clause is an else statement: condition equivalent to True, constant 
     assert isinstance(clause_a_3.condition, (IFloat, IBool))
-    assert siml_isrole(clause_a_3.condition.role, RoleConstant)
+    assert i_isrole(clause_a_3.condition.role, RoleConstant)
     assert bool(clause_a_3.condition.value) is True
 
 
@@ -1828,7 +1828,7 @@ def test_if_statement_4_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, siml_isrole, IFloat, IBool)
+    from freeode.interpreter import (Interpreter, i_isrole, IFloat, IBool)
     from freeode.ast import NodeIfStmt, NodeAssignment, RoleConstant
     from freeode.util import DotName
 
@@ -1882,7 +1882,7 @@ compile A
     assert isinstance(clause_2_2.statements[0], NodeAssignment)
     #the last clause is an else statement: condition equivalent to True, constant 
     assert isinstance(clause_2_2.condition, (IFloat, IBool))
-    assert siml_isrole(clause_2_2.condition.role, RoleConstant)
+    assert i_isrole(clause_2_2.condition.role, RoleConstant)
     assert bool(clause_2_2.condition.value) is True
 
 

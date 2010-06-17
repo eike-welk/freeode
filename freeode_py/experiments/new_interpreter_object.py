@@ -40,7 +40,87 @@ import inspect
 
 from freeode.ast import NodeFuncArg
 from freeode.util import AATreeMaker, TextLocation
-from freeode.interpreter import Signature
+#from freeode.interpreter import Signature
+
+
+class Signature(object):
+    """
+    Contains arguments and return type of a function.
+    
+    Simplified dummy version of interpreter.Signature, to enable independent 
+    testing.
+    """
+    #Object that creates an ASCII art tree from nodes
+    __siml_aa_tree_maker__ = AATreeMaker()
+
+    def __init__(self, arguments=None, return_type=None, loc=None):
+        '''
+        ARGUMENTS
+        ---------
+        arguments: [ast.NodeFuncArg, ...] or SimpleSignature or Signature or None
+            The functions arguments
+            arguments == None -> Don't check arguments.
+        return_type: ast.Node or type or None
+            Type of the function's return value.
+            return_type == None -> Don't check return type.
+        loc: ast.TextLocation 
+            Location where the function is defined in the program text.
+        '''
+        object.__init__(self)
+        #special case copy construction
+        if isinstance(arguments, (Signature,)):
+            loc = arguments.loc
+            return_type = arguments.return_type
+            arguments = arguments.arguments
+
+        #--- auxiliary data --- 
+        #dictionary for quick access to argument definitions by name
+        #also for testing uniqueness and existence of argument names 
+        self.argument_dict = {}
+        #arguments with default values (subset of self.arguments)
+        self.default_args = []
+        #If True: the annotations have been evaluated; 
+        #otherwise self._evaluate_type_specs must be called
+        self.is_evaluated = False
+        
+        #--- core data --------
+        #Location where the function is defined in the program text.
+        self.loc = loc            
+        #The functions arguments: [ast.NodeFuncArg, ...]
+        self.arguments = None
+        self.set_arguments(arguments) 
+        #Type of the function's return value.
+        self.return_type = return_type
+
+
+    def set_arguments(self, arguments):
+        '''
+        Put the argument specification into the Signature.
+         
+        ARGUMENTS
+        ---------
+        arguments: [ast.NodeFuncArg, ...] or SimpleSignature or Signature or None
+            The functions arguments
+        '''
+        self.arguments = arguments
+        if arguments is None:
+            return
+        #Check arguments and fill self.argument_dict
+        there_was_keyword_argument = False
+        for arg in self.arguments:
+            #check that positional arguments come first
+            if arg.default_value is not None:
+                there_was_keyword_argument = True
+                self.default_args.append(arg)
+            elif there_was_keyword_argument: 
+                raise Exception('Positional arguments must come before '
+                                    'keyword arguments!', self.loc, errno=3200110)
+            #test: argument names must be unique
+            if arg.name in self.argument_dict:
+                raise Exception('Duplicate argument name "%s"!' 
+                                    % str(arg.name), self.loc, errno=3200120) 
+            self.argument_dict[arg.name] = arg
+
 
 
 #class InterpreterObjectMeta(type):
@@ -103,40 +183,85 @@ def make_pyfunc_loc(py_func):
     return loc
     
     
-def argument_type(*type_list):
-    'Decorator to define type_list of function arguments.'
-    def decorate_with_type(func_to_decorate):
-        #Create Signature object if necessary
-        if not hasattr(func_to_decorate, 'siml_signature'):
-            loc = make_pyfunc_loc(func_to_decorate)
-            func_to_decorate.siml_signature = Signature(loc=loc) 
-        #Get argument names and default values of Python function
-        args, _varargs, _keywords, defaults = inspect.getargspec(func_to_decorate)
-        siml_args = [NodeFuncArg(arg_name) for arg_name in args]
-        for arg, dval in zip(reversed(siml_args), reversed(defaults)):
-            arg.default_value = dval
-        #Combine with Siml type definitions
-        for arg, type1 in zip(siml_args, type_list):
-            arg.type = type1
-        func_to_decorate.siml_signature.set_arguments(siml_args)
+#def argument_type(*type_list):
+#    'Decorator to define type_list of function arguments.'
+#    def decorate_with_type(func_to_decorate):
+#        #Create Signature object if necessary
+#        if not hasattr(func_to_decorate, 'siml_signature'):
+#            loc = make_pyfunc_loc(func_to_decorate)
+#            func_to_decorate.siml_signature = Signature(loc=loc) 
+#            func_to_decorate.siml_globals = InterpreterObject()
+#            
+#        #Get argument names and default values of Python function
+#        args, _varargs, _keywords, defaults = inspect.getargspec(func_to_decorate)
+#        siml_args = [NodeFuncArg(arg_name) for arg_name in args]
+#        for arg, dval in zip(reversed(siml_args), reversed(defaults)):
+#            arg.default_value = dval
+#        #Combine with Siml type definitions
+#        for arg, type1 in zip(siml_args, type_list):
+#            arg.type = type1
+#        func_to_decorate.siml_signature.set_arguments(siml_args)
+#        return func_to_decorate
+#
+#    return decorate_with_type
+#
+#    
+#def return_type(type_obj):
+#    'Decorator to define return type of function.'
+#    def decorate_with_type(func_to_decorate):
+#        #Give function a signature object if it has none
+#        if not hasattr(func_to_decorate, 'siml_signature'):
+#            loc = make_pyfunc_loc(func_to_decorate)
+#            func_to_decorate.siml_signature = Signature(loc=loc) 
+#            func_to_decorate.siml_globals = InterpreterObject()
+#            
+#        #Put return type into signature
+#        func_to_decorate.siml_signature.return_type = type_obj
+#        return func_to_decorate
+#    
+#    return decorate_with_type
+
+
+def signature(arg_types, return_type):
+    '''
+    Create Signature object for Python function. 
+    
+    ARGUMENTS
+    ---------
+    arg_types: list(type | Proxy)
+        Types of the function's arguments.
+    return_type: type | Proxy
+        The function's return type.
+        
+    This is a decorator see:
+        http://www.python.org/dev/peps/pep-0318/#current-syntax
+    '''    
+    assert isinstance(arg_types, list) or arg_types is None
+    assert isinstance(return_type, (type, Proxy)) or return_type is None
+    
+    #This function does the real work
+    def decorate_with_signature(func_to_decorate):
+        #Create argument list
+        if arg_types is not None:
+            #Get from Python function: argument names, default values, 
+            #create Siml argument list
+            args, _varargs, _keywords, defaults = inspect.getargspec(func_to_decorate)
+            siml_args = [NodeFuncArg(arg_name) for arg_name in args]
+            for arg, dval in zip(reversed(siml_args), reversed(defaults)):
+                arg.default_value = dval
+            #Put Siml type definitions into argument list
+            for arg, type1 in zip(siml_args, arg_types):
+                arg.type = type1
+        else:
+            siml_args = None
+        
+        loc = make_pyfunc_loc(func_to_decorate)
+        func_to_decorate.siml_signature = Signature(siml_args, return_type, loc)
+        func_to_decorate.siml_globals = InterpreterObject() #dummy global namespace
+        
         return func_to_decorate
 
-    return decorate_with_type
-
-    
-def return_type(type_obj):
-    'Decorator to define return type of function.'
-    def decorate_with_type(func_to_decorate):
-        #Give function a signature object if it has none
-        if not hasattr(func_to_decorate, 'siml_signature'):
-            loc = make_pyfunc_loc(func_to_decorate)
-            func_to_decorate.siml_signature = Signature(loc=loc) 
-        #Put return type into signature
-        func_to_decorate.siml_signature.return_type = type_obj
-        return func_to_decorate
-    
-    return decorate_with_type
-    
+    return decorate_with_signature
    
 
 class SimlFunction(InterpreterObject):
@@ -232,14 +357,44 @@ def test_wrappers():
         pass
     dummy2 = Dummy2()
     
-    @return_type(Dummy1) 
+#    @return_type(Dummy1) 
+#    def foo():
+#        return Dummy1()
+#    #print aa_make_tree(foo)
+#    assert foo.siml_signature.arguments is None     #pylint:disable-msg=E1101
+#    assert foo.siml_signature.return_type is Dummy1 #pylint:disable-msg=E1101
+#    
+#    @argument_type(Dummy1, Dummy2)
+#    def bar(_a, _b=dummy2):                          
+#        pass
+#    #print aa_make_tree(bar)
+#    args = bar.siml_signature.arguments            #pylint:disable-msg=E1101
+#    assert len(args) == 2          
+#    assert args[0].type is Dummy1 
+#    assert args[1].type is Dummy2
+#    assert args[1].default_value is dummy2
+#    assert bar.siml_signature.return_type is None  #pylint:disable-msg=E1101
+#    
+#    @argument_type(Dummy1, Dummy2)
+#    @return_type(Dummy1) 
+#    def baz(a, _b=dummy2):                         
+#        return a
+#    #print aa_make_tree(baz)
+#    args = baz.siml_signature.arguments            #pylint:disable-msg=E1101
+#    assert len(args) == 2          
+#    assert args[0].type is Dummy1 
+#    assert args[1].type is Dummy2
+#    assert args[1].default_value is dummy2
+#    assert baz.siml_signature.return_type is Dummy1  #pylint:disable-msg=E1101
+
+    @signature(None, Dummy1) 
     def foo():
         return Dummy1()
     #print aa_make_tree(foo)
     assert foo.siml_signature.arguments is None     #pylint:disable-msg=E1101
     assert foo.siml_signature.return_type is Dummy1 #pylint:disable-msg=E1101
     
-    @argument_type(Dummy1, Dummy2)
+    @signature([Dummy1, Dummy2], None)
     def bar(_a, _b=dummy2):                          
         pass
     #print aa_make_tree(bar)
@@ -250,8 +405,7 @@ def test_wrappers():
     assert args[1].default_value is dummy2
     assert bar.siml_signature.return_type is None  #pylint:disable-msg=E1101
     
-    @argument_type(Dummy1, Dummy2)
-    @return_type(Dummy1) 
+    @signature([Dummy1, Dummy2], Dummy1) 
     def baz(a, _b=dummy2):                         
         return a
     #print aa_make_tree(baz)
@@ -263,8 +417,6 @@ def test_wrappers():
     assert baz.siml_signature.return_type is Dummy1  #pylint:disable-msg=E1101
     
     
-    
-
 
 test_SimlFunction_and_user_defined_class_creation()
 test_wrappers()

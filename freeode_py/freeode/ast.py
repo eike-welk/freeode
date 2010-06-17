@@ -190,11 +190,11 @@ class NodeAttrAccess(Node):
     loc: 
         Location in input string
     '''
-    def __init__(self):
+    def __init__(self, arguments=tuple(), loc=None):
         super(NodeAttrAccess, self).__init__()
         self.operator = '.'
-        self.arguments = tuple()
-        self.loc = None        
+        self.arguments = arguments
+        self.loc = loc        
 
 
 class NodeParentheses(Node):

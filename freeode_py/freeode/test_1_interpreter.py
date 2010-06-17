@@ -503,16 +503,16 @@ def test_BuiltInClassWrapper_1(): #IGNORE:C01111
 def test_IFloat_1(): #IGNORE:C01111
     #skip_test('Test IFloat: construction from Siml class')
     print 'Test IFloat: construction from Siml class'
-    from freeode.interpreter import IFloat, CLASS_FLOAT, siml_isinstance
+    from freeode.interpreter import IFloat, CLASS_FLOAT, i_istype
     
     #test construction from Siml class
     val = CLASS_FLOAT()
     assert isinstance(val, IFloat)
-    assert siml_isinstance(val, CLASS_FLOAT)
+    assert i_istype(val, CLASS_FLOAT)
     
     #test construction from Python class - Siml type must still be right
     val1 = IFloat()
-    assert siml_isinstance(val1, CLASS_FLOAT)
+    assert i_istype(val1, CLASS_FLOAT)
 
 
 
@@ -599,16 +599,16 @@ def test_IFloat_4(): #IGNORE:C01111
 def test_IString_1(): #IGNORE:C01111
     #skip_test('Test IString: construction from Siml class')
     print 'Test IString: construction from Siml class'
-    from freeode.interpreter import IString, CLASS_STRING, siml_isinstance
+    from freeode.interpreter import IString, CLASS_STRING, i_istype
     
     #test construction from Siml class
     val = CLASS_STRING()
     assert isinstance(val, IString)
-    assert siml_isinstance(val, CLASS_STRING)
+    assert i_istype(val, CLASS_STRING)
     
     #test construction from Python class - Siml type must still be right
     val1 = IString()
-    assert siml_isinstance(val1, CLASS_STRING)
+    assert i_istype(val1, CLASS_STRING)
 
 
 
@@ -678,16 +678,16 @@ def test_IBool_1(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import IBool, CLASS_BOOL, siml_isinstance
+    from freeode.interpreter import IBool, CLASS_BOOL, i_istype
     
     #test construction from Siml class
     val = CLASS_BOOL()
     assert isinstance(val, IBool)
-    assert siml_isinstance(val, CLASS_BOOL)
+    assert i_istype(val, CLASS_BOOL)
     
     #test construction from Python class - Siml type must still be right
     val1 = IBool()
-    assert siml_isinstance(val1, CLASS_BOOL)
+    assert i_istype(val1, CLASS_BOOL)
 
 
 

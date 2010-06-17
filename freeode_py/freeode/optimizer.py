@@ -41,7 +41,7 @@ from freeode.ast import (NodeParentheses, NodeOpInfix2, NodeOpPrefix1,
                          RoleOutputVariable, RoleIntermediateVariable)
 from freeode.interpreter import (InterpreterObject, CallableObject, 
                                  CodeGeneratorObject, CompiledClass,
-                                 siml_isrole, siml_isknown)
+                                 i_isrole, siml_isknown)
 
 
 
@@ -193,15 +193,15 @@ class DataFlowChecker(object):
             if not isinstance(attr, CodeGeneratorObject):
                 continue
             #classify attributes according to their role
-            if siml_isrole(attr.role, RoleConstant):
+            if i_isrole(attr.role, RoleConstant):
                 raise Exception('The simulation object must not have constant attributes!')
-            elif siml_isrole(attr.role, RoleParameter):
+            elif i_isrole(attr.role, RoleParameter):
                 self.parameters.add(attr)
-            elif siml_isrole(attr.role, RoleInputVariable):
+            elif i_isrole(attr.role, RoleInputVariable):
                 self.iput_variables.add(attr)
-            elif siml_isrole(attr.role, RoleIntermediateVariable):
+            elif i_isrole(attr.role, RoleIntermediateVariable):
                 self.intermediate_variables.add(attr)
-            elif siml_isrole(attr.role, RoleOutputVariable):
+            elif i_isrole(attr.role, RoleOutputVariable):
                 self.output_variables.add(attr)
             else:
                 raise Exception('Unknown attribute role!')
@@ -209,7 +209,7 @@ class DataFlowChecker(object):
         #Constants embedded in the code are put into a special set.
         all_inputs = sim_obj.inputs
         for attr in all_inputs:
-            if siml_isrole(attr.role, RoleConstant):
+            if i_isrole(attr.role, RoleConstant):
                 #TODO: detecting unknown constants should be handled in the interpreter
                 if not siml_isknown(attr):
                     name = '<anonymous constant>'
