@@ -31,6 +31,13 @@ from __future__ import absolute_import
 import sys
 import freeode.third_party.pyparsing as pyparsing     
 
+#version of the Siml compiler.
+PROGRAM_VERSION = '0.4.0a3'
+#How much debug information is printed
+# 0: No debug information; 1: some; ....
+DEBUG_LEVEL = 1
+
+
 
 class AATreeMaker(object):
     '''

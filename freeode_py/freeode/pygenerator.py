@@ -38,8 +38,8 @@ generates some python classes that perform the simulations.
 from __future__ import division
 
 import cStringIO
-from util import DotName
-from freeode.ast import (Visitor, PROGRAM_VERSION,
+from util import DotName, PROGRAM_VERSION
+from freeode.ast import (Visitor,
                          NodeFuncCall, NodeParentheses, NodeOpInfix2, 
                          NodeOpPrefix1, NodeAssignment, NodeIfStmt, 
                          NodeExpressionStmt, 

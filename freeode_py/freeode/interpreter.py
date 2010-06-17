@@ -63,11 +63,11 @@ import types
 import inspect
 
 from freeode.util import (UserException, DotName, TextLocation, AATreeMaker, 
-                          aa_make_tree)
+                          aa_make_tree, DEBUG_LEVEL)
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
                          RoleAlgebraicVariable, RoleTimeDifferential, 
                          RoleStateVariable, RoleInputVariable,
-                         SimpleSignature, 
+                         SimpleSignature,
                          Node, NodeFuncArg, NodeFuncCall, NodeOpInfix2, 
                          NodeOpPrefix1, NodeParentheses, NodeIdentifier, 
                          NodeFloat, NodeString, NodeAttrAccess, 
@@ -1116,25 +1116,26 @@ class IFloat(CodeGeneratorObject):
         self.test_allknown(self, other)
         return IBool(self.value >= other.value)
 
-    @staticmethod
-    def _diff_static(self):
+    @signature([FLOATP], FLOATP) 
+    def __siml_diff__(self):
         '''
         Return time derivative of state variable. Called for '$' operator
         Create the variable that contains the derivative if necessary.
 
-        Function has to be static because self may be an ast.Node; this
+        TODO: delete??? Function has to be static because ???
+        self may be an ast.Node; this
         method is responsible to create a good error message in this case.
         '''
         #Precondition: $ acts upon a variable
         if(not isinstance(self, IFloat) or #no expression (ast.Node)
-           self.parent is None or          #no anonymous intermediate value
-           not issubclass(self.role, RoleVariable)): #no constant or parameter or unknown
+           #self.parent is None or          #no anonymous intermediate value
+           not i_isrole(self, RoleVariable)): #no constant or parameter or unknown
             raise UserException('Only named variables can have derivatives.')
         #create time derivative if necessary
         if self.time_derivative is None:
             make_derivative(self)
         #return the associated derived variable
-        return self.time_derivative() #IGNORE:E1102
+        return self.time_derivative #IGNORE:E1102
 
     @signature([FLOATP, FLOATP], INone) 
     def __siml_assign__(self, other):
@@ -1247,12 +1248,16 @@ def siml_printc(*args, **kwargs):
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
     debug_level = kwargs.get('debug_level', None)
-    if not i_istype(debug_level, IFloat):
+    if not isinstance(debug_level, IFloat):
         raise UserException('Argument "debug_level" must be of type Float')
     end = kwargs.get('end', None)
-    if not i_istype(end, IString):
+    if not isinstance(end, IString):
         raise UserException('Argument "end" must be of type IString')
     sep=' '
+    
+    #observe debug level
+    if debug_level.value > DEBUG_LEVEL:
+        return
     
     #create output string
     out_str = ''
@@ -1261,6 +1266,7 @@ def siml_printc(*args, **kwargs):
             out_str += str(arg1) + sep
         else:
             out_str += aa_make_tree(arg1) + sep
+    out_str += end.value
     print out_str
             
 
@@ -1886,8 +1892,8 @@ class Interpreter(object):
 
 
     _prefopt_table = { '-' :'__neg__',
-                      'not':'__not__',
-                      '$':'__diff__', }
+                      'not':'__siml_not__',
+                      '$':'__siml_diff__', }
 
     def eval_NodeOpPrefix1(self, node):
         '''
@@ -1935,8 +1941,8 @@ class Interpreter(object):
                     '!=':('__ne__', '__ne__'),
                     '>': ('__gt__', '__lt__'),
                     '>=':('__ge__', '__le__'),
-                   'and':('__and2__', '__rand2__'),
-                    'or':('__or2__', '__ror2__'),
+                   'and':('__siml_and2__', '__siml_rand2__'),
+                    'or':('__siml_or2__', '__siml_ror2__'),
                     }
 
     def eval_NodeOpInfix2(self, node):
@@ -2292,7 +2298,7 @@ class Interpreter(object):
         if target.role is RoleUnkown:
             set_role_recursive(target, value.role)
         #get the assignment function
-        assign_func = target.get_attribute('__assign__')
+        assign_func = target.get_attribute('__siml_assign__')
         #Always call the function when it is not fundamental. The call
         #generates statements with fundamental functions.
         #Reason: When a function returns a user defined class, the role is
