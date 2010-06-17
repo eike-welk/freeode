@@ -154,7 +154,7 @@ class SimlFunction(InterpreterObject):
         #the statements of the function's body
         self.statements = statements if statements else []
         #global namespace, stored when the function was defined
-        self.global_scope = global_scope
+        self.siml_globals = global_scope
         #count how often the function was called (to create unique names
         #for the local variables)
         self.call_count = 0

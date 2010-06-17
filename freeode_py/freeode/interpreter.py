@@ -60,6 +60,7 @@ from weakref import ref
 import math
 import os
 import types
+import inspect
 
 from freeode.util import UserException, DotName, TextLocation, AATreeMaker
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
@@ -171,36 +172,26 @@ class ExecutionEnvironment(object):
 
 
 
-class InterpreterObject(Node):
+class InterpreterObject(object):
     '''
-    Base class of all objects that the interpreter operates on.
+    Base class of all objects that the interpreter operates on, except for 
+    classes and Python functions.
     Can also be seen as part of structured symbol table
-
-    It inherits from Node only to get Ascii-art tree and copying.
     '''
-    #let these attributes appear first in the pretty printed tree
-    aa_top = ['name', 'type']
+    #Object that creates an ASCII art tree from nodes
+    __siml_aa_tree_maker__ = AATreeMaker(top_names= ['name', 'type'])
 
     def __init__(self):
         Node.__init__(self)
         #Reference to object one level up in the tree
         #type weakref.ref or None
         self.parent = None
-        #The symbol table
-        self.attributes = {}
-        #weak reference to class of this instance
-        self.type = None
+        #the same as __class__; necessary for unevaluated expressions, where 
+        #__class__ is different to __siml_type__
+        self.__siml_type__ = None
         #const, param, variable, ... (Comparable to storage class in C++)
-        self.role = RoleUnkown
-        #True/False is the value of this object known?
-        #TODO: remove??? each function should know by itself if it can do the 
-        #      computations or if code should be produced. Known/unknown is also 
-        #      difficult to decide for structured values. It is only meaningful
-        #      for code-generator-values (CodeGeneratorObject). 
-        #      Maybe there should be CodeGeneratorObject.isknown() .
-        self.is_known = False
+        self.__siml_role__ = RoleUnkown
         #TODO: self.save ??? True/False or Save/Optimize/Remove attribute is saved to disk as simulation result
-        #TODO: self.default_value ??? (or into leaf types?)
 
     def __deepcopy__(self, memo_dict):
         '''deepcopy that gets the parent right'''
@@ -209,105 +200,30 @@ class InterpreterObject(Node):
             copied_attr.parent = ref(copied_self)
         return copied_self
 
-    def create_attribute(self, name, newAttr, reparent=False):
-        '''
-        Put attribute into parent object. - Put name into symbol table.
-
-        This method is called for a data statement.
-        - When an attribute with the same name already exists a
-        DuplicateAttributeError is raised.
-        - This object (self) becomes the parent of newAttr, when newAttr
-        does not already have a parent. However setting argument
-        reparent=True forces changing newAttr's parent.
-
-        ARGUMENTS
-        ---------
-        name: DotName, str
-            Name of the new attribute
-        newAttr: InterpreterObject
-            The new attribute that will be put into this object.
-        reparent: True/False
-            - if True: set parent attribute of newAttr in any case.
-            - if False (default): set parent attribute only if newAttr has no
-            parent.
-        '''
-        if name in self.attributes:
-            raise DuplicateAttributeError(attr_name=name)
-        self.attributes[name] = newAttr
-        #set parent link for new objects, or when the parent has died.
-        if newAttr.parent is None or newAttr.parent() is None or reparent: #IGNORE:E1102
-            newAttr.parent = weakref.ref(self)
-
-    def get_attribute(self, name):
-        '''Return attribute object'''
-        if name in self.attributes:
-            return self.attributes[name]
-        #Search for attribute in the type (class) object
-        elif self.type is not None and self.type().has_attribute(name):
-            #if attribute is a function, put it into a method wrapper
-            # TODO: change to Python's way of functioning?
-            # See: http://wiki.python.org/moin/FromFunctionToMethod
-            attr = self.type().get_attribute(name)
-            if siml_callable(attr):
-                attr = BoundMethod(attr.name, attr, self)
-            return attr
-        else:
-            raise UndefinedAttributeError(attr_name=name)
-
-    def has_attribute(self, name):
-        '''Return true if object has an attribute with name "name"'''
-        if name in self.attributes:
-            return True
-        #Search for attribute in the type (class) object
-        elif self.type is not None and self.type().has_attribute(name):
-            return True
-        else:
-            return False
-
-#    def replace_attribute(self, name, newAttr, reparent=False):
+#
+#    def find_name(self, in_attr):
 #        '''
-#        Replace an attribute.
+#        Find the name of an attribute.
 #
 #        ARGUMENTS
 #        ---------
-#        name: DotName, str
-#            Name of the attribute that will be replaced
-#        newAttr: InterpreterObject
-#            The new attribute that will be put into this object.
-#        reparent: True/False
-#            - if True: set parent attribute of newAttr in any case.
-#            - if False (default): set parent attribute only if newAttr has no
-#            parent.
+#        in_attr: InterpreterObject
+#            Attribute whose name will be searched. It must be an attribute of
+#            this object (self). If "in_attr" is not found an Exception object
+#            will be raised.
 #
-#        TODO: remove this function? It is only necessary for derivatives of
-#              user defined classes which don't work.
+#        RETURNS
+#        -------
+#        str, DotName
+#        The attribue's name.
 #        '''
-#        del self.attributes[name]
-#        self.create_attribute(name, newAttr, reparent)
-
-    def find_name(self, in_attr):
-        '''
-        Find the name of an attribute.
-
-        ARGUMENTS
-        ---------
-        in_attr: InterpreterObject
-            Attribute whose name will be searched. It must be an attribute of
-            this object (self). If "in_attr" is not found an Exception object
-            will be raised.
-
-        RETURNS
-        -------
-        str, DotName
-        The attribue's name.
-        '''
-        for attr_name, attr in self.attributes.iteritems():
-            if attr is in_attr:
-                break
-        else:
-            raise Exception('"in_attr" is not attribute of this object.')
-        return attr_name #IGNORE:W0631
-
+#        for attr_name, attr in self.attributes.iteritems():
+#            if attr is in_attr:
+#                break
+#        else:
+#            raise Exception('"in_attr" is not attribute of this object.')
+#        return attr_name #IGNORE:W0631
+#
     def create_path(self, path):
         '''
         Create an attribute and sub-attributes so that 'path' can be looked
@@ -323,6 +239,8 @@ class InterpreterObject(Node):
         RETURNS
         -------
         The attribute represented by the rightmost element of the path.
+        
+        TODO: maybe move to Interpreter or to CodeCollector
         '''
         curr_object = self
         for name1 in path:
@@ -335,54 +253,81 @@ class InterpreterObject(Node):
         return curr_object
 
 
+    def get_complete_path(self):
+        '''
+        Get complete dotted name of the function.
 
-class CallableObject(InterpreterObject):
-    '''
-    Base class of all functions.
+        Goes recursively to all parents, asks them for their names, and
+        creates a DotName out of the names. This will usually produce a
+        three component DotName structured like this: module.class.function
 
-    CONSTRUCTOR ARGUMENTS
-    ---------------------
-    name: DotName, str
-        The function's name.
-    '''
-    def __init__(self, name):
-        InterpreterObject.__init__(self)
-        self.role = RoleConstant
-        self.is_known = True
-        self.name = name
-#        If True: the function is a basic building block of the language.
-#        The code generator can emit code for this function. The flattened
-#        simulation object must only contain calls to these functions.
-#        If False: This function must be replaced with a series of calls
-#        to fundamental functions.
-        # TODO: rename to is_runtime_function
-        # TODO: remove! This is unnecessary
-        self.is_fundamental_function = False
-        self.codegen_name = None
-        self.signature = Signature()
-
-    def __call__(self, *args, **kwargs):
-        '''All Siml-functions must implement this method'''
-        raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
+        RETURNS
+        -------
+        DotName
+        
+        TODO: maybe move to Interpreter or to CodeCollector
+        '''
+        curr_object = self
+        path = DotName(self.name)
+        while curr_object.parent is not None:
+            curr_object = curr_object.parent()      #IGNORE:E1102
+            path = DotName(curr_object.name) + path
+        return path
 
 
-##In case type objects should be callable nevertheless.
-#class TypeObject(CallableObject):  #IGNORE:W0223
-#    '''Base class of all classes'''
+    def create_persistent_locals_ns(self):
+        '''
+        Create special, and unique namespace for storing local variables.
+
+        When creating code, a function's local variables must be placed
+        (as algebraic variables) in the simulation object. The code of all
+        functions is inlined into the main functions. Therfore the local
+        variables of each function invocation must be stored separately with
+        unique names.
+
+        The root namespace where the local variables are stored is supplied
+        by the interpreter.
+        
+        TODO: maybe move to Interpreter or to CodeCollector
+        '''
+        #long name of function. like: bioreactor.conti.bacterial_growth
+        func_path = self.get_complete_path()
+        #name-space where all local variables go into
+        locals_root = INTERPRETER.get_locals_storage()
+        #create namespace with long name of this function
+        locals_ns = locals_root.create_path(func_path[1:] +
+                                            DotName(str(self.call_count)))
+        return locals_ns
+
+
+#class CallableObject(InterpreterObject):
+#    '''
+#    Base class of all functions.
+#
+#    CONSTRUCTOR ARGUMENTS
+#    ---------------------
+#    name: DotName, str
+#        The function's name.
+#    '''
 #    def __init__(self, name):
-#        CallableObject.__init__(self, name)
-
-class TypeObject(InterpreterObject):
-    '''Base class of all classes'''
-    def __init__(self, name):
-        InterpreterObject.__init__(self)
-        self.role = RoleConstant
-        self.is_known = True
-        self.name = name
-
-    def __call__(self, *args, **kwargs):
-        '''All Siml-classes must implement this method'''
-        raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
+#        InterpreterObject.__init__(self)
+#        self.role = RoleConstant
+#        self.is_known = True
+#        self.name = name
+##        If True: the function is a basic building block of the language.
+##        The code generator can emit code for this function. The flattened
+##        simulation object must only contain calls to these functions.
+##        If False: This function must be replaced with a series of calls
+##        to fundamental functions.
+#        # TODO: rename to is_runtime_function
+#        # TODO: remove! This is unnecessary
+#        self.is_fundamental_function = False
+#        self.codegen_name = None
+#        self.signature = Signature()
+#
+#    def __call__(self, *args, **kwargs):
+#        '''All Siml-functions must implement this method'''
+#        raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
 
 
 
@@ -677,247 +622,151 @@ class Signature(object):
 
 
 
-class BuiltInFunctionWrapper(CallableObject):
+class Proxy(InterpreterObject):
     '''
-    Represents a function written in Python; for functions like 'sqrt' and 'sin'.
+    Place holder for an other object. Similar to a pointer but automatically
+    dereferenced by the interpreter
 
-    The object is callable from Python and Siml.
-
-    When a call is invoked argument parsing is done similarly
-    to Pythons's function call. Optionally function arguments can have
-    a type that must match too.
-        f(a:Float=2.5)
-
-    When all arguments are known, the wrapped Python function is executed. The
-    result of the computation is wrapped in its associated InterpreterObject
-    and returned.
-    However if any argument is unknown, a decorated (and unevaluated) function
-    call is returned. For operators NodeOpInfix2, NodeOpPrefix1 can be
-    created - see arguments is_binary_op, is_prefix_op, op_symbol.
-
-    CONSTRUCTOR ARGUMENTS
-    ---------------------
-    name
-        name of function
-    argument_definition: IntArgumentList
-        Argument definition of the function
-    return_type: TypeObject or None
-        Type of the function's return value.
-        When an unevaluated result is returned, this will be assigned to the
-        type of the ast.Node.
-        If the return type is None, there is no definition of a return type.
-        Functions that return no value must put CLASS_NONETYPE here.
-    py_function:
-        Function that will be called when the result can be computed.
-    accept_unknown_values: True/False - default: False
-        If True: call wrapped function also when arguments are unknown values.
-        If False: raise UnknownArgumentsException when an unknown argument is
-        encountered.
-    is_fundamental_function: True/False - default: True
-        If True: the function is a basic building block of the language.
-        The code generator can emit code for this function. The flattened
-        simulation object must only contain calls to these functions.
-        If False: This function must be replaced with a series of calls
-        to fundamental functions.
-
-    RETURNS
-    -------
-    Wrapped function result (InterpreterObject) or None
+    This class is part of the new facility for wrapping Python code:
+    Usage:
+    
+      foo_proxy = Proxy()
+      class Foo(IObject):
+          @arguments(Int, foo_proxy)
+          @returns(Int)
+          def bar(a, b):
+              return a
+      foo_proxy.set(Foo) 
     '''
-    def __init__(self, name, signature=Signature(),
-                             py_function=lambda:None,
-                             accept_unknown_values=False,
-                             is_fundamental_function=True,
-                             codegen_name=None):
-        CallableObject.__init__(self, name)
-        #The function's signature
-        self.signature = signature
-        #A Python function. Get function if argument is unbound method.
-        self.py_function = py_function if isinstance(py_function, types.FunctionType) \
-                           else  py_function.im_func
-        #Call wrapped function also when arguments are unknown values
-        self.accept_unknown_values = accept_unknown_values
-        #If true, this function is a basic building block of the simulation
-        self.is_fundamental_function = is_fundamental_function
-        #Name, so the code generator can recognize the function
-        self.codegen_name = codegen_name
-
-
-    def __call__(self, *args, **kwargs):
-        '''
-        Execute the wrapped function.
-
-        - Checks the arguments, incuding type checking.
-        - If all arguments are known this function unpacks the values, and
-        calls the wrapped function with regular Python objects as arguments.
-        The return value is again wrapped into a Siml object.
-        - If any argument is unknown, an unevaluated function call or operator
-        node is returned.
-
-        ARGUMENTS
-        ---------
-        args: [InterpreterObject]
-            Positional arguments for the wrapped function
-        kwargs: {str: InterpreterObject}
-            Keyword arguments for the wrapped function
-        '''
-#        #try if argument definition matches
-#        parsed_args = self.signature\
-#                          .parse_function_call_args(args, kwargs, INTERPRETER)
-                          
-        #Test if all arguments are known values.
-        all_python_values_exist = True
-        for siml_val in args + tuple(kwargs.values()):
-            if not siml_isknown(siml_val):
-                all_python_values_exist = False
-                break
-        #Test: call function or generate code
-        #Generate code; there were unknown values, and we don't accept it.
-        if not all_python_values_exist and not self.accept_unknown_values:
-            #Interpreter will create NodeFuncCall/NodeOpInfix2/NodeOpPrefix1
-            raise UnknownArgumentsException()
+    def __init__(self, value=None):
+        InterpreterObject.__init__(self)
+        self.value = None
+        self.set(value)
         
-        #call the wrapped Python function
-        #all argument values are known, or we don't care about unknown values.
-        retval = self.py_function(*args, **kwargs)            #IGNORE:W0142
-
-#        #use Siml's None
-#        if retval is None:
-#            retval = NONE
-#        #Test return value.type
-#        self.signature.test_return_type_compatible(retval)
-
-        return retval
-
-
-    def put_into(self, siml_object):
-        '''Put function object into a siml_object using the right name.'''
-        siml_object.create_attribute(self.name, self)
-        return self
+    def set(self, value):
+        '''Let Proxy point to some object.'''
+        self.value = value
+    set.siml_signature = Signature() #pylint:disable-msg=W0612
 
 
 
-class SimlFunction(CallableObject):
+def make_pyfunc_loc(py_func):
+    '''Create a TextLocation object for a Python function.'''
+    file_name = py_func.__code__.co_filename
+    line_no = py_func.__code__.co_firstlineno
+    loc = TextLocation(file_name=file_name, line_no=line_no)
+    return loc
+    
+    
+def argument_type(*type_list):
+    'Decorator to define type_list of function arguments.'
+    def decorate_with_type(func_to_decorate):
+        #Create Signature object if necessary
+        if not hasattr(func_to_decorate, 'siml_signature'):
+            loc = make_pyfunc_loc(func_to_decorate)
+            func_to_decorate.siml_signature = Signature(loc=loc) 
+            func_to_decorate.siml_globals = InterpreterObject()
+            
+        #Get argument names and default values of Python function
+        args, _varargs, _keywords, defaults = inspect.getargspec(func_to_decorate)
+        siml_args = [NodeFuncArg(arg_name) for arg_name in args]
+        for arg, dval in zip(reversed(siml_args), reversed(defaults)):
+            arg.default_value = dval
+        #Combine with Siml type definitions
+        for arg, type1 in zip(siml_args, type_list):
+            arg.type = type1
+        func_to_decorate.siml_signature.set_arguments(siml_args)
+        return func_to_decorate
+
+    return decorate_with_type
+
+    
+def return_type(type_obj):
+    'Decorator to define return type of function.'
+    def decorate_with_type(func_to_decorate):
+        #Give function a signature object if it has none
+        if not hasattr(func_to_decorate, 'siml_signature'):
+            loc = make_pyfunc_loc(func_to_decorate)
+            func_to_decorate.siml_signature = Signature(loc=loc) 
+            func_to_decorate.siml_globals = InterpreterObject()
+            
+        #Put return type into signature
+        func_to_decorate.siml_signature.return_type = type_obj
+        return func_to_decorate
+    
+    return decorate_with_type
+
+
+
+class SimlFunction(InterpreterObject):
     '''
     Function written in Siml (user defined function).
     '''
     def __init__(self, name, signature=Signature(),
                   statements=None, global_scope=None, loc=None):
-        CallableObject.__init__(self, name)
+        #CallableObject.__init__(self, name)
+        InterpreterObject.__init__(self)
+        #The function's name
+        self.__name__ = name
         #Function signature including return type
-        self.signature = signature
+        self.siml_signature = signature
         #the statements of the function's body
         self.statements = statements if statements else []
         #global namespace, stored when the function was defined
-        self.global_scope = global_scope
+        self.siml_globals = global_scope
         #count how often the function was called (to create unique names
         #for the local variables)
         self.call_count = 0
-        #this function is no basic building block, because it must be interpreted.
-        self.is_fundamental_function = False
-        #--- data flow analysis -------
-        self.inputs = None      #TODO: ??? Siml functions are all gone when the data flow is analyzed! ???
-        self.outputs = None
         #--- stack trace ---------
         self.loc = loc
 
 
-    def __call__(self, *args, **kwargs):
-        raise Exception("User defined functions must be executed with apply.")
-
-
-    def get_complete_path(self):
-        '''
-        Get complete dotted name of the function.
-
-        Goes recursively to all parents, asks them for their names, and
-        creates a DotName out of the names. This will usually produce a
-        three component DotName structured like this: module.class.function
-
-        RETURNS
-        -------
-        DotName
-        '''
-        curr_object = self
-        path = DotName(self.name)
-        while curr_object.parent is not None:
-            curr_object = curr_object.parent()      #IGNORE:E1102
-            path = DotName(curr_object.name) + path
-        return path
-
-
-    def create_persistent_locals_ns(self):
-        '''
-        Create special, and unique namespace for storing local variables.
-
-        When creating code, a function's local variables must be placed
-        (as algebraic variables) in the simulation object. The code of all
-        functions is inlined into the main functions. Therfore the local
-        variables of each function invocation must be stored separately with
-        unique names.
-
-        The root namespace where the local variables are stored is supplied
-        by the interpreter.
-        '''
-        #long name of function. like: bioreactor.conti.bacterial_growth
-        func_path = self.get_complete_path()
-        #name-space where all local variables go into
-        locals_root = INTERPRETER.get_locals_storage()
-        #create namespace with long name of this function
-        locals_ns = locals_root.create_path(func_path[1:] +
-                                            DotName(str(self.call_count)))
-        return locals_ns
+    def __get__(self, obj, _my_type=None):
+        'Encode the behavior at name lookup. SimlFunction is a descriptor.'
+        if obj is None:
+            #print 'called from class'
+            return self
+        else:
+            #print 'called from instance'
+            return SimlBoundMethod(self, obj)
 
 
 
-class BoundMethod(CallableObject):
+class SimlBoundMethod(InterpreterObject):
     '''
     Represents a method of an object.
-    Calls a function with the correct 'this' pointer.
+    Stores a function and the correct 'this' pointer.
 
-    The object is callable from Python and Siml.
+    The object is only call-able from Siml. It has the same attributes like 
+    Python's bound method. 
 
-    No argument parsing or type checking are is done. The wrapped Function
-    is responsible for this. The handling of unevaluated/unknown arguments,
-    and unevaluated return values are left to the wrapped function.
-
-    ARGUMENTS
-    ---------
-    name: str
-        name of function
-    function: CallableObject or (Python) function
-        Wrapped function that will be called.
-    this: InterpreterObject
-        The first positional argument, that will be supplied to the wrapped
-        function.
-
-    RETURNS
-    -------
-    Anything that the wrapped function returns.
+    No argument parsing or type checking are is done. The wrapped function
+    is responsible for this. 
     '''
-    def __init__(self, name, function, this):
-        CallableObject.__init__(self, name)
+    def __init__(self, function, this):
+        '''
+        ARGUMENTS
+        ---------
+        function: CallableObject or (Python) function
+            Wrapped function that will be called.
+        this: InterpreterObject
+            The first positional argument, that will be supplied to the wrapped
+            function.
+        '''
+        #CallableObject.__init__(self, name)
+        InterpreterObject.__init__(self)
         #the wrapped function
-        self.function = function
-        #the 'this' argument - put into list for speed reasons
-        self.this = make_proxy(this)
-        #if the wrapped function is fundamental, this method is fundamental too.
-        self.is_fundamental_function = function.is_fundamental_function
-        #the bound method has the same return type as the wrapped function
-        #TODO: but it doesn't have the same signature
-        self.signature = function.signature
-
-    def __call__(self, *args, **kwargs):
-        new_args = (self.this,) + args
-        return self.function(*new_args, **kwargs) #IGNORE:W0142
+        self.im_func = function
+        #the 'this' argument
+        self.im_self = this
 
 
 
-class SimlClass(TypeObject):
+class SimlClass(InterpreterObject):
     '''Represents class written in Siml - usually a user defined class.'''
     def __init__(self, name, bases, loc=None):
         '''Create a new class object.'''
-        TypeObject.__init__(self, name)
+        InterpreterObject.__init__(self, name)
         self.bases = bases
         self.loc = loc
 
@@ -952,34 +801,6 @@ class SimlClass(TypeObject):
 #---------- Built In Library  ------------------------------------------------*
 
 #---------- Infrastructure -------------------------------------------------
-class BuiltInClassWrapper(TypeObject):
-    '''
-    Siml class for built in objects. - Create instances of built in objects.
-
-    Instances of this class create instances of built in objects in Siml.
-    (This Python object is therefore a metaclass.)
-    They are the class/type of built in objects like:
-    Float, String, Function, Class, ...
-    The object is s thin wrapper around a Python class.
-
-    TODO: research how real Pyton classes can be used as classes in Siml
-    '''
-    def __init__(self, name):
-        TypeObject.__init__(self, name)
-        #the wrapped class will set this
-        self.py_class = None
-
-    def __call__(self, *args, **kwargs):
-        '''Create a new Siml object.'''
-        return self.py_class(*args, **kwargs) #IGNORE:W0142
-
-    def put_into(self, siml_object):
-        '''Put class object into a siml module using the right name.'''
-        siml_object.create_attribute(self.name, self)
-        return self
-
-
-
 class IModule(InterpreterObject):
     '''Represent one file'''
     #TODO: Add self.builtin - separate module for built in attributes
@@ -992,52 +813,29 @@ class IModule(InterpreterObject):
         InterpreterObject.__init__(self)
         self.name = name
         self.source_file_name = file_name
-        self.role = RoleConstant
-#the single object that should be used to create all Modules
-#CLASS_MODULE = IModule.init_funcs_and_class()
+        self.__siml_type__ = IModule
+        self.__siml__role__= RoleConstant
 
 
 
 #------- Built In Data --------------------------------------------------
-class INoneClass(BuiltInClassWrapper):
-    '''Class object for Siml's None object'''
-    def __call__(self, *args, **kwargs):
-        '''Raise exception, there must be only a single None object.'''
-        raise UserException('Creating multiple None objects is illegal.')
-
 class INone(InterpreterObject):
     '''Siml's None object.'''
-    #The Siml class, naturally shared by all instances
-    type_object = None
-
     def __init__(self):
         InterpreterObject.__init__(self)
-        self.type = ref(INone.type_object)
-        self.is_known = True
-        self.role = RoleConstant
-
-    @staticmethod
-    def create_class_object():
-        '''
-        Create the class object for Siml and create the special methods for
-        operators (+).
-        '''
-        #create the class object for the Siml class system
-        class_none = INoneClass('NoneType')
-        class_none.py_class = INone
-        INone.type_object = class_none
-        #TODO: NoneType.__str__: implement, and get the circular references right
-        return class_none
+        self.__siml_type__ = INone
+        self.__siml__role__= RoleConstant
+        #TODO: see that no second NONE is created
 
     def __str__(self):#convenience for sane behavior from Python
         return 'NONE'
-    def _str(self):
+    
+    def __siml_str__(self):
         '''__str__ called from Siml'''
         istr = IString('None')
-        istr.role = RoleConstant
         return istr
-#The class object used in Siml for the single instance of INone
-CLASS_NONETYPE = INone.create_class_object()
+    __siml_str__.siml_signature = Signature() #pylint:disable-msg=W0612
+
 #The single None instance for Siml
 NONE = INone()
 
@@ -1053,6 +851,10 @@ NONE = INone()
 #          '''Instance of special undetermined class.'''
 
 
+#Forward declarations of some types, for type annotations.
+BOOLP = Proxy()
+STRINGP = Proxy()
+FLOATP = Proxy()
 
 class IBool(CodeGeneratorObject):
     '''
@@ -1061,12 +863,9 @@ class IBool(CodeGeneratorObject):
     The variable's value can be known or unknown.
     The variable can be assigned a (possibly unknown) value, or not.
     '''
-    #The Siml class, naturally shared by all instances
-    type_object = None
-
     def __init__(self, init_val=None):
         CodeGeneratorObject.__init__(self)
-        self.type = ref(IBool.type_object)
+        self.__siml_type__ = IBool
         #initialize the value
         self.value = None
         if init_val is not None:
@@ -1080,75 +879,44 @@ class IBool(CodeGeneratorObject):
                 raise TypeError('Can not initialize IBool from type: %s'
                                 % str(type(init_val)))
             #mark object as known at compile time
-            self.role = RoleConstant
+            self.__siml_role__ = RoleConstant
             self.is_known = True
 
 
-    @staticmethod
-    def create_class_object():
-        '''
-        Create the 'Bool' class object for Siml.
-        '''
-        #create the class object for the Siml class system
-        class_bool = BuiltInClassWrapper('Bool')
-        class_bool.py_class = IBool
-        IBool.type_object = class_bool
-        #return the class object
-        return class_bool
-
-
-    @staticmethod
-    def update_class_object():
-        '''
-        Create all methods, put them into the class object.
-
-        Must be called separately because of circular references:
-        IBool uses IString (IBool.__str__) and IString uses IBool
-        (IString.__eq__)
-        '''
-        class_bool = IBool.type_object
-        W = BuiltInFunctionWrapper
-        #Argument definition for binary operators
-        binop_sig = Signature([NodeFuncArg('self', class_bool),
-                                NodeFuncArg('other', class_bool)], class_bool)
-        #Argument definition for unary functions and operators
-        single_args = Signature([NodeFuncArg('self', class_bool)], class_bool)
-        #comparison operators
-        W('__eq__', binop_sig, py_function=IBool.__eq__).put_into(class_bool)
-        W('__ne__', binop_sig, py_function=IBool.__ne__).put_into(class_bool)
-        #special functions for boolean operations (and or not)
-        #See: http://www.python.org/dev/peps/pep-0335/
-        W('__not__', single_args, py_function=IBool._not).put_into(class_bool)
-        W('__and2__', binop_sig, py_function=IBool._and2).put_into(class_bool)
-        W('__or2__', binop_sig, py_function=IBool._or2).put_into(class_bool)
-        #Special function for assignment
-        assign_sig = Signature([NodeFuncArg('self', class_bool),
-                                NodeFuncArg('other', class_bool)], CLASS_NONETYPE)
-        W('__assign__', assign_sig, py_function=IBool._assign,
-          accept_unknown_values=True).put_into(class_bool)
-        #Printing
-        print_args = Signature([NodeFuncArg('self', class_bool)], CLASS_STRING)
-        W('__str__', print_args, py_function=IString._str, #IGNORE:W0212
-          codegen_name='Bool.__str__').put_into(class_bool)
-
-
     #comparison operators
+    @return_type(BOOLP)
+    @argument_type(BOOLP, BOOLP)
     def __eq__(self, other):
         return IBool(self.value == other.value)
+    
+    @return_type(BOOLP)
+    @argument_type(BOOLP, BOOLP)
     def __ne__(self, other):
         return IBool(self.value != other.value)
+    
     #special functions for boolean operations (and or not)
-    def _not(self):
+    @return_type(BOOLP)
+    @argument_type(BOOLP)
+    def __siml_not__(self):
         '''Called for Siml "not".'''
         return IBool(not self.value)
-    def _and2(self, other):
+    
+    @return_type(BOOLP)
+    @argument_type(BOOLP, BOOLP)
+    def __siml_and2__(self, other):
         '''Called for Siml "and".'''
         return IBool(self.value and other.value)
-    def _or2(self, other):
+    
+    @return_type(BOOLP)
+    @argument_type(BOOLP, BOOLP)
+    def __siml_or2__(self, other):
         '''Called for Siml "or".'''
         return IBool(self.value or other.value)
+    
     #assignment
-    def _assign(self, other):
+    @return_type(INone)
+    @argument_type(BOOLP, BOOLP)
+    def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
         if other.value is not None:
             if self.is_known:
@@ -1157,20 +925,23 @@ class IBool(CodeGeneratorObject):
             self.is_known = True
         else:
             raise UnknownArgumentsException()
+        
     #printing
     def __str__(self):#convenience for sane behavior from Python
         if self.value is None:
             return '<unknown Bool>'
         else:
             return self.value
-    def _str(self):
+        
+    @return_type(STRINGP)
+    @argument_type(BOOLP)
+    def __siml_str__(self):
         '''__str__ called from Siml'''
         istr = IString(self.value)
         istr.role = RoleConstant
         return istr
 
-#The class object used in Siml to create instances of IBool
-CLASS_BOOL = IBool.create_class_object()
+BOOLP.set(IBool)
 #global constants True and False (More easy than introducing additional
 #literal values)
 TRUE = IBool(True)
@@ -1185,12 +956,9 @@ class IString(CodeGeneratorObject):
     The variable's value can be known or unknown.
     The variable can be assigned a (possibly unknown) value, or not.
     '''
-    #The Siml class, naturally shared by all instances
-    type_object = None
-
     def __init__(self, init_val=None):
         CodeGeneratorObject.__init__(self)
-        self.type = ref(IString.type_object)
+        self.__siml_type__ = IString
         #initialize the value
         self.value = None
         if init_val is not None:
@@ -1204,54 +972,30 @@ class IString(CodeGeneratorObject):
                 raise TypeError('Can not init IString from type: %s'
                                 % str(type(init_val)))
             #mark object as known at compile time
-            self.role = RoleConstant
+            self.__siml_role__ = RoleConstant
             self.is_known = True
 
 
-    @staticmethod
-    def create_class_object():
-        '''
-        Create the class object for Siml and create the special methods for
-        operators (+).
-        '''
-        #create the class object for the Siml class system
-        class_string = BuiltInClassWrapper('String')
-        class_string.py_class = IString
-        IString.type_object = class_string
-
-        #create all methods, put them into the class
-        W = BuiltInFunctionWrapper
-        #Binary operators
-        add_sig = Signature([NodeFuncArg('self', class_string),
-                             NodeFuncArg('other', class_string)], class_string)
-        W('__add__', add_sig, py_function=IString.__add__).put_into(class_string)
-        #comparison operators == !=
-        comp_sig = Signature([NodeFuncArg('self', class_string),
-                              NodeFuncArg('other', class_string)], CLASS_BOOL)
-        W('__eq__', comp_sig, py_function=IString.__eq__).put_into(class_string)
-        W('__ne__', comp_sig, py_function=IString.__ne__).put_into(class_string)
-        #Special function for assignment
-        assign_sig = Signature([NodeFuncArg('self', class_string),
-                                NodeFuncArg('other', class_string)], CLASS_NONETYPE)
-        W('__assign__', assign_sig, py_function=IString._assign,
-          accept_unknown_values=True).put_into(class_string)
-        #Printing
-        str_sig = Signature([NodeFuncArg('self', class_string)], class_string)
-        W('__str__', str_sig, py_function=IString._str,
-          codegen_name='String.__str__').put_into(class_string)
-        #return the class object
-        return class_string
-
-
+    @return_type(STRINGP)
+    @argument_type(STRINGP, STRINGP)
     def __add__(self, other):
         return IString(self.value + other.value)
+    
     #comparisons
+    @return_type(IBool)
+    @argument_type(STRINGP, STRINGP)
     def __eq__(self, other):
         return IBool(self.value == other.value)
+    
+    @return_type(IBool)
+    @argument_type(STRINGP, STRINGP)
     def __ne__(self, other):
         return IBool(self.value != other.value)
-    #special function for assignment
-    def _assign(self, other):
+    
+    #special function for assignment    
+    @return_type(INone)
+    @argument_type(STRINGP, STRINGP)
+    def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
         if isinstance(other, IString) and other.value is not None:
             if self.is_known:
@@ -1260,24 +1004,21 @@ class IString(CodeGeneratorObject):
             self.is_known = True
         else:
             raise UnknownArgumentsException()
+        
     #Printing
     def __str__(self):#convenience for sane behavior from Python
         if self.value is None:
             return '<unknown String>'
         else:
             return self.value
-    def _str(self):
+         
+    @return_type(STRINGP)
+    @argument_type(STRINGP)
+    def __siml__str__(self):
         '''called from Siml'''
         return self
 
-#The class object used in Siml to create instances of IFloat
-CLASS_STRING = IString.create_class_object()
-
-#Create the member functions of the Bool class.
-#Must be called here because of circular references:
-#IBool uses IString (IBool.__str__) and IString uses IBool (IString.__eq__)
-IBool.update_class_object()
-
+STRINGP.set(IString)
 
 
 class IFloat(CodeGeneratorObject):
@@ -1287,12 +1028,9 @@ class IFloat(CodeGeneratorObject):
     The variable's value can be known or unknown.
     The variable can be assigned a (possibly unknown) value, or not.
     '''
-    #The Siml class, naturally shared by all instances
-    type_object = None
-
     def __init__(self, init_val=None):
         CodeGeneratorObject.__init__(self)
-        self.type = ref(IFloat.type_object)
+        self.__siml_type__ = IFloat
         #initialize the value
         self.value = None
         if init_val is not None:
@@ -1307,94 +1045,74 @@ class IFloat(CodeGeneratorObject):
                                 'constructor, but received %s'
                                 % str(type(init_val)))
             #mark object as known at compile time
-            siml_setknown(self)
-            self.role = RoleConstant
+            self.__siml_role__ = RoleConstant
             self.is_known = True
 
-
-    @staticmethod
-    def create_class_object():
-        '''
-        Create the class object for Siml and create the special methods for
-        operators (+ - * / % **).
-        '''
-        #create the class object for the Siml class system
-        class_float = BuiltInClassWrapper('Float')
-        class_float.py_class = IFloat
-        IFloat.type_object = class_float
-
-        #TODO: sin, cos, tan, log should become member functions of the
-        #      numerical base types. These functions must behave differently
-        #      for each base type (Float, RawFloatArray)
-        #initialize the mathematical operators, put them into the class
-        W = BuiltInFunctionWrapper
-        #Arithmetic operators
-        #binary
-        binop_sig = Signature([NodeFuncArg('self', class_float),
-                               NodeFuncArg('other', class_float)], class_float)
-        W('__add__', binop_sig, py_function=IFloat.__add__).put_into(class_float)
-        W('__sub__', binop_sig, py_function=IFloat.__sub__).put_into(class_float)
-        W('__mul__', binop_sig, py_function=IFloat.__mul__).put_into(class_float)
-        W('__div__', binop_sig, py_function=IFloat.__div__).put_into(class_float)
-        W('__mod__', binop_sig, py_function=IFloat.__mod__).put_into(class_float)
-        W('__pow__', binop_sig, py_function=IFloat.__pow__).put_into(class_float)
-        #TODO: __abs__
-        #TODO: __nonzero__ ??? #For truth value testing
-        #The prefix operator
-        prefix_sig = Signature([NodeFuncArg('self', class_float)], class_float)
-        W('__neg__', prefix_sig, py_function=IFloat.__neg__).put_into(class_float)
-        #comparison operators
-        comp_sig = Signature([NodeFuncArg('self', class_float),
-                               NodeFuncArg('other', class_float)], CLASS_BOOL)
-        W('__lt__', comp_sig, py_function=IFloat.__lt__).put_into(class_float)
-        W('__le__', comp_sig, py_function=IFloat.__le__).put_into(class_float)
-        W('__eq__', comp_sig, py_function=IFloat.__eq__).put_into(class_float)
-        W('__ne__', comp_sig, py_function=IFloat.__ne__).put_into(class_float)
-        W('__gt__', comp_sig, py_function=IFloat.__gt__).put_into(class_float)
-        W('__ge__', comp_sig, py_function=IFloat.__ge__).put_into(class_float)
-        #Special function for access to derivative
-        W('__diff__', prefix_sig, py_function=IFloat._diff_static,
-          accept_unknown_values=True).put_into(class_float)
-        #Special function for assignment
-        assign_sig = Signature([NodeFuncArg('self', class_float),
-                               NodeFuncArg('other', class_float)], CLASS_NONETYPE)
-        W('__assign__', assign_sig, py_function=IFloat._assign,
-          accept_unknown_values=True).put_into(class_float)
-        #Printing
-        str_sig = Signature([NodeFuncArg('self', class_float)], CLASS_STRING)
-        W('__str__', str_sig, py_function=IFloat._str,
-          codegen_name='Float.__str__').put_into(class_float)
-        #return the class object
-        return class_float
-
     #arithmetic operators
+    @return_type(FLOATP)
+    @argument_type(FLOATP, FLOATP)
     def __add__(self, other):
         return IFloat(self.value + other.value)
+    
+    @return_type(FLOATP)
+    @argument_type(FLOATP, FLOATP)
     def __sub__(self, other):
         return IFloat(self.value - other.value)
+    
+    @return_type(FLOATP)
+    @argument_type(FLOATP, FLOATP)
     def __mul__(self, other):
         return IFloat(self.value * other.value)
+    
+    @return_type(FLOATP)
+    @argument_type(FLOATP, FLOATP)
     def __div__(self, other):
         return IFloat(self.value / other.value)
     __truediv__ = __div__ #for division from Python
+    
+    @return_type(FLOATP)
+    @argument_type(FLOATP, FLOATP)
     def __mod__(self, other):
         return IFloat(self.value % other.value)
+    
+    @return_type(FLOATP)
+    @argument_type(FLOATP, FLOATP)
     def __pow__(self, other):
         return IFloat(self.value ** other.value)
+    
+    @return_type(FLOATP)
+    @argument_type(FLOATP)
     def __neg__(self):
         return IFloat(-self.value)
 
     #comparison operators
+    @return_type(IBool)
+    @argument_type(FLOATP, FLOATP)
     def __lt__(self, other):
         return IBool(self.value < other.value)
+    
+    @return_type(IBool)
+    @argument_type(FLOATP, FLOATP)
     def __le__(self, other):
         return IBool(self.value <= other.value)
+    
+    @return_type(IBool)
+    @argument_type(FLOATP, FLOATP)
     def __eq__(self, other):
         return IBool(self.value == other.value)
+    
+    @return_type(IBool)
+    @argument_type(FLOATP, FLOATP)
     def __ne__(self, other):
         return IBool(self.value != other.value)
+    
+    @return_type(IBool)
+    @argument_type(FLOATP, FLOATP)
     def __gt__(self, other):
         return IBool(self.value > other.value)
+    
+    @return_type(IBool)
+    @argument_type(FLOATP, FLOATP)
     def __ge__(self, other):
         return IBool(self.value >= other.value)
 
@@ -1418,7 +1136,9 @@ class IFloat(CodeGeneratorObject):
         #return the associated derived variable
         return self.time_derivative() #IGNORE:E1102
 
-    def _assign(self, other):
+    @return_type(INone)
+    @argument_type(FLOATP, FLOATP)
+    def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
         if isinstance(other, IFloat) and other.value is not None:
             if self.is_known:
@@ -1433,18 +1153,19 @@ class IFloat(CodeGeneratorObject):
             return '<unknown Float>'
         else:
             return str(self.value)
-    def _str(self):
+
+    @return_type(IString)
+    @argument_type(FLOATP)
+    def __siml_str__(self):
         '''Called from Siml'''
         istr = IString(self.value)
         return istr
 
-#The class object used in Siml to create instances of IFloat
-CLASS_FLOAT = IFloat.create_class_object()
+FLOATP = IFloat
 
 #create the special variable time
 TIME = IFloat()
-TIME.role = RoleAlgebraicVariable
-TIME.is_known = True
+TIME.__siml_role__ = RoleAlgebraicVariable
 
 
 
