@@ -180,7 +180,8 @@ class InterpreterObject(object):
     Can also be seen as part of structured symbol table
     '''
     #Object that creates an ASCII art tree from nodes
-    __siml_aa_tree_maker__ = AATreeMaker(top_names= ['name', 'type'])
+    __siml_aa_tree_maker__ = AATreeMaker(top_names= ['__name__', '__siml_role__', '__siml_type__'], 
+                                         )
 
     def __init__(self):
         object.__init__(self)
@@ -358,7 +359,7 @@ class CodeGeneratorObject(InterpreterObject):
         '''
         for arg in args:
             if isinstance(arg, InterpreterObject) and arg.is_known:
-                assert i_isrole(arg.role, RoleConstant), \
+                assert i_isrole(arg.__siml_role__, RoleConstant), \
                        'All objects that are known at compile time must be constants.'
                 return
             else:
@@ -466,7 +467,7 @@ class Signature(object):
             for arg in self.arguments:
                 if arg.type is not None:
                     type_ev = interpreter.eval(arg.type)
-                    arg.type = ref(type_ev)
+                    arg.type = type_ev
                 if arg.default_value is not None:
                     dval_ev = interpreter.eval(arg.default_value)
                     arg.default_value = dval_ev
@@ -477,7 +478,7 @@ class Signature(object):
             #evaluate return type
             if self.return_type is not None:
                 type_ev = interpreter.eval(self.return_type)
-                self.return_type = ref(type_ev)
+                self.return_type = type_ev
 
 
     def parse_function_call_args(self, args_list, kwargs_dict, interpreter):
@@ -589,13 +590,13 @@ class Signature(object):
         '''
         if arg_def.type is None:
             return
-        if not i_issubclass(in_object.type(), arg_def.type()):
+        if not i_issubclass(in_object.__siml_type__, arg_def.type):
             raise UserException(
                     'Incompatible types. \nVariable: "%s" '
                     'is defined as: %s \nHowever, argument type is: %s. \n'
-                    'Function definition in: %s \n'
-                    % (arg_def.name, str(arg_def.type().name),
-                       str(in_object.type().name), str(self.loc)),
+                    'Function definition in: \n  %s\n'
+                    % (arg_def.name, arg_def.type.__name__,
+                       in_object.__siml_type__.__name__, str(self.loc)),
                     loc=None, errno=3200310)
     
     
@@ -610,16 +611,15 @@ class Signature(object):
         
         if self.return_type is None:
             return
-        if not i_issubclass(retval.type(), self.return_type()):
-            raise UserException("The type of the returned object does not match "
-                                "the function's return type specification.\n"
+        if not i_issubclass(retval.__siml_type__, self.return_type):
+            raise UserException("Incompatible return type.\n"
                                 "Type of returned object: %s \n"
                                 "Specified return type  : %s \n"
-                                'Function definition in: %s \n'
-                                % (str(retval.type().name),
-                                   str(self.return_type().name),
+                                'Function definition in: \n  %s\n'
+                                % (retval.__siml_type__.__name__,
+                                   self.return_type.__name__,
                                    str(self.loc)), 
-                                loc=None, errno=3200320) #TODO:write test for this error!!!
+                                loc=None, errno=3200320) 
 
 
 
@@ -691,10 +691,13 @@ def signature(arg_types, return_type):
                 arg.type = type1
         else:
             siml_args = None
-        
+        #install signature object
         loc = make_pyfunc_loc(func_to_decorate)
         func_to_decorate.siml_signature = Signature(siml_args, return_type, loc)
+        #install more Siml infrastructure stuff
         func_to_decorate.siml_globals = InterpreterObject() #dummy global namespace
+        func_to_decorate.__siml_role__ = RoleConstant
+        func_to_decorate.__siml_type__ = type(func_to_decorate)
         
         return func_to_decorate
 
@@ -818,7 +821,7 @@ class IModule(InterpreterObject):
         self.__name__ = name
         self.__file__ = file_name
         self.__siml_type__ = IModule
-        self.__siml__role__= RoleConstant
+        self.__siml_role__= RoleConstant
 
 
 
@@ -828,7 +831,7 @@ class INone(InterpreterObject):
     def __init__(self):
         InterpreterObject.__init__(self)
         self.__siml_type__ = INone
-        self.__siml__role__= RoleConstant
+        self.__siml_role__= RoleConstant
         #TODO: see that no second NONE is created
 
     def __str__(self):#convenience for sane behavior from Python
@@ -1477,7 +1480,7 @@ def i_istype(in_object, class_or_type_or_tuple):
     '''
     Check if an object's type is in class_or_type_or_tuple.
 
-    isinstance(...) but inside the SIML language.
+    Similar to isinstance(...) but inside the SIML language.
 
     If in_object is an expression, which would evaluate to an object of the
     correct type, the function returns True.
@@ -1487,7 +1490,7 @@ def i_istype(in_object, class_or_type_or_tuple):
           unevaluated function calls.
     '''
     #the test: use i_issubclass() on type attribute
-    if in_object.type is not None:
+    if in_object.__siml_type__ is not None:
         return i_issubclass(in_object.__siml_type__, class_or_type_or_tuple)
     else:
         return False
@@ -1631,9 +1634,9 @@ def determine_result_role(arguments, keyword_arguments={}): #IGNORE:W0102
     #loop over arguments and find most variable role
     max_var_role = RoleConstant
     for arg in all_args:
-        if is_role_more_variable(arg.role, max_var_role):
-            max_var_role = arg.role
-        if arg.role is RoleUnkown:
+        if is_role_more_variable(arg.__siml_role__, max_var_role):
+            max_var_role = arg.__siml_role__
+        if arg.__siml_role__ is RoleUnkown:
             raise ValueError('RoleUnkown is illegal in arguments of '
                              'fundamental functions.')
     #convert: state variable, time differential --> algebraic variable
@@ -1663,33 +1666,26 @@ def set_role_recursive(tree, new_role):
     new_role:
         The new role.
     '''
-    tree.role = new_role
+    tree.__siml_role__ = new_role
     if isinstance(tree, CodeGeneratorObject):
         return
-    for attr in tree.attributes.itervalues():
-        if is_role_more_variable(attr.role, new_role):
+    for attr in tree.__dict__.itervalues():
+        if is_role_more_variable(attr.__siml_role__, new_role):
             set_role_recursive(attr, new_role)
 
 
 def decorate_call(call, return_type):
     '''
     Decorate function calls nodes.
+    The call gets the same attributes like unknown variables
 
     This method works with all ast.Node objects that are similar to
     function calls.
     '''
-    #The call gets the same attributes like unknown variables
-    call.type = return_type
-    if not return_type is CLASS_NONETYPE:
-        call.is_known = False
-        #Choose most variable role: const -> param -> variable
-        call.role = determine_result_role(call.arguments, call.keyword_arguments)
-    else:
-        #special rule for calls that return None. This value is off course 
-        #a known constant
-        call.is_known = True
-        call.role = RoleConstant
-
+    call.__siml_type__ = return_type
+    #Choose most variable role: const -> param -> variable
+    call.__siml_role__ = determine_result_role(call.arguments, call.keyword_arguments)
+    #call.is_known = False
 
 #    #compute set of input variables
 #    #TODO: maybe put this into optimizer?
@@ -1825,7 +1821,10 @@ class Interpreter(object):
     def eval_InterpreterObject(self, node):
         '''Visit a part of the expression that was already evaluated:
         Do nothing, return the interpreter object.'''
-        return node
+        if isinstance(node, Proxy):
+            return node.value
+        else:
+            return node
 
     def eval_NodeFloat(self, node):
         '''Create floating point number'''
@@ -1852,7 +1851,7 @@ class Interpreter(object):
             raise UserException('Expecting identifier on right side of "." operator',
                                 node.loc)
         #get attribute from object on lhs
-        attr = inst_lhs.get_attribute(id_rhs.name)
+        attr = getattr(inst_lhs, id_rhs.name)
         return attr
 
 
@@ -1916,7 +1915,7 @@ class Interpreter(object):
         #look at the operator symbol and determine the right method name(s)
         func_name = Interpreter._prefopt_table[node.operator]
         #get the special method from the operand's class and try to call the method.
-        func = inst_rhs.type().get_attribute(func_name)
+        func = getattr(inst_rhs.__siml_type__, func_name)
         try:
             result = self.apply(func, (inst_rhs,))
             return result
@@ -1925,7 +1924,7 @@ class Interpreter(object):
             new_node = NodeOpPrefix1(node.operator, (inst_rhs,), node.loc)
             #put on decoration
             new_node.function = func
-            decorate_call(new_node, func.signature.return_type)
+            decorate_call(new_node, func.siml_signature.return_type)
             return new_node
 
 
@@ -1966,7 +1965,7 @@ class Interpreter(object):
         #look at the operator symbol and determine the right method name(s)
         lfunc_name, _rfunc_name = Interpreter._binop_table[node.operator]
         #get the special method from the LHS's class and try to call the method.
-        func = ev_lhs.type().get_attribute(lfunc_name)
+        func = getattr(ev_lhs.__siml_type__, lfunc_name)
         try:
             result = self.apply(func, (ev_lhs, ev_rhs))
             return result
@@ -1975,7 +1974,7 @@ class Interpreter(object):
             new_node = NodeOpInfix2(node.operator, (ev_lhs, ev_rhs), node.loc)
             #put on decoration
             new_node.function = func
-            decorate_call(new_node, func.signature.return_type)
+            decorate_call(new_node, func.siml_signature.return_type)
             return new_node
         except NotImplementedError:# IncompatibleTypeError?
             #TODO: if an operator is not implemented the special function should raise
@@ -2017,25 +2016,15 @@ class Interpreter(object):
         '''
         Evaluate a NodeFuncCall, which calls a call-able object (function).
         Execute the callable's code and return the return value.
-
-        Expressions (ast.Node) with unknown variables get the following annotations:
-        - Node.type              : type of function's result
-        - Node.role              : role of return value, the roles of the function's
-                                   arguments are inspected, and the most variable role
-                                   is taken as the role of the return value.
-        - Node.is_known=False  : For consistency; the function call can pose as an
-                                   unknown value, that has been already computed.
-
-        - Node.name              : The function object that would be called if the
-                                   arguments were known.
-        - Node.arguments         : Operators are returned with positional arguments.
-        - Node.keyword_arguments : For regular functions all arguments are currently
-                                   keyword arguments
        '''
         #find the right call-able object
         func_obj = self.eval(node.function)
-        if not isinstance(func_obj, CallableObject):
-            raise UserException('Expecting callable object!', node.loc)
+        if isinstance(func_obj, Node):
+            raise UserException('Call-able objects must be known at compile tile', 
+                                node.loc)
+        if not isinstance(func_obj, (SimlFunction, SimlBoundMethod, 
+                                     types.FunctionType, types.MethodType)):
+            raise UserException('Expecting call-able object!', node.loc)
 
         #evaluate all arguments in the caller's environment.
         ev_args = []
@@ -2054,7 +2043,7 @@ class Interpreter(object):
         except UnknownArgumentsException:
             #Some arguments were unknown create an unevaluated function call
             new_call = NodeFuncCall(func_obj, ev_args, ev_kwargs, node.loc)
-            decorate_call(new_call, func_obj.signature.return_type)
+            decorate_call(new_call, func_obj.siml_signature.return_type)
             return new_call
 
 
@@ -2068,13 +2057,14 @@ class Interpreter(object):
         TODO: common functionality of function application should go here
         TODO: in the long run code generation could go here too. 
         '''
-        #Get function from bound method and put self into arguments
-        if isinstance(func_obj, BoundMethod):
-            posargs = (func_obj.this,) + posargs
-            func_obj = func_obj.function
+        #Get function from bound or unbound method and put this/self into arguments
+        if hasattr(func_obj, 'im_func'):
+            if func_obj.im_self is not None:
+                posargs = (func_obj.im_self,) + posargs
+            func_obj = func_obj.im_func
             
         #Type checking of arguments, and binding them to their names
-        bound_args = func_obj.signature\
+        bound_args = func_obj.siml_signature\
                              .parse_function_call_args(posargs, kwargs, self)
         
         if isinstance(func_obj, SimlFunction):
@@ -2086,7 +2076,7 @@ class Interpreter(object):
         if ret_val is None:
             ret_val = NONE
         #type checking of return value
-        func_obj.signature.test_return_type_compatible(ret_val, self)
+        func_obj.siml_signature.test_return_type_compatible(ret_val, self)
 
         return ret_val
     
@@ -2192,6 +2182,8 @@ class Interpreter(object):
             return self.eval_NodeOpInfix2(expr_node)
         elif isinstance(expr_node, NodeFuncCall):
             return self.eval_NodeFuncCall(expr_node)
+        elif isinstance(expr_node, (type, types.FunctionType, types.MethodType)):
+            return expr_node
         else:
             raise Exception('Unknown node type for expressions: ' 
                             + str(type(expr_node)))
@@ -2526,7 +2518,7 @@ class Interpreter(object):
         '''Create object and put it into symbol table'''
         #get the type object - a NodeIdentifier is expected as class_spec
         class_obj = self.eval(node.class_spec)
-        if not isinstance(class_obj, TypeObject):
+        if not isinstance(class_obj, type):
             raise UserException('Class expected.', node.loc)
         #Create the new object
         new_object = class_obj()
@@ -2542,7 +2534,7 @@ class Interpreter(object):
 
         #store new object in local scope
         new_name = node.name
-        self.environment.local_scope.create_attribute(new_name, new_object)
+        setattr(self.environment.local_scope, new_name, new_object)
 
 
     def exec_NodeCompileStmt(self, node):
@@ -2989,15 +2981,14 @@ class Interpreter(object):
         print '*** create_test_module_with_builtins: '\
               'This method must only be used for tests ***'
         #create the new module and import the built in objects
-        mod = IModule()
-        mod.name = 'test'
+        mod = IModule('test', '--no-file--')
         #put module into root namespace (symbol table)
-        self.modules[mod.name] = mod
-        mod.attributes.update(self.built_in_lib.attributes)
+        self.modules['test'] = mod
+        mod.__dict__.update(self.built_in_lib.__dict__)
         #set up stack frame (execution environment)
         env = ExecutionEnvironment()
-        env.global_scope = make_proxy(mod)
-        env.local_scope = make_proxy(mod)
+        env.global_scope = mod
+        env.local_scope = mod
         #put the frame on the frame stack
         self.push_environment(env)
 
