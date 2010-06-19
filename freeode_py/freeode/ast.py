@@ -202,9 +202,9 @@ class NodeParentheses(Node):
         arguments: list(Node())
             Mathematical expression between the parentheses. 
             Naming is chosen to unify operators and function call
-        type: InterpreterObject
+        __siml_type__: type
             Type of the results of the operation. For decorating the AST.
-        role: AttributeRole
+        __siml_role__: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: TextLocation; None
             Location in input string
@@ -216,9 +216,9 @@ class NodeParentheses(Node):
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}
         #unknown variable aspect
-        self.type = None
-        self.role = RoleUnkown
-        self.is_known = None
+        self.__siml_type__ = None
+        self.__siml_role__ = RoleUnkown
+        #self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #for error messages
@@ -241,9 +241,9 @@ class NodeOpInfix2(Node):
             The Siml function that the interpreter called when the function
             call was interpreted. (Because not all arguments were known at 
             compile time, an annotated function call was created.) 
-        type: InterpreterObject
+        __siml_type__: type
             Type of the results of the operation. For decorating the AST.
-        role: AttributeRole
+        __siml_role__: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: TextLocation; None
             Location in input string
@@ -255,11 +255,10 @@ class NodeOpInfix2(Node):
         self.operator = operator
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
-        #decorations
-        #self.function_object = None
-        self.type = None
-        self.role = RoleUnkown
-        self.is_known = None
+        #decorations - look like CodeGeneratorObject
+        #self.is_known = False
+        self.__siml_type__ = None
+        self.__siml_role__ = RoleUnkown
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #for error messages
@@ -282,9 +281,9 @@ class NodeOpPrefix1(Node):
             The Siml function that the interpreter called when the function
             call was interpreted. (Because not all arguments were known at 
             compile time, an annotated function call was created.) 
-        type: InterpreterObject
+        __siml_type__: type
             Type of the results of the operation. For decorating the AST.
-        role: AttributeRole
+        __siml_role__: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: 
             Location in input string
@@ -297,9 +296,9 @@ class NodeOpPrefix1(Node):
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
         #decorations
-        self.type = None
-        self.role = RoleUnkown
-        self.is_known = None
+        self.__siml_type__ = None
+        self.__siml_role__ = RoleUnkown
+        #self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #for error messages
@@ -325,9 +324,9 @@ class NodeFuncCall(Node):
         keyword_arguments: 
             Dictionary of keyword arguments
             
-        type: InterpreterObject
+        __siml_type__: type
             Type of the results of the operation. (unevaluated function call)
-        role: AttributeRole
+        __siml_role__: AttributeRole
             Role of the results of the operation. (unevaluated function call)
         is_known: None/False
             - None for calls that have not been processed by the interpreter.
@@ -347,9 +346,9 @@ class NodeFuncCall(Node):
         self.keyword_arguments = keyword_arguments \
                                  if keyword_arguments is not None else {}
         #--- for the type system (treatment of unevaluated calls) -----------#
-        self.type = None
-        self.role = RoleUnkown
-        self.is_known = None
+        self.__siml_type__ = None
+        self.__siml_role__ = RoleUnkown
+        #self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #--- for error messages ---------------------------------------------#

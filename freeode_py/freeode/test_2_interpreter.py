@@ -1504,7 +1504,7 @@ def test_pass_statement_1(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, i_istype, 
+    from freeode.interpreter import (Interpreter, istype, 
                                      CallableObject, TypeObject, IFloat)
     from freeode.util import DotName
 
@@ -1552,7 +1552,7 @@ compile A
     d = mod.get_attribute('d')
     f_dummy = mod.get_attribute('f_dummy')
     class_A = mod.get_attribute('A')
-    assert i_istype(d, class_Dummy)
+    assert istype(d, class_Dummy)
     assert isinstance(f_dummy, CallableObject)
     assert isinstance(class_A, TypeObject)
 
@@ -1579,7 +1579,7 @@ def test_pass_statement_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, i_istype, 
+    from freeode.interpreter import (Interpreter, istype, 
                                      CallableObject, TypeObject, IFloat)
 
     prog_text = \
@@ -1616,7 +1616,7 @@ four = add2(2)
     add2 = mod.get_attribute('add2')
     four = mod.get_attribute('four')
     assert isinstance(class_A, TypeObject)
-    assert i_istype(a, class_A)
+    assert istype(a, class_A)
     assert isinstance(a_x, IFloat)
     assert a_x.value == 2
     assert isinstance(add2, CallableObject)

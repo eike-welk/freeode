@@ -339,31 +339,32 @@ class CodeGeneratorObject(InterpreterObject):
 
     Only these objects, and operations with these objects, should remain in a
     flattened simulation.
-
-    # TODO: Rename to RuntimeObject
     '''
     def __init__(self):
         InterpreterObject.__init__(self)
         self.time_derivative = None
         self.target_name = None
-        #TODO: Maybe there should be CodeGeneratorObject.isknown(). 
-        #      Isknown is really only meaningful for code-generator-objects. 
+        #if True this object is a constant which is known at compile time. 
+        #is_nown is really only meaningful for code-generator-objects. 
         self.is_known = False
    
    
-    @staticmethod
-    def test_allknown(*args):
-        '''
-        Test if all arguments are known constants, raise 
-        UnknownArgumentsException if any argument is unknown
-        '''
-        for arg in args:
-            if isinstance(arg, InterpreterObject) and arg.is_known:
-                assert i_isrole(arg.__siml_role__, RoleConstant), \
-                       'All objects that are known at compile time must be constants.'
-                return
-            else:
-                raise UnknownArgumentsException()
+def test_allknown(*args):
+    '''
+    Test if all arguments are known constants. 
+    
+    Raise UnknownArgumentsException if any argument is unknown; raising 
+    UnknownArgumentsException (usually) tells the interpreter to generate code. 
+    
+    All arguments must be CodeGeneratorObject.
+    '''
+    for arg in args:
+        if isinstance(arg, InterpreterObject) and arg.is_known:
+            assert i_isrole(arg.__siml_role__, RoleConstant), \
+                   'All objects that are known at compile time must be constants.'
+            return
+        else:
+            raise UnknownArgumentsException()
 
         
         
@@ -452,7 +453,7 @@ class Signature(object):
             self.argument_dict[arg.name] = arg
 
 
-    def _evaluate_type_specs(self, interpreter):
+    def evaluate_type_specs(self, interpreter):
         '''
         Compute the types and default values of the arguments. 
         Compute return type.
@@ -479,9 +480,10 @@ class Signature(object):
             if self.return_type is not None:
                 type_ev = interpreter.eval(self.return_type)
                 self.return_type = type_ev
+        self.is_evaluated = True
 
 
-    def parse_function_call_args(self, args_list, kwargs_dict, interpreter):
+    def parse_function_call_args(self, args_list, kwargs_dict):
         '''
         Executed when a function call happens.
         Fill the arguments of the call site into the arguments of the
@@ -510,13 +512,7 @@ class Signature(object):
         #  Description of semantics is here:
         #      http://docs.python.org/reference/expressions.html#calls
         #  A complete implementation is here:
-        #      http://svn.python.org/view/sandbox/trunk/pep362/
-
-        #Evaluate the type specifications
-        if not self.is_evaluated:
-            self._evaluate_type_specs(interpreter)
-            self.is_evaluated = True
-        
+        #      http://svn.python.org/view/sandbox/trunk/pep362/        
         if self.arguments is None:
             return None
         output_dict = {} #dict(<argument name>: <siml values>, ...)
@@ -590,7 +586,7 @@ class Signature(object):
         '''
         if arg_def.type is None:
             return
-        if not i_issubclass(in_object.__siml_type__, arg_def.type):
+        if not istype(in_object, arg_def.type):
             raise UserException(
                     'Incompatible types. \nVariable: "%s" '
                     'is defined as: %s \nHowever, argument type is: %s. \n'
@@ -600,18 +596,13 @@ class Signature(object):
                     loc=None, errno=3200310)
     
     
-    def test_return_type_compatible(self, retval, interpreter):
+    def test_return_type_compatible(self, retval):
         '''
         Test if the function's return value has the right type.
         '''
-        #Evaluate the type specifications
-        if not self.is_evaluated:
-            self._evaluate_type_specs(interpreter)
-            self.is_evaluated = True
-        
         if self.return_type is None:
             return
-        if not i_issubclass(retval.__siml_type__, self.return_type):
+        if not istype(retval, self.return_type):
             raise UserException("Incompatible return type.\n"
                                 "Type of returned object: %s \n"
                                 "Specified return type  : %s \n"
@@ -770,10 +761,10 @@ class SimlBoundMethod(InterpreterObject):
 
 
 class SimlClass(InterpreterObject):
-    '''Represents class written in Siml - usually a user defined class.'''
+    '''Base class of user defined classes.'''
     def __init__(self, name, bases, loc=None):
         '''Create a new class object.'''
-        InterpreterObject.__init__(self, name)
+        InterpreterObject.__init__(self)
         self.bases = bases
         self.loc = loc
 
@@ -893,31 +884,31 @@ class IBool(CodeGeneratorObject):
     #comparison operators
     @signature([BOOLP, BOOLP], BOOLP) 
     def __eq__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value == other.value)
     
     @signature([BOOLP, BOOLP], BOOLP) 
     def __ne__(self, other): 
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value != other.value)
     
     #special functions for boolean operations (and or not)
     @signature([BOOLP], BOOLP) 
     def __siml_not__(self):
         '''Called for Siml "not".'''
-        self.test_allknown(self)
+        test_allknown(self)
         return IBool(not self.value)
     
     @signature([BOOLP, BOOLP], BOOLP) 
     def __siml_and2__(self, other):
         '''Called for Siml "and".'''
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value and other.value)
     
     @signature([BOOLP, BOOLP], BOOLP) 
     def __siml_or2__(self, other):
         '''Called for Siml "or".'''
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value or other.value)
     
     #assignment
@@ -942,7 +933,7 @@ class IBool(CodeGeneratorObject):
     @signature([BOOLP], STRINGP) 
     def __siml_str__(self):
         '''__str__ called from Siml'''
-        self.test_allknown(self)
+        test_allknown(self)
         istr = IString(self.value)
         return istr
 
@@ -983,18 +974,18 @@ class IString(CodeGeneratorObject):
 
     @signature([STRINGP, STRINGP], STRINGP) 
     def __add__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IString(self.value + other.value)
     
     #comparisons
     @signature([STRINGP, STRINGP], IBool) 
     def __eq__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value == other.value)
     
     @signature([STRINGP, STRINGP], IBool) 
     def __ne__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value != other.value)
     
     #special function for assignment    
@@ -1019,7 +1010,7 @@ class IString(CodeGeneratorObject):
     @signature([STRINGP], STRINGP) 
     def __siml__str__(self):
         '''called from Siml'''
-        self.test_allknown(self)
+        test_allknown(self)
         return self
 
 STRINGP.set(IString)
@@ -1055,22 +1046,22 @@ class IFloat(CodeGeneratorObject):
     #arithmetic operators
     @signature([FLOATP, FLOATP], FLOATP) 
     def __add__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IFloat(self.value + other.value)
     
     @signature([FLOATP, FLOATP], FLOATP) 
     def __sub__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IFloat(self.value - other.value)
     
     @signature([FLOATP, FLOATP], FLOATP) 
     def __mul__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IFloat(self.value * other.value)
     
     @signature([FLOATP, FLOATP], FLOATP) 
     def __div__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IFloat(self.value / other.value)
     __truediv__ = __div__ #for division from Python
     
@@ -1080,43 +1071,43 @@ class IFloat(CodeGeneratorObject):
     
     @signature([FLOATP, FLOATP], FLOATP) 
     def __pow__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IFloat(self.value ** other.value)
     
     @signature([FLOATP], FLOATP) 
     def __neg__(self):
-        self.test_allknown(self)
+        test_allknown(self)
         return IFloat(-self.value)
 
     #comparison operators
     @signature([FLOATP, FLOATP], IBool) 
     def __lt__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value < other.value)
     
     @signature([FLOATP, FLOATP], IBool) 
     def __le__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value <= other.value)
     
     @signature([FLOATP, FLOATP], IBool) 
     def __eq__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value == other.value)
     
     @signature([FLOATP, FLOATP], IBool) 
     def __ne__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value != other.value)
     
     @signature([FLOATP, FLOATP], IBool) 
     def __gt__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value > other.value)
     
     @signature([FLOATP, FLOATP], IBool) 
     def __ge__(self, other):
-        self.test_allknown(self, other)
+        test_allknown(self, other)
         return IBool(self.value >= other.value)
 
     @signature([FLOATP], FLOATP) 
@@ -1160,11 +1151,11 @@ class IFloat(CodeGeneratorObject):
     @signature([FLOATP], IString) 
     def __siml_str__(self):
         '''Called from Siml'''
-        self.test_allknown(self)
+        test_allknown(self)
         istr = IString(self.value)
         return istr
 
-FLOATP = IFloat
+FLOATP.set(IFloat)
 
 #create the special variable time
 TIME = IFloat()
@@ -1199,10 +1190,10 @@ def siml_print(*args, **kwargs):
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
     debug_level = kwargs.get('debug_level', None)
-    if not i_istype(debug_level, IFloat):
+    if not istype(debug_level, IFloat):
         raise UserException('Argument "debug_level" must be of type Float')
     end = kwargs.get('end', None)
-    if not i_istype(end, IString):
+    if not istype(end, IString):
         raise UserException('Argument "end" must be of type IString')
 
     #create code that prints at runtime
@@ -1312,7 +1303,7 @@ def siml_graph(*args, **kwargs):
         if arg_name not in legal_kwargs:
             raise UserException('Unknown keyword argument: %s' % arg_name)
     title = kwargs.get('title', None)
-    if not i_istype(title, IString):
+    if not istype(title, IString):
         raise UserException('Argument "title" must be of type IString')
 
     #create a new call to the graph function and return it (unevaluated)
@@ -1388,18 +1379,42 @@ def create_built_in_lib():
     lib.save = siml_save
     lib.solution_parameters = siml_solution_parameters
     @signature(None, None)
-    def wsiml_isinstance(in_object, class_or_type_or_tuple):
-        'isinstance(...) function for Siml.'
-        return IBool(i_istype(in_object, class_or_type_or_tuple))
-    lib.isinstance = wsiml_isinstance
+    def w_istype(in_object, class_or_type_or_tuple):
+        return IBool(istype(in_object, class_or_type_or_tuple))
+    lib.isinstance = w_istype
     #math
     #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units
-    lib.sqrt = signature([IFloat], IFloat)(lambda x: IFloat(math.sqrt(x.value)))
-    lib.sin =  signature([IFloat], IFloat)(lambda x: IFloat(math.sin(x.value)))
-    lib.cos =  signature([IFloat], IFloat)(lambda x: IFloat(math.cos(x.value)))
-    lib.tan =  signature([IFloat], IFloat)(lambda x: IFloat(math.tan(x.value)))
-    lib.max =  signature([IFloat, IFloat], IFloat)(lambda a, b: IFloat(max(a.value, b.value)))
-    lib.min =  signature([IFloat, IFloat], IFloat)(lambda a, b: IFloat(min(a.value, b.value)))
+    @signature([IFloat], IFloat)
+    def w_sqrt(x): 
+        test_allknown(x)
+        return IFloat(math.sqrt(x.value))
+    lib.sqrt = w_sqrt
+    @signature([IFloat], IFloat)
+    def w_sin(x):
+        test_allknown(x)
+        return IFloat(math.sin(x.value))
+    lib.sin = w_sin
+    @signature([IFloat], IFloat)
+    def w_cos(x):
+        test_allknown(x)
+        return IFloat(math.cos(x.value))
+    lib.cos = w_cos
+    @signature([IFloat], IFloat)
+    def w_tan(x):
+        test_allknown(x)
+        return IFloat(math.tan(x.value))
+    lib.tan = w_tan
+    
+    @signature([IFloat, IFloat], IFloat)
+    def w_max(a, b):
+        test_allknown(a, b)
+        return IFloat(max(a.value, b.value))
+    lib.max = w_max
+    @signature([IFloat, IFloat], IFloat)
+    def w_min(a, b):
+        test_allknown(a, b)
+        return IFloat(min(a.value, b.value))
+    lib.min = w_min
 
     return lib
 
@@ -1476,29 +1491,27 @@ def make_derivative(variable):
 
 
 
-def i_istype(in_object, class_or_type_or_tuple):
+def istype(in_object, class_or_type_or_tuple):
     '''
     Check if an object's type is in class_or_type_or_tuple.
 
-    Similar to isinstance(...) but inside the SIML language.
-
-    If in_object is an expression, which would evaluate to an object of the
+    Similar to isinstance(...) but works with unevaluated expressions too.
+    If the expression (in_object) would evaluate to an object of the
     correct type, the function returns True.
 
     TODO: create new function i_isinstance(...) which checks at compile
           time if object is really an instance of a certain type; excluding
           unevaluated function calls.
     '''
-    #the test: use i_issubclass() on type attribute
     if in_object.__siml_type__ is not None:
-        return i_issubclass(in_object.__siml_type__, class_or_type_or_tuple)
+        return issubclass(in_object.__siml_type__, class_or_type_or_tuple)
     else:
         return False
 
 
-def i_issubclass(in_type, class_or_type_or_tuple):
-    '''issubclass(...) but inside the SIML language'''
-    return issubclass(in_type, class_or_type_or_tuple)
+#def i_issubclass(in_type, class_or_type_or_tuple):
+#    '''issubclass(...) but inside the SIML language'''
+#    return issubclass(in_type, class_or_type_or_tuple)
 #    #precondition: must be a SIML type
 #    if not isinstance(in_type, type):
 #        raise Exception('Argument "in_type" must be a class.')
@@ -1666,11 +1679,14 @@ def set_role_recursive(tree, new_role):
     new_role:
         The new role.
     '''
+    assert isinstance(tree, InterpreterObject)
     tree.__siml_role__ = new_role
     if isinstance(tree, CodeGeneratorObject):
         return
+    #recurse into user defined objects
     for attr in tree.__dict__.itervalues():
-        if is_role_more_variable(attr.__siml_role__, new_role):
+        if isinstance(attr, InterpreterObject) and \
+           is_role_more_variable(attr.__siml_role__, new_role):
             set_role_recursive(attr, new_role)
 
 
@@ -2063,20 +2079,24 @@ class Interpreter(object):
                 posargs = (func_obj.im_self,) + posargs
             func_obj = func_obj.im_func
             
+        #Evaluate the type specifications, but only once
+        if not func_obj.siml_signature.is_evaluated:
+            func_obj.siml_signature.evaluate_type_specs(self)
         #Type checking of arguments, and binding them to their names
         bound_args = func_obj.siml_signature\
-                             .parse_function_call_args(posargs, kwargs, self)
+                             .parse_function_call_args(posargs, kwargs)
         
         if isinstance(func_obj, SimlFunction):
             ret_val = self.apply_siml(func_obj, bound_args)
         else:
             ret_val = func_obj(*posargs, **kwargs) # pylint: disable-msg=W0142
         
+        #TODO: maybe convert bool -> IBool, string -> IString, float -> IFloat
         #use Siml's None
         if ret_val is None:
             ret_val = NONE
         #type checking of return value
-        func_obj.siml_signature.test_return_type_compatible(ret_val, self)
+        func_obj.siml_signature.test_return_type_compatible(ret_val)
 
         return ret_val
     
@@ -2110,20 +2130,20 @@ class Interpreter(object):
         for arg_name, arg_val in bound_args.iteritems():
             #create references for existing Siml values
             if isinstance(arg_val, InterpreterObject):
-                local_namespace.create_attribute(arg_name, arg_val)
+                setattr(local_namespace, arg_name, arg_val)
             #for unevaluated expressions a new variable is created,
             #and the expression is assigned to it
             else:
-                arg_class = arg_val.type()
+                arg_class = arg_val.__siml_type__
                 new_arg = arg_class()
-                new_arg.role = arg_val.role
+                new_arg.role = arg_val.__siml_role__
                 #put object into local name-space and assign value to it
-                local_namespace.create_attribute(arg_name, new_arg)
+                setattr(local_namespace, arg_name, new_arg)
                 self.assign(new_arg, arg_val, None)
 
         #Create new environment for the function.
         new_env = ExecutionEnvironment()
-        new_env.global_scope = func_obj.global_scope #global scope from function definition.
+        new_env.global_scope = func_obj.siml_globals #global scope from function definition.
         new_env.this_scope = this_namespace
         new_env.local_scope = local_namespace
         #local variables in functions can take any role
@@ -2391,7 +2411,7 @@ class Interpreter(object):
             for clause in node.clauses:
                 #interpret the condition
                 condition_ev = self.eval(clause.condition)
-                if not i_istype(condition_ev, (CLASS_BOOL, CLASS_FLOAT)):
+                if not istype(condition_ev, (CLASS_BOOL, CLASS_FLOAT)):
                     raise UserException('Conditions must evaluate to '
                                         'instances equivalent to Bool.',
                                         loc=clause.loc)#, errno=3700510)
