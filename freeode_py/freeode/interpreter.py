@@ -64,7 +64,7 @@ import inspect
 from copy import deepcopy
 
 from freeode.util import (UserException, DotName, TextLocation, AATreeMaker, 
-                          aa_make_tree, DEBUG_LEVEL)
+                          aa_make_tree, DEBUG_LEVEL, EnumMeta)
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
                          RoleAlgebraicVariable, RoleTimeDifferential, 
                          RoleStateVariable, RoleInputVariable,
@@ -366,7 +366,7 @@ def test_allknown(*args):
     '''
     for arg in args:
         if isinstance(arg, InterpreterObject) and arg.is_known:
-            assert i_isrole(arg.__siml_role__, RoleConstant), \
+            assert isrole(arg, RoleConstant), \
                    'All objects that are known at compile time must be constants.'
             return
         else:
@@ -1000,7 +1000,7 @@ class IString(CodeGeneratorObject):
             return self.value
          
     @signature([STRINGP], STRINGP) 
-    def __siml__str__(self):
+    def __siml_str__(self):
         '''called from Siml'''
         test_allknown(self)
         return self
@@ -1115,7 +1115,7 @@ class IFloat(CodeGeneratorObject):
         #Precondition: $ acts upon a variable
         if(not isinstance(self, IFloat) or #no expression (ast.Node)
            #self.parent is None or          #no anonymous intermediate value
-           not i_isrole(self, RoleVariable)): #no constant or parameter or unknown
+           not isrole(self, RoleVariable)): #no constant or parameter or unknown
             raise UserException('Only named variables can have derivatives.')
         #create time derivative if necessary
         if self.time_derivative is None:
@@ -1181,24 +1181,24 @@ def siml_print(*args, **kwargs):
     for arg_name, in kwargs.keys():
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
-    debug_level = kwargs.get('debug_level', None)
+    debug_level = kwargs.get('debug_level', IFloat(0))
     if not istype(debug_level, IFloat):
         raise UserException('Argument "debug_level" must be of type Float')
-    end = kwargs.get('end', None)
+    end = kwargs.get('end', IString('\n'))
     if not istype(end, IString):
         raise UserException('Argument "end" must be of type IString')
 
     #create code that prints at runtime
-    new_args = []
+    new_args = tuple()
     for arg1 in args:
         #call argument's the __str__ method, the interpreter
         #will return an unevaluated function call or a unknown string variable.
         #This will transform a call to a user-defined __str__ method
         #into calls to fundamental __siml_str__ methods
         str_func = NodeAttrAccess((arg1, NodeIdentifier('__siml_str__')))
-        str_call = NodeFuncCall(str_func, [], {})
+        str_call = NodeFuncCall(str_func, tuple(), {})
         str_expr = INTERPRETER.eval(str_call)
-        new_args.append(str_expr) #collect the call's result
+        new_args += (str_expr,) #collect the call's result
     #create a new call to the print function
     print_call = NodeFuncCall(siml_print, new_args, {})
     decorate_call(print_call, INone)
@@ -1233,10 +1233,10 @@ def siml_printc(*args, **kwargs):
     for arg_name, in kwargs.keys():
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
-    debug_level = kwargs.get('debug_level', None)
+    debug_level = kwargs.get('debug_level', IFloat(0))
     if not isinstance(debug_level, IFloat):
         raise UserException('Argument "debug_level" must be of type Float')
-    end = kwargs.get('end', None)
+    end = kwargs.get('end', IString('\n'))
     if not isinstance(end, IString):
         raise UserException('Argument "end" must be of type IString')
     sep=' '
@@ -1294,7 +1294,7 @@ def siml_graph(*args, **kwargs):
     for arg_name, arg_val in kwargs.iteritems():
         if arg_name not in legal_kwargs:
             raise UserException('Unknown keyword argument: %s' % arg_name)
-    title = kwargs.get('title', None)
+    title = kwargs.get('title', IString(''))
     if not istype(title, IString):
         raise UserException('Argument "title" must be of type IString')
 
@@ -1304,7 +1304,7 @@ def siml_graph(*args, **kwargs):
 
 
 @signature([IString], INone)
-def siml_save(file_name=None): #pylint:disable-msg=W0613
+def siml_save(file_name): #pylint:disable-msg=W0613
     '''
     The store function.
 
@@ -1557,11 +1557,25 @@ def istype(in_object, class_or_type_or_tuple):
 #        return False
 
 
-def i_isrole(role1, role2_or_tuple):
+def isrole(in_object, role_or_tuple):
     '''
-    Is role-1 a sub-role or equal to role-2.
-    Also accepts a tuple of roles for the 2nd argument
+    Return whether in_object has the a specific role, or an equivalent of 
+    this role. Argument role_or_tuple can be a tuple of roles.
     '''
+    if in_object.__siml_role__ is not None:
+        return isequivalentrole(in_object.__siml_role__, role_or_tuple)
+    else:
+        return False
+    
+    
+def isequivalentrole(role1, role2_or_tuple):
+    '''
+    Return whether role1 is a sub-role or equal to role2_or_tuple.
+    Also accepts a tuple of roles for the 2nd argument.
+    '''
+    assert isinstance(role1, EnumMeta)
+    assert isinstance(role2_or_tuple, EnumMeta) or \
+           isinstance(role2_or_tuple, tuple)
     return issubclass(role1, role2_or_tuple)
 
 
@@ -1591,13 +1605,13 @@ def is_role_more_variable(role1, role2):
     rank_list = [RoleConstant, RoleParameter, RoleVariable, RoleUnkown]
     #classify role1
     for index1 in range(len(rank_list)):
-        if i_isrole(role1, rank_list[index1]):
+        if isequivalentrole(role1, rank_list[index1]):
             break
     else:
         raise ValueError('Unknown role %s' % str(role1))
     #classify role2
     for index2 in range(len(rank_list)):
-        if i_isrole(role2, rank_list[index2]):
+        if isequivalentrole(role2, rank_list[index2]):
             break
     else:
         raise ValueError('Unknown role %s' % str(role2))
@@ -1646,7 +1660,7 @@ def determine_result_role(arguments, keyword_arguments={}): #IGNORE:W0102
                              'fundamental functions.')
     #convert: state variable, time differential --> algebraic variable
     #These two roles result only from taking time differentials
-    if i_isrole(max_var_role, RoleVariable):
+    if isequivalentrole(max_var_role, RoleVariable):
         max_var_role = RoleAlgebraicVariable
     return max_var_role
 
@@ -2243,9 +2257,6 @@ class Interpreter(object):
         else:
             #there is an unevaluated expression - create some code that
             #executes it at runtime
-            if not self.is_collecting_code():
-                raise UserException('Computations with unknown values are '
-                                    'illegal here.', node.loc)
             new_stmt = NodeExpressionStmt(ret_val, node.loc)
             self.collect_statement(new_stmt)
 
@@ -2293,44 +2304,31 @@ class Interpreter(object):
         #      - Local variables of functions however, will be created
         #      uniquely for each function invocation. They can therefore
         #      only be assigned once, even in an 'if' statement.
-#        #Test if value has been assigned already.
-#        if target.is_known:
-#            raise UserException('Duplicate assignment.', loc)
-#        target.is_known = True
+
         #Targets with RoleUnkown are converted to the role of value.
         #(for local variables of functions)
-        if target.role is RoleUnkown:
+        if target.__siml_role__ is RoleUnkown:
             set_role_recursive(target, value.role)
         #get the assignment function
-        assign_func = target.get_attribute('__siml_assign__')
-        #Always call the function when it is not fundamental. The call
-        #generates statements with fundamental functions.
+        assign_func = getattr(target, '__siml_assign__', None)
+        #Always call user defined functions. The call generates statements with 
+        #built in functions that operate on CodeGeneratorObject.
         #Reason: When a function returns a user defined class, the role is
-        #often role_unknown. The leaf attributes however, that are fundamental
-        #types, have correct roles.
+        #often role_unknown. The leaf attributes however, that are of type
+        #CodeGeneratorObject, have correct roles.
         #Also only assignments to leaf types must get to the code generator.
-        if not assign_func.is_fundamental_function:
+        if isinstance(assign_func, SimlFunction):
             self.apply(assign_func, (value,))
             return
-
-        #Only fundamental functions from here on: ------------------
+        
+        #Only built in functions from here on: ------------------
         #Test if assignment is possible according to the role.
-        if is_role_more_variable(value.role, target.role):
+        if is_role_more_variable(value.__siml_role__, target.__siml_role__):
             raise UserException('Incompatible roles in assignment. '
                                 'LHS: %s RHS: %s' % (str(target.role),
                                                      str(value.role)), loc)
-#        #In different regions of the program only some roles are legal as
-#        #targets for assignments
-#        #TODO: remove; this is tested in the optimizer/checker module
-#        if not issubclass(target.role, self.interpreter.assign_target_roles):
-#            raise UserException('Variable has illegal role as target for '
-#                                'assignment. '
-#                                '\nIllegal role: %s \nLegal roles %s'
-#                                % (str(target.role),
-#                                   str(self.interpreter.assign_target_roles)),
-#                                   loc)
-        #perform assignment - function is fundamental and target is constant
-        if target.role is RoleConstant:
+        #perform assignment - function is built in and target is constant
+        if isrole(target, RoleConstant):
             try:
                 self.apply(assign_func, (value,))
             except UnknownArgumentsException:
@@ -2338,18 +2336,15 @@ class Interpreter(object):
             return
         #Generate code for one assignment (of fundamental types)
         #target is a parameter or a variable
-        new_assign = NodeAssignment()
-        new_assign.loc = loc
-        new_assign.target = target
-        new_assign.expression = value
+        new_assign = NodeAssignment(target, value, loc)
         #create sets of input and output objects for the optimizer
-        #TODO: maybe put this into optimizer?
-        if isinstance(value, InterpreterObject):
-            new_assign.inputs = set([value])
-        else:
-            #value is an expression
-            new_assign.inputs = value.inputs
-        new_assign.outputs = set([target])
+#        #TODO: maybe put this into optimizer?
+#        if isinstance(value, InterpreterObject):
+#            new_assign.inputs = set([value])
+#        else:
+#            #value is an expression
+#            new_assign.inputs = value.inputs
+#        new_assign.outputs = set([target])
         #append generated assignment statement to the alredy generated code.
         self.collect_statement(new_assign)
 
@@ -2470,36 +2465,30 @@ class Interpreter(object):
 
     def exec_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
-        func_sig = Signature(node.signature)
-        #save the current global namespace in the function. Otherwise
-        #access to global variables would have surprising results
         #TODO: Implement closures, for nested functions:
         #      Copy the global dictionary and update it with the current
         #      local dictionary.
         #TODO: make copy of global namespace. needs:
         #      - new ast.Node.copy mechanism for shallow copy, referencing
         #      - new pretty printer mechanism to prevent duplicate printing
-        global_scope = make_proxy(self.environment.global_scope)
+        func_sig = Signature(node.signature)
+        #save the current global namespace in the function. Otherwise
+        #access to global variables would have surprising results otherwise
+        global_scope = self.environment.global_scope
         #create new function object and
         new_func = SimlFunction(node.name, func_sig,
                                 node.statements, global_scope, node.loc)
         #put function object into the local namespace
-        self.environment.local_scope.create_attribute(node.name, new_func)
+        setattr(self.environment.local_scope, node.name, new_func)
 
 
     def exec_NodeClassDef(self, node):
-        '''Define a class - create a class object in local name-space'''
-        #TODO: code from SimlClass.__init__ should go here!
-        
-        #create new class object and put it into the local name-space
-        new_class = SimlClass(node.name, bases=None, loc=node.loc)
-        self.environment.local_scope.create_attribute(node.name, new_class)
-        
+        '''Define a class - create a class object in local name-space'''        
         #Create new environment for code in class body
         new_env = ExecutionEnvironment()
         new_env.global_scope = self.environment.global_scope
         new_env.this_scope = None
-        new_env.local_scope = new_class #functions and data are created inside the new class
+        new_env.local_scope = InterpreterObject() #functions and data are created here
         #Data attributes of user defined objects are by default variables
         new_env.default_data_role = RoleAlgebraicVariable
 
@@ -2511,6 +2500,12 @@ class Interpreter(object):
             print 'Warning: return statement in class declaration!'
         self.pop_environment()
 
+        #create new class object and put it into the local name-space
+        #type(name, bases, dict) -> a new type
+        new_class = type(node.name, (SimlClass,), 
+                         new_env.local_scope.__dict__)
+        setattr(self.environment.local_scope, node.name, new_class)
+        
         
     def exec_NodeStmtList(self, node):
         '''Visit node with a list of data definitions. Execute them.'''
@@ -2876,7 +2871,10 @@ class Interpreter(object):
         statements.
         '''
         if not self.is_collecting_code():
-            raise Exception('Collecting statements (compilation) has not been enabled!')
+            raise UserException(
+                'Computations with unknown values are illegal here. \n'
+                'The statement wanted to output a bit of compiled program code. \n'
+                'This is only legal inside of simulation objects when they are compiled.')
         self.compile_stmt_collect[-1].append(stmt)
 
     def is_collecting_code(self):

@@ -32,7 +32,7 @@ from __future__ import absolute_import
 from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
 
-from freeode.util import assert_raises
+from freeode.util import assert_raises #pylint:disable-msg=W0611 
 
 
 
@@ -40,7 +40,9 @@ def test_data_statement_simple_1(): #IGNORE:C01111
     msg = 'Test data statement: create attributes'
     #skip_test(msg)
     print msg
+    
     from freeode.interpreter import Interpreter, IFloat, IString
+    from freeode.util import aa_make_tree #pylint:disable-msg=W0612 
     
     prog_text = \
 '''
@@ -55,20 +57,21 @@ data b: String const
     mod = intp.modules['test']
 #    print
 #    print 'module after interpreter run: ---------------------------------'
-#    print mod
+#    print aa_make_tree(mod)
     
-    a = mod.get_attribute('a')
-    assert isinstance(a, IFloat)
-    b = mod.get_attribute('b')
-    assert isinstance(b, IString)
+    assert isinstance(mod.a, IFloat)
+    assert isinstance(mod.b, IString)
   
   
 
 def test_data_statement_roles_1(): #IGNORE:C01111
-    #skip_test('Test data statement: create attributes with different roles')
-    print 'Test data statement: create attributes with different roles'
-    from freeode.interpreter import Interpreter, i_isrole
-    from freeode.ast import (RoleConstant, RoleParameter, RoleVariable)
+    msg = 'Test data statement: create attributes with different roles'
+    #skip_test(msg)
+    print msg
+    
+    from freeode.interpreter import Interpreter, isrole
+    from freeode.ast import RoleConstant, RoleParameter, RoleVariable
+    from freeode.util import aa_make_tree #pylint:disable-msg=W0612 
     
     prog_text = \
 '''
@@ -86,12 +89,9 @@ data c: Float variable
 #    print 'module after interpreter run: ---------------------------------'
 #    print mod
     
-    a = mod.get_attribute('a')
-    assert a.role is RoleConstant
-    b = mod.get_attribute('b')
-    assert b.role is RoleParameter
-    c = mod.get_attribute('c')
-    assert i_isrole(c.role, RoleVariable)
+    assert isrole(mod.a, RoleConstant)
+    assert isrole(mod.b, RoleParameter)
+    assert isrole(mod.c, RoleVariable)
     
   
 
@@ -110,8 +110,10 @@ def test_data_statement_roles_2(): #IGNORE:C01111
     msg = 'Test data statement: roles should be propagated to child attributes.'
     #skip_test(msg)
     print msg
-    from freeode.interpreter import Interpreter, i_isrole
-    from freeode.ast import (RoleConstant, RoleParameter, RoleVariable)
+    
+    from freeode.interpreter import Interpreter, isrole
+    from freeode.ast import RoleConstant, RoleParameter, RoleVariable
+    from freeode.util import aa_make_tree #pylint:disable-msg=W0612 
     
     prog_text = \
 '''
@@ -132,41 +134,36 @@ data av: A variable
     mod = intp.modules['test']
 #    print
 #    print 'module after interpreter run: ---------------------------------'
-#    print mod
+#    print aa_make_tree(mod)
+#    
+#    print
+#    print 'attribute ac: ---------------------------------'
+#    print aa_make_tree(mod.ac)
     
     #all attributes should be const
-    a_curr = mod.get_attribute('ac')
-    c = a_curr.get_attribute('c')
-    p = a_curr.get_attribute('p')
-    v = a_curr.get_attribute('v')
-    assert c.role is RoleConstant
-    assert p.role is RoleConstant
-    assert v.role is RoleConstant
+    assert isrole(mod.ac.c, RoleConstant)
+    assert isrole(mod.ac.p, RoleConstant)
+    assert isrole(mod.ac.v, RoleConstant)
   
     #Roles: c: const; p,v: param
-    a_curr = mod.get_attribute('ap')
-    c = a_curr.get_attribute('c')
-    p = a_curr.get_attribute('p')
-    v = a_curr.get_attribute('v')
-    assert c.role is RoleConstant
-    assert p.role is RoleParameter
-    assert v.role is RoleParameter
+    assert isrole(mod.ap.c, RoleConstant)
+    assert isrole(mod.ap.p, RoleParameter)
+    assert isrole(mod.ap.v, RoleParameter)
   
     #Roles: c: const; p: param; v: variable
-    a_curr = mod.get_attribute('av')
-    c = a_curr.get_attribute('c')
-    p = a_curr.get_attribute('p')
-    v = a_curr.get_attribute('v')
-    assert c.role is RoleConstant
-    assert p.role is RoleParameter
-    assert i_isrole(v.role, RoleVariable) 
+    assert isrole(mod.av.c, RoleConstant)
+    assert isrole(mod.av.p, RoleParameter)
+    assert isrole(mod.av.v, RoleVariable)
   
   
 
 def test_builtin_function_call_1(): #IGNORE:C01111
-    #skip_test('Test disabled')
-    print 'Test interpreter object: call built in function sqrt...............................................................'
+    msg = 'Test interpreter object: call built in function sqrt'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree #pylint:disable-msg=W0612 
     import math
     
     prog_text = \
@@ -178,32 +175,36 @@ a = sqrt(2)
     intp = Interpreter()
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
-  
-    print
-    print 'module after interpreter run: ---------------------------------'
-    print intp.modules['test']
     
-    assert intp.modules['test'].get_attribute('a').value == math.sqrt(2)
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print aa_make_tree(mod)
+    
+    assert mod.a.value == math.sqrt(2)
   
   
 
 def test_builtin_function_call_2(): #IGNORE:C01111
-    #skip_test('Test disabled')
-    print 'Test interpreter object: call built in function print...............................................................'
+    msg = 'Test interpreter object: call built in function printc'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree #pylint:disable-msg=W0612 
     
     prog_text = \
 '''
-print('test')
+printc('test')
 '''
     #create the interpreter
     intp = Interpreter()
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
-    print 'module after interpreter run: ---------------------------------'
-    print intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print aa_make_tree(intp.modules['test'])
   
   
 
@@ -211,7 +212,9 @@ def test_function_definition_1(): #IGNORE:C01111
     msg = '''Test all legal styles of function definitions.'''
     #skip_test(msg)
     print msg
+    
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree #pylint:disable-msg=W0612 
 
     prog_text = \
 '''
@@ -231,10 +234,12 @@ func foo4(a:Float=1, b:Float=2):
     intp = Interpreter()
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
+    
+    mod = intp.modules['test']
   
 #    print
 #    print 'module after interpreter run: ---------------------------------'
-#    print intp.modules['test']
+#    print aa_make_tree(mod)
   
   
 
@@ -242,7 +247,9 @@ def test_function_call_1(): #IGNORE:C01111
     msg = '''Test all legal styles of function calls.'''
     #skip_test(msg)
     print msg
+    
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree #pylint:disable-msg=W0612 
 
     prog_text = \
 '''
@@ -269,93 +276,95 @@ h = foo(b=20, a=10) # h = 30       - line 14
     mod = intp.modules['test']
 #    print
 #    print 'module after interpreter run: ---------------------------------'
-#    print mod
+#    print aa_make_tree(mod)
     
     #test the results
-    a = mod.get_attribute('a')
-    b = mod.get_attribute('b')
-    c = mod.get_attribute('c')
-    d = mod.get_attribute('d')
-    e = mod.get_attribute('e')
-    f = mod.get_attribute('f')
-    g = mod.get_attribute('g')
-    h = mod.get_attribute('h')
-    assert a.value == 3
-    assert b.value == 7
-    assert c.value == 11
-    assert d.value == 12
-    assert e.value == 21
-    assert f.value == 25
-    assert g.value == 30
-    assert h.value == 30
+    assert mod.a.value == 3
+    assert mod.b.value == 7
+    assert mod.c.value == 11
+    assert mod.d.value == 12
+    assert mod.e.value == 21
+    assert mod.f.value == 25
+    assert mod.g.value == 30
+    assert mod.h.value == 30
  
   
 
 def test_function_definition_and_call_1(): #IGNORE:C01111
-    #skip_test('Test disabled')
-    print 'Test interpreter object: function definition and function call ...............................................................'
+    msg = 'Interpreter: slightly complex function definition and function call.'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree #pylint:disable-msg=W0612 
 
     prog_text = \
 '''
-print('start')
+printc('start')
 
 func foo(b):
-    print('in foo. b = ', b)
+    printc('in foo. b = ', b)
     return b*b
-    print('after return')
+    printc('after return')
 
 data a: Float const
 a = 2*2 + foo(3*4) + foo(2)
-print('a = ', a)
+printc('a = ', a)
 
-print('end')
+printc('end')
 '''
     #create the interpreter
     intp = Interpreter()
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
-    print 'module after interpreter run: ---------------------------------'
-    print intp.modules['test']
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print aa_make_tree(mod)
     
-    assert intp.modules['test'].get_attribute('a').value == 2*2 + (3*4)**2 + 2**2
+    assert mod.a.value == 2*2 + (3*4)**2 + 2**2
   
   
 
-def test_print_function_1(): #IGNORE:C01111
-    #skip_test('Test the print function. - actual printing, built in objects.')
-    print 'Test the print function. - actual printing: Float, String, expression.'
+def test_printc_function_1(): #IGNORE:C01111
+    msg = 'Test the printc function. - actual printing: Float, String, expression.'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
     
     prog_text = \
 '''
 #print known constants
-print(23)
-print('hello ',2, ' the world!')
+printc(23)
+printc('hello ',2, ' the world!')
 
 #print unknown value
 data foo: Float
 data bar: String
-print(foo)
-print(bar)
+printc(foo)
+printc(bar)
 
 #print unevaluated expression
 data a,b: Float
-print(a+b)
+printc(a+b)
 '''
     #create the interpreter
     intp = Interpreter()
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
-    #TODO: assertions
 
 
 
 def test_print_function_2(): #IGNORE:C01111
-    #skip_test('Test the print function. - actual printing, user defined class.')
-    print 'Test the print function. - actual printing, user defined class.'
+    msg = 'Test printc function. - compile time printing of user defined class.'
+    skip_test(msg)
+    print msg
+    #TODO: This does not work as intended. Either refine infrastructure or delete test case.
+    #      See bug #596679 
+    #        https://bugs.launchpad.net/freeode/+bug/596679
+
     from freeode.interpreter import Interpreter
     
     prog_text = \
@@ -371,13 +380,12 @@ class C:
 data c: C
 c.a = 5
 c.b = 'hello'
-print(c)
+printc(c)
 '''
     #create the interpreter
     intp = Interpreter()
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
-    #TODO: assertions
   
   
 
@@ -385,8 +393,9 @@ def test_print_function_3(): #IGNORE:C01111
     msg = 'Test the print function. - code generation for: Float, String'
     #skip_test(msg)
     print msg
+    
     from freeode.interpreter import Interpreter
-    from freeode.util import DotName
+    from freeode.util import DotName, aa_make_tree #pylint:disable-msg=W0612 
     
     prog_text = \
 '''
@@ -413,9 +422,10 @@ compile A
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
   
+    mod = intp.modules['test']
 #    print
 #    print 'module after interpreter run: ---------------------------------'
-#    print intp.modules['test']
+#    print aa_make_tree(mod) 
 
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
@@ -430,8 +440,9 @@ def test_print_function_4(): #IGNORE:C01111
     msg = 'Test the print function. - code generation for: user defined class.'
     #skip_test(msg)
     print msg
+    
     from freeode.interpreter import Interpreter
-    from freeode.util import DotName
+    from freeode.util import DotName, aa_make_tree #pylint:disable-msg=W0612 
     
     prog_text = \
 '''
@@ -458,9 +469,10 @@ compile A
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
   
+#    mod = intp.modules['test']
 #    print
 #    print 'module after interpreter run: ---------------------------------'
-#    print intp.modules['test']
+#    print aa_make_tree(mod) 
 
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
@@ -473,10 +485,12 @@ compile A
   
 
 def test_graph_function_1(): #IGNORE:C01111
-    #skip_test('Test the print function. - code generation for: user defined class.')
-    print 'Test the print function. - code generation for: user defined class.'
+    msg = 'Test the print function. - code generation for: user defined class.'
+    #skip_test(msg)
+    print msg
+    
     from freeode.interpreter import Interpreter
-    from freeode.util import DotName
+    from freeode.util import DotName, aa_make_tree #pylint:disable-msg=W0612 
     
     prog_text = \
 '''
@@ -493,13 +507,14 @@ compile A
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
   
+#    mod = intp.modules['test']
 #    print
 #    print 'module after interpreter run: ---------------------------------'
-#    print intp.modules['test']
+#    print aa_make_tree(mod) 
 
     #get flattened object
-    sim = intp.get_compiled_objects()[0] 
-    #print sim
+    sim = intp.get_compiled_objects()[0]
+#    print aa_make_tree(sim) 
     
     #get the final function with the generated code
     final = sim.get_attribute(DotName('final'))
@@ -508,19 +523,22 @@ compile A
   
 
 def test_interpreter_class_definition_1(): #IGNORE:C01111
-    #skip_test('Test disabled')
-    print 'Test interpreter object: class definition'
+    msg = 'Test interpreter: class definition and instantiation.'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree #pylint:disable-msg=W0612 
 
     prog_text = \
 '''
-print('start')
+printc('start')
 
 data pi: Float const
 pi = 3.1415
 
 class A:
-    print('in A definition')
+    printc('in A definition')
     data a1: Float const
     data a2: Float const
 
@@ -534,9 +552,9 @@ data b: B const
 
 a.a1 = 1
 a.a2 = 2 * b.b1
-print('a.a1: ', a.a1, ', a.a2: ', a.a2)
+printc('a.a1: ', a.a1, ', a.a2: ', a.a2)
 
-print('end')
+printc('end')
 '''
 
     #create the interpreter
@@ -544,17 +562,15 @@ print('end')
     #interpret the program
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
-    print 'module after interpreter run: ---------------------------------'
-    print intp.modules['test']
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print aa_make_tree(mod)
   
-    assert (intp.modules['test'].get_attribute('pi').value == 3.1415)
-    assert (intp.modules['test'].get_attribute('a')
-                                .get_attribute('a1').value == 1)
-    assert (intp.modules['test'].get_attribute('a')
-                                .get_attribute('a2').value == 2 * 3.1415)
-    assert (intp.modules['test'].get_attribute('b')
-                                .get_attribute('b1').value == 3.1415)
+    assert mod.pi.value == 3.1415
+    assert mod.a.a1.value == 1
+    assert mod.a.a2.value == 2 * 3.1415
+    assert mod.b.b1.value == 3.1415
   
   
   
@@ -570,8 +586,9 @@ def test_interpreter_class_definition_2(): #IGNORE:C01111
     
     Interpreter Object has a __deepcopy__ function that takes care of this.
     '''
+    #TODO: the parent pointer will probably be gone. Delete?  
     msg = 'Test user defined classes - correctness of parent attribute.'
-    #skip_test(msg)
+    skip_test(msg)
     print msg
     
     from freeode.interpreter import Interpreter
@@ -609,28 +626,31 @@ data b:B const
 
 
 def test_interpreter_method_call(): #IGNORE:C01111
-    #skip_test('Method calls do not work! Implement method wrappers!')
-    print 'Test interpreter: method call.'
+    msg = 'Test interpreter: method call.'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
 
     prog_text = \
 '''
-print('start')
+printc('start')
 
 class A:
     data a1: Float const
     data a2: Float const
     
     func compute(this, x):
-        print('in compute_a2 x=', x)
+        printc('in compute x=', x)
         return x + 2
         
 data a: A const
 a.a1 = a.compute(3)
 
-#print('a.a1 = ', a.a1)
+printc('a.a1 = ', a.a1)
 
-print('end')
+printc('end')
 '''
 
     #create the interpreter
@@ -638,39 +658,43 @@ print('end')
     #interpret the program
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
-    #print intp.modules['test']
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print aa_make_tree(mod)
   
-    assert (intp.modules['test'].get_attribute('a')
-                                .get_attribute('a1').value == 5)
-#    assert False, 'Test'
+    assert mod.a.a1.value == 5
 
 
 
 def test_method_call_this_namespace_1(): #IGNORE:C01111
-    #skip_test('Method calls do not work! Implement method wrappers!')
-    print 'Test interpreter: method call, this namespace ...............................................................'
+    msg = 'Test interpreter: method call, this namespace'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
 
     prog_text = \
 '''
-print('start')
+printc('start')
 
 class A:
     data a1: Float const
     data a2: Float const
     
     func compute(this, x):
-        print('in compute_a2 x=', x)
+        printc('in compute x=', x)
         a1 = x
         a2 = a1 + 2
         
 data a: A const
 a.compute(3)
-print('a.a1 = ', a.a1)
-print('a.a2 = ', a.a2)
 
-print('end')
+printc('a.a1 = ', a.a1)
+printc('a.a2 = ', a.a2)
+
+printc('end')
 '''
 
     #create the interpreter
@@ -678,21 +702,23 @@ print('end')
     #interpret the program
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
-    print intp.modules['test']
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print aa_make_tree(mod)
   
-    assert (intp.modules['test'].get_attribute('a')
-                                .get_attribute('a1').value == 3)
-    assert (intp.modules['test'].get_attribute('a')
-                                .get_attribute('a2').value == 5)
-#    assert False, 'Test'
+    assert mod.a.a1.value == 3
+    assert mod.a.a2.value == 5
 
       
       
 def test_method_call_this_namespace_2(): #IGNORE:C01111
-    #skip_test('Test interpreter: method call, this namespace')
-    print 'Test interpreter: method call, this namespace'
+    msg = 'Test interpreter: method call, this namespace'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
 
     prog_text = \
 '''
@@ -701,7 +727,7 @@ class A:
     data a2: Float const
     
     func compute(this, x):
-        print('in compute_a2 x=', x)
+        printc('in compute x=', x)
         a1 = x
         a2 = a1 + 2
         
@@ -713,8 +739,9 @@ class B:
     
 data b: B const
 b.compute(3)
-print('b.a.a1 = ', b.a.a1)
-print('b.a.a2 = ', b.a.a2)
+
+printc('b.a.a1 = ', b.a.a1)
+printc('b.a.a2 = ', b.a.a2)
 '''
 
     #create the interpreter
@@ -722,39 +749,41 @@ print('b.a.a2 = ', b.a.a2)
     #interpret the program
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
-    print intp.modules['test']
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print aa_make_tree(mod)
   
-    assert (intp.modules['test'].get_attribute('b')
-                                .get_attribute('a')
-                                .get_attribute('a1').value == 3)
-    assert (intp.modules['test'].get_attribute('b')
-                                .get_attribute('a')
-                                .get_attribute('a2').value == 5)
-#    assert False, 'Test'
+    assert mod.b.a.a1.value == 3
+    assert mod.b.a.a2.value == 5
 
       
       
 def test_StatementVisitor_assign_const_1(): #IGNORE:C01111
-    #skip_test('Test disabled')
-    print 'Test interpreter object: assignment. needs working data statement and number ...............................................................'
+    msg = 'Test interpreter object: assignment. needs working data statement and number'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
     
     prog_text = \
 '''
 data a: Float const
 a = 2
 '''
+
     #create the interpreter
     intp = Interpreter()
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
-    print 'module after interpreter run: ---------------------------------'
-    print intp.modules['test']
+    mod = intp.modules['test']
+#    print
+#    print 'module after interpreter run: ---------------------------------'
+#    print aa_make_tree(mod)
     
-    assert intp.modules['test'].get_attribute('a').value == 2
+    assert mod.a.value == 2
   
   
 
@@ -1671,7 +1700,7 @@ def test_if_statement_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, i_isrole, IFloat, IBool)
+    from freeode.interpreter import (Interpreter, isrole, IFloat, IBool)
     from freeode.ast import NodeIfStmt, NodeAssignment, RoleConstant
     from freeode.util import DotName
 
@@ -1725,7 +1754,7 @@ compile A
     assert isinstance(clause_a_3.statements[0], NodeAssignment)
     #the last clause is an else statement: condition equivalent to True, constant 
     assert isinstance(clause_a_3.condition, (IFloat, IBool))
-    assert i_isrole(clause_a_3.condition.role, RoleConstant)
+    assert isrole(clause_a_3.condition.role, RoleConstant)
     assert bool(clause_a_3.condition.value) is True
 
 
@@ -1828,7 +1857,7 @@ def test_if_statement_4_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, i_isrole, IFloat, IBool)
+    from freeode.interpreter import (Interpreter, isrole, IFloat, IBool)
     from freeode.ast import NodeIfStmt, NodeAssignment, RoleConstant
     from freeode.util import DotName
 
@@ -1882,7 +1911,7 @@ compile A
     assert isinstance(clause_2_2.statements[0], NodeAssignment)
     #the last clause is an else statement: condition equivalent to True, constant 
     assert isinstance(clause_2_2.condition, (IFloat, IBool))
-    assert i_isrole(clause_2_2.condition.role, RoleConstant)
+    assert isrole(clause_2_2.condition.role, RoleConstant)
     assert bool(clause_2_2.condition.value) is True
 
 
@@ -2059,7 +2088,6 @@ replace_attr(a.f, f_new)
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    #test_expression_evaluation_1()
-    test_print_function_3()
+    test_StatementVisitor_assign_const_1()
     pass #pylint: disable-msg=W0107
 

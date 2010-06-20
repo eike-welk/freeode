@@ -337,7 +337,7 @@ class AATreeMaker(object):
         memo_set.add(id(attribute)) #against infinite recursion
         #make very short
         if (name in self.xshort_set or duplicate) and \
-           not isinstance(attribute, (bool, NoneType, EnumMeta)):
+           not isinstance(attribute, (bool, NoneType, EnumMeta, type)):
             line = '<' + attribute.__class__.__name__ 
             if self.show_ID:
                 line += ' at ' + hex(id(attribute))

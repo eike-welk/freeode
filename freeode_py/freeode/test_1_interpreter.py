@@ -519,7 +519,7 @@ def test_IBool_2(): #IGNORE:C01111
 # -------- Test expression evaluation ------------------------------------------------------------------------
 def test_operator_dispatch_1(): #IGNORE:C01111
     msg = 'Test Interpreter: handling of operators with known Float values.'
-    skip_test(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import (IFloat, Interpreter)
@@ -823,74 +823,6 @@ def test_function_call_unknown_arguments_2(): #IGNORE:C01111
     assert isinstance(ret_val, NodeFuncCall)
     assert istype(ret_val, IFloat)
     
-
-
-# --------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
-def test_basic_execution_of_statements(): #IGNORE:C01111
-    msg = \
-'''
-Test basic execution of statements (no interpreter object)
-This low level test is now impossible
-'''
-    skip_test(msg)
-    print msg
-    
-#    from freeode.interpreter import (IModule, IFloat, IString,
-#                                     ExecutionEnvironment,
-#                                     ExpressionVisitor, StatementVisitor)
-#    import freeode.simlparser as simlparser
-#    from freeode.ast import RoleConstant
-#    
-#    prog_text = \
-#'''
-#data a:Float const 
-#data b:Float const 
-#a = 2*2 + 3*4
-#b = 2 * a
-#
-#data c:String const
-#c = 'Hello ' + 'world!'
-#'''
-#
-#    #create the built in library
-#    mod = IModule()
-#    mod.create_attribute('Float', IFloat)
-#    mod.create_attribute('String', IString)
-##    print
-##    print 'global namespace - before interpreting statements - built in library: ---------------'
-##    print mod
-#           
-#    #create dummy interpreter class, needed for assignment statement
-#    class Interpreter(object):
-#        def __init__(self):
-#            self.assign_target_roles = (RoleConstant,)
-#    #initialize the interpreter
-#    intp = Interpreter()
-#    env = ExecutionEnvironment()
-#    exv = ExpressionVisitor()
-#    exv.environment = env
-#    stv = StatementVisitor(None, exv)
-#    stv.interpreter = intp
-#    stv.environment = env
-#    #set up parsing the main module
-#    stv.environment.global_scope = mod
-#    stv.environment.local_scope = mod
-#
-#    #parse the program text
-#    ps = simlparser.Parser()
-#    module_code = ps.parseModuleStr(prog_text)
-#    
-#    #interpreter main loop
-#    stv.exec_(module_code.statements)
-#        
-##    print
-##    print 'global namespace - after interpreting statements: -----------------------------------'
-##    print mod
-#    
-#    assert mod.get_attribute('a').value == 16             #IGNORE:E1103
-#    assert mod.get_attribute('b').value == 2*16           #IGNORE:E1103
-#    assert mod.get_attribute('c').value == 'Hello world!' #IGNORE:E1103
-  
   
   
 # -------- Test interpreter object - basic --------------------------------------------------------  

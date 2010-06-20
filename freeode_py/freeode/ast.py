@@ -68,7 +68,8 @@ class Node(object):
     '''
     
     #Object that creates an ASCII art tree from nodes
-    __siml_aa_tree_maker__ = AATreeMaker()
+    __siml_aa_tree_maker__ = AATreeMaker(top_names= ['name', '__siml_role__', 
+                                                     '__siml_type__'],)
     
     #we don't own instances of these classes.
     #tuple of types that are not copied deeply
@@ -459,12 +460,12 @@ class NodeAssignment(Node):
         loc: 
             Location in input string    
     '''
-    def __init__(self):
-        super(NodeAssignment, self).__init__()
-        self.target = None
-        self.expression = None
+    def __init__(self, target=None, expression=None, loc=None):
+        Node.__init__(self)
+        self.target = target
+        self.expression = expression
         #--- errors -----
-        self.loc = None
+        self.loc = loc
         #--- data flow analysis -------
         self.inputs = None
         self.outputs = None

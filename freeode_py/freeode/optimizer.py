@@ -39,9 +39,11 @@ from freeode.ast import (NodeParentheses, NodeOpInfix2, NodeOpPrefix1,
                          NodeFuncCall, NodeAssignment, NodeIfStmt, NodeClause, 
                          RoleConstant, RoleParameter, RoleInputVariable, 
                          RoleOutputVariable, RoleIntermediateVariable)
-from freeode.interpreter import (InterpreterObject, CallableObject, 
+from freeode.interpreter import (InterpreterObject, 
                                  CodeGeneratorObject, CompiledClass,
-                                 i_isrole, siml_isknown)
+                                 isequivalentrole, isrole, 
+                                 #siml_isknown,
+                                 )
 
 
 
@@ -193,15 +195,15 @@ class DataFlowChecker(object):
             if not isinstance(attr, CodeGeneratorObject):
                 continue
             #classify attributes according to their role
-            if i_isrole(attr.role, RoleConstant):
+            if isrole(attr, RoleConstant):
                 raise Exception('The simulation object must not have constant attributes!')
-            elif i_isrole(attr.role, RoleParameter):
+            elif isrole(attr, RoleParameter):
                 self.parameters.add(attr)
-            elif i_isrole(attr.role, RoleInputVariable):
+            elif isrole(attr, RoleInputVariable):
                 self.iput_variables.add(attr)
-            elif i_isrole(attr.role, RoleIntermediateVariable):
+            elif isrole(attr, RoleIntermediateVariable):
                 self.intermediate_variables.add(attr)
-            elif i_isrole(attr.role, RoleOutputVariable):
+            elif isrole(attr, RoleOutputVariable):
                 self.output_variables.add(attr)
             else:
                 raise Exception('Unknown attribute role!')
@@ -209,7 +211,7 @@ class DataFlowChecker(object):
         #Constants embedded in the code are put into a special set.
         all_inputs = sim_obj.inputs
         for attr in all_inputs:
-            if i_isrole(attr.role, RoleConstant):
+            if isrole(attr, RoleConstant):
                 #TODO: detecting unknown constants should be handled in the interpreter
                 if not siml_isknown(attr):
                     name = '<anonymous constant>'
