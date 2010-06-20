@@ -312,38 +312,47 @@ def test_SimlClass_1(): #IGNORE:C01111
 
     from freeode.interpreter import SimlClass, istype
        
-    #construct a class object with no base classes and no location
-    c1=SimlClass('Test1', None, None)
+    #construct a class object with SimlClass as base class
+    #type(name, bases, dict) -> a new type
+    c1=type('C1', (SimlClass,), {})
     
     #create an instance of the class
     i1 = c1()
-    
     assert istype(i1, c1)
     
 
 
 def test_SimlClass_2(): #IGNORE:C01111
-    skip_test('Test expression evaluation (only immediate values)')
-    print 'Test SimlClass: class with one data attribute'
-    from freeode.interpreter import SimlClass, IFloat
+    msg = 'Test SimlClass: class with data attribute and method.'
+    #skip_test(msg)
+    print msg
     
-    #construct a class object with no base classes and no location
-    cls = SimlClass('Test1', None, None)
-    #add an attribute
-    cls.create_attribute('a1', IFloat())
+    from freeode.interpreter import SimlClass, SimlFunction, IFloat, istype
+    from freeode.util import aa_make_tree
+    
+    #construct a class object with SimlClass as base class, with
+    # - a1: IFloat data attribute
+    # - m1: user defined method
+    #type(name, bases, dict) -> a new type
+    cls =type('C1', (SimlClass,), {'a1':IFloat(), 
+                                   'm1':SimlFunction('m1')})
+    #print aa_make_tree(cls)
     
     #create an instance of the class
     inst = cls()
+    #print aa_make_tree(inst)
     
-    assert inst.type() == cls
-    assert inst.has_attribute('a1')
-    #the attributes must be copied, not identical
-    cls_a1 = cls.get_attribute('a1')
-    inst_a1 = inst.get_attribute('a1')
-    assert id(cls_a1) != id(inst_a1)
-    assert cls_a1.type() == inst_a1.type()
+    assert istype(inst, cls)
     
+    #the data attributes must be copied, not identical
+    assert id(cls.a1) != id(inst.a1)
+    assert istype(inst.a1, IFloat) 
+    
+    #the method must not be copied, it must be accessed through
+    assert 'm1' not in inst.__dict__
+    assert hasattr(inst, 'm1')
 
+    
 
 # -------- Test Siml wrapper for float classes ------------------------------------------------------------------
 def test_IFloat_2(): #IGNORE:C01111
@@ -1007,11 +1016,43 @@ User defined functions are created without parser.
 
 
 
+def test_SimlFunction_descriptor_character():
+    msg = \
+    '''
+    Test cooperation of user defined functions and classes. 
+    User defined classes are descriptors, their __get__ method is tested here.'''
+    #skip_test(msg)
+    print msg
+    
+    from freeode.interpreter import InterpreterObject, SimlFunction, SimlBoundMethod
+    
+    #Create a user defined function
+    func1 = SimlFunction('func1')
+    #Create class with one  method: func1
+    #type(name, bases, dict) -> a new type
+    Foo = type('Foo', (InterpreterObject,), 
+               {'func1':func1})
+    #Create instance of the new class
+    foo = Foo()
+    
+    #test access via the class object - must return the function
+    #print Foo.func1
+    assert Foo.func1 is func1
+    
+    #test access via a class' instance - must return SimlBoundMethod
+    #print foo.func1
+    assert isinstance(foo.func1, SimlBoundMethod)
+    assert foo.func1.im_func is func1
+    assert foo.func1.im_self is foo
+    
+    
+        
 # -------- Test administrative functions ------------------------------------------------------------------------
 def test_determine_result_role_1(): #IGNORE:C01111
     msg = 'Test determine_result_role: '
     #skip_test(msg)
     print msg
+    
     from freeode.interpreter import IFloat, determine_result_role
     from freeode.ast import RoleConstant, RoleParameter, RoleVariable
     
@@ -1214,5 +1255,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_SimlClass_1()
+    test_SimlClass_2()
     pass #pylint: disable-msg=W0107

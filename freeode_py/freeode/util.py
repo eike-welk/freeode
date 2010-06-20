@@ -29,7 +29,8 @@ from __future__ import division
 from __future__ import absolute_import          
 
 import sys
-import freeode.third_party.pyparsing as pyparsing     
+from types import NoneType
+import freeode.third_party.pyparsing as pyparsing
 
 #version of the Siml compiler.
 PROGRAM_VERSION = '0.4.0a3'
@@ -37,6 +38,38 @@ PROGRAM_VERSION = '0.4.0a3'
 # 0: No debug information; 1: some; ....
 DEBUG_LEVEL = 1
 
+
+
+class EnumMeta(type):
+    '''Metaclass for the Enum class. Contains Enum's magic __repr__ method'''
+    def __repr__(self):
+        return self.__name__
+    
+class Enum(object):
+    '''
+    Class for use as an enum or global constant.
+    
+    Don't instantiate this class! Inherit from it, and use the class object 
+    itself as the enum or constant. When the class is converted to a 
+    string it becomes its own class name. This is nice for debugging or pretty 
+    printing.
+    
+    The class has a custom metaclass: EnumMeta.
+    >>> type(Enum)
+    <class 'freeode.ast.EnumMeta'>
+    
+    USAGE:
+    ------
+    >>> class EAST(Enum): pass
+    >>> class WEST(Enum): pass
+    >>> class NORTH(Enum): pass
+    >>> class SOUTH(Enum): pass
+    
+    >>> print NORTH, SOUTH, EAST, WEST
+    NORTH SOUTH EAST WEST
+    '''
+    __metaclass__ = EnumMeta
+    
 
 
 class AATreeMaker(object):
@@ -303,7 +336,8 @@ class AATreeMaker(object):
         duplicate = id(attribute) in memo_set and not isinstance(attribute, str)
         memo_set.add(id(attribute)) #against infinite recursion
         #make very short
-        if (name in self.xshort_set or duplicate) and attribute is not None:
+        if (name in self.xshort_set or duplicate) and \
+           not isinstance(attribute, (bool, NoneType, EnumMeta)):
             line = '<' + attribute.__class__.__name__ 
             if self.show_ID:
                 line += ' at ' + hex(id(attribute))

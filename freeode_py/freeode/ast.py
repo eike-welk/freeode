@@ -48,7 +48,7 @@ import copy
 import weakref
 
 #import freeode.third_party.pyparsing as pyparsing
-from freeode.util import AATreeMaker
+from freeode.util import AATreeMaker, Enum
 
 
 
@@ -563,37 +563,6 @@ class NodeStmtList(Node):
         self.statements = []
         self.loc = None
 
-
-class EnumMeta(type):
-    '''Metaclass for the Enum class. Contains Enum's magic __repr__ method'''
-    def __repr__(self):
-        return self.__name__
-    
-class Enum(object):
-    '''
-    Class for use as an enum or global constant.
-    
-    Don't instantiate this class! Inherit from it, and use the class object 
-    itself as the enum or constant. When the class is converted to a 
-    string it becomes its own class name. This is nice for debugging or pretty 
-    printing.
-    
-    The class has a custom metaclass: EnumMeta.
-    >>> type(Enum)
-    <class 'freeode.ast.EnumMeta'>
-    
-    USAGE:
-    ------
-    >>> class EAST(Enum): pass
-    >>> class WEST(Enum): pass
-    >>> class NORTH(Enum): pass
-    >>> class SOUTH(Enum): pass
-    
-    >>> print NORTH, SOUTH, EAST, WEST
-    NORTH SOUTH EAST WEST
-    '''
-    __metaclass__ = EnumMeta
-    
 
 class AttributeRole(Enum):
     '''

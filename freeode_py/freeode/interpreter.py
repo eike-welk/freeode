@@ -61,6 +61,7 @@ import math
 import os
 import types
 import inspect
+from copy import deepcopy
 
 from freeode.util import (UserException, DotName, TextLocation, AATreeMaker, 
                           aa_make_tree, DEBUG_LEVEL)
@@ -180,17 +181,22 @@ class InterpreterObject(object):
     Can also be seen as part of structured symbol table
     '''
     #Object that creates an ASCII art tree from nodes
-    __siml_aa_tree_maker__ = AATreeMaker(top_names= ['__name__', '__siml_role__', '__siml_type__'], 
-                                         )
+    __siml_aa_tree_maker__ = AATreeMaker(top_names= ['__name__', '__siml_role__', 
+                                                     '__siml_type__'],)
+    __siml_type__ = type
+    
+    def __new__(cls, *_args, **_kwargs):
+        inst = object.__new__(cls)
+        #the same as __class__; necessary for unevaluated expressions, where 
+        #__class__ is different to __siml_type__
+        inst.__siml_type__ = cls
+        return inst
 
     def __init__(self):
         object.__init__(self)
         #Reference to object one level up in the tree
         #type weakref.ref or None
         #self.parent = None
-        #the same as __class__; necessary for unevaluated expressions, where 
-        #__class__ is different to __siml_type__
-        self.__siml_type__ = None
         #const, param, variable, ... (Comparable to storage class in C++)
         self.__siml_role__ = RoleUnkown
         #TODO: self.save ??? True/False or Save/Optimize/Remove attribute is saved to disk as simulation result
@@ -715,6 +721,8 @@ class SimlFunction(InterpreterObject):
         #count how often the function was called (to create unique names
         #for the local variables)
         self.call_count = 0
+        #Functions are constants
+        self.__siml_role__ = RoleConstant
         #--- stack trace ---------
         self.loc = loc
 
@@ -762,37 +770,21 @@ class SimlBoundMethod(InterpreterObject):
 
 class SimlClass(InterpreterObject):
     '''Base class of user defined classes.'''
-    def __init__(self, name, bases, loc=None):
-        '''Create a new class object.'''
-        InterpreterObject.__init__(self)
-        self.bases = bases
-        self.loc = loc
-
-    def __call__(self, *args, **kwargs):
+    def __new__(cls, *args, **kwargs):
         '''
-        Create a new instance object.
-
-        - Copies the data attributes into the new class.
-        - Calls the __init__ function (at compile time) if present.
-          The arguments are given to the __init__ function.
+        Create new instance and copy data objects from class into instance 
+        (SimlClass, CodeGeneratorObject).
         '''
-        #create new instance
-        new_obj = InterpreterObject()
-        new_obj.type = ref(self)
-        #copy data attributes from class to instance
-        #TODO: copy all attributes at once, to keep all relations between the data attributes
-        for attr_name, attr in self.attributes.iteritems():
-            if not siml_callable(attr):
-                new_attr = attr.copy()
-                new_obj.create_attribute(attr_name, new_attr, reparent=True)
-        #run the __init__ compile time constructor
-        if new_obj.has_attribute('__init__'):
-            init_meth = new_obj.get_attribute('__init__')
-            if not siml_callable(init_meth):
-                raise UserException('"__init__" attribute must be a method (callable)!')
-            #run the constructor
-            INTERPRETER.apply(init_meth, args, kwargs)
-        return new_obj
+        inst = InterpreterObject.__new__(cls, *args, **kwargs)
+        #select class' attributes for copying into instance
+        attrs_for_copy = {}
+        for name, attr in cls.__dict__.iteritems():
+            if isinstance(attr, (SimlClass, CodeGeneratorObject)):
+                attrs_for_copy[name] = attr
+        #copy attributes and put into instance
+        new_attrs = deepcopy(attrs_for_copy)
+        inst.__dict__.update(new_attrs)
+        return inst
 
 
 
