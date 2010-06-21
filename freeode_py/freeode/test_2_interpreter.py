@@ -759,7 +759,7 @@ printc('b.a.a2 = ', b.a.a2)
 
       
       
-def test_StatementVisitor_assign_const_1(): #IGNORE:C01111
+def test_Interpreter_assign_const_1(): #IGNORE:C01111
     msg = 'Test interpreter object: assignment. needs working data statement and number'
     #skip_test(msg)
     print msg
@@ -788,9 +788,9 @@ a = 2
   
 
 # -------- Test interpreter object - emit code ----------------------------------------
-def test_StatementVisitor_assign_emit_code_1(): #IGNORE:C01111
+def test_Interpreter_assign_emit_code_1(): #IGNORE:C01111
     #skip_test('Test disabled')
-    print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
+    print 'Test Interpreter.assign: emit code without the usual infrastructure.'
     from freeode.interpreter import (Interpreter, IFloat)
     from freeode.ast import NodeAssignment, NodeOpInfix2
 
@@ -832,9 +832,9 @@ b = 2*a #emit this statement
       
 
 
-def test_StatementVisitor_assign_emit_code_2(): #IGNORE:C01111
+def test_Interpreter_assign_emit_code_2(): #IGNORE:C01111
     #skip_test('Test interpreter object: emit code without the usual infrastructure.')
-    print 'Test StatementVisitor.assign: emit code without the usual infrastructure.'
+    print 'Test Interpreter.assign: emit code without the usual infrastructure.'
     from freeode.interpreter import (Interpreter, IFloat)
     from freeode.ast import NodeAssignment, NodeOpInfix2 
 
@@ -884,9 +884,9 @@ c = 2*b #emit everything
       
 
 
-def test_StatementVisitor__visit_NodeCompileStmt__code_generation_1(): #IGNORE:C01111
+def test_Interpreter__visit_NodeCompileStmt__code_generation_1(): #IGNORE:C01111
     msg = 'Simple compilation test. \n'\
-          'Test StatementVisitor.visit_NodeCompileStmt'
+          'Test Interpreter.visit_NodeCompileStmt'
     #skip_test(msg)
     print msg
     
@@ -1608,8 +1608,7 @@ def test_pass_statement_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import (Interpreter, istype, 
-                                     CallableObject, TypeObject, IFloat)
+    from freeode.interpreter import Interpreter, istype, IFloat, SimlFunction
 
     prog_text = \
 '''
@@ -1638,17 +1637,18 @@ four = add2(2)
     
     #test the module a bit
     mod = intp.modules['test']
-    #print mod
-    class_A = mod.get_attribute('A')
-    a = mod.get_attribute('a')
-    a_x = a.get_attribute('x')
-    add2 = mod.get_attribute('add2')
-    four = mod.get_attribute('four')
-    assert isinstance(class_A, TypeObject)
-    assert istype(a, class_A)
-    assert isinstance(a_x, IFloat)
-    assert a_x.value == 2
-    assert isinstance(add2, CallableObject)
+    #print aa_make_tree(mod)
+    
+    A = mod.A
+    a = mod.a
+    add2 = mod.add2
+    four = mod.four
+
+    assert isinstance(A, type)
+    assert istype(a, A)
+    assert isinstance(a.x, IFloat)
+    assert a.x.value == 2
+    assert isinstance(add2, SimlFunction)
     assert isinstance(four, IFloat)
     assert four.value == 4
 
@@ -1662,6 +1662,7 @@ def test_if_statement_1(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import Interpreter
+    from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
 
     prog_text = \
 '''
@@ -1683,12 +1684,10 @@ else:
     
     #test the module a bit
     mod = intp.modules['test']
-    #print mod
-    a = mod.get_attribute('a')
-    b = mod.get_attribute('b')
-    print 'b = ', b.value
-    assert a.value == 2
-    assert b.value == 2
+    #print aa_make_tree(mod)
+    
+    assert mod.a.value == 2
+    assert mod.b.value == 2
 
 
 
@@ -2088,6 +2087,6 @@ replace_attr(a.f, f_new)
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_StatementVisitor_assign_const_1()
+    test_pass_statement_2()
     pass #pylint: disable-msg=W0107
 

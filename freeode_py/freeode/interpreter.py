@@ -174,6 +174,33 @@ class ExecutionEnvironment(object):
 
 
 
+class SimlTyper(object):
+    '''
+    Descriptor for the __siml_type__ attribute of InterpreterObject
+    
+    __siml_type__ is always the same as __class__ for instances and sub-classes
+    of InterpreterObject. However for unevaluated expressions this is different.
+    Their __class__ is a subclass of ast.Node, while their __siml_type__ is 
+    the type of the result when the expression is evaluated. 
+    
+    SimlTyper also works correctly for the class object itself, for which it 
+    returns type.
+    '''    
+    def __get__(self, obj, my_type):
+        'Return the correct type'
+        if obj is None:
+            #Used as MyClass.__siml_type__
+            return type(my_type)
+        else:
+            #Used as my_instance.__siml_type__
+            return type(obj)
+        
+    def __set__(self, _obj, _value):
+        "Raise exception; makes SimlTyper a data descriptor, which can't be overridden"
+        raise Exception("__siml_type__ can't be changed!")
+
+    
+    
 class InterpreterObject(object):
     '''
     Base class of all objects that the interpreter operates on, except for 
@@ -183,20 +210,13 @@ class InterpreterObject(object):
     #Object that creates an ASCII art tree from nodes
     __siml_aa_tree_maker__ = AATreeMaker(top_names= ['__name__', '__siml_role__', 
                                                      '__siml_type__'],)
-    __siml_type__ = type
-    
-    def __new__(cls, *_args, **_kwargs):
-        inst = object.__new__(cls)
-        #the same as __class__; necessary for unevaluated expressions, where 
-        #__class__ is different to __siml_type__
-        inst.__siml_type__ = cls
-        return inst
+    #always the same as __class__
+    __siml_type__ = SimlTyper()
 
     def __init__(self):
         object.__init__(self)
         #Reference to object one level up in the tree
-        #type weakref.ref or None
-        #self.parent = None
+        #self.__siml_container__ = None
         #const, param, variable, ... (Comparable to storage class in C++)
         self.__siml_role__ = RoleUnkown
         #TODO: self.save ??? True/False or Save/Optimize/Remove attribute is saved to disk as simulation result
@@ -433,6 +453,9 @@ class Signature(object):
     def set_arguments(self, arguments):
         '''
         Put the argument specification into the Signature.
+        
+        Tests the arguments for legality, and computes:  
+            self.argument_dict, self.default_args
          
         ARGUMENTS
         ---------
@@ -803,7 +826,6 @@ class IModule(InterpreterObject):
         InterpreterObject.__init__(self)
         self.__name__ = name
         self.__file__ = file_name
-        self.__siml_type__ = IModule
         self.__siml_role__= RoleConstant
 
 
@@ -813,7 +835,6 @@ class INone(InterpreterObject):
     '''Siml's None object.'''
     def __init__(self):
         InterpreterObject.__init__(self)
-        self.__siml_type__ = INone
         self.__siml_role__= RoleConstant
         #TODO: see that no second NONE is created
 
@@ -855,7 +876,6 @@ class IBool(CodeGeneratorObject):
     '''
     def __init__(self, init_val=None):
         CodeGeneratorObject.__init__(self)
-        self.__siml_type__ = IBool
         #initialize the value
         self.value = None
         if init_val is not None:
@@ -946,7 +966,6 @@ class IString(CodeGeneratorObject):
     '''
     def __init__(self, init_val=None):
         CodeGeneratorObject.__init__(self)
-        self.__siml_type__ = IString
         #initialize the value
         self.value = None
         if init_val is not None:
@@ -1017,7 +1036,6 @@ class IFloat(CodeGeneratorObject):
     '''
     def __init__(self, init_val=None):
         CodeGeneratorObject.__init__(self)
-        self.__siml_type__ = IFloat
         #initialize the value
         self.value = None
         if init_val is not None:
@@ -1528,33 +1546,25 @@ def istype(in_object, class_or_type_or_tuple):
 #           'Function only works with InterpreterObject instances.'
 #    siml_obj.role = RoleConstant
 #    siml_obj.is_known = True
-#    #TODO: use everywhere
-#
-#def siml_isknown(siml_obj):
-#    '''
-#    Test if an object is a known value, or an unevaluated expression.
-#
-#    RETURNS
-#    -------
-#    True:  argument is a known Siml value.
-#    False: argument is an unevaluated expression or an unknown variable.
-#
-#    TODO: remove??? each function should know by itself if it can do the 
-#          computations or if code should be produced. Known/unknown is also 
-#          difficult to decide for structured values. It is only meaningful
-#          for code-generator-values (CodeGeneratorObject). 
-#          Maybe there should be CodeGeneratorObject.isknown() .
-#    '''
-#    assert isinstance(siml_obj, (InterpreterObject, NodeFuncCall,
-#                                 NodeOpInfix2, NodeOpPrefix1,
-#                                 NodeParentheses)), \
-#           'Function only works with Siml objects and ast.Node.'
-#    if isinstance(siml_obj, InterpreterObject) and siml_obj.is_known:
-#        assert i_isrole(siml_obj.role, RoleConstant), \
-#               'All objects that are known at compile time must be constants.'
-#        return True
-#    else:
-#        return False
+
+def isknown(siml_obj):
+    '''
+    Test if an object is a known constant.
+    
+    Only CodeGeneratorObject instances are considered by this function; for all 
+    other objects it returns False.
+
+    RETURNS
+    -------
+    True:  argument is a known CodeGeneratorObject instance.
+    False: argument is an unevaluated expression or an unknown variable.
+    '''
+    if isinstance(siml_obj, CodeGeneratorObject) and siml_obj.is_known:
+        assert isrole(siml_obj, RoleConstant), \
+               'All objects that are known at compile time must be constants.'
+        return True
+    else:
+        return False
 
 
 def isrole(in_object, role_or_tuple):
@@ -1873,9 +1883,17 @@ class Interpreter(object):
             raise UserException('Expecting identifier on right side of "." operator',
                                 node.loc)
         #get attribute from object on lhs
-        attr = getattr(inst_lhs, id_rhs.name)
+        attr = self.get_attribute(inst_lhs, id_rhs.name, node.loc)
         return attr
 
+    def get_attribute(self, obj, name, loc=None):
+        '''Get an attribute from an object. 
+        Raise user visible error if attribute does not exist.'''
+        try:
+            return getattr(obj, name)
+        except AttributeError:
+            raise UserException('%s object has no attribute: %s' 
+                                % (obj.__class__.__name__, name), loc)
 
     def eval_NodeParentheses(self, node):
         '''
@@ -1937,7 +1955,7 @@ class Interpreter(object):
         #look at the operator symbol and determine the right method name(s)
         func_name = Interpreter._prefopt_table[node.operator]
         #get the special method from the operand's class and try to call the method.
-        func = getattr(inst_rhs.__siml_type__, func_name)
+        func = self.get_attribute(inst_rhs.__siml_type__, func_name, node.loc)
         try:
             result = self.apply(func, (inst_rhs,))
             return result
@@ -1987,7 +2005,7 @@ class Interpreter(object):
         #look at the operator symbol and determine the right method name(s)
         lfunc_name, _rfunc_name = Interpreter._binop_table[node.operator]
         #get the special method from the LHS's class and try to call the method.
-        func = getattr(ev_lhs.__siml_type__, lfunc_name)
+        func = self.get_attribute(ev_lhs.__siml_type__, lfunc_name, node.loc)
         try:
             result = self.apply(func, (ev_lhs, ev_rhs))
             return result
@@ -2310,7 +2328,7 @@ class Interpreter(object):
         if target.__siml_role__ is RoleUnkown:
             set_role_recursive(target, value.role)
         #get the assignment function
-        assign_func = getattr(target, '__siml_assign__', None)
+        assign_func = self.get_attribute(target, '__siml_assign__', loc)
         #Always call user defined functions. The call generates statements with 
         #built in functions that operate on CodeGeneratorObject.
         #Reason: When a function returns a user defined class, the role is
@@ -2398,17 +2416,17 @@ class Interpreter(object):
             for clause in node.clauses:
                 #interpret the condition
                 condition_ev = self.eval(clause.condition)
-                if not istype(condition_ev, (CLASS_BOOL, CLASS_FLOAT)):
+                if not istype(condition_ev, (IBool, IFloat)):
                     raise UserException('Conditions must evaluate to '
-                                        'instances equivalent to Bool.',
+                                        'instances of Bool or Float.',
                                         loc=clause.loc)#, errno=3700510)
 
                 #Condition evaluates to constant False: Do not enter clause.
-                if siml_isknown(condition_ev) and bool(condition_ev.value) is False:
+                if isknown(condition_ev) and bool(condition_ev.value) is False:
                     continue
                 #Condition evaluates to constant True
                 #This is the last clause, the 'else' clause
-                elif siml_isknown(condition_ev) and bool(condition_ev.value) is True:
+                elif isknown(condition_ev) and bool(condition_ev.value) is True:
                     is_seen_else_clause = True
                 #Condition evaluates to unknown value
                 #This is only legal when code is created
