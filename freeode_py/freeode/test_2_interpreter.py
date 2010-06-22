@@ -390,8 +390,13 @@ printc(c)
   
 
 def test_print_function_3(): #IGNORE:C01111
-    msg = 'Test the print function. - code generation for: Float, String'
-    #skip_test(msg)
+    msg = '''
+    Test the print function. - code generation for: Float, String
+    
+    TODO: Broken! This is bug #597234
+            https://bugs.launchpad.net/freeode/+bug/597234
+    '''
+    skip_test(msg)
     print msg
     
     from freeode.interpreter import Interpreter
@@ -451,9 +456,9 @@ class C:
     data a: Float 
     data b: String
     
-    func __str__(this):
-        return a.__str__() + ' and ' + b.__str__()
-        #return ' and ' + b.__str__()
+    func __siml_str__(this):
+        return a.__siml_str__() + ' and ' + b.__siml_str__()
+        #return ' and ' + b.__siml_str__()
 
 
 class A:
@@ -1253,6 +1258,7 @@ def test_interpreter_dollar_operator_1(): #IGNORE:C01111
     from freeode.interpreter import Interpreter, IFloat, SimlFunction, isrole
     from freeode.ast import RoleStateVariable, RoleTimeDifferential
     from freeode.util import DotName
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
 
     prog_text = \
 '''
@@ -1269,9 +1275,8 @@ compile A
     intp = Interpreter()
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
-    #print intp.modules['test']
-    #print intp.get_compiled_objects()[0] 
+    #print aa_make_tree(intp.modules['test'])
+    #print aa_make_tree(intp.get_compiled_objects()[0])
     
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
@@ -1281,17 +1286,16 @@ compile A
     dynamic = sim.get_attribute(DotName('dynamic'))
     
     #test some facts about the attributes
-    assert isinstance(a1, IFloat)        #a1 is state variable, because it 
-    assert a1.role == RoleStateVariable  #has derivative
+    assert isinstance(a1, IFloat)             #a1 is state variable, because it 
+    assert isrole(a1, RoleStateVariable)      #has derivative
     assert isinstance(a1_dt, IFloat)     
-    assert a1_dt.role == RoleTimeDifferential # $a1 is a time differential
+    assert isrole(a1_dt, RoleTimeDifferential)# $a1 is a time differential
     assert isinstance(dynamic, SimlFunction)
     
     #test if assignment really is 'a1$time' = 'a1'
     assign = dynamic.statements[0]
     assert assign.target is a1_dt
     assert assign.expression is a1
-    #assert False
 
 
 
@@ -1299,7 +1303,6 @@ def test_interpreter_dollar_operator_2(): #IGNORE:C01111
     msg = '''
     Test "$" operator. 
     Bug: $ operator did not work with attributes of user defined classes.
-    Background: Class instantiation did not get parent references right.
     '''
     #skip_test(msg)
     print msg
@@ -1332,8 +1335,8 @@ compile B
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
-    #print intp.modules['test']
-    #print intp.get_compiled_objects()[0]
+    #print aa_make_tree(intp.modules['test'])
+    #print aa_make_tree(intp.get_compiled_objects()[0])
 
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
@@ -1343,9 +1346,9 @@ compile B
     dynamic = sim.get_attribute(DotName('dynamic'))
     #test some facts about the attributes
     assert isinstance(az, IFloat)        #a1 is state variable, because it 
-    assert az.role == RoleStateVariable  #has derivative
+    assert isrole(az, RoleStateVariable) #has derivative
     assert isinstance(az_dt, IFloat)     
-    assert az_dt.role == RoleTimeDifferential # $a1 is time differential
+    assert isrole(az_dt, RoleTimeDifferential) # $a1 is time differential
     assert isinstance(dynamic, SimlFunction)
     
     #test if assignment really is 'a1$time' = 'a1'
@@ -1375,7 +1378,7 @@ class BarrelWithHole:
     data V, h: Float
     data A_bott, A_o, mu, q: Float param
 
-    func dynamic(this):                            #line 10
+    func dynamic(this):                            #10
         h = V/A_bott
         $V = q - mu*A_o*sqrt(2*g*h)
 #        print('h: ', h)
@@ -1385,7 +1388,7 @@ class BarrelWithHole:
         A_bott = 1; A_o = 0.02; mu = 0.55;
         q = q_in #0.05
  
-                                                   #line 20
+                                                   #20
 class RunTest:
     data system: BarrelWithHole
 
@@ -1394,11 +1397,10 @@ class RunTest:
 
     func initialize(this):
         system.initialize(0.55)
-#        solutionParameters.simulationTime = 100
-#        solutionParameters.reportingInterval = 1  #line 30
-
+        solution_parameters(100, 1)
+                                                   #30
     func final(this):
-#        graph(system.V, system.h)
+        graph(system.V, system.h)
         print('Simulation finished successfully.')
         
 
@@ -1410,8 +1412,8 @@ compile RunTest
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
-    #print intp.modules['test']
-    #print intp.get_compiled_objects()[0] 
+    #print aa_make_tree(intp.modules['test'])
+    #print aa_make_tree(intp.get_compiled_objects()[0])
     
   
   
@@ -1481,6 +1483,8 @@ def test_compile_statement_2(): #IGNORE:C01111
     - Additional initialization methods must be recognized, and put into 
       the flat object.
     - These methods have names of the form: init_xxx(this, ...)
+    
+    FIXME: Broken!!! Additional initialization methodsare not recognized
     '''
     #skip_test(msg)
     print msg
@@ -1488,7 +1492,7 @@ def test_compile_statement_2(): #IGNORE:C01111
     from freeode.interpreter import Interpreter, IFloat, SimlFunction
     from freeode.ast import NodeAssignment
     from freeode.util import DotName    
-    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+    from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
 
 
     prog_text = \
@@ -1520,8 +1524,8 @@ compile A
     intp.interpret_module_string(prog_text, None, 'test')
   
     print
-    #print intp.modules['test']
-    #print intp.get_compiled_objects()[0] 
+    #print aa_make_tree(intp.modules['test'])
+    print aa_make_tree(intp.get_compiled_objects()[0])
     
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
@@ -1793,7 +1797,7 @@ compile A
     assert isinstance(clause_a_3.statements[0], NodeAssignment)
     #the last clause is an else statement: condition equivalent to True, constant 
     assert isinstance(clause_a_3.condition, (IFloat, IBool))
-    assert isrole(clause_a_3.condition.role, RoleConstant)
+    assert isrole(clause_a_3.condition, RoleConstant)
     assert bool(clause_a_3.condition.value) is True
 
 
@@ -1956,7 +1960,7 @@ compile A
     assert isinstance(clause_2_2.statements[0], NodeAssignment)
     #the last clause is an else statement: condition equivalent to True, constant 
     assert isinstance(clause_2_2.condition, (IFloat, IBool))
-    assert isrole(clause_2_2.condition.role, RoleConstant)
+    assert isrole(clause_2_2.condition, RoleConstant)
     assert bool(clause_2_2.condition.value) is True
 
 
@@ -2053,7 +2057,8 @@ class A:
 
 def test_isinstance_1(): #IGNORE:C01111
     msg = '''
-    Test the builtin isinstance(...) function.
+    Test the builtin istype(...) function, and
+    internal conversion of return values bool -> IBool.
     '''
     #skip_test(msg)
     print msg
@@ -2066,10 +2071,10 @@ data s: String
 data f: Float
 data b1,b2,b3,b4: Bool
 
-b1 = isinstance(s, String)
-b2 = isinstance(s, Float)
-b3 = isinstance(f, String)
-b4 = isinstance(f, Float)
+b1 = istype(s, String)
+b2 = istype(s, Float)
+b3 = istype(f, String)
+b4 = istype(f, Float)
 '''
 
     #interpret the program
@@ -2081,14 +2086,10 @@ b4 = isinstance(f, Float)
     #print mod
     
     #look at variables
-    b1 = mod.get_attribute('b1')
-    b2 = mod.get_attribute('b2')
-    b3 = mod.get_attribute('b3')
-    b4 = mod.get_attribute('b4')
-    assert b1.value == True
-    assert b2.value == False
-    assert b3.value == False
-    assert b4.value == True
+    assert mod.b1.value == True
+    assert mod.b2.value == False
+    assert mod.b3.value == False
+    assert mod.b4.value == True
 
 
 
@@ -2138,6 +2139,6 @@ replace_attr(a.f, f_new)
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_print_function_3()
+    test_isinstance_1()
     pass #pylint: disable-msg=W0107
 

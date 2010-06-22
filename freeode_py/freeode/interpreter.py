@@ -333,11 +333,10 @@ def test_allknown(*args):
     All arguments must be CodeGeneratorObject.
     '''
     for arg in args:
-        assert isinstance(arg, CodeGeneratorObject), \
-                'All arguments must be CodeGeneratorObject instances.'
-        if arg.is_known:
+        if isinstance(arg, CodeGeneratorObject) and arg.is_known:
             assert isrole(arg, RoleConstant), \
                 'All objects that are known at compile time must be constants.'
+            #We know: The argument is a known constant; test the next argument.
         else:
             raise UnknownArgumentsException()
 
@@ -1358,10 +1357,12 @@ def create_built_in_lib():
     lib.graph = siml_graph
     lib.save = siml_save
     lib.solution_parameters = siml_solution_parameters
-    @signature(None, None)
-    def w_istype(in_object, class_or_type_or_tuple):
-        return IBool(istype(in_object, class_or_type_or_tuple))
-    lib.isinstance = w_istype
+    lib.associate_state_dt = associate_state_dt
+    lib.istype = istype
+#    @signature(None, None)
+#    def w_istype(in_object, class_or_type_or_tuple):
+#        return IBool(istype(in_object, class_or_type_or_tuple))
+#    lib.isinstance = w_istype
     #math
     #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units
     @signature([IFloat], IFloat)
@@ -1408,6 +1409,7 @@ def create_built_in_lib():
 #TODO: quasi_quote(expr)
 #TODO: operator('x-x', expr, expr, ...)
 
+@signature(None, None)
 def associate_state_dt(state_var, derivative_var):
     '''
     Associate a state variable and its time derivative.
@@ -1421,26 +1423,28 @@ def associate_state_dt(state_var, derivative_var):
     derivative_var: IFloat
         The variable which will act as time derivative from now on. 
     '''
-    #TODO: Test: both arguments must be IFloat (or Array) objects.
-    #TODO: Test if variable is already a state variable. Raise error if true.
-    #TODO: Test if variable is a time differential. Raise error if true.
-    #create the derived variable which will be associated to variable
-    deri_var_class = variable.type()
-    deri_var = deri_var_class()
-    deri_var.role = RoleTimeDifferential
-
-    #find state variable in parent (to get variable's name)
-    var_name = variable.parent().find_name(variable)
-    #put time derivative in parent, with nice name
-    deri_name = var_name + '$time'
-    #deri_name = make_unique_name(deri_name, variable.parent().attributes)
-    variable.parent().create_attribute(deri_name, deri_var)
+    #Both arguments must be IFloat (or Array) objects, and have the right roles
+    if not (isinstance(state_var, IFloat) and isrole(state_var, RoleVariable)):
+        raise UserException('Wrong role or type for state variable. \n'
+                            'Required type: Float; role: variable.')
+    if not (isinstance(derivative_var, IFloat) and 
+            isrole(derivative_var, (RoleVariable, RoleUnkown))):
+        raise UserException('Wrong role or type for derivative variable. \n'
+                            'Required type: Float; role: variable, role_unknown.')
+    #Test if variable is already a state variable.
+    if isrole(state_var, RoleStateVariable):
+        raise UserException('Variable is already a state variable.')
+    #Test if variable is a time differential. 
+    if isrole(derivative_var, RoleTimeDifferential):
+        raise UserException('Variable is already a time differential.')
+    #TODO: for those error messages it would be useful to know the variable name.
+    #      Maybe all objects could be given __siml_dotname__ in the Interpreter.
 
     #remember time derivative also in state variable
-    variable.time_derivative = ref(deri_var)
-    #mark variable as state variable
-    variable.role = RoleStateVariable
-    return
+    state_var.time_derivative = derivative_var
+    #set the new (refined) roles
+    state_var.__siml_role__ = RoleStateVariable
+    derivative_var.__siml_role__ = RoleTimeDifferential
 
 
 #def make_proxy(in_obj):
@@ -1463,7 +1467,7 @@ def associate_state_dt(state_var, derivative_var):
 #    return isinstance(siml_object, CallableObject)
 
 
-
+@signature(None, None)
 def istype(in_object, class_or_type_or_tuple):
     '''
     Check if an object's type is in class_or_type_or_tuple.
@@ -2002,7 +2006,6 @@ class Interpreter(object):
         User defined and built in functions are both executed here.
         All arguments must be evaluated. 
         
-        TODO: common functionality of function application should go here
         TODO: in the long run code generation could go here too. 
         '''
         #Get function from bound or unbound method and put this/self into arguments
@@ -2018,15 +2021,18 @@ class Interpreter(object):
         bound_args = func_obj.siml_signature\
                              .parse_function_call_args(posargs, kwargs)
         
+        #Call the function
         if isinstance(func_obj, SimlFunction):
             ret_val = self.apply_siml(func_obj, bound_args)
         else:
             ret_val = func_obj(*posargs, **kwargs) # pylint: disable-msg=W0142
         
-        #TODO: maybe convert bool -> IBool, string -> IString, float -> IFloat
-        #use Siml's None
+        #TODO: maybe also convert string -> IString, float -> IFloat
+        #Convert Python types to Siml types
         if ret_val is None:
             ret_val = NONE
+        if isinstance(ret_val, bool):
+            ret_val = IBool(ret_val)
         #type checking of return value
         func_obj.siml_signature.test_return_type_compatible(ret_val)
 
@@ -2649,12 +2655,13 @@ class Interpreter(object):
                 flattened_attributes.add(id(data))
 
                 long_name = prefix + DotName(name)
-                #CodeGeneratorObject are the only data types of the compiled code
-                if isinstance(data, CodeGeneratorObject):
-                    #do not flatten constants
-                    if not issubclass(data.__siml_role__, (RoleParameter, RoleVariable)):
-                        continue
+                #Put CodeGeneratorObject that is variable or parameter into flat object.
+                if isinstance(data, CodeGeneratorObject) and isrole(data, (RoleParameter, RoleVariable)):
                     flat_obj.create_attribute(long_name, data)
+                    #if variable has a derivative take it too
+                    if data.time_derivative is not None:
+                        deri_name = prefix + DotName(name+'$time')
+                        flat_obj.create_attribute(deri_name, data.time_derivative)
                 #Recurse into all other InterpreterObjects
                 elif isinstance(data, InterpreterObject):
                     flatten(data, flat_obj, long_name)
