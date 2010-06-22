@@ -42,7 +42,7 @@ from freeode.ast import (NodeParentheses, NodeOpInfix2, NodeOpPrefix1,
 from freeode.interpreter import (InterpreterObject, 
                                  CodeGeneratorObject, CompiledClass,
                                  isequivalentrole, isrole, 
-                                 #isknown,
+                                 #isknownconst,
                                  )
 
 
@@ -213,7 +213,7 @@ class DataFlowChecker(object):
         for attr in all_inputs:
             if isrole(attr, RoleConstant):
                 #TODO: detecting unknown constants should be handled in the interpreter
-                if not isknown(attr):
+                if not isknownconst(attr):
                     name = '<anonymous constant>'
                     if attr.parent and attr.parent():
                         name = str(attr.parent().find_name(attr))

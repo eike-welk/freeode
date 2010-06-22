@@ -41,8 +41,9 @@ def test_argument_list_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
-    
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     prog_text = \
 '''
 func foo(a):
@@ -57,18 +58,8 @@ foo(a, b)
     assert_raises(UserException, 3200250, 
                   intp.interpret_module_string, (prog_text, None, 'test'))
     
-#    try:
-#        #run mini program
-#        intp.interpret_module_string(prog_text, None, 'test')
-#    except UserException, e:
-#        print e
-#        assert e.errno == 3200250
-#        print 'Correct exception was raised.'
-#    else:
-#        assert False, 'An exception should have been raised.'
-    
 #    print 'module after interpreter run: ---------------------------------'
-#    print intp.modules['test']
+#    print aa_make_tree(intp.modules['test'])
     
   
   
@@ -77,7 +68,9 @@ def test_argument_list_2(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     
     prog_text = \
 '''
@@ -110,7 +103,9 @@ def test_argument_list_3(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     
     prog_text = \
 '''
@@ -143,7 +138,9 @@ def test_argument_list_4(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     
     prog_text = \
 '''
@@ -176,7 +173,9 @@ def test_argument_list_5(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     
     prog_text = \
 '''
@@ -209,7 +208,9 @@ def test_argument_list_6(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     
     prog_text = \
 '''
@@ -239,7 +240,9 @@ def test_argument_list_7(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     
     prog_text = \
 '''
@@ -269,7 +272,9 @@ def test_argument_list_8(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     
     prog_text = \
 '''
@@ -313,7 +318,9 @@ def test_argument_list_compile_statement_1(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
 
     prog_text = \
 '''
@@ -353,7 +360,9 @@ def test_StatementVisitor_dispatch_1(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     
     prog_text = \
 '''
@@ -385,7 +394,9 @@ def test_StatementVisitor_dispatch_2(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     from freeode.interpreter import Interpreter
-    from freeode.util import UserException
+    from freeode.util import UserException    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
     
     prog_text = \
 '''
@@ -420,6 +431,7 @@ def test_if_statement_1(): #IGNORE:C01111
     
     from freeode.interpreter import Interpreter
     from freeode.util import UserException
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
 
     prog_text = \
 '''

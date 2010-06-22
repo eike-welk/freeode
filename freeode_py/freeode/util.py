@@ -386,8 +386,15 @@ def aa_make_tree(in_obj):
     string
         ASCII-art tree representing in_obj.
     '''
-    tree_maker = getattr(in_obj, AATreeMaker.tree_maker_name, AATreeMaker())
-    return tree_maker.make_tree(in_obj)   
+    #handle some special cases
+    if isinstance(in_obj, (list, dict)):
+        class ListOrDictDummy(object): pass
+        d = ListOrDictDummy()
+        d.list_or_dict = in_obj #pylint:disable-msg=W0201
+        return AATreeMaker().make_tree(d)
+    else:         
+        tree_maker = getattr(in_obj, AATreeMaker.tree_maker_name, AATreeMaker())
+        return tree_maker.make_tree(in_obj)   
 
 
 
@@ -584,3 +591,34 @@ class TextLocation(object):
         #errors. Only parsing errors have useful column information.
         #TODO: also print one line of program text
         return '  File "' + str(self.file_name) + '", line ' + str(self.line_no())
+
+
+
+def make_unique_dotname(base_name, existing_names):
+    '''
+    Make a unique name that is not in existing_names.
+
+    If base_name is already contained in existing_names a number is appended
+    to base_name to make it unique.
+
+    Arguments:
+    base_name: DotName, str
+        The name that should become unique.
+    existing_names: container that supports the 'in' operation
+        Container with the existing names. Names are expected to be
+        DotName objects.
+
+    Returns: DotName
+        Unique name; base_name with number appended if necessary
+    '''
+    base_name = DotName(base_name)
+    for number in range(1, 100000):
+        if base_name not in existing_names:
+            return  base_name
+        #append number to last component of DotName
+        base_name = base_name[0:-1] + DotName(base_name[-1] + str(number))
+    raise Exception('Too many similar names')
+
+
+
+

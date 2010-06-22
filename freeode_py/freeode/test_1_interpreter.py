@@ -1088,15 +1088,15 @@ def test_is_role_more_variable_2(): #IGNORE:C01111
     
     def raise_1(): 
         is_role_more_variable(float, RoleConstant)
-    assert_raises(ValueError, None, raise_1)
+    assert_raises(AssertionError, None, raise_1)
         
     def raise_2(): 
         is_role_more_variable(RoleParameter, float)
-    assert_raises(ValueError, None, raise_2)
+    assert_raises(AssertionError, None, raise_2)
         
     def raise_3(): 
         is_role_more_variable(RoleParameter, 1)
-    assert_raises(TypeError, None, raise_3)
+    assert_raises(AssertionError, None, raise_3)
         
         
 

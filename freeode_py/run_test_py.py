@@ -12,4 +12,5 @@ import os
 #os.system("py.test -n 2 --tb=short freeode/test_2_interpreter.py")
 os.system('py.test -n 2 --tb=short '
           'freeode/test_1_interpreter.py '
-          'freeode/test_2_interpreter.py ')
+          'freeode/test_2_interpreter.py '
+          'freeode/test_3_interpreter_errors.py ')
