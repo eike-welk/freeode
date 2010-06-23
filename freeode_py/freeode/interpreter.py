@@ -2508,7 +2508,7 @@ class Interpreter(object):
         Create an attribute in in_object. 
         The attribute can only be created once
         '''
-        if hasattr(in_object, name):
+        if name in in_object.__dict__:
             raise UserException('Duplicate attribute %s.' % name, errno=3800910)
         setattr(in_object, name, value)
 

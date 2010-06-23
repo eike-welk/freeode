@@ -929,12 +929,14 @@ def test_SimlFunction_3(): #IGNORE:C01111
 Test SimlFunction: storage of local variables during code collection.
 User defined functions are created without parser.
 '''
-    skip_test(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, SimlFunction, IModule,
                                      Signature, IFloat)
     from freeode.ast import NodeFuncArg
+    from freeode.util import DotName, aa_make_tree 
+    
 
     #create the interpreter 
     intp = Interpreter()        
@@ -946,9 +948,10 @@ User defined functions are created without parser.
     # func test(a:Float):
     #     ** nothing **
     f1 = SimlFunction('test', Signature([NodeFuncArg('a', IFloat)]), 
-                      statements=[], global_scope=intp.built_in_lib)
+                      statements=[], global_scope=intp.built_in_lib, loc=None,
+                      dot_name=DotName('test_module.test'))
     #create module where the function lives
-    mod1 = IModule('test-module')
+    mod1 = IModule()
     mod1.test = f1
     
     #call with existing value
@@ -958,17 +961,10 @@ User defined functions are created without parser.
     intp.apply(f1, (val_1,))
     _stmts, fn_locals = intp.stop_collect_code()
     
-    print fn_locals
+    #print aa_make_tree(fn_locals)
     
-    #there must be one element in the locals storage, some base namespace for 
-    # the function argument 'a'
-    assert len(fn_locals.attributes) > 0
-    
-    #get the local variable 'a' 
-    ns_test = fn_locals.test
-    ns_1    = ns_test.  get_attribute('1')
-    float_a = ns_1.a
-    assert float_a is val_1
+    #The function argument 'a' must appear in the storage for local variables
+    assert fn_locals.test.i1.a is val_1
 
 
 
@@ -1211,5 +1207,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_Interpreter__siml_dotname__()
+    test_SimlFunction_3()
     pass #pylint:disable-msg=W0107

@@ -359,7 +359,7 @@ printc(a+b)
 
 def test_print_function_2(): #IGNORE:C01111
     msg = 'Test printc function. - compile time printing of user defined class.'
-    skip_test(msg)
+    #skip_test(msg)
     print msg
     #TODO: This does not work as intended. Either refine infrastructure or delete test case.
     #      See bug #596679 
@@ -374,7 +374,7 @@ class C:
     data a: Float const
     data b: String const
     
-    func __str__(this):
+    func __siml_str__(this):
         return a.__str__() + ' and ' + b.__str__()
     
 data c: C
@@ -579,54 +579,53 @@ printc('end')
   
   
   
-def test_interpreter_class_definition_2(): #IGNORE:C01111
-    '''
-    Test user defined classes - correctness of parent attribute.
-    
-    Data attributes are copied when a class is instantiated. (All attributes
-    are constructed when the class is defined.) The parent pointers, which 
-    point back to the object that contains each object, must be updated 
-    by the copy algorithm.  Otherwise they point to the old parents before the 
-    copy.
-    
-    Interpreter Object has a __deepcopy__ function that takes care of this.
-    '''
-    #TODO: the parent pointer will probably be gone. Delete?  
-    msg = 'Test user defined classes - correctness of parent attribute.'
-    skip_test(msg)
-    print msg
-    
-    from freeode.interpreter import Interpreter
-
-    prog_text = \
-'''
-class A:
-    data z: Float const
-
-class B:
-    data a: A const
-
-
-data b:B const
-'''
-
-    #create the interpreter
-    intp = Interpreter()
-    intp.interpret_module_string(prog_text, None, 'test')
-  
-    print
-    print intp.modules['test']
-    
-    #get the instance objects defined in this program
-    mod = intp.modules['test']
-    b = mod.get_attribute('b')
-    a = b.get_attribute('a')
-    z = a.get_attribute('z')
-    
-    #check the correctness of the parent attributes
-    assert b.parent() is mod
-    assert a.parent() is b
-    assert z.parent() is a
+#def test_interpreter_class_definition_2(): #IGNORE:C01111
+#    '''
+#    Test user defined classes - correctness of parent attribute.
+#    
+#    Data attributes are copied when a class is instantiated. (All attributes
+#    are constructed when the class is defined.) The parent pointers, which 
+#    point back to the object that contains each object, must be updated 
+#    by the copy algorithm.  Otherwise they point to the old parents before the 
+#    copy.
+#    
+#    Interpreter Object has a __deepcopy__ function that takes care of this.
+#    '''
+#    msg = 'Test user defined classes - correctness of parent attribute.'
+#    skip_test(msg)
+#    print msg
+#    
+#    from freeode.interpreter import Interpreter
+#
+#    prog_text = \
+#'''
+#class A:
+#    data z: Float const
+#
+#class B:
+#    data a: A const
+#
+#
+#data b:B const
+#'''
+#
+#    #create the interpreter
+#    intp = Interpreter()
+#    intp.interpret_module_string(prog_text, None, 'test')
+#  
+#    print
+#    print intp.modules['test']
+#    
+#    #get the instance objects defined in this program
+#    mod = intp.modules['test']
+#    b = mod.get_attribute('b')
+#    a = b.get_attribute('a')
+#    z = a.get_attribute('z')
+#    
+#    #check the correctness of the parent attributes
+#    assert b.parent() is mod
+#    assert a.parent() is b
+#    assert z.parent() is a
 
 
 
@@ -1483,10 +1482,8 @@ def test_compile_statement_2(): #IGNORE:C01111
     - Additional initialization methods must be recognized, and put into 
       the flat object.
     - These methods have names of the form: init_xxx(this, ...)
-    
-    FIXME: Broken!!! Additional initialization methods are not recognized.
     '''
-    skip_test(msg)
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import Interpreter, IFloat, SimlFunction
@@ -1523,9 +1520,8 @@ compile A
     intp = Interpreter()
     intp.interpret_module_string(prog_text, None, 'test')
   
-    print
     #print aa_make_tree(intp.modules['test'])
-    print aa_make_tree(intp.get_compiled_objects()[0])
+    #print aa_make_tree(intp.get_compiled_objects()[0])
     
     #get flattened object
     sim = intp.get_compiled_objects()[0] 
@@ -1551,7 +1547,7 @@ compile A
     assert isinstance(init_b_stmts[0], NodeAssignment)
     assert isinstance(init_b_stmts[1], NodeAssignment)
     #'init_b' must have 2 arguments: 'this', 'in_b'
-    init_b_args = init_b.signature.arguments
+    init_b_args = init_b.siml_signature.arguments
     assert len(init_b_args) == 2
     assert init_b_args[0].name == 'this'
     assert init_b_args[1].name == 'in_b'
@@ -2139,6 +2135,6 @@ replace_attr(a.f, f_new)
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_isinstance_1()
+    test_print_function_2()
     pass #pylint: disable-msg=W0107
 
