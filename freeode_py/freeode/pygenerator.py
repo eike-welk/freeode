@@ -48,7 +48,7 @@ from freeode.ast import (Visitor,
                          RoleConstant, 
                          )
 from  freeode.interpreter import (IFloat, IString, CompiledClass, 
-                                  CodeGeneratorObject, 
+                                  CodeGeneratorObject, isrole
                                   )
 
 
@@ -131,7 +131,7 @@ class ExpressionGenerator(Visitor):
     @Visitor.when_type(IFloat, 1)
     def _createNum(self, variable):
         #Number: 123.5 or variable with type float
-        if variable.role is RoleConstant:
+        if isrole(variable, RoleConstant):
             return 'float64(%s)' % str(variable.value)
         else:
             return variable.target_name
@@ -139,7 +139,7 @@ class ExpressionGenerator(Visitor):
     @Visitor.when_type(IString, 1)
     def _createString(self, variable):
         #String: 'hello world' or variable with type str
-        if variable.role is RoleConstant:
+        if isrole(variable, RoleConstant):
             return '\'' + variable.value + '\''
         else:
             return variable.target_name
@@ -306,7 +306,7 @@ class SimulationClassGenerator(object):
         '''
         super(SimulationClassGenerator, self).__init__()
         #The input: an IL-tree of the process. It has no external dependencies.
-        self.flat_object = CompiledClass()
+        self.flat_object = CompiledClass(None)
         #File where the Python program will be stored.
         self.out_py = txt_buffer
         #Python name of the process
@@ -337,17 +337,17 @@ class SimulationClassGenerator(object):
         '''
         #time_differentials = set()
         #create dicts to find and classify attributes fast
-        for name, attr in self.flat_object.attributes.iteritems():
+        for name, attr in self.flat_object.attributes.iteritems(): 
             if not isinstance(attr, (CodeGeneratorObject)):
                 continue
-            if issubclass(attr.role, RoleParameter):
+            if isrole(attr, RoleParameter):
                 self.parameters[name] = attr
-            elif issubclass(attr.role, RoleInputVariable):
+            elif isrole(attr, RoleInputVariable):
                 self.state_variables[name] = attr
                 #time_differentials.add(attr.time_derivative)
-            elif issubclass(attr.role, RoleOutputVariable):
+            elif isrole(attr, RoleOutputVariable):
                 self.time_differentials[name] = attr
-            elif issubclass(attr.role, RoleIntermediateVariable):
+            elif isrole(attr, RoleIntermediateVariable):
                 self.algebraic_variables[name] = attr
             else:
                 raise PyGenException('Unknown attribute definition:\n'+ str(attr))
@@ -407,7 +407,7 @@ class SimulationClassGenerator(object):
             py_name1 = '_'.join(name)
             py_name1 = py_name1.replace('$', '_D')
             #add prefix to parameters
-            if attr.role is RoleParameter:
+            if isrole(attr, RoleParameter):
                 py_name1 = param_prefix + py_name1
             #see if python name is unique; append number to make it unique
             py_name1 = self.make_unique_str(py_name1, py_names)
@@ -479,7 +479,7 @@ class SimulationClassGenerator(object):
         
         #include additional method arguments
         meth_args = ''
-        for i, arg_def in enumerate(method.signature.arguments): #IGNORE:E1103
+        for i, arg_def in enumerate(method.siml_signature.arguments): #IGNORE:E1103
             #ignore 'this'
             if i == 0:
                 continue
@@ -587,7 +587,7 @@ class SimulationClassGenerator(object):
         self.write(ind12 + '#assemble the time derivatives into the return vector \n')
         self.write(ind12 + 'stateDt = array([')
         for var in self.state_variables_ordered:
-            self.write('%s, ' % var.time_derivative().target_name)
+            self.write('%s, ' % var.time_derivative.target_name)
         self.write('], \'float64\') \n')
         self.write(ind12 + 'return stateDt \n')
 

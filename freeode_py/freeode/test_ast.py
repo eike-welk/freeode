@@ -118,42 +118,42 @@ class TestAST(unittest.TestCase): #IGNORE:C01111
 #                             'dat: leaf, depth; 2',
 #                             'dat: leaf, depth; 1'])
 
-    def testCopy(self):
-        '''Node: Test copy function'''
-        from freeode.ast import Node
-        #create additional weak attributes
-        n1 = Node(name='weak1')
-        n2 = Node(name='weak2')
-        pr = weakref.proxy(n1)
-#        pr = n1    #to make test fail
-        wr = weakref.ref(n2)
-        self.tree1.pr = pr                                                   #IGNORE:W0201
-        self.tree1.kids[0].wr = wr                                           #IGNORE:E1101
-        #create (mostly) deep copy
-        tree1_c = self.tree1.copy() 
-        #assert that values are equal
-        self.assertTrue(len(tree1_c.__dict__) == len(self.tree1.__dict__))
-        self.assertTrue(tree1_c.name == self.tree1.name)                     #IGNORE:E1101
-        self.assertTrue(tree1_c.kids[0].name == self.tree1.kids[0].name)     #IGNORE:E1101
-        self.assertTrue(   tree1_c.kids[0].kids[0].name == 
-                        self.tree1.kids[0].kids[0].name    )                 #IGNORE:E1101
-        #assert that copy created new objects
-        self.assertFalse(id(tree1_c) == id(self.tree1))
-        self.assertFalse(id(tree1_c.kids[0]) == id(self.tree1.kids[0]))      #IGNORE:E1101
-        self.assertFalse(id(   tree1_c.kids[0].kids[0]) == 
-                         id(self.tree1.kids[0].kids[0])    )                 #IGNORE:E1101
-        #test copying of not owned (weak, shared) attributes
-        #assert that values are equal
-        self.assertTrue(tree1_c.pr.name == self.tree1.pr.name)               #IGNORE:E1101
-        self.assertTrue(   tree1_c.kids[0].wr().name == 
-                        self.tree1.kids[0].wr().name    )                    #IGNORE:E1101
-        #assert no new objects were created
-        self.assertTrue(id(tree1_c.pr) == id(self.tree1.pr))                 #IGNORE:E1101
-        self.assertTrue(id(   tree1_c.kids[0].wr()) == 
-                        id(self.tree1.kids[0].wr())    )                     #IGNORE:E1101
-        # this assertion is an implementation detail
-        self.assertTrue(id(   tree1_c.kids[0].wr) == 
-                        id(self.tree1.kids[0].wr)    )                       #IGNORE:E1101
+#    def testCopy(self):
+#        '''Node: Test copy function'''
+#        from freeode.ast import Node
+#        #create additional weak attributes
+#        n1 = Node(name='weak1')
+#        n2 = Node(name='weak2')
+#        pr = weakref.proxy(n1)
+##        pr = n1    #to make test fail
+#        wr = weakref.ref(n2)
+#        self.tree1.pr = pr                                                   #IGNORE:W0201
+#        self.tree1.kids[0].wr = wr                                           #IGNORE:E1101
+#        #create (mostly) deep copy
+#        tree1_c = self.tree1.copy() 
+#        #assert that values are equal
+#        self.assertTrue(len(tree1_c.__dict__) == len(self.tree1.__dict__))
+#        self.assertTrue(tree1_c.name == self.tree1.name)                     #IGNORE:E1101
+#        self.assertTrue(tree1_c.kids[0].name == self.tree1.kids[0].name)     #IGNORE:E1101
+#        self.assertTrue(   tree1_c.kids[0].kids[0].name == 
+#                        self.tree1.kids[0].kids[0].name    )                 #IGNORE:E1101
+#        #assert that copy created new objects
+#        self.assertFalse(id(tree1_c) == id(self.tree1))
+#        self.assertFalse(id(tree1_c.kids[0]) == id(self.tree1.kids[0]))      #IGNORE:E1101
+#        self.assertFalse(id(   tree1_c.kids[0].kids[0]) == 
+#                         id(self.tree1.kids[0].kids[0])    )                 #IGNORE:E1101
+#        #test copying of not owned (weak, shared) attributes
+#        #assert that values are equal
+#        self.assertTrue(tree1_c.pr.name == self.tree1.pr.name)               #IGNORE:E1101
+#        self.assertTrue(   tree1_c.kids[0].wr().name == 
+#                        self.tree1.kids[0].wr().name    )                    #IGNORE:E1101
+#        #assert no new objects were created
+#        self.assertTrue(id(tree1_c.pr) == id(self.tree1.pr))                 #IGNORE:E1101
+#        self.assertTrue(id(   tree1_c.kids[0].wr()) == 
+#                        id(self.tree1.kids[0].wr())    )                     #IGNORE:E1101
+#        # this assertion is an implementation detail
+#        self.assertTrue(id(   tree1_c.kids[0].wr) == 
+#                        id(self.tree1.kids[0].wr)    )                       #IGNORE:E1101
 
 
 

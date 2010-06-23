@@ -34,76 +34,6 @@ from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
 
 from freeode.util import assert_raises
-
-
-
-# -------- Test InterpreterObject class ----------------------------------------------------------------------
-def test_InterpreterObject_create_path_1(): #IGNORE:C01111
-    msg = 'InterpreterObject: create_path method: create non-existing path.'
-    skip_test(msg)
-    print msg
-    from freeode.interpreter import (InterpreterObject, DotName)
-    
-    #the root object where the long name will be created
-    root = InterpreterObject()
-    #create all attributes so that this dotname can be looked up
-    #o_name_1 should be the object representing the rightmost element (name)
-    o_name_1 = root.create_path(DotName('this.is.a.long.dotted.name'))
-    
-    #see if all attributes have been created
-    o_this = root.get_attribute('this')
-    o_is = o_this.get_attribute('is')
-    o_a = o_is.get_attribute('a')
-    o_long = o_a.get_attribute('long')
-    o_dotted = o_long.get_attribute('dotted')
-    o_name_2 = o_dotted.get_attribute('name')
-    #the function must return the final element
-    assert o_name_1 is o_name_2
-
-
-
-def test_InterpreterObject_create_path_2(): #IGNORE:C01111
-    msg = 'InterpreterObject: create_path method: return existing path, extend path'
-    skip_test(msg)
-    print msg
-    from freeode.interpreter import (InterpreterObject, DotName)
-    
-    #the root object where the long name will be created
-    root = InterpreterObject()
-    #create all attributes so that this dotname can be looked up
-    #o_name_1 should be the object representing the rightmost element (name)
-    o_name_1 = root.create_path(DotName('this.is.a.long.dotted.name'))
-    
-    #access existing path, don't try to create it twice
-    o_name_2 = root.create_path(DotName('this.is.a.long.dotted.name'))
-    assert o_name_1 is o_name_2
-    
-    #extend existing path
-    o_indeed = root.create_path(DotName('this.is.a.long.dotted.name.indeed'))
-    o_name_3 = o_indeed.parent()
-    assert o_name_1 is o_name_3
-
-
-
-def test_InterpreterObject_find_name(): #IGNORE:C01111
-    msg = 'InterpreterObject: find_name method.'
-    skip_test(msg)
-    print msg
-    from freeode.interpreter import (InterpreterObject, )
-    
-    obj = InterpreterObject()
-    attr1 = InterpreterObject()
-    attr2 = InterpreterObject()
-    
-    #put attributes into object
-    obj.create_attribute('attr1', attr1)
-    obj.create_attribute('attr2', attr2)
-    #find the names of the attributes
-    name1 = obj.find_name(attr1)
-    name2 = obj.find_name(attr2)
-    #verify that the found names are correct
-    assert name1 == 'attr1'
-    assert name2 == 'attr2'
     
     
     
@@ -825,7 +755,124 @@ def test_function_call_unknown_arguments_2(): #IGNORE:C01111
     
   
   
-# -------- Test interpreter object - basic --------------------------------------------------------  
+# -------- Test Interpreter - basic --------------------------------------------------------  
+def test_Interpreter_create_path_1(): #IGNORE:C01111
+    msg = 'Interpreter: create_path method: create non-existing path.'
+    #skip_test(msg)
+    print msg
+    
+    from freeode.interpreter import InterpreterObject, Interpreter
+    from freeode.util import DotName
+    
+    #create an interpreter 
+    intp = Interpreter()
+    
+    #the root object where the long name will be created
+    root = InterpreterObject()
+    #create all attributes so that this dotname can be looked up
+    #o_name_1 should be the object representing the rightmost element (name)
+    o_name_1 = intp.create_path(root, DotName('this.is_.a.long.dotted.name'))
+    
+    #see if all attributes have been created
+    o_name_2 = root.this.is_.a.long.dotted.name #pylint:disable-msg=E1101
+    #the create_path function must return the final element
+    assert o_name_1 is o_name_2
+
+
+
+def test_Interpreter_create_path_2(): #IGNORE:C01111
+    msg = 'Interpreter: create_path method: return existing path, extend path'
+    #skip_test(msg)
+    print msg
+    
+    from freeode.interpreter import InterpreterObject, Interpreter
+    from freeode.util import DotName
+    
+    #create an interpreter 
+    intp = Interpreter()
+    
+    #the root object where the long name will be created
+    root = InterpreterObject()
+    #create all attributes so that this dotname can be looked up
+    #o_name_1 should be the object representing the rightmost element (name)
+    o_name_1 = intp.create_path(root, DotName('this.is_.a.long.dotted.name'))
+    
+    #access existing path, don't try to create it twice
+    o_name_2 = intp.create_path(root, DotName('this.is_.a.long.dotted.name'))
+    assert o_name_1 is o_name_2
+    
+    #extend existing path
+    o_indeed = intp.create_path(root, DotName('this.is_.a.long.dotted.name.indeed'))
+    o_indeed_2 = o_name_1.indeed                     #pylint:disable-msg=E1103
+    assert o_indeed is o_indeed_2
+
+
+
+def test_Interpreter__siml_dotname__(): 
+    msg =  '''
+    Interpreter: __siml_doname__ attribute.
+    
+    The interpreter creates a __siml_doname__ for each function, which is 
+    unique and descriptive. This attribute is used to create a nicely named 
+    name space for the function locals.
+    
+    This test involves parsing and interpreting a small program; but the 
+    feature '__siml_doname__' is meant fo be used in conjunction with 
+    'create_path', which is tested above.
+    '''
+    #skip_test(msg)
+    print msg
+
+    from freeode.interpreter import Interpreter
+    from freeode.util import DotName, aa_make_tree #pylint:disable-msg=W0612
+    
+    #the mini test program
+    prog_txt = \
+'''
+class A:
+    func foo():
+        pass
+        
+func bar():
+    pass
+'''
+    
+    intp = Interpreter()
+    mod = intp.interpret_module_string(prog_txt, 'test-file', 'test')
+    
+#    print 'Module after interpretation: ----------------------------------'
+#    print aa_make_tree(mod)
+#    print 'Dotname of test.A.foo:'
+#    print mod.A.foo.__siml_dotname__ 
+#    print mod.bar.__siml_dotname__                           #pylint:disable-msg=E1101
+    
+    assert mod.A.foo.__siml_dotname__ == DotName('test.A.foo') #pylint:disable-msg=E1101
+    assert mod.bar.__siml_dotname__ == DotName('test.bar')     #pylint:disable-msg=E1101
+
+
+
+#def test_InterpreterObject_find_name(): #IGNORE:C01111
+#    msg = 'InterpreterObject: find_name method.'
+#    skip_test(msg)
+#    print msg
+#    from freeode.interpreter import (InterpreterObject, )
+#    
+#    obj = InterpreterObject()
+#    attr1 = InterpreterObject()
+#    attr2 = InterpreterObject()
+#    
+#    #put attributes into object
+#    obj.create_attribute('attr1', attr1)
+#    obj.create_attribute('attr2', attr2)
+#    #find the names of the attributes
+#    name1 = obj.find_name(attr1)
+#    name2 = obj.find_name(attr2)
+#    #verify that the found names are correct
+#    assert name1 == 'attr1'
+#    assert name2 == 'attr2'
+
+
+
 def test_SimlFunction_1(): #IGNORE:C01111
     msg =  \
 '''
@@ -873,29 +920,6 @@ User defined functions are created without parser.
     def raise_1():
         intp.apply(f3, (val_1,))
     assert_raises(UserException, 3200320, raise_1)
-
-
-
-def test_SimlFunction_2(): 
-    msg =  'SimlFunction: get_complete_path method'
-    skip_test(msg)
-    print msg
-
-    from freeode.interpreter import (SimlFunction, DotName)
-    
-    #the root object where the long name will be created
-    root = SimlFunction('root')
-    sub1 = SimlFunction('sub1')
-    sub2 = SimlFunction('sub2')
-
-    root.create_attribute('sub1', sub1)
-    sub1.create_attribute('sub2', sub2)
-    
-    print root
-    
-    long_name = sub2.get_complete_path()
-    
-    assert long_name == DotName('root.sub1.sub2')
 
 
 
@@ -1187,5 +1211,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_SimlClass_2()
-    pass #pylint: disable-msg=W0107
+    test_Interpreter__siml_dotname__()
+    pass #pylint:disable-msg=W0107

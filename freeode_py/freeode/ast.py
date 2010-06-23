@@ -71,9 +71,9 @@ class Node(object):
     __siml_aa_tree_maker__ = AATreeMaker(top_names= ['name', '__siml_role__', 
                                                      '__siml_type__'],)
     
-    #we don't own instances of these classes.
-    #tuple of types that are not copied deeply
-    _weak_types = weakref.ProxyTypes + (weakref.ReferenceType,)
+#    #we don't own instances of these classes.
+#    #tuple of types that are not copied deeply
+#    _weak_types = weakref.ProxyTypes + (weakref.ReferenceType,)
     
     def __init__(self, **args): 
         '''Create an attribute for each named argument.'''
@@ -88,36 +88,36 @@ class Node(object):
         '''
         return self.__siml_aa_tree_maker__.make_tree(self)   
              
-    def copy(self):
-        '''
-        Return a (recursive) deep copy of the node.
-
-        Only objects owned by this object are copied deeply.
-        For objects owned by other nodes proxies should be created:
-        self.foo = proxy(other.foo)
-        '''
-        return copy.deepcopy(self)
-
-    def __deepcopy__(self, memo_dict):
-        '''
-        Hook that does the copying for Node.copy.
-        Called by copy.deepcopy()
-        
-        copy - weakref interaction problems:
-        http://coding.derkeiler.com/Archive/Python/comp.lang.python/2008-02/msg01873.html
-        '''
-        #TODO: new ast.Node.copy mechanism for shallow copy, just referencing
-        #create empty instance of self.__class__
-        new_obj = Node.__new__(self.__class__)
-        for name, attr in self.__dict__.iteritems():
-            if isinstance(attr, Node._weak_types):
-                #attribute owned by other object: no copy only reference
-                setattr(new_obj, name, attr)
-            else:
-                #attribute owned by self: make deep copy
-                new_attr = copy.deepcopy(attr, memo_dict)
-                setattr(new_obj, name, new_attr)
-        return new_obj
+#    def copy(self):
+#        '''
+#        Return a (recursive) deep copy of the node.
+#
+#        Only objects owned by this object are copied deeply.
+#        For objects owned by other nodes proxies should be created:
+#        self.foo = proxy(other.foo)
+#        '''
+#        return copy.deepcopy(self)
+#
+#    def __deepcopy__(self, memo_dict):
+#        '''
+#        Hook that does the copying for Node.copy.
+#        Called by copy.deepcopy()
+#        
+#        copy - weakref interaction problems:
+#        http://coding.derkeiler.com/Archive/Python/comp.lang.python/2008-02/msg01873.html
+#        '''
+#        #TODO: new ast.Node.copy mechanism for shallow copy, just referencing
+#        #create empty instance of self.__class__
+#        new_obj = Node.__new__(self.__class__)
+#        for name, attr in self.__dict__.iteritems():
+#            if isinstance(attr, Node._weak_types):
+#                #attribute owned by other object: no copy only reference
+#                setattr(new_obj, name, attr)
+#            else:
+#                #attribute owned by self: make deep copy
+#                new_attr = copy.deepcopy(attr, memo_dict)
+#                setattr(new_obj, name, new_attr)
+#        return new_obj
 
 
 

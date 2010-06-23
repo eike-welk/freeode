@@ -1484,9 +1484,9 @@ def test_compile_statement_2(): #IGNORE:C01111
       the flat object.
     - These methods have names of the form: init_xxx(this, ...)
     
-    FIXME: Broken!!! Additional initialization methodsare not recognized
+    FIXME: Broken!!! Additional initialization methods are not recognized.
     '''
-    #skip_test(msg)
+    skip_test(msg)
     print msg
     
     from freeode.interpreter import Interpreter, IFloat, SimlFunction

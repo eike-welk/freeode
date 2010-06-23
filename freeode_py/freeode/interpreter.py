@@ -455,16 +455,31 @@ class Signature(object):
             self.argument_dict[arg.name] = arg
 
 
-    def evaluate_type_specs(self, interpreter):
+    def evaluate_type_specs(self, interpreter, def_globals=InterpreterObject()):
         '''
         Compute the types and default values of the arguments. 
-        Compute return type.
+        Compute return type. Do some consistency checking.
         
-        The ast.Nodes are replaced with InterpreterObjects; 
-        the function needs to be run only once
+        The ast.Nodes are replaced with InterpreterObjects; signatures of built
+        in functions may contain Proxy instances which are also replaced.
+        The function needs to be run only once.
         
-        - TODO: Check: default values must evaluate to constants
+        ARGUMENT
+        --------
+        interpreter: Interpreter
+            The interpreter to evaluate the types and default values.
+            When the function (signature) is constructed they are specified and 
+            stored as ast.Nodes.
+        def_globals = InterpreterObject()
+            The global name space where the function where the function 
+            (signature) was defined.
         '''
+        #Create environment for evaluation of types and return values.
+        #Give access to global name space where signature was created
+        env = ExecutionEnvironment()
+        env.global_scope = def_globals
+        interpreter.push_environment(env)
+        
         if self.arguments is not None:
             #evaluate argument type and default arguments
             for arg in self.arguments:
@@ -474,6 +489,10 @@ class Signature(object):
                 if arg.default_value is not None:
                     dval_ev = interpreter.eval(arg.default_value)
                     arg.default_value = dval_ev
+                    #Check: default values must evaluate to known constants
+                    if not isknownconst(arg.default_value):
+                        raise UserException('Default value must be known at '
+                                            'compile time. Argument: %s' % arg.name)
                 #test type compatibility of default value and argument type
                 if arg.type is not None and arg.default_value is not None:
                     self._test_arg_type_compatible(arg.default_value, arg)
@@ -483,6 +502,8 @@ class Signature(object):
                 type_ev = interpreter.eval(self.return_type)
                 self.return_type = type_ev
         self.is_evaluated = True
+        
+        interpreter.pop_environment()
 
 
     def parse_function_call_args(self, args_list, kwargs_dict):
@@ -790,19 +811,25 @@ class SimlClass(InterpreterObject):
 
 #---------- Infrastructure -------------------------------------------------
 class IModule(InterpreterObject):
-    '''Represent one file'''
-    #TODO: Add self.builtin - separate module for built in attributes
-    #      Modules have modified attribute lookup:
-    #      When attributes are not found in their namespace,
-    #      the attributes are searched in the builtin namespace.
-    #      This way the built in attributes do not need to be imported
-    #      into the module's namespace, and they can be overridden.
-    def __init__(self, name=None, file_name=None):
+    '''Represent a program module, usually one source file.'''
+    def __init__(self, builtins=None, name='unknown_module', 
+                 file_name='unknown-file'):
         InterpreterObject.__init__(self)
         self.__name__ = name
         self.__file__ = file_name
         self.__siml_role__= RoleConstant
         self.__siml_dotname__ = DotName(name)
+        self.__siml_builtins__ = builtins
+        
+    def __getattr__(self, name):
+        '''Called when attribute is not found in moule. 
+        Get attribute from built in module.'''
+        attr = getattr(self.__siml_builtins__, name, None)
+        if attr is None:
+            raise UserException('Undefined global attribute %s' % name, 
+                                errno=3250100)
+        else:
+            return attr
 
 
 
@@ -1053,6 +1080,7 @@ class IFloat(CodeGeneratorObject):
     
     @signature([FLOATP, FLOATP], FLOATP) 
     def __mod__(self, other):
+        test_allknown(self, other)
         return IFloat(self.value % other.value)
     
     @signature([FLOATP, FLOATP], FLOATP) 
@@ -1699,6 +1727,10 @@ class CompiledClass(object):
     def get_attribute(self, name):
         'Return attribute by DotName'
         return self.attributes[name]
+    
+    def has_attribute(self, name):
+        'Return true if attribute with name exists.'
+        return name in self.attributes
 
 
 
@@ -1838,7 +1870,7 @@ class Interpreter(object):
             #create unevaluated parentheses node as the return value
             new_node = NodeParentheses((val_expr,), node.loc)
             #put decoration on new node
-            decorate_call(new_node, val_expr.type)
+            decorate_call(new_node, val_expr.__siml_type__)
             return new_node
 
 
@@ -2016,7 +2048,7 @@ class Interpreter(object):
             
         #Evaluate the type specifications, but only once
         if not func_obj.siml_signature.is_evaluated:
-            func_obj.siml_signature.evaluate_type_specs(self)
+            func_obj.siml_signature.evaluate_type_specs(self, func_obj.siml_globals)
         #Type checking of arguments, and binding them to their names
         bound_args = func_obj.siml_signature\
                              .parse_function_call_args(posargs, kwargs)
@@ -2156,6 +2188,13 @@ class Interpreter(object):
         (if, func, class).
         '''
         return
+
+    def exec_NodeStmtList(self, node):
+        '''
+        Visit node with a list of statements. Usually data definitions. 
+        Execute them.
+        '''
+        self.exec_(node.statements)
 
     def exec_NodeReturnStmt(self, node):
         '''Return value from function call'''
@@ -2403,7 +2442,7 @@ class Interpreter(object):
                                 node.statements, global_scope, node.loc, 
                                 dot_name)
         #put function object into the local namespace
-        setattr(self.environment.local_scope, node.name, new_func)
+        self.set_attribute(self.environment.local_scope, node.name, new_func)
 
 
     def exec_NodeClassDef(self, node):
@@ -2431,13 +2470,8 @@ class Interpreter(object):
         #type(name, bases, dict) -> a new type
         new_class = type(node.name, (SimlClass,), 
                          new_env.local_scope.__dict__)
-        setattr(self.environment.local_scope, node.name, new_class)
+        self.set_attribute(self.environment.local_scope, node.name, new_class)
         
-    def exec_NodeStmtList(self, node):
-        '''Visit node with a list of data definitions. Execute them.'''
-        self.exec_(node.statements)
-
-
     #TODO: Create a nice syntax for the data/compile statement with arbitrary keywords.
     #TODO: A syntax for constructors - literals for user defined objects is needed.
     #      (A constructor maybe needs builtin functions like:
@@ -2466,8 +2500,17 @@ class Interpreter(object):
         set_role_recursive(new_object, role)
 
         #store new object in local scope
-        new_name = node.name
-        setattr(self.environment.local_scope, new_name, new_object)
+        self.set_attribute(self.environment.local_scope, node.name, new_object)
+    
+    
+    def set_attribute(self, in_object, name, value):
+        '''
+        Create an attribute in in_object. 
+        The attribute can only be created once
+        '''
+        if hasattr(in_object, name):
+            raise UserException('Duplicate attribute %s.' % name, errno=3800910)
+        setattr(in_object, name, value)
 
 
     def exec_NodeCompileStmt(self, node):
@@ -2565,20 +2608,21 @@ class Interpreter(object):
         #      Any method with a name starting with 'init_' is considered an alternative
         #      initialization function, and it is created as a main function.
         for name, attr in tree_object.__class__.__dict__.iteritems():
-            if str(name).startswith('init_') and isinstance(attr, SimlClass):
+            if str(name).startswith('init_') and isinstance(attr, SimlFunction):
                 new_spec = Node()
                 new_spec.name = name
                 #new_spec.target_roles = (RoleParameter, RoleVariable, RoleConstant)
                 new_spec.call_argument_role = RoleParameter
                 new_spec.proto = SimlFunction(name,
-                                              Signature(attr.signature),
+                                              Signature(attr.siml_signature),
                                               statements=[],
                                               global_scope=self.built_in_lib)
                 main_func_specs.append(new_spec)
 
         #Create code: ------------------------------------------------------------------
         #create (empty) flat object
-        flat_object = CompiledClass(node.name, {DotName('time'):TIME}, node.loc)
+        flat_object = CompiledClass(class_obj.__name__, {DotName('time'):TIME}, 
+                                    node.loc)
 
         #call the main functions of tree_object and collect code
         for spec in main_func_specs:
@@ -2607,7 +2651,7 @@ class Interpreter(object):
                     arg = IFloat()
                 else:
                     arg = arg_def.type()()
-                arg.role = args_role
+                arg.__siml_role__ = args_role
                 arg.target_name = str(arg_def.name) #TODO: This is bad hack!
                 args_list.append(arg)
                 #The arguments are not attributes of the simulation object
@@ -2912,11 +2956,9 @@ class Interpreter(object):
     def interpret_module_string(self, text, file_name=None, module_name='test'):
         '''Interpret the program text of a module.'''
         #create the new module and import the built in objects
-        mod = IModule(module_name, file_name)
+        mod = IModule(self.built_in_lib, module_name, file_name)
         #put module into root namespace (symbol table)
         self.modules[module_name] = mod
-        #add built in attributes to model
-        mod.__dict__.update(self.built_in_lib.__dict__)
         #set up stack frame (execution environment)
         env = ExecutionEnvironment()
         env.global_scope = mod
@@ -2935,6 +2977,8 @@ class Interpreter(object):
         self.exec_(ast.statements)
         #remove frame from stack
         self.pop_environment()
+        
+        return mod
 
 
     # --- manage frame stack --------------------------------------------------------------

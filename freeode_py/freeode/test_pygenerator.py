@@ -98,7 +98,7 @@ def test_ExpressionGenerator_2(): #IGNORE:C01111
     print msg
     from math import sin
     from freeode.pygenerator import ExpressionGenerator
-    from freeode.interpreter import IFloat, CallableObject
+    from freeode.interpreter import IFloat, SimlFunction
     from freeode.ast import NodeFuncCall
 
     e_gen = ExpressionGenerator()
@@ -106,7 +106,7 @@ def test_ExpressionGenerator_2(): #IGNORE:C01111
     a = IFloat()
     a.target_name = 'a'
     #create a function
-    fsin = CallableObject(None)
+    fsin = SimlFunction(None)
     fsin.codegen_name = 'sin' 
     
     #expression: sin(a)
@@ -280,7 +280,7 @@ class A:
     func init_b(this, in_b):
         b = in_b #set parameter
         x = 0    #set initial value
-        
+                                                       #10     
     func initialize(this):
         b = 0.1 #set parameter
         x = 0   #set initial value
@@ -398,5 +398,5 @@ compile A
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_ProgramGenerator__create_program_3()
+    test_ProgramGenerator__create_program_2()
     pass
