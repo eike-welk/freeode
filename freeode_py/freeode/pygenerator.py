@@ -38,29 +38,30 @@ generates some python classes that perform the simulations.
 from __future__ import division
 
 import cStringIO
-from util import DotName, PROGRAM_VERSION
+from util import DotName, PROGRAM_VERSION, aa_make_tree
 from freeode.ast import (Visitor,
-                         NodeFuncCall, NodeParentheses, NodeOpInfix2, 
-                         NodeOpPrefix1, NodeAssignment, NodeIfStmt, 
+                         NodeFuncCall, NodeParentheses,  
+                         NodeAssignment, NodeIfStmt, 
                          NodeExpressionStmt, 
                          RoleIntermediateVariable, RoleInputVariable, 
                          RoleOutputVariable, RoleParameter, 
                          RoleConstant, 
                          )
-from  freeode.interpreter import (IFloat, IString, CompiledClass, 
-                                  CodeGeneratorObject, isrole
+from  freeode.interpreter import (IFloat, IString, IBool, CompiledClass, 
+                                  CodeGeneratorObject, isrole, BUILTIN_LIB
                                   )
 
 
 
-class PyGenException(Exception):
-    '''Exception thrown by the python code generator classes'''
-    def __init__(self, *params):
-        Exception.__init__(self, *params)
-
-
-
-class ExpressionGenerator(Visitor):
+def func(function_or_method):
+    '''Always return function, even when method is passed.'''
+    if hasattr(function_or_method, 'im_func'):
+        return function_or_method.im_func
+    else:
+        return function_or_method
+    
+    
+class ExpressionGenerator(object):
     '''
     Take ILT sub-tree that describes a formula and
     convert it into a formula in the Python programming language.
@@ -73,20 +74,51 @@ class ExpressionGenerator(Visitor):
     '''
     
     def __init__(self):
-        Visitor.__init__(self)
+        object.__init__(self)
         
-    def create_expression(self, iltFormula):
+    def create_expression(self, expr):
         '''
         Take ILT sub-tree that describes a formula and
         convert it into a formula in the Python programming language.
         (recursive)
 
-        Arguments:
-            iltFormula : tree of Node objects
-        Returns:
-            string, formula in Python language
+        ARGUMENT
+        --------
+        expr : Node, IFloat, IString
+             Tree of Node objects encoding an expression
+         
+        Return
+        ------
+        str, formula in Python language
         '''
-        return self.dispatch(iltFormula)
+        #print aa_make_tree(expr)
+        
+        #TODO: create generalized function to handle CodeGeneratorObject
+        #      IFloat, IString, IBool
+        if isinstance(expr, IFloat):
+            return self._createNum(expr)
+        elif isinstance(expr, IString):
+            return self._createString(expr)
+        elif isinstance(expr, NodeParentheses):
+            return self._createParentheses(expr)
+        elif isinstance(expr, NodeFuncCall):
+            if expr.function in ExpressionGenerator.known_functions:
+                return self._create_func_call(expr)
+            elif expr.function in ExpressionGenerator.known_binops:
+                return self._create_binop(expr)            
+            elif expr.function in ExpressionGenerator.known_prefopts:
+                return self._create_prefopt(expr)  
+            elif expr.function is BUILTIN_LIB.graph:
+                return self._create_graph_func_call(expr)          
+            else:
+                raise Exception('Python generator does not know function: %s'
+                                % str(expr.function))
+        else:
+            #Internal error: unknown node
+            raise Exception('Unknown node in ExpressionGenerator: %s\n'
+                            'Tree: \n%s \n' 
+                            % (str(expr), aa_make_tree(expr)))
+    
     
     def _create_graph_func_call(self, call):
         '''
@@ -105,75 +137,88 @@ class ExpressionGenerator(Visitor):
         ret_str += ')'
         return ret_str
         
-    @Visitor.when_type(NodeFuncCall, 1)
-    def _createBuiltInFuncCall(self, call):
-        #Built in function: sin(...)
-        nameDict = {'sin':'sin', 'cos':'cos', 'tan':'tan', 'sqrt':'sqrt',
-                    'exp':'exp', 'log':'log', 'min':'min' , 'max':'max',
-                    'print':'print', 'graph':'@graph', 'save':'self.save',
-                    'solution_parameters':'self.set_solution_parameters',
-                    'Float.__str__':'str', 'String.__str__':'str'}
-#                    'overrideParam':'self._overrideParam' }
+        
+    function_name = {BUILTIN_LIB.sin:'sin', BUILTIN_LIB.cos:'cos', 
+                     BUILTIN_LIB.tan:'tan', BUILTIN_LIB.sqrt:'sqrt',
+                     BUILTIN_LIB.exp:'exp', BUILTIN_LIB.log:'log', 
+                     BUILTIN_LIB.min:'min' , BUILTIN_LIB.max:'max',
+                     getattr(BUILTIN_LIB, 'print'):'print', 
+                     BUILTIN_LIB.save:'self.save',
+                     BUILTIN_LIB.solution_parameters:'self.set_solution_parameters',
+                     func(IFloat.__siml_str__):'str', 
+                     func(IString.__siml_str__):'str',
+                     func(IBool.__siml_str__):'str'}
+    known_functions = set(function_name.keys())
+    
+    def _create_func_call(self, func_call):
+        '''Create Python text for function func_call.'''
         #get name of the corresponding Python function
-        func_name = nameDict[call.function.codegen_name] 
-        #special handling of the graph pseudo-function
-        if func_name == '@graph':
-            return self._create_graph_func_call(call)
+        func_name = ExpressionGenerator.function_name[func_call.function] 
         #produce output
         ret_str = func_name + '('
-        for arg in call.arguments:
-            ret_str += self.dispatch(arg) + ', '
-        for name, arg in call.keyword_arguments.iteritems():
-            ret_str += name + ' = ' + self.dispatch(arg) + ', '
+        for arg in func_call.arguments:
+            ret_str += self.create_expression(arg) + ', '
+        for name, arg in func_call.keyword_arguments.iteritems():
+            ret_str += name + ' = ' + self.create_expression(arg) + ', '
         ret_str += ')'
         return ret_str
         
-    @Visitor.when_type(IFloat, 1)
+    
+    binop_str = {func(IFloat.__add__):'+', func(IString.__add__):'+',
+                 func(IFloat.__sub__):' - ', 
+                 func(IFloat.__mul__):' * ', 
+                 func(IFloat.__div__):' / ',  
+                 func(IFloat.__mod__):' % ',
+                 func(IFloat.__pow__):' ** ',
+                 func(IFloat.__lt__):' < ',  
+                 func(IFloat.__gt__):' > ',  
+                 func(IFloat.__le__):' <= ',  
+                 func(IFloat.__ge__):' >= ',
+                 func(IFloat.__eq__):' == ', func(IString.__eq__):' == ', 
+                 func(IBool.__eq__):' == ',  
+                 func(IFloat.__ne__):' != ', func(IString.__ne__):' != ', 
+                 func(IBool.__ne__):' != ',
+                 func(IBool.__siml_and2__):' and ', 
+                 func(IBool.__siml_or2__):' or '}
+    known_binops = set(binop_str.keys())
+    
+    def _create_binop(self, func_call):
+        '''Create Python text for infix operators: + - * / ^ and or'''
+        op_str = ExpressionGenerator.binop_str[func_call.function]
+        return (self.create_expression(func_call.arguments[0]) + op_str +
+                self.create_expression(func_call.arguments[1]))
+        
+        
+    prefopt_str = {func(IFloat.__neg__):'-', func(IBool.__siml_not__):' not '}
+    known_prefopts = set(prefopt_str.keys())
+    
+    def _create_prefopt(self, func_call):
+        '''Create Python text for prefix operators: - not'''
+        op_str = ExpressionGenerator.prefopt_str[func_call.function]
+        return op_str + self.create_expression(func_call.arguments[0])
+
+
+    #@Visitor.when_type(IFloat, 1)
     def _createNum(self, variable):
-        #Number: 123.5 or variable with type float
+        '''Number: 123.5 or variable with type Float'''
         if isrole(variable, RoleConstant):
             return 'float64(%s)' % str(variable.value)
         else:
             return variable.target_name
         
-    @Visitor.when_type(IString, 1)
+    #@Visitor.when_type(IString, 1)
     def _createString(self, variable):
-        #String: 'hello world' or variable with type str
+        '''String: 'hello world' or variable with type String'''
         if isrole(variable, RoleConstant):
             return '\'' + variable.value + '\''
         else:
             return variable.target_name
         
-    @Visitor.when_type(NodeParentheses, 1)
+    #@Visitor.when_type(NodeParentheses, 1)
     def _createParentheses(self, iltFormula):
         #pair of prentheses: ( ... )
-        return '(' + self.dispatch(iltFormula.arguments[0]) + ')'
-        
-    @Visitor.when_type(NodeOpInfix2, 1)
-    def _createOpInfix2(self, iltFormula):
-    #Infix operator: + - * / ^ and or
-        opDict = {'+':' + ', '-':' - ', '*':' * ', '/':' / ', '%':' % ',
-                  '**':' ** ',
-                  '<':' < ', '>':' > ', '<=':' <= ', '>=':' >= ',
-                  '==':' == ', '!=':' != ',
-                  'and':' and ', 'or':' or '}
-        opStr = opDict[iltFormula.operator]
-        return (self.dispatch(iltFormula.arguments[0]) + opStr +
-                self.dispatch(iltFormula.arguments[1]))
-        
-    @Visitor.when_type(NodeOpPrefix1, 1)
-    def _createOpPrefix1(self, iltFormula):
-        #Prefix operator: - not
-        opDict = {'-':'-', 'not':' not '}
-        opStr = opDict[iltFormula.operator]
-        return opStr + self.dispatch(iltFormula.arguments[0])
-        
-    @Visitor.default
-    def _ErrorUnknownNode(self, iltFormula):
-        #Internal error: unknown node
-        raise PyGenException('Unknown node in ExpressionGenerator:\n' 
-                             + str(iltFormula))
-
+        return '(' + self.create_expression(iltFormula.arguments[0]) + ')'
+                
 
 
 class StatementGenerator(Visitor):
@@ -291,7 +336,7 @@ class StatementGenerator(Visitor):
     @Visitor.default
     def _ErrorUnknownNode(self, iltStmt, _indent):
         #Internal error: unknown statement -----------------------------------
-        raise PyGenException('Unknown node in StatementGenerator:\n'
+        raise Exception('Unknown node in StatementGenerator:\n'
                              + str(iltStmt))
 
 
@@ -350,7 +395,7 @@ class SimulationClassGenerator(object):
             elif isrole(attr, RoleIntermediateVariable):
                 self.algebraic_variables[name] = attr
             else:
-                raise PyGenException('Unknown attribute definition:\n'+ str(attr))
+                raise Exception('Unknown attribute definition:\n'+ str(attr))
 
 
     @staticmethod

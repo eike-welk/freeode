@@ -1362,81 +1362,6 @@ def siml_solution_parameters(duration=None, reporting_interval=None): #pylint:di
 
 
 
-def create_built_in_lib():
-    '''
-    Returns module with objects that are built into interpreter.
-    '''
-    lib = IModule('__built_in__', 'interpreter.py')
-
-    #pylint:disable-msg=W0201
-    #built in constants
-    lib.__dict__['None'] = NONE
-    lib.True = TRUE
-    lib.False = FALSE
-    lib.time = TIME
-    #basic data types
-    lib.NoneType = INone
-    lib.Bool = IBool
-    lib.String = IString
-    lib.Float = IFloat
-    #built in functions
-    lib.__dict__['print'] = siml_print
-    lib.printc = siml_printc
-    lib.graph = siml_graph
-    lib.save = siml_save
-    lib.solution_parameters = siml_solution_parameters
-    lib.associate_state_dt = associate_state_dt
-    lib.istype = istype
-#    @signature(None, None)
-#    def w_istype(in_object, class_or_type_or_tuple):
-#        return IBool(istype(in_object, class_or_type_or_tuple))
-#    lib.isinstance = w_istype
-    #math
-    #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units
-    @signature([IFloat], IFloat)
-    def w_sqrt(x): 
-        test_allknown(x)
-        return IFloat(math.sqrt(x.value))
-    lib.sqrt = w_sqrt
-    @signature([IFloat], IFloat)
-    def w_sin(x):
-        test_allknown(x)
-        return IFloat(math.sin(x.value))
-    lib.sin = w_sin
-    @signature([IFloat], IFloat)
-    def w_cos(x):
-        test_allknown(x)
-        return IFloat(math.cos(x.value))
-    lib.cos = w_cos
-    @signature([IFloat], IFloat)
-    def w_tan(x):
-        test_allknown(x)
-        return IFloat(math.tan(x.value))
-    lib.tan = w_tan
-    
-    @signature([IFloat, IFloat], IFloat)
-    def w_max(a, b):
-        test_allknown(a, b)
-        return IFloat(max(a.value, b.value))
-    lib.max = w_max
-    @signature([IFloat, IFloat], IFloat)
-    def w_min(a, b):
-        test_allknown(a, b)
-        return IFloat(min(a.value, b.value))
-    lib.min = w_min
-
-    return lib
-
-
-
-#--------- Interpreter -------------------------------------------------------*
-#TODO: replace(a, b)
-#TODO: parent(o)
-#TODO: find_name(o, parent)
-#TODO: quote(expr)
-#TODO: quasi_quote(expr)
-#TODO: operator('x-x', expr, expr, ...)
-
 @signature(None, None)
 def associate_state_dt(state_var, derivative_var):
     '''
@@ -1588,6 +1513,92 @@ def is_role_more_variable(role1, role2):
     #compare the roles' variable-character by comparing their positions in
     #the list
     return index1 > index2 #IGNORE:W0631
+
+
+
+def create_built_in_lib():
+    '''
+    Returns module with objects that are built into interpreter.
+    '''
+    lib = IModule('__built_in__', 'interpreter.py')
+
+    #pylint:disable-msg=W0201
+    #built in constants
+    lib.__dict__['None'] = NONE
+    lib.True = TRUE
+    lib.False = FALSE
+    lib.time = TIME
+    
+    #basic data types
+    lib.NoneType = INone
+    lib.Bool = IBool
+    lib.String = IString
+    lib.Float = IFloat
+    
+    #built in functions
+    lib.__dict__['print'] = siml_print
+    lib.printc = siml_printc
+    lib.graph = siml_graph
+    lib.save = siml_save
+    lib.solution_parameters = siml_solution_parameters
+    lib.associate_state_dt = associate_state_dt
+    lib.istype = istype
+    
+    #math
+    #TODO: replace by Siml function sqrt(x): return x ** 0.5 # this is more simple for units
+    @signature([IFloat], IFloat)
+    def w_sqrt(x): 
+        test_allknown(x)
+        return IFloat(math.sqrt(x.value))
+    lib.sqrt = w_sqrt
+    @signature([IFloat], IFloat)
+    def w_log(x): 
+        test_allknown(x)
+        return IFloat(math.log(x.value))
+    lib.log = w_log
+    @signature([IFloat], IFloat)
+    def w_exp(x): 
+        test_allknown(x)
+        return IFloat(math.exp(x.value))
+    lib.exp = w_exp
+    @signature([IFloat], IFloat)
+    def w_sin(x):
+        test_allknown(x)
+        return IFloat(math.sin(x.value))
+    lib.sin = w_sin
+    @signature([IFloat], IFloat)
+    def w_cos(x):
+        test_allknown(x)
+        return IFloat(math.cos(x.value))
+    lib.cos = w_cos
+    @signature([IFloat], IFloat)
+    def w_tan(x):
+        test_allknown(x)
+        return IFloat(math.tan(x.value))
+    lib.tan = w_tan
+    
+    @signature([IFloat, IFloat], IFloat)
+    def w_max(a, b):
+        test_allknown(a, b)
+        return IFloat(max(a.value, b.value))
+    lib.max = w_max
+    @signature([IFloat, IFloat], IFloat)
+    def w_min(a, b):
+        test_allknown(a, b)
+        return IFloat(min(a.value, b.value))
+    lib.min = w_min
+
+    return lib
+
+BUILTIN_LIB = create_built_in_lib()
+
+
+#TODO: parent(o)
+#TODO: find_name(o, parent)
+#TODO: quote(expr)
+#TODO: quasi_quote(expr)
+#--------- Interpreter -------------------------------------------------------*
+
 
 
 def determine_result_role(arguments, keyword_arguments={}): #IGNORE:W0102
@@ -1756,7 +1767,7 @@ class Interpreter(object):
     '''
     def __init__(self):
         #the built in objects
-        self.built_in_lib = create_built_in_lib()
+        self.built_in_lib = BUILTIN_LIB
         #directory of modules - the symbol table
         self.modules = {}
         #frame stack - should never be empty: top element is automatically

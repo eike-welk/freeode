@@ -96,24 +96,27 @@ def test_ExpressionGenerator_2(): #IGNORE:C01111
     msg = 'Test creation of expression strings. Check function call.'
     #py.test.skip(msg)
     print msg
-    from math import sin
+    
+    import math 
     from freeode.pygenerator import ExpressionGenerator
-    from freeode.interpreter import IFloat, SimlFunction
+    from freeode.interpreter import IFloat, BUILTIN_LIB
     from freeode.ast import NodeFuncCall
 
     e_gen = ExpressionGenerator()
     #create a variable
     a = IFloat()
     a.target_name = 'a'
-    #create a function
-    fsin = SimlFunction(None)
-    fsin.codegen_name = 'sin' 
+
+    #get the "sin" function
+    sin = BUILTIN_LIB.sin
     
-    #expression: sin(a)
-    expr = NodeFuncCall(fsin, (a,))
+    #create expression "sin(a)" and create Python code for it
+    expr = NodeFuncCall(sin, (a,))
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':0, 'sin':sin}) == 0
+    
+    #Execute the generated Python code
+    assert eval(expr_str, {'a':0, 'sin':math.sin}) == 0
 
 
 
@@ -327,7 +330,7 @@ def test_ProgramGenerator__create_program_3():
     #py.test.skip(msg)
     print msg
     
-    import os
+    #import os
     from freeode.pygenerator import ProgramGenerator
     from freeode.interpreter import Interpreter
     
@@ -369,7 +372,7 @@ compile A
     #create the output text
     pg = ProgramGenerator()
     pg.create_program('foo.siml', intp.get_compiled_objects())
-    print pg.get_buffer()
+    #print pg.get_buffer()
     
     #write the buffer into a file, import the file as a module
     #progname must be unique! otherwise race condition!
@@ -391,12 +394,12 @@ compile A
     assert abs(a.param.e) < 0.001 #close to 0 
     
     #clean up
-    os.remove(progname + '.py')
+    #os.remove(progname + '.py')
     
 
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    #test_expression_evaluation_1()
-    test_ProgramGenerator__create_program_2()
+    #test_ExpressionGenerator_2()
+    test_ProgramGenerator__create_program_3()
     pass
