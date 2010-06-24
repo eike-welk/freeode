@@ -55,8 +55,8 @@ from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
 #import copy
-import weakref
-from weakref import ref
+#import weakref
+#from weakref import ref
 import math
 import os
 import types
@@ -1668,7 +1668,7 @@ def set_role_recursive(tree, new_role):
 
 def decorate_call(call, return_type):
     '''
-    Decorate function calls nodes.
+    Decorate function call nodes.
     The call gets the same attributes like unknown variables
 
     This method works with all ast.Node objects that are similar to
@@ -1900,16 +1900,10 @@ class Interpreter(object):
         func_name = Interpreter._prefopt_table[node.operator]
         #get the special method from the operand's class and try to call the method.
         func = self.get_attribute(inst_rhs.__siml_type__, func_name, node.loc)
-        try:
-            result = self.apply(func, (inst_rhs,))
-            return result
-        except UnknownArgumentsException:
-            #Some arguments were unknown create an unevaluated expression
-            new_node = NodeOpPrefix1(node.operator, (inst_rhs,), node.loc)
-            #put on decoration
-            new_node.function = func
-            decorate_call(new_node, func.siml_signature.return_type)
-            return new_node
+
+        #Call the special function; may return an unevaluated function call
+        result = self.apply(func, (inst_rhs,))
+        return result
 
 
     _binop_table = {'+': ('__add__','__radd__'),
@@ -1951,15 +1945,9 @@ class Interpreter(object):
         #get the special method from the LHS's class and try to call the method.
         func = self.get_attribute(ev_lhs.__siml_type__, lfunc_name, node.loc)
         try:
+            #Call the special function; may return an unevaluated function call
             result = self.apply(func, (ev_lhs, ev_rhs))
             return result
-        except UnknownArgumentsException:
-            #Some arguments were unknown create an unevaluated expression
-            new_node = NodeOpInfix2(node.operator, (ev_lhs, ev_rhs), node.loc)
-            #put on decoration
-            new_node.function = func
-            decorate_call(new_node, func.siml_signature.return_type)
-            return new_node
         except NotImplementedError:# IncompatibleTypeError?
             #TODO: if an operator is not implemented the special function should raise
             #      an NotImplementedError ??? IncompatibleTypeError exception, for
@@ -2021,55 +2009,53 @@ class Interpreter(object):
             ev_arg_val = self.eval(arg_val)
             ev_kwargs[arg_name] = ev_arg_val
 
-        try:
-            #call the call-able object
-            return self.apply(func_obj, ev_args, ev_kwargs)
-        except UnknownArgumentsException:
-            #Some arguments were unknown create an unevaluated function call
-            new_call = NodeFuncCall(func_obj, ev_args, ev_kwargs, node.loc)
-            decorate_call(new_call, func_obj.siml_signature.return_type)
-            return new_call
+        #Call the function; may return an unevaluated function call.
+        return self.apply(func_obj, ev_args, ev_kwargs, node.loc)
 
 
-    def apply(self, func_obj, posargs=tuple(), kwargs={}): #IGNORE:W0102
+    def apply(self, func_obj, posargs=tuple(), kwargs={}, loc=None): #IGNORE:W0102
         '''
         Execute a function. 
         
         User defined and built in functions are both executed here.
         All arguments must be evaluated. 
-        
-        TODO: in the long run code generation could go here too. 
         '''
-        #Get function from bound or unbound method and put this/self into arguments
-        if hasattr(func_obj, 'im_func'):
-            if func_obj.im_self is not None:
-                posargs = (func_obj.im_self,) + posargs
-            func_obj = func_obj.im_func
+        try:
+            #Get function from bound or unbound method and put this/self into arguments
+            if hasattr(func_obj, 'im_func'): 
+                if func_obj.im_self is not None:
+                    posargs = (func_obj.im_self,) + posargs
+                func_obj = func_obj.im_func
             
-        #Evaluate the type specifications, but only once
-        if not func_obj.siml_signature.is_evaluated:
-            func_obj.siml_signature.evaluate_type_specs(self, func_obj.siml_globals)
-        #Type checking of arguments, and binding them to their names
-        bound_args = func_obj.siml_signature\
-                             .parse_function_call_args(posargs, kwargs)
+            #Evaluate the type specifications, but only once
+            if not func_obj.siml_signature.is_evaluated:
+                func_obj.siml_signature.evaluate_type_specs(self, func_obj.siml_globals)
+            #Type checking of arguments, and binding them to their names
+            bound_args = func_obj.siml_signature\
+                                 .parse_function_call_args(posargs, kwargs)
+            
+            #Call the function
+            if isinstance(func_obj, SimlFunction): 
+                ret_val = self.apply_siml(func_obj, bound_args)
+            else:
+                ret_val = func_obj(*posargs, **kwargs)  #pylint:disable-msg=W0142
+            
+            #TODO: maybe also convert string -> IString, float -> IFloat
+            #Convert Python types to Siml types
+            if ret_val is None:
+                ret_val = NONE
+            elif isinstance(ret_val, bool):
+                ret_val = IBool(ret_val)
+            #type checking of return value
+            func_obj.siml_signature.test_return_type_compatible(ret_val)
+            return ret_val
         
-        #Call the function
-        if isinstance(func_obj, SimlFunction):
-            ret_val = self.apply_siml(func_obj, bound_args)
-        else:
-            ret_val = func_obj(*posargs, **kwargs) # pylint: disable-msg=W0142
+        except UnknownArgumentsException:
+            #Some arguments were unknown; create an unevaluated function call
+            new_call = NodeFuncCall(func_obj, posargs, kwargs, loc)
+            decorate_call(new_call, func_obj.siml_signature.return_type)
+            return new_call
         
-        #TODO: maybe also convert string -> IString, float -> IFloat
-        #Convert Python types to Siml types
-        if ret_val is None:
-            ret_val = NONE
-        if isinstance(ret_val, bool):
-            ret_val = IBool(ret_val)
-        #type checking of return value
-        func_obj.siml_signature.test_return_type_compatible(ret_val)
-
-        return ret_val
-    
     
     def apply_siml(self, func_obj, bound_args):
         '''
@@ -2123,9 +2109,6 @@ class Interpreter(object):
         self.pop_environment()
         #the return value is stored in the environment (stack frame)
         ret_val = new_env.return_value
-
-#        #Test if returned object has the right type.
-#        func_obj.signature.test_return_type_compatible(ret_val)
         return ret_val
     
        

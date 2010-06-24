@@ -36,7 +36,7 @@ import unittest
 pytest_plugins = "pytest_unittest"
 
 
-import weakref
+#import weakref
 
 
 class TestAST(unittest.TestCase): #IGNORE:C01111

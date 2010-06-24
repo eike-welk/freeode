@@ -39,10 +39,10 @@ from freeode.ast import (NodeParentheses, NodeOpInfix2, NodeOpPrefix1,
                          NodeFuncCall, NodeAssignment, NodeIfStmt, NodeClause, 
                          RoleConstant, RoleParameter, RoleInputVariable, 
                          RoleOutputVariable, RoleIntermediateVariable)
-from freeode.interpreter import (InterpreterObject, 
+from freeode.interpreter import (InterpreterObject, SimlFunction,
                                  CodeGeneratorObject, CompiledClass,
-                                 isequivalentrole, isrole, 
-                                 #isknownconst,
+                                 isrole, 
+                                 isknownconst,
                                  )
 
 
@@ -151,7 +151,7 @@ class MakeDataFlowDecorations(object):
         '''Discover inputs and outputs of the whole flattened class.''' 
         inputs, outputs = set(), set()
         for attr in sim_obj.attributes.itervalues():
-            if isinstance(attr, CallableObject):
+            if isinstance(attr, SimlFunction):
 #                print 'decorating: ', attr.name
                 inp, out = self.decorate_main_function(attr)
                 inputs.update(inp)

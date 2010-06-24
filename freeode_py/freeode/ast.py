@@ -44,8 +44,8 @@ from __future__ import absolute_import              #IGNORE:W0410
 
 
 from types import ClassType, FunctionType, NoneType #, TupleType, StringType
-import copy
-import weakref
+#import copy
+#import weakref
 
 #import freeode.third_party.pyparsing as pyparsing
 from freeode.util import AATreeMaker, Enum

@@ -476,8 +476,8 @@ def test_operator_dispatch_2(): #IGNORE:C01111
     msg = 'Test Interpreter: handling of operators with unknown Float values.'
     #skip_test(msg)
     print msg
-    from freeode.interpreter import Interpreter, IFloat
-    from freeode.ast import NodeOpInfix2, NodeOpPrefix1, RoleVariable
+    from freeode.interpreter import Interpreter, IFloat, istype
+    from freeode.ast import NodeOpInfix2, NodeOpPrefix1, NodeFuncCall, RoleVariable
 
     intp = Interpreter()
     
@@ -489,12 +489,16 @@ def test_operator_dispatch_2(): #IGNORE:C01111
     op_sub = NodeOpInfix2('-', [val_2, val_3])
     res = intp.eval(op_sub)
     print res
-    assert isinstance(res, NodeOpInfix2)
+    assert isinstance(res, NodeFuncCall)
+    assert res.function is IFloat.__sub__.im_func
+    assert istype(res, IFloat)
     
     op_neg = NodeOpPrefix1('-', [val_2])
     res = intp.eval(op_neg)
     print res
-    assert isinstance(res, NodeOpPrefix1)
+    assert isinstance(res, NodeFuncCall)
+    assert res.function is IFloat.__neg__.im_func
+    assert istype(res, IFloat)
     
 
 
@@ -509,16 +513,16 @@ def test_expression_evaluation_1(): #IGNORE:C01111
     #parse the expression
     ps = simlparser.Parser()
     ex = ps.parseExpressionStr('0+1*2')
-    print
-    print 'AST (parser output): -----------------------------------------------------------'
-    print ex
+#    print
+#    print 'AST (parser output): -----------------------------------------------------------'
+#    print ex
     
     #interpret the expression
     intp = Interpreter()
     res = intp.eval(ex)
-    print
-    print 'Result object: --------------------------------------------------------------'
-    print res 
+#    print
+#    print 'Result object: --------------------------------------------------------------'
+#    print res 
     assert res.value == 2.0
     
     
@@ -642,7 +646,7 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     #skip_test(msg)
     print msg
 
-    from freeode.ast import RoleVariable, NodeOpInfix2
+    from freeode.ast import RoleVariable, NodeOpInfix2, NodeFuncCall
     from freeode.interpreter import (IModule, IFloat, ExecutionEnvironment, 
                                      Interpreter, istype)
     import freeode.simlparser as simlparser
@@ -651,9 +655,9 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     #parse the expression
     ps = simlparser.Parser()
     ex = ps.parseExpressionStr('a + 2*2')
-    print
-    print 'AST (parser output): -----------------------------------------------------------'
-    #print aa_make_tree(ex)
+#    print
+#    print 'AST (parser output): -----------------------------------------------------------'
+#    print aa_make_tree(ex)
     
     #create module where name lives
     mod = IModule()
@@ -661,9 +665,9 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     val_2 = IFloat()
     val_2.__siml_role__ = RoleVariable
     mod.a = val_2
-    print
-    print 'Module where variable is located: --------------------------------------------'
-    #print aa_make_tree(mod)
+#    print
+#    print 'Module where variable is located: --------------------------------------------'
+#    print aa_make_tree(mod)
     
     #create environment for lookup of variables (stack frame)
     env = ExecutionEnvironment()
@@ -676,8 +680,8 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     print
     print 'Result object - should be an unevaluated expression: --------------------------------------------------------------'
     print aa_make_tree(res)
-    assert isinstance(res, NodeOpInfix2)
-    assert res.operator == '+'
+    assert isinstance(res, NodeFuncCall)
+    assert res.function is IFloat.__add__.im_func
     assert istype(res, IFloat)
 
 
@@ -687,7 +691,7 @@ def test_function_call_unknown_arguments_1(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import (IModule, ExecutionEnvironment, 
-                                     CodeGeneratorObject, Interpreter, signature, 
+                                     Interpreter, signature, 
                                      IFloat, RoleVariable, istype, test_allknown)
     from freeode.ast import NodeFuncCall, NodeIdentifier
     from freeode.util import aa_make_tree
@@ -1207,5 +1211,5 @@ def test_set_role_recursive_1(): #IGNORE:C01111
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_SimlFunction_3()
+    test_operator_dispatch_2()
     pass #pylint:disable-msg=W0107

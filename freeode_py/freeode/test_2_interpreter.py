@@ -797,9 +797,9 @@ def test_Interpreter_assign_emit_code_1(): #IGNORE:C01111
     #skip_test(msg)
     print msg
 
-    from freeode.interpreter import Interpreter, IFloat
+    from freeode.interpreter import Interpreter, IFloat, istype
     from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
-    from freeode.ast import NodeAssignment, NodeOpInfix2
+    from freeode.ast import NodeAssignment, NodeFuncCall
 
     prog_text = \
 '''
@@ -831,7 +831,8 @@ b = 2*a #emit this statement
     assert isinstance(stmts[0].target, IFloat)                 #  b
     assert stmts[0].target is mod.b                            #  b
     assert stmts[0].target.value is None                       #  b
-    assert isinstance(stmts[0].expression, NodeOpInfix2)       #  2*a
+    assert isinstance(stmts[0].expression, NodeFuncCall)       #  2*a
+    assert istype(stmts[0].expression, IFloat)                 #  2*a
     assert isinstance(stmts[0].expression.arguments[0], IFloat)#  2
     assert stmts[0].expression.arguments[0].value == 2         #  2
     assert isinstance(stmts[0].expression.arguments[1], IFloat)#  a
@@ -846,9 +847,9 @@ def test_Interpreter_assign_emit_code_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
 
-    from freeode.interpreter import Interpreter, IFloat
+    from freeode.interpreter import Interpreter, IFloat, istype
     from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
-    from freeode.ast import NodeAssignment, NodeOpInfix2 
+    from freeode.ast import NodeAssignment, NodeFuncCall
 
 
     prog_text = \
@@ -889,7 +890,8 @@ c = 2*b #emit everything
     assert stmts[0].target is mod.b
     # c = 2*b
     assert isinstance(stmts[1], NodeAssignment)
-    assert isinstance(stmts[1].expression, NodeOpInfix2)        # 2 * b
+    assert isinstance(stmts[1].expression, NodeFuncCall)        # 2 * b
+    assert istype(stmts[1].expression, IFloat)
     assert isinstance(stmts[1].expression.arguments[0], IFloat) # 2
     assert stmts[1].expression.arguments[0].value == 2
     assert isinstance(stmts[1].expression.arguments[1], IFloat) # b
@@ -1011,7 +1013,7 @@ compile A
     assert stmt0.target is not a_x 
     assert stmt0.target is not b_x 
     assert stmt0.target is not c_x
-    assert stmt0.expression.operator == '+'
+    assert stmt0.expression.function is IFloat.__add__.im_func
     #second statement (c=a+b) assigns to c.x
     assert stmt1.target is c_x
     #second statement assigns temporary result of previous computation to attribute c.x
@@ -1128,7 +1130,7 @@ compile A
     assert len(dynamic.statements) == 1
     stmt0 = dynamic.statements[0]
     assert isinstance(stmt0, NodeExpressionStmt)
-    assert stmt0.expression.operator == '+'
+    assert stmt0.expression.function is IFloat.__add__.im_func
     #assert False
 
 
