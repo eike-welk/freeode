@@ -29,24 +29,21 @@ Test code for the "interpreter.py" module
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
-#The py library is not standard. Preserve ability to use some test functions
-# for debugging when the py library, and the py.test testing framework, are 
-# not installed. 
-try:                      
-    import py
-except ImportError:
-    print 'No py library, many tests may fail!'
+from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
+
+from freeode.util import assert_raises
 
 
 
 def test_ExpressionGenerator_1(): #IGNORE:C01111
     msg = 'Test creation of expression strings. Check all operators'
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from numpy import float64
-    from freeode.pygenerator import ExpressionGenerator, IFloat
-    from freeode.ast import (RoleConstant,
-                             NodeOpInfix2, NodeOpPrefix1, NodeParentheses)
+    from freeode.pygenerator import ExpressionGenerator, func
+    from freeode.interpreter import IFloat
+    from freeode.ast import RoleConstant, NodeFuncCall, NodeParentheses
 
     e_gen = ExpressionGenerator()
     #create some variables and numbers
@@ -57,63 +54,75 @@ def test_ExpressionGenerator_1(): #IGNORE:C01111
     c = IFloat(2)
     c.role = RoleConstant
     
+    #Get some functions that are converted into Python operators
+    add = func(IFloat.__add__)
+    sub = func(IFloat.__sub__)
+    mul = func(IFloat.__mul__)
+    div = func(IFloat.__div__)
+    pow = func(IFloat.__pow__)
+    mod = func(IFloat.__mod__)
+    neg = func(IFloat.__neg__)
+    
     #expression a + b * 2
-    expr = NodeOpInfix2('+', (a, NodeOpInfix2('*', (b, c))))
+    expr = NodeFuncCall(add, (a, NodeFuncCall(mul, (b, c))))
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':1, 'b':2, 'float64':float64}) == 5
+    assert eval(expr_str, {'a':1, 'b':2, 'float64':float64}) == 1 + 2 * 2 #5
 
     #expression a - b / 2
-    expr = NodeOpInfix2('-', (a, NodeOpInfix2('/', (b, c))))
+    expr = NodeFuncCall(sub, (a, NodeFuncCall(div, (b, c))))
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':1, 'b':2, 'float64':float64}) == 0
+    assert eval(expr_str, {'a':1, 'b':2, 'float64':float64}) == 1 - 2 / 2 #0
 
     #expression a ** b % 2
-    expr = NodeOpInfix2('**', (a, NodeOpInfix2('%', (b, c))))
+    expr = NodeFuncCall(pow, (a, NodeFuncCall(mod, (b, c))))
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':2, 'b':3, 'float64':float64}) == 0
+    assert eval(expr_str, {'a':2, 'b':3, 'float64':float64}) == 2 ** 3 % 2 #0
 
     #expression - 2
-    expr = NodeOpPrefix1('-', (c,))
+    expr = NodeFuncCall(neg, (c,))
     expr_str = e_gen.create_expression(expr)
     print expr_str
     assert eval(expr_str, {'float64':float64}) == -2
 
     #expression (a + b) * 2
-    expr = NodeOpInfix2('*', (NodeParentheses((NodeOpInfix2('+', (a, b)),)
+    expr = NodeFuncCall(mul, (NodeParentheses((NodeFuncCall(add, (a, b)),)
                                               ), 
                               c)
                         )
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':1, 'b':2, 'float64':float64}) == 6
+    assert eval(expr_str, {'a':1, 'b':2, 'float64':float64}) == (1 + 2) * 2 #6
 
 
 
 def test_ExpressionGenerator_2(): #IGNORE:C01111
     msg = 'Test creation of expression strings. Check function call.'
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
-    from math import sin
+    
+    import math 
     from freeode.pygenerator import ExpressionGenerator
-    from freeode.interpreter import IFloat, CallableObject
+    from freeode.interpreter import IFloat, BUILTIN_LIB
     from freeode.ast import NodeFuncCall
 
     e_gen = ExpressionGenerator()
     #create a variable
     a = IFloat()
     a.target_name = 'a'
-    #create a function
-    fsin = CallableObject(None)
-    fsin.codegen_name = 'sin' 
+
+    #get the "sin" function
+    sin = BUILTIN_LIB.sin
     
-    #expression: sin(a)
-    expr = NodeFuncCall(fsin, (a,))
+    #create expression "sin(a)" and create Python code for it
+    expr = NodeFuncCall(sin, (a,))
     expr_str = e_gen.create_expression(expr)
     print expr_str
-    assert eval(expr_str, {'a':0, 'sin':sin}) == 0
+    
+    #Execute the generated Python code
+    assert eval(expr_str, {'a':0, 'sin':math.sin}) == 0
 
 
 
@@ -121,7 +130,7 @@ def test_SimulationClassGenerator__create_sim_class_1():
     msg = ''' Test SimulationClassGenerator.create_sim_class: 
     Just see if function does not crash.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     import cStringIO
@@ -170,7 +179,7 @@ def test_ProgramGenerator__write_program_start():
     msg = ''' Test ProgramGenerator.write_program_start: 
     Just see if function does not crash.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.pygenerator import ProgramGenerator
     
@@ -184,7 +193,7 @@ def test_ProgramGenerator__write_program_end():
     msg = ''' Test ProgramGenerator.write_program_end: 
     Just see if function does not crash.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     from freeode.pygenerator import ProgramGenerator
     
@@ -201,7 +210,7 @@ def test_ProgramGenerator__create_program_1():
     Test ProgramGenerator.create_program: 
     Test basic functions of the compiler. Loads generated program as module.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     import os
@@ -263,7 +272,7 @@ def test_ProgramGenerator__create_program_2():
     Test program with additional initialization function.
     Load program as module and test init_*** function.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     import os
@@ -280,7 +289,7 @@ class A:
     func init_b(this, in_b):
         b = in_b #set parameter
         x = 0    #set initial value
-        
+                                                       #10     
     func initialize(this):
         b = 0.1 #set parameter
         x = 0   #set initial value
@@ -324,7 +333,7 @@ def test_ProgramGenerator__create_program_3():
     Test ProgramGenerator.create_program: 
     Test most common language features.
     '''
-    #py.test.skip(msg)
+    #skip_test(msg)
     print msg
     
     import os
@@ -369,7 +378,7 @@ compile A
     #create the output text
     pg = ProgramGenerator()
     pg.create_program('foo.siml', intp.get_compiled_objects())
-    print pg.get_buffer()
+    #print pg.get_buffer()
     
     #write the buffer into a file, import the file as a module
     #progname must be unique! otherwise race condition!
@@ -397,6 +406,6 @@ compile A
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    #test_expression_evaluation_1()
-    test_ProgramGenerator__create_program_3()
+    test_ExpressionGenerator_1()
+    #test_ProgramGenerator__create_program_3()
     pass

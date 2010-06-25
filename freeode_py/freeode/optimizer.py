@@ -39,9 +39,11 @@ from freeode.ast import (NodeParentheses, NodeOpInfix2, NodeOpPrefix1,
                          NodeFuncCall, NodeAssignment, NodeIfStmt, NodeClause, 
                          RoleConstant, RoleParameter, RoleInputVariable, 
                          RoleOutputVariable, RoleIntermediateVariable)
-from freeode.interpreter import (InterpreterObject, CallableObject, 
-                                 FundamentalObject, CompiledClass,
-                                 siml_isrole, siml_isknown)
+from freeode.interpreter import (InterpreterObject, SimlFunction,
+                                 CodeGeneratorObject, CompiledClass,
+                                 isrole, 
+                                 isknownconst,
+                                 )
 
 
 
@@ -149,7 +151,7 @@ class MakeDataFlowDecorations(object):
         '''Discover inputs and outputs of the whole flattened class.''' 
         inputs, outputs = set(), set()
         for attr in sim_obj.attributes.itervalues():
-            if isinstance(attr, CallableObject):
+            if isinstance(attr, SimlFunction):
 #                print 'decorating: ', attr.name
                 inp, out = self.decorate_main_function(attr)
                 inputs.update(inp)
@@ -190,18 +192,18 @@ class DataFlowChecker(object):
         for attr in sim_obj.attributes.itervalues():
             assert isinstance(attr, InterpreterObject)
             #only look at built in data (ignore functions)
-            if not isinstance(attr, FundamentalObject):
+            if not isinstance(attr, CodeGeneratorObject):
                 continue
             #classify attributes according to their role
-            if siml_isrole(attr.role, RoleConstant):
+            if isrole(attr, RoleConstant):
                 raise Exception('The simulation object must not have constant attributes!')
-            elif siml_isrole(attr.role, RoleParameter):
+            elif isrole(attr, RoleParameter):
                 self.parameters.add(attr)
-            elif siml_isrole(attr.role, RoleInputVariable):
+            elif isrole(attr, RoleInputVariable):
                 self.iput_variables.add(attr)
-            elif siml_isrole(attr.role, RoleIntermediateVariable):
+            elif isrole(attr, RoleIntermediateVariable):
                 self.intermediate_variables.add(attr)
-            elif siml_isrole(attr.role, RoleOutputVariable):
+            elif isrole(attr, RoleOutputVariable):
                 self.output_variables.add(attr)
             else:
                 raise Exception('Unknown attribute role!')
@@ -209,9 +211,9 @@ class DataFlowChecker(object):
         #Constants embedded in the code are put into a special set.
         all_inputs = sim_obj.inputs
         for attr in all_inputs:
-            if siml_isrole(attr.role, RoleConstant):
+            if isrole(attr, RoleConstant):
                 #TODO: detecting unknown constants should be handled in the interpreter
-                if not siml_isknown(attr):
+                if not isknownconst(attr):
                     name = '<anonymous constant>'
                     if attr.parent and attr.parent():
                         name = str(attr.parent().find_name(attr))

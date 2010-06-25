@@ -29,7 +29,47 @@ from __future__ import division
 from __future__ import absolute_import          
 
 import sys
-import freeode.third_party.pyparsing as pyparsing     
+from types import NoneType
+import freeode.third_party.pyparsing as pyparsing
+
+#version of the Siml compiler.
+PROGRAM_VERSION = '0.4.0a3'
+#How much debug information is printed
+# 0: No debug information; 1: some; ....
+DEBUG_LEVEL = 1
+
+
+
+class EnumMeta(type):
+    '''Metaclass for the Enum class. Contains Enum's magic __repr__ method'''
+    def __repr__(self):
+        return self.__name__
+    
+class Enum(object):
+    '''
+    Class for use as an enum or global constant.
+    
+    Don't instantiate this class! Inherit from it, and use the class object 
+    itself as the enum or constant. When the class is converted to a 
+    string it becomes its own class name. This is nice for debugging or pretty 
+    printing.
+    
+    The class has a custom metaclass: EnumMeta.
+    >>> type(Enum)
+    <class 'freeode.ast.EnumMeta'>
+    
+    USAGE:
+    ------
+    >>> class EAST(Enum): pass
+    >>> class WEST(Enum): pass
+    >>> class NORTH(Enum): pass
+    >>> class SOUTH(Enum): pass
+    
+    >>> print NORTH, SOUTH, EAST, WEST
+    NORTH SOUTH EAST WEST
+    '''
+    __metaclass__ = EnumMeta
+    
 
 
 class AATreeMaker(object):
@@ -296,7 +336,8 @@ class AATreeMaker(object):
         duplicate = id(attribute) in memo_set and not isinstance(attribute, str)
         memo_set.add(id(attribute)) #against infinite recursion
         #make very short
-        if name in self.xshort_set or duplicate:
+        if (name in self.xshort_set or duplicate) and \
+           not isinstance(attribute, (bool, NoneType, EnumMeta, type)):
             line = '<' + attribute.__class__.__name__ 
             if self.show_ID:
                 line += ' at ' + hex(id(attribute))
@@ -328,6 +369,34 @@ class AATreeMaker(object):
         return tree
         
         
+
+def aa_make_tree(in_obj):       
+    '''
+    Create ASCII-art tree of an object, and of all data attributes it 
+    contains recursively. Output can be configured by putting AATreeMaker
+    instances in the tree of objects.
+    
+    ARGUMENT
+    --------
+    in_obj: any object
+        Object that should be displayed as ASCII-art tree.
+        
+    RETURNS
+    ------_
+    string
+        ASCII-art tree representing in_obj.
+    '''
+    #handle some special cases
+    if isinstance(in_obj, (list, dict)):
+        class ListOrDictDummy(object): pass
+        d = ListOrDictDummy()
+        d.list_or_dict = in_obj #pylint:disable-msg=W0201
+        return AATreeMaker().make_tree(d)
+    else:         
+        tree_maker = getattr(in_obj, AATreeMaker.tree_maker_name, AATreeMaker())
+        return tree_maker.make_tree(in_obj)   
+
+
 
 class UserException(Exception):
     '''Exception that transports user visible error messages'''
@@ -381,9 +450,11 @@ def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-ms
         if errno is not None:
             assert hasattr(e, 'errno'), 'Exception has no attribute "errno"!'
             assert e.errno == errno, 'Wrong errno: %s. \n' \
-                                     'Expecting errno: %s' \
-                                     % (str(e.errno), errno)
-        print 'Correct exception was raised.'
+                                     'Expecting errno: %s \n' \
+                                     'Caught exception: \n%s' \
+                                     % (e.errno, errno, e)
+        print 'Correct exception was raised:'
+        print e
     except BaseException, e:
         print >>sys.stderr, 'Wrong exception was raised! Type: %s \n' \
                             'Expected exception type: %s' \
@@ -466,51 +537,88 @@ class DotName(tuple):
 
 class TextLocation(object):
     '''
-    Store the location of a parsed pattern, or error.
+    Store the location of a part of a program. Can be converted to meaningful
+    string for error messages. 
 
-    Includes the file's contents and the file's name.
-    Object is intended to be stored in a Node's self.loc
-    data member.
+    Contains file name, information to compute the line number, and program 
+    text.
     '''
-
-    def __init__(self, atChar=None, textString=None, fileName=None):
+    def __init__(self, at_char=None, text_string=None, file_name=None, 
+                        line_no=None):
         super(TextLocation, self).__init__()
-        self.atChar = atChar
-        self.str = textString
-        self.name = fileName
+        self.at_char = at_char
+        self.text_string = text_string
+        self.file_name = file_name
+        self._line_no = line_no
 
-    def isValid(self):
+    def is_valid(self):
         '''
-        Return True if a meaningful line number and collumn can be computed.
+        Return True if a meaningful line number can be computed.
         Return False otherwise.
         '''
-        if self.atChar and self.str:
+        if self.at_char is not None and self.text_string:
+            return True
+        elif self._line_no is not None:
             return True
         else:
             return False
 
-    def lineNo(self):
+    def line_no(self):
         '''Compute the line number of the stored location.'''
-        if self.atChar and self.str:
-            return pyparsing.lineno(self.atChar, self.str)
+        if self.at_char is not None and self.text_string:
+            return pyparsing.lineno(self.at_char, self.text_string)
+        elif self._line_no is not None:
+            return self._line_no
         else:
             return 0
 
-    def col(self):
-        '''Compute the column of the stored location.'''
-        if self.atChar and self.str:
-            return pyparsing.col(self.atChar, self.str)
-        else:
-            return 0
+#    def col(self):
+#        '''Compute the column of the stored location.'''
+#        if self.atChar and self.str:
+#            return pyparsing.col(self.atChar, self.str)
+#        else:
+#            return 0
 
-    def fileName(self):
-        '''Return the filename.'''
-        return str(self.name)
+#    def get_file_name(self):
+#        '''Return the filename.'''
+#        return str(self.file_name)
 
     def __str__(self):
-        '''Return meaningfull string'''
+        '''Return meaningful string'''
         #Including the column is not useful because it is often wrong
         #for higher level errors. Preserving the text of the original
-        #pyparsing error is transporting the column information for parsing
+        #Pyparsing error is transporting the column information for parsing
         #errors. Only parsing errors have useful column information.
-        return '  File "' + self.fileName() + '", line ' + str(self.lineNo())
+        #TODO: also print one line of program text
+        return '  File "' + str(self.file_name) + '", line ' + str(self.line_no())
+
+
+
+def make_unique_dotname(base_name, existing_names):
+    '''
+    Make a unique name that is not in existing_names.
+
+    If base_name is already contained in existing_names a number is appended
+    to base_name to make it unique.
+
+    Arguments:
+    base_name: DotName, str
+        The name that should become unique.
+    existing_names: container that supports the 'in' operation
+        Container with the existing names. Names are expected to be
+        DotName objects.
+
+    Returns: DotName
+        Unique name; base_name with number appended if necessary
+    '''
+    base_name = DotName(base_name)
+    for number in range(1, 100000):
+        if base_name not in existing_names:
+            return  base_name
+        #append number to last component of DotName
+        base_name = base_name[0:-1] + DotName(base_name[-1] + str(number))
+    raise Exception('Too many similar names')
+
+
+
+

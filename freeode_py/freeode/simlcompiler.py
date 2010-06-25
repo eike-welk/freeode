@@ -38,8 +38,7 @@ from subprocess import Popen #, PIPE, STDOUT
 #import freeode.simlparser as simlparser
 import freeode.interpreter as interpreter
 import freeode.pygenerator as pygenerator
-import freeode.ast as ast  #for ast.PROGRAM_VERSION
-from freeode.util import UserException
+from freeode.util import UserException, PROGRAM_VERSION
 
 
 class SimlCompilerMain(object):
@@ -57,7 +56,7 @@ class SimlCompilerMain(object):
         optPars = optparse.OptionParser(
                     usage='%prog <input_file> [-o <output_file>] [<options>]',
                     description='Compiler for the Siml simulation language.',
-                    version='%prog ' + ast.PROGRAM_VERSION)
+                    version='%prog ' + PROGRAM_VERSION)
 
         optPars.add_option('-o', '--outfile', dest='outfile',
                            help='explicitly specify name of output file',
@@ -182,7 +181,7 @@ class SimlCompilerMain(object):
                   '  https://bugs.launchpad.net/freeode \n'
                   'E-mail: \n'
                   '  eike@users.berlios.de \n\n'
-                  'SIML compiler version: %s \n' %  ast.PROGRAM_VERSION)
+                  'SIML compiler version: %s \n' %  PROGRAM_VERSION)
             raise #gets traceback and ends program
         #return with success
         sys.exit(0)

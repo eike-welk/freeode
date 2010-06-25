@@ -33,522 +33,269 @@ from __future__ import absolute_import
 from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
 
-
-
-# -------- Test InterpreterObject class ----------------------------------------------------------------------
-def test_InterpreterObject_1(): #IGNORE:C01111
-    msg = 'InterpreterObject: basic operation'
-    #skip_test(msg)
-    print msg
-    from freeode.interpreter import (InterpreterObject, UndefinedAttributeError,
-                                     DuplicateAttributeError, )
-
-    o1 = InterpreterObject()
-    attr1 = InterpreterObject()
-    attr2 = InterpreterObject()
-    
-    #create small tree of objects:
-    # o1
-    #  +--- attr1
-    #  +--- attr2
-    o1.create_attribute('attr1', attr1)
-    o1.create_attribute('attr2', attr2)
-    
-    #test for existence of attributes
-    assert o1.has_attribute('attr1')
-    assert o1.has_attribute('attr2')
-    assert not o1.has_attribute('foo') 
-    
-    #retrieval of attributes
-    assert o1.get_attribute('attr1') == attr1
-    assert o1.get_attribute('attr2') == attr2
-    
-    #attempt to retrieve non-existing attribute
-    try: 
-        o1.get_attribute('foo')
-    except UndefinedAttributeError: 
-        print 'Expected exception: undefined attribute'
-    else:
-        assert False, 'Code should raise exception'
-    
-    #attempt to create attribute with name that already exists
-    try: 
-        o1.create_attribute('attr1', attr1)
-    except DuplicateAttributeError:
-        print 'Expected exception: duplicate attribute'
-    else:
-        assert False, 'Code should raise exception'
-    
-    
-
-def test_InterpreterObject_method_retrieval(): #IGNORE:C01111
-    msg = \
-    '''
-    InterpreterObject: attributes are also searched in the class object
-    If the attributes taken from the class are call-able they are wrapped in a bound method.
-    '''
-    #skip_test(msg)
-    print msg
-    from freeode.interpreter import (InterpreterObject, UndefinedAttributeError,
-                                     BoundMethod, CallableObject, ref)
-    #the class
-    cls = InterpreterObject()
-    cls_attr1 = InterpreterObject()
-    cls_func1 = CallableObject('cls_func1')
-    cls.create_attribute('cls_attr1', cls_attr1)
-    cls.create_attribute('cls_func1', cls_func1)
-    
-    #the tested object
-    o1 = InterpreterObject()
-    o1.type = ref(cls)
-    o1_attr1 = InterpreterObject()
-    o1_func1 = CallableObject('o1_func1')
-    o1.create_attribute('o1_attr1', o1_attr1)
-    o1.create_attribute('o1_func1', o1_func1)
-    
-    #test for existence of attributes
-    assert o1.has_attribute('o1_attr1')
-    assert o1.has_attribute('o1_func1')
-    assert o1.has_attribute('cls_attr1')
-    assert o1.has_attribute('cls_func1')
-    assert not o1.has_attribute('foo') 
-
-    #retrieval of attributes 
-    #attributes of the instance are retrieved without modifications
-    assert o1.get_attribute('o1_attr1') == o1_attr1
-    assert o1.get_attribute('o1_func1') == o1_func1
-    #data attributes of the class are retrieved without modifications
-    assert o1.get_attribute('cls_attr1') == cls_attr1
-    #method (callable) attributes are put into a wrapper object 
-    assert o1.get_attribute('cls_func1').function == cls_func1
-    assert isinstance(o1.get_attribute('cls_func1'), BoundMethod)
-
-    #attempt to retrieve non-existing attribute
-    try: 
-        o1.get_attribute('foo')
-    except UndefinedAttributeError: 
-        print 'Expected exception: undefined attribute'
-    else:
-        assert False, 'Code should raise exception'
-
-
-
-def test_InterpreterObject_create_path_1(): #IGNORE:C01111
-    msg = 'InterpreterObject: create_path method: create non-existing path.'
-    #skip_test(msg)
-    print msg
-    from freeode.interpreter import (InterpreterObject, DotName)
-    
-    #the root object where the long name will be created
-    root = InterpreterObject()
-    #create all attributes so that this dotname can be looked up
-    #o_name_1 should be the object representing the rightmost element (name)
-    o_name_1 = root.create_path(DotName('this.is.a.long.dotted.name'))
-    
-    #see if all attributes have been created
-    o_this = root.get_attribute('this')
-    o_is = o_this.get_attribute('is')
-    o_a = o_is.get_attribute('a')
-    o_long = o_a.get_attribute('long')
-    o_dotted = o_long.get_attribute('dotted')
-    o_name_2 = o_dotted.get_attribute('name')
-    #the function must return the final element
-    assert o_name_1 is o_name_2
-
-
-
-def test_InterpreterObject_create_path_2(): #IGNORE:C01111
-    msg = 'InterpreterObject: create_path method: return existing path, extend path'
-    #skip_test(msg)
-    print msg
-    from freeode.interpreter import (InterpreterObject, DotName)
-    
-    #the root object where the long name will be created
-    root = InterpreterObject()
-    #create all attributes so that this dotname can be looked up
-    #o_name_1 should be the object representing the rightmost element (name)
-    o_name_1 = root.create_path(DotName('this.is.a.long.dotted.name'))
-    
-    #access existing path, don't try to create it twice
-    o_name_2 = root.create_path(DotName('this.is.a.long.dotted.name'))
-    assert o_name_1 is o_name_2
-    
-    #extend existing path
-    o_indeed = root.create_path(DotName('this.is.a.long.dotted.name.indeed'))
-    o_name_3 = o_indeed.parent()
-    assert o_name_1 is o_name_3
-
-
-
-def test_InterpreterObject_replace_attribute(): #IGNORE:C01111
-    msg = 'InterpreterObject: replace_attribute method.'
-    skip_test(msg)
-    print msg
-    
-#    from freeode.interpreter import (InterpreterObject)
-#    
-#    obj = InterpreterObject()
-#    attr1 = InterpreterObject()
-#    attr2 = InterpreterObject()
-#    
-#    #put an attribute into the object
-#    obj.create_attribute('test', attr1)
-#    assert obj.get_attribute('test') is attr1
-#    #replace the attribute with an other object
-#    obj.replace_attribute('test', attr2)
-#    assert obj.get_attribute('test') is attr2
-    
- 
-    
-def test_InterpreterObject_find_name(): #IGNORE:C01111
-    msg = 'InterpreterObject: find_name method.'
-    #skip_test(msg)
-    print msg
-    from freeode.interpreter import (InterpreterObject, )
-    
-    obj = InterpreterObject()
-    attr1 = InterpreterObject()
-    attr2 = InterpreterObject()
-    
-    #put attributes into object
-    obj.create_attribute('attr1', attr1)
-    obj.create_attribute('attr2', attr2)
-    #find the names of the attributes
-    name1 = obj.find_name(attr1)
-    name2 = obj.find_name(attr2)
-    #verify that the found names are correct
-    assert name1 == 'attr1'
-    assert name2 == 'attr2'
+from freeode.util import assert_raises
     
     
     
 #-------- Test IntArgumentList class ------------------------------------------------------------------------#
-def test_IntArgumentList_1(): #IGNORE:C01111
-    msg = 'IntArgumentList: construction'
+def test_Signature_1(): #IGNORE:C01111
+    msg = 'Signature: construction'
     #skip_test(msg)
     print msg
+    
     from freeode.util import UserException
-    from freeode.interpreter import ArgumentList, NodeFuncArg, CLASS_FLOAT
+    from freeode.interpreter import Signature, NodeFuncArg, IFloat
     
     #Test normal construction only positional argument: f(a, b)
-    ArgumentList([NodeFuncArg('a'),
-                  NodeFuncArg('b')], None)
+    Signature([NodeFuncArg('a'), NodeFuncArg('b')])
     #Test normal construction with keyword arguments: f(a, b=1)
-    val_1 = CLASS_FLOAT()
-    ArgumentList([NodeFuncArg('a'),
-                  NodeFuncArg('b', default_value=val_1)], None)
+    val_1 = IFloat()
+    Signature([NodeFuncArg('a'), NodeFuncArg('b', default_value=val_1)])
     
+    #Errors:
     #argument list with two identical argument names: f(a, a)
-    try:
-        ArgumentList([NodeFuncArg('a'),
-                      NodeFuncArg('a')], None)
-    except UserException, e:
-        print 'Caught expected exception (argument names must be unique)'
-        print e
-    else:
-        fail_test('This code should raise an exception (argument names must be unique).') #IGNORE:E1101
+    def raise_1():
+        Signature([NodeFuncArg('a'), 
+                   NodeFuncArg('a')])
+    assert_raises(UserException, 3200120, raise_1)
         
     #argument list with keyword argument before positional argument: f(a=1, b)
-    try:
-        val_1 = CLASS_FLOAT()
-        ArgumentList([NodeFuncArg('a', default_value=val_1),
-                      NodeFuncArg('b')], None)
-    except UserException, e:
-        print 'Caught expected exception (keyword argument before positional argument)'
-        print e
-    else:
-        fail_test('This code should raise an exception (keyword argument before positional argument).') #IGNORE:E1101
-#    assert 1==0
+    def raise_2():
+        val_1 = IFloat()
+        Signature([NodeFuncArg('a', default_value=val_1), NodeFuncArg('b')])
+    assert_raises(UserException, 3200110, raise_2)
     
     
     
-def test_IntArgumentList_2(): #IGNORE:C01111
-    print 'ArgumentList: test argument processing at call site'
+def test_Signature_2(): #IGNORE:C01111
+    msg = 'Signature: test calling (binding) signature has only positional arguments.'
+    #skip_test(msg)
+    print msg
+    
     from freeode.util import UserException
-    from freeode.interpreter import (ArgumentList, NodeFuncArg, CLASS_FLOAT)
+    from freeode.interpreter import (Signature, NodeFuncArg, IFloat,
+                                     Interpreter)
+    
+    #Interpreter for initial evaluation of type annotations
+    intp = Interpreter()
     
     #argument list for testing
-    al = ArgumentList([NodeFuncArg('a'),
-                       NodeFuncArg('b')], None)
+    sig = Signature([NodeFuncArg('a'),
+                    NodeFuncArg('b')])
+    sig.evaluate_type_specs(intp)
     #some interpreter level values
-    val_1 = CLASS_FLOAT()
-    val_1.value = 1
-    val_2 = CLASS_FLOAT()
-    val_2.value = 2
+    val_1 = IFloat(1)
+    val_2 = IFloat(2)
     
     #call with correct number of positional arguments
-    arg_vals = al.parse_function_call_args([val_1, val_2], {})
+    arg_vals = sig.parse_function_call_args([val_1, val_2], {})
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 2
     
     #call with correct number of keyword arguments
-    arg_vals = al.parse_function_call_args([], {'a':val_1,  
+    arg_vals = sig.parse_function_call_args([], {'a':val_1,  
                                                 'b':val_2})
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 2
     
     #call with too few arguments
-    try:
-        al.parse_function_call_args([], {})
-    except UserException, e:
-        print 'Caught expected exception (too few arguments)'
-        print e
-    else:
-        fail_test('This code should raise an exception (too few arguments).') #IGNORE:E1101
+    def raise_1():
+        sig.parse_function_call_args([], {})
+    assert_raises(UserException, 3200280, raise_1)
+
         
     #call with too many positional arguments
-    try:
-        al.parse_function_call_args([val_1, val_2, val_2], {})
-    except UserException, e:
-        print 'Caught expected exception (too many positional arguments)'
-        print e
-    else:
-        fail_test('This code should raise an exception (too many positional arguments).') #IGNORE:E1101
+    def raise_2():
+        sig.parse_function_call_args([val_1, val_2, val_2], {})
+    assert_raises(UserException, 3200250, raise_2)
        
     #call with unknown keyword argument
-    try:
-        al.parse_function_call_args([], {'a':val_1,  
+    def raise_3():
+        sig.parse_function_call_args([], {'a':val_1,  
                                          'c':val_2})
-    except UserException, e:
-        print 'Caught expected exception (unknown keyword argument)'
-        print e
-    else:
-        fail_test('This code should raise an exception (unknown keyword argument).') #IGNORE:E1101
+    assert_raises(UserException, 3200260, raise_3)
         
     #call with duplicate keyword argument
-    try:
-        al.parse_function_call_args([val_1, val_2], {'a':val_1})
-    except UserException, e:
-        print 'Caught expected exception (duplicate keyword argument)'
-        print e
-    else:
-        fail_test('This code should raise an exception (duplicate keyword argument).') #IGNORE:E1101
-    #assert 1==0
+    def raise_4():
+        sig.parse_function_call_args([val_1, val_2], {'a':val_1})
+    assert_raises(UserException, 3200270, raise_4)
     
     
     
-def test_IntArgumentList_2_1(): #IGNORE:C01111
-    print 'ArgumentList: __init__: strings are converted to DotName, default argument for loc'
-    from freeode.interpreter import (ArgumentList, NodeFuncArg, CLASS_FLOAT)
+def test_Signature_3(): #IGNORE:C01111
+    msg =  'Signature: test calling (binding) with default arguments.'
+    #skip_test(msg)
+    print msg
+
+    from freeode.interpreter import (Signature, NodeFuncArg, IFloat, 
+                                     Interpreter)
     
-    #argument list for testing
-    al = ArgumentList([NodeFuncArg('a'),
-                       NodeFuncArg('b')])
-    #some interpreter level values
-    val_1 = CLASS_FLOAT()
-    val_1.value = 1
-    val_2 = CLASS_FLOAT()
-    val_2.value = 2
-    
-    #call with correct number of positional arguments
-    arg_vals = al.parse_function_call_args([val_1, val_2], {})
-    assert arg_vals['a'].value == 1
-    assert arg_vals['b'].value == 2
-    
-    #call with correct number of keyword arguments
-    arg_vals = al.parse_function_call_args([], {'a':val_1,  
-                                                'b':val_2})
-    assert arg_vals['a'].value == 1
-    assert arg_vals['b'].value == 2
-    
-    
-    
-def test_IntArgumentList_3(): #IGNORE:C01111
-    print 'ArgumentList: test calling with default arguments.'
-    from freeode.interpreter import (ArgumentList, NodeFuncArg, CLASS_FLOAT)
+    #Interpreter for initial evaluation of type annotations
+    intp = Interpreter()
     
     #some interpreter level values
-    val_1 = CLASS_FLOAT()
-    val_1.value = 1
-    val_2 = CLASS_FLOAT()
-    val_2.value = 2
+    val_1 = IFloat(1)
+    val_2 = IFloat(2)
     #argument list for testing: def f(a, b=2)
-    al = ArgumentList([NodeFuncArg('a'),
-                       NodeFuncArg('b', default_value=val_2)], None)
+    sig = Signature([NodeFuncArg('a'),
+                    NodeFuncArg('b', default_value=val_2)], None)
+    sig.evaluate_type_specs(intp)
     
     #call with one positional argument: f(1). For argument 'b' default value must be used.
-    arg_vals = al.parse_function_call_args([val_1], {})
+    arg_vals = sig.parse_function_call_args([val_1], {})
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 2
     
     
     
-def test_IntArgumentList_4(): #IGNORE:C01111
-    print 'ArgumentList: test type compatibility testing.'
-    from freeode.interpreter import (ArgumentList, NodeFuncArg,   
-                                     CLASS_FLOAT, CLASS_STRING)
+def test_Signature_4(): #IGNORE:C01111
+    msg =  'Signature: test type compatibility testing.'
+    #skip_test(msg)
+    print msg
+
+    from freeode.interpreter import (Signature, NodeFuncArg,   
+                                     IFloat, IString, Interpreter)
+    
+    #Interpreter for initial evaluation of type annotations
+    intp = Interpreter()
     
     #some interpreter level values
-    val_1 = CLASS_FLOAT(1)
-    val_hello = CLASS_STRING('hello')
+    val_1 = IFloat(1)
+    val_hello = IString('hello')
     #argument list for testing: f(a:Float, b:String)
-    al = ArgumentList([NodeFuncArg('a', type=CLASS_FLOAT),
-                       NodeFuncArg('b', type=CLASS_STRING)], None)
+    sig = Signature([NodeFuncArg('a', type=IFloat),
+                    NodeFuncArg('b', type=IString)], None)
+    sig.evaluate_type_specs(intp)
     
     #call with correct positional arguments: f(1, 'hello')
-    arg_vals = al.parse_function_call_args([val_1, val_hello], {})
+    arg_vals = sig.parse_function_call_args([val_1, val_hello], {})
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 'hello'
     
     #call with correct keyword arguments: f(a=1, b='hello')
-    arg_vals = al.parse_function_call_args([], {'a':val_1, 
+    arg_vals = sig.parse_function_call_args([], {'a':val_1, 
                                                 'b':val_hello})
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 'hello'
     
     #call with mixed positional and keyword arguments: f(1, b='hello')
-    arg_vals = al.parse_function_call_args([val_1], {'b':val_hello})
+    arg_vals = sig.parse_function_call_args([val_1], {'b':val_hello})
     assert arg_vals['a'].value == 1
     assert arg_vals['b'].value == 'hello'
     
  
  
-# -------- Test wrapper object for Python functions ------------------------------------------------------------------------
-def test_BuiltInFunctionWrapper_1(): #IGNORE:C01111
-    print 'BuiltInFunctionWrapper: test function call with known arguments, no Interpreter.'
-    from freeode.interpreter import (BuiltInFunctionWrapper,
-                                     ArgumentList, NodeFuncArg,   
-                                     CLASS_FLOAT)
-    import math
-    
-    #create sqrt function with named arguments
-    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value)) 
-    #some interpreter level values
-    val_2 = CLASS_FLOAT(2)
+def test_signature_decorator(): #IGNORE:C01111
+    msg = \
+    '''
+    Test decorator for python functions, that gives them a Signature object, 
+    and some additional attributes for compatibility with Interpreter objects.
+    '''
+    #skip_test(msg)
+    print msg
 
-    #create a function object that wraps the sqrt function
-    func = BuiltInFunctionWrapper('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
-                                  return_type=CLASS_FLOAT, 
-                                  py_function=sqrt)
-    #call function: sqrt(2)
-    siml_ret = func(val_2)
-    assert siml_ret.value == math.sqrt(2) # pylint: disable-msg=E1103
+    from freeode.interpreter import InterpreterObject, signature
+   
+    #Some classes that can be used in the type specifications
+    class Dummy1(InterpreterObject):
+        pass
+    class Dummy2(InterpreterObject):
+        pass
+    dummy2 = Dummy2()
     
+    @signature(None, Dummy1) 
+    def foo():
+        return Dummy1()
+    #print aa_make_tree(foo)
+    assert foo.siml_signature.arguments is None     #pylint:disable-msg=E1101
+    assert foo.siml_signature.return_type is Dummy1 #pylint:disable-msg=E1101
     
-                                      
-def test_BuiltInFunctionWrapper_2(): #IGNORE:C01111
-    print 'BuiltInFunctionWrapper: test function call with unknown arguments, no Interpreter.'
-    from freeode.interpreter import (BuiltInFunctionWrapper,
-                                     ArgumentList, NodeFuncArg, ref,  
-                                     CLASS_FLOAT,UnknownArgumentsException, 
-                                     NodeOpInfix2,)
-    import math
+    @signature([Dummy1, Dummy2], None)
+    def bar(_a, _b=dummy2):                          
+        pass
+    #print aa_make_tree(bar)
+    args = bar.siml_signature.arguments            #pylint:disable-msg=E1101
+    assert len(args) == 2          
+    assert args[0].type is Dummy1 
+    assert args[1].type is Dummy2
+    assert args[1].default_value is dummy2
+    assert bar.siml_signature.return_type is None  #pylint:disable-msg=E1101
     
-    #create sqrt function with named arguments
-    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value)) 
-    #create unknown interpreter level values
-    val_x = CLASS_FLOAT()
-    #create fragment of unknown expression
-    binop_u = NodeOpInfix2()
-    binop_u.type = ref(CLASS_FLOAT)
-    #create a function object that wraps the sqrt function
-    func = BuiltInFunctionWrapper('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
-                                  return_type=CLASS_FLOAT, 
-                                  py_function=sqrt)
-    
-    #call function: sqrt( <unknown value> )
-    try:
-        _siml_ret = func(val_x)
-    except UnknownArgumentsException:
-        print 'Expected exception recieved: unknown arguments.'
-    else:
-        assert False, 'Expected exception: unknown arguments.'
-    
-    #call function: sqrt( <expression fragment> )
-    try:
-        _siml_ret = func(binop_u)
-    except UnknownArgumentsException:
-        print 'Expected exception recieved: unknown arguments.'
-    else:
-        assert False, 'Expected exception: unknown arguments.'
-        
-    
-                                      
+    @signature([Dummy1, Dummy2], Dummy1) 
+    def baz(a, _b=dummy2):                         
+        return a
+    #print aa_make_tree(baz)
+    args = baz.siml_signature.arguments            #pylint:disable-msg=E1101
+    assert len(args) == 2          
+    assert args[0].type is Dummy1 
+    assert args[1].type is Dummy2
+    assert args[1].default_value is dummy2
+    assert baz.siml_signature.return_type is Dummy1  #pylint:disable-msg=E1101
+
+
+
 # -------- Test user defined class object ------------------------------------------------------------------------
 def test_SimlClass_1(): #IGNORE:C01111
-    #skip_test('Test expression evaluation (only immediate values)')
-    print 'Test SimlClass: class without attributes'
-    from freeode.interpreter import SimlClass
+    msg = 'Test SimlClass: class without attributes'
+    #skip_test(msg)
+    print msg
+
+    from freeode.interpreter import SimlClass, istype
        
-    #construct a class object with no base classes and no location
-    c1=SimlClass('Test1', None, None)
+    #construct a class object with SimlClass as base class
+    #type(name, bases, dict) -> a new type
+    c1=type('C1', (SimlClass,), {})
     
     #create an instance of the class
     i1 = c1()
-    
-    assert i1.type() == c1
+    assert istype(i1, c1)
     
 
 
 def test_SimlClass_2(): #IGNORE:C01111
-    #skip_test('Test expression evaluation (only immediate values)')
-    print 'Test SimlClass: class with one data attribute'
-    from freeode.interpreter import SimlClass, IFloat
+    msg = 'Test SimlClass: class with data attribute and method.'
+    #skip_test(msg)
+    print msg
     
-    #construct a class object with no base classes and no location
-    cls = SimlClass('Test1', None, None)
-    #add an attribute
-    cls.create_attribute('a1', IFloat())
+    from freeode.interpreter import SimlClass, SimlFunction, IFloat, istype
+    from freeode.util import aa_make_tree
+    
+    #construct a class object with SimlClass as base class, with
+    # - a1: IFloat data attribute
+    # - m1: user defined method
+    #type(name, bases, dict) -> a new type
+    cls =type('C1', (SimlClass,), {'a1':IFloat(), 
+                                   'm1':SimlFunction('m1')})
+    #print aa_make_tree(cls)
     
     #create an instance of the class
     inst = cls()
+    #print aa_make_tree(inst)
     
-    assert inst.type() == cls
-    assert inst.has_attribute('a1')
-    #the attributes must be copied, not identical
-    cls_a1 = cls.get_attribute('a1')
-    inst_a1 = inst.get_attribute('a1')
-    assert id(cls_a1) != id(inst_a1)
-    assert cls_a1.type() == inst_a1.type()
+    assert istype(inst, cls)
     
+    #the data attributes must be copied, not identical
+    assert id(cls.a1) != id(inst.a1)
+    assert istype(inst.a1, IFloat) 
+    
+    #the method must not be copied, it must be accessed through
+    assert 'm1' not in inst.__dict__
+    assert hasattr(inst, 'm1')
 
-# -------- Test wrapper for built in classes ------------------------------------------------------------------
-def test_BuiltInClassWrapper_1(): #IGNORE:C01111
-    #skip_test('Test BuiltInClassWrapper: construction, put into module')
-    print 'Test BuiltInClassWrapper: construction, put into module'
-    from freeode.interpreter import BuiltInClassWrapper, InterpreterObject
-    
-    #test object construction 
-    class Dummy(InterpreterObject):
-        pass
-    siml_dummy_class = BuiltInClassWrapper('Dummy')
-    siml_dummy_class.py_class = Dummy
-    
-    dummy = siml_dummy_class()
-    assert isinstance(dummy, Dummy)
-    
-    #test inclusion in module - convenience function
-    mod = InterpreterObject()
-    siml_dummy_class.put_into(mod)
-    
-    assert mod.get_attribute('Dummy') is siml_dummy_class
-    
     
 
 # -------- Test Siml wrapper for float classes ------------------------------------------------------------------
-def test_IFloat_1(): #IGNORE:C01111
-    #skip_test('Test IFloat: construction from Siml class')
-    print 'Test IFloat: construction from Siml class'
-    from freeode.interpreter import IFloat, CLASS_FLOAT, siml_isinstance
-    
-    #test construction from Siml class
-    val = CLASS_FLOAT()
-    assert isinstance(val, IFloat)
-    assert siml_isinstance(val, CLASS_FLOAT)
-    
-    #test construction from Python class - Siml type must still be right
-    val1 = IFloat()
-    assert siml_isinstance(val1, CLASS_FLOAT)
-
-
-
 def test_IFloat_2(): #IGNORE:C01111
-    #skip_test('Test IFloat: constructor')
-    print 'Test IFloat: constructor'
-    from freeode.interpreter import IFloat
+    msg = 'Test IFloat: constructor, istype function.'
+    #skip_test(msg)
+    print msg
     
+    from freeode.interpreter import IFloat, istype
+    
+    #test construction - Siml type must be right
+    val1 = IFloat()
+    assert istype(val1, IFloat)
+
     #no arguments
     val_none = IFloat()
     assert val_none.value is None
@@ -575,8 +322,10 @@ def test_IFloat_2(): #IGNORE:C01111
 
 
 def test_IFloat_3(): #IGNORE:C01111
-    #skip_test('Test IFloat: mathematical operators from Python') #IGNORE:E1101
-    print 'Test IFloat: mathematical operators from Python'
+    msg = 'Test IFloat: mathematical operators from Python'
+    #skip_test(msg)
+    print msg
+    
     from freeode.interpreter import IFloat
     
     val_2 = IFloat(2)
@@ -596,55 +345,18 @@ def test_IFloat_3(): #IGNORE:C01111
 
 
 
-def test_IFloat_4(): #IGNORE:C01111
-    #skip_test('Test IFloat: special functions for mathematical operators from Siml')
-    print 'Test IFloat: special functions for mathematical operators from Siml'
-    from freeode.interpreter import IFloat
-    
-    val_2 = IFloat(2)
-    val_3 = IFloat(3)
-    
-    #look the methods up and call them; then assert that the result is correct
-    res = val_2.get_attribute('__add__')(val_3)
-    assert res.value == 2 + 3
-    res = val_2.get_attribute('__sub__')(val_3)
-    assert res.value == 2 - 3
-    res = val_2.get_attribute('__mul__')(val_3)
-    assert res.value == 2 * 3
-    res = val_2.get_attribute('__div__')(val_3)
-    assert res.value == 2 / 3
-    res = val_2.get_attribute('__mod__')(val_3)
-    assert res.value == 2 % 3
-    res = val_2.get_attribute('__pow__')(val_3)
-    assert res.value == 2 ** 3
-    res = val_2.get_attribute('__neg__')()
-    assert res.value == -2 
-
-
-#TODO: test comparison operators
-
 # -------- Test Siml wrapper for str classes ------------------------------------------------------------------
-def test_IString_1(): #IGNORE:C01111
-    #skip_test('Test IString: construction from Siml class')
-    print 'Test IString: construction from Siml class'
-    from freeode.interpreter import IString, CLASS_STRING, siml_isinstance
-    
-    #test construction from Siml class
-    val = CLASS_STRING()
-    assert isinstance(val, IString)
-    assert siml_isinstance(val, CLASS_STRING)
-    
-    #test construction from Python class - Siml type must still be right
-    val1 = IString()
-    assert siml_isinstance(val1, CLASS_STRING)
-
-
-
 def test_IString_2(): #IGNORE:C01111
-    #skip_test('Test IString: constructor')
-    print 'Test IString: constructor'
-    from freeode.interpreter import IString
+    msg = 'Test IString: construction, istype function'
+    #skip_test(msg)
+    print msg
     
+    from freeode.interpreter import IString, istype
+     
+    #test construction - Siml type must be right
+    val1 = IString()
+    assert istype(val1, IString)
+
     #no arguments
     val_none = IString()
     assert val_none.value is None
@@ -665,18 +377,18 @@ def test_IString_2(): #IGNORE:C01111
     val_a_s = IString(val_a)
     assert  val_a_s.value == 'a'
 
-    try:
+    #Supply wrong arguments; must raise TypeError.
+    def raise_1():
         IString([])
-    except TypeError:
-        print 'expected exception: wrong argument type.'
-    else:
-        assert False, 'object was constructed with wrong initial values'
+    assert_raises(TypeError, None, raise_1)
 
 
 
 def test_IString_3(): #IGNORE:C01111
-    #skip_test('Test IString: mathematical operators from Python') #IGNORE:E1101
-    print 'Test IString: mathematical operators from Python'
+    msg = 'Test IString: string concatenation from Python'
+    #skip_test(msg)
+    print msg
+    
     from freeode.interpreter import IString
     
     val_a = IString('a')
@@ -686,46 +398,18 @@ def test_IString_3(): #IGNORE:C01111
 
 
 
-def test_IString_4(): #IGNORE:C01111
-    #skip_test('Test IString: special functions for mathematical operators from Siml')
-    print 'Test IString: special functions for mathematical operators from Siml'
-    from freeode.interpreter import IString
-    
-    val_a = IString('a')
-    val_b = IString('b')
-    
-    #look the methods up and call them; then assert that the result is correct
-    res = val_a.get_attribute('__add__')(val_b)
-    assert res.value == 'ab'
-
-
-
 # -------- Test Siml wrapper for bool objects ------------------------------------------------------------------
-def test_IBool_1(): #IGNORE:C01111
-    msg = 'Test IBool: construction from Siml class'
+def test_IBool_2(): #IGNORE:C01111
+    msg = 'Test IString: constructor, istype function.'
     #skip_test(msg)
     print msg
     
-    from freeode.interpreter import IBool, CLASS_BOOL, siml_isinstance
-    
-    #test construction from Siml class
-    val = CLASS_BOOL()
-    assert isinstance(val, IBool)
-    assert siml_isinstance(val, CLASS_BOOL)
+    from freeode.interpreter import IBool, istype
     
     #test construction from Python class - Siml type must still be right
     val1 = IBool()
-    assert siml_isinstance(val1, CLASS_BOOL)
+    assert istype(val1, IBool)
 
-
-
-def test_IBool_2(): #IGNORE:C01111
-    msg = 'Test IString: constructor'
-    #skip_test(msg)
-    print msg
-    
-    from freeode.interpreter import IBool
-    
     #no arguments
     val_none = IBool()
     assert val_none.value is None
@@ -752,12 +436,10 @@ def test_IBool_2(): #IGNORE:C01111
     val_true_2 = IBool(val_true)
     assert  val_true_2.value == True
 
-    try:
+    #expected exception: wrong argument type.
+    def raise_1():
         IBool([])
-    except TypeError:
-        print 'expected exception: wrong argument type.'
-    else:
-        assert False, 'object was constructed with wrong initial values'
+    assert_raises(TypeError, None, raise_1)
 
 #TODO: Test comparison operators
 #TODO: Test IBool to string conversion
@@ -766,8 +448,10 @@ def test_IBool_2(): #IGNORE:C01111
 
 # -------- Test expression evaluation ------------------------------------------------------------------------
 def test_operator_dispatch_1(): #IGNORE:C01111
-    #skip_test('Test Interpreter: handling of binary operators with Float values.')
-    print 'Test Interpreter: handling of binary operators with Float values.'
+    msg = 'Test Interpreter: handling of operators with known Float values.'
+    #skip_test(msg)
+    print msg
+    
     from freeode.interpreter import (IFloat, Interpreter)
     from freeode.ast import NodeOpInfix2, NodeOpPrefix1
     
@@ -789,57 +473,65 @@ def test_operator_dispatch_1(): #IGNORE:C01111
 
 
 def test_operator_dispatch_2(): #IGNORE:C01111
-    msg = 'Test Interpreter: handling of binary operators with unknown Float values.'
+    msg = 'Test Interpreter: handling of operators with unknown Float values.'
     #skip_test(msg)
     print msg
-    from freeode.interpreter import Interpreter, IFloat
-    from freeode.ast import NodeOpInfix2, NodeOpPrefix1, RoleVariable
+    from freeode.interpreter import Interpreter, IFloat, istype
+    from freeode.ast import NodeOpInfix2, NodeOpPrefix1, NodeFuncCall, RoleVariable
 
     intp = Interpreter()
     
     val_2 = IFloat()
-    val_2.role = RoleVariable
+    val_2.__siml_role__ = RoleVariable
     val_3 = IFloat()
-    val_3.role = RoleVariable
+    val_3.__siml_role__ = RoleVariable
     
     op_sub = NodeOpInfix2('-', [val_2, val_3])
     res = intp.eval(op_sub)
     print res
-    assert isinstance(res, NodeOpInfix2)
+    assert isinstance(res, NodeFuncCall)
+    assert res.function is IFloat.__sub__.im_func
+    assert istype(res, IFloat)
     
     op_neg = NodeOpPrefix1('-', [val_2])
     res = intp.eval(op_neg)
     print res
-    assert isinstance(res, NodeOpPrefix1)
+    assert isinstance(res, NodeFuncCall)
+    assert res.function is IFloat.__neg__.im_func
+    assert istype(res, IFloat)
     
 
 
 def test_expression_evaluation_1(): #IGNORE:C01111
-    #skip_test('Test expression evaluation (only immediate values)')
-    print 'Test expression evaluation (only immediate values)'
+    msg = 'Test expression evaluation (only immediate values)'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
     import freeode.simlparser as simlparser
     
     #parse the expression
     ps = simlparser.Parser()
     ex = ps.parseExpressionStr('0+1*2')
-    print
-    print 'AST (parser output): -----------------------------------------------------------'
-    print ex
+#    print
+#    print 'AST (parser output): -----------------------------------------------------------'
+#    print ex
     
     #interpret the expression
     intp = Interpreter()
     res = intp.eval(ex)
-    print
-    print 'Result object: --------------------------------------------------------------'
-    print res 
+#    print
+#    print 'Result object: --------------------------------------------------------------'
+#    print res 
     assert res.value == 2.0
     
     
 
 def test_expression_evaluation_2(): #IGNORE:C01111
-    #skip_test('Test expression evaluation (only immediate values)')
-    print 'Test expression evaluation, all operators and brackets (only immediate values)'
+    msg = 'Test expression evaluation, all operators and brackets (only immediate values)'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import Interpreter
     import freeode.simlparser as simlparser
     
@@ -861,9 +553,11 @@ def test_expression_evaluation_2(): #IGNORE:C01111
     
 
 def test_expression_evaluation_3(): #IGNORE:C01111
-    #skip_test('Test expression evaluation (access to variables)')
-    print 'Test expression evaluation (access to variables)'
-    from freeode.interpreter import (IModule, CLASS_FLOAT, RoleConstant, 
+    msg = 'Test expression evaluation (access to variables)'
+    #skip_test(msg)
+    print msg
+
+    from freeode.interpreter import (IModule, IFloat,  
                                      Interpreter, ExecutionEnvironment)
     import freeode.simlparser as simlparser
     
@@ -876,9 +570,8 @@ def test_expression_evaluation_3(): #IGNORE:C01111
     
     #create module where name lives
     mod = IModule()
-    val_2 = CLASS_FLOAT(2.0)
-    val_2.role = RoleConstant
-    mod.create_attribute('a', val_2)
+    val_2 = IFloat(2.0)
+    mod.a = val_2
     print
     print 'Module where variable is located: --------------------------------------------'
     print mod
@@ -889,7 +582,7 @@ def test_expression_evaluation_3(): #IGNORE:C01111
     
     #interpret the expression
     intp = Interpreter()
-    intp.environment = env
+    intp.push_environment(env)
     res = intp.eval(ex)
     print
     print 'Result object: --------------------------------------------------------------'
@@ -899,74 +592,82 @@ def test_expression_evaluation_3(): #IGNORE:C01111
     
 
 def test_expression_evaluation_4(): #IGNORE:C01111
-    #skip_test('Test expression evaluation (access to variables)')
-    print 'Test expression evaluation (calling built in functions)'
-    from freeode.interpreter import (simlparser, IModule, ExecutionEnvironment,
-                                     Interpreter, BuiltInFunctionWrapper, 
-                                     ArgumentList, NodeFuncArg,
-                                     CLASS_FLOAT)
+    msg = 'Test expression evaluation (calling built in functions)'
+    #skip_test(msg)
+    print msg
+
+    from freeode.interpreter import (IModule, ExecutionEnvironment,
+                                     Interpreter, signature, IFloat)
+    from freeode.util import aa_make_tree
+    import freeode.simlparser as simlparser
+    
     import math
     
     #parse the expression
     ps = simlparser.Parser()
     ex = ps.parseExpressionStr('sqrt(2)')
     print
-    print 'AST (parser output): -----------------------------------------------------------'
-    print ex
+    print 'AST (parser output): -----------------------------------------------'
+    #print aa_make_tree(ex) 
     
     #create module where names live
     mod = IModule()
-    #create sqrt function with named arguments
-    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
-    #create a function object that wraps the sqrt function
-    func = BuiltInFunctionWrapper('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
-                                  return_type=CLASS_FLOAT, 
-                                  py_function=sqrt)
+    #create sqrt function that can be called from Siml
+    @signature([IFloat], IFloat)
+    def sqrt(x): 
+        return IFloat(math.sqrt(x.value))
     #put function into module
-    mod.create_attribute('sqrt', func)
+    mod.sqrt = sqrt
     print
-    print 'Module where function is located: --------------------------------------------'
-    print mod
+    print 'Module where function is located: ----------------------------------'
+    #print aa_make_tree(mod) 
     
     #create environment for lookup of variables (stack frame)
     env = ExecutionEnvironment()
     env.global_scope = mod
     #create visitor for evaluating the expression
     intp = Interpreter()
-    intp.environment = env
+    intp.push_environment(env)
     #evaluate the expression
     res = intp.eval(ex)
     print
-    print 'Result object: --------------------------------------------------------------'
-    print res 
+    print 'Result object: -----------------------------------------------------'
+    print aa_make_tree(res)  
     assert res.value == math.sqrt(2)
 
 
 
 def test_expression_evaluation_5(): #IGNORE:C01111
-    #skip_test('Test disabled')
-    print 'Test expression evaluation (returning of partially evaluated expression when accessing variables)'
-    from freeode.interpreter import (IModule, CLASS_FLOAT, RoleVariable, 
-                                     ExecutionEnvironment, Interpreter,
-                                     NodeOpInfix2)
+    msg = \
+    '''
+    Test expression evaluation (returning of partially evaluated expression 
+    when accessing variables)
+    '''
+    #skip_test(msg)
+    print msg
+
+    from freeode.ast import RoleVariable, NodeOpInfix2, NodeFuncCall
+    from freeode.interpreter import (IModule, IFloat, ExecutionEnvironment, 
+                                     Interpreter, istype)
     import freeode.simlparser as simlparser
+    from freeode.util import aa_make_tree
+    
     #parse the expression
     ps = simlparser.Parser()
     ex = ps.parseExpressionStr('a + 2*2')
-    print
-    print 'AST (parser output): -----------------------------------------------------------'
-    print ex
+#    print
+#    print 'AST (parser output): -----------------------------------------------------------'
+#    print aa_make_tree(ex)
     
     #create module where name lives
     mod = IModule()
     #create attribute 'a' with no value
-    val_2 = CLASS_FLOAT()
-    val_2.role = RoleVariable
-    mod.create_attribute('a', val_2)
-    print
-    print 'Module where variable is located: --------------------------------------------'
-    print mod
+    val_2 = IFloat()
+    val_2.__siml_role__ = RoleVariable
+    mod.a = val_2
+#    print
+#    print 'Module where variable is located: --------------------------------------------'
+#    print aa_make_tree(mod)
     
     #create environment for lookup of variables (stack frame)
     env = ExecutionEnvironment()
@@ -978,48 +679,47 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     res = intp.eval(ex)
     print
     print 'Result object - should be an unevaluated expression: --------------------------------------------------------------'
-    print res 
-    assert isinstance(res, NodeOpInfix2)
-    assert res.operator == '+'
-
+    print aa_make_tree(res)
+    assert isinstance(res, NodeFuncCall)
+    assert res.function is IFloat.__add__.im_func
+    assert istype(res, IFloat)
 
 
 def test_function_call_unknown_arguments_1(): #IGNORE:C01111
     msg = 'Test expression evaluation (calling built in functions), unknown arguments'
     #skip_test(msg)
     print msg
-    from freeode.interpreter import (IModule, ExecutionEnvironment,
-                                     Interpreter, 
-                                     BuiltInFunctionWrapper, ArgumentList,
-                                     CLASS_FLOAT, RoleVariable)
-    from freeode.ast import (NodeFuncCall, NodeIdentifier, NodeFuncArg)
+    
+    from freeode.interpreter import (IModule, ExecutionEnvironment, 
+                                     Interpreter, signature, 
+                                     IFloat, RoleVariable, istype, test_allknown)
+    from freeode.ast import NodeFuncCall, NodeIdentifier
+    from freeode.util import aa_make_tree
     import math
     
     #create module where the function lives
     mod = IModule()
-    #create sqrt function with named arguments
-    sqrt = lambda x: CLASS_FLOAT(math.sqrt(x.value))
-    #create a function object that wraps the sqrt function
-    func = BuiltInFunctionWrapper('sqrt', 
-                                  ArgumentList([NodeFuncArg('x', CLASS_FLOAT)]), 
-                                  return_type=CLASS_FLOAT, 
-                                  py_function=sqrt)
+    #create sqrt function that can be called from Siml
+    @signature([IFloat], IFloat)
+    def sqrt(x): 
+        test_allknown(x)
+        return IFloat(math.sqrt(x.value))
     #put function into module
-    mod.create_attribute('sqrt', func)
+    mod.sqrt = sqrt
     print
     print 'Module where function is located: --------------------------------------------'
-    #print mod
+    #print aa_make_tree(mod)
     
     #create environment for lookup of variables (stack frame)
     env = ExecutionEnvironment()
     env.global_scope = mod
     #create visitor for evaluating the expression
     intp = Interpreter()
-    intp.environment = env
+    intp.push_environment(env) 
     
     #create a Siml value as function argument
-    val_1 = CLASS_FLOAT()    
-    val_1.role = RoleVariable
+    val_1 = IFloat()    
+    val_1.__siml_role__ = RoleVariable
     #create function call with unkown argument
     call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
     
@@ -1027,26 +727,27 @@ def test_function_call_unknown_arguments_1(): #IGNORE:C01111
     ret_val = intp.eval(call)
     print
     print 'Result object: --------------------------------------------------------------'
-    print ret_val 
+    print aa_make_tree(ret_val)
     #evaluating a function call with unknown arguments must return a function call
     assert isinstance(ret_val, NodeFuncCall)
-    assert ret_val.type() is CLASS_FLOAT
+    assert istype(ret_val, IFloat)
     
     
 
 def test_function_call_unknown_arguments_2(): #IGNORE:C01111
-    #skip_test('Test Interpreter: call library function with unknown argument')
-    print 'Test Interpreter: call library function with unknown argument'
-    from freeode.interpreter import (Interpreter, CLASS_FLOAT, )
-    from freeode.ast import (NodeFuncCall, NodeIdentifier, RoleVariable)
+    msg = 'Test Interpreter: call real library function with unknown argument'
+    #skip_test(msg)
+    print msg
 
-    #create the interpreter - initializes INTERPRETER
-    # this way SimlFunction can access the interpreter.
+    from freeode.interpreter import Interpreter, IFloat, istype
+    from freeode.ast import NodeFuncCall, NodeIdentifier, RoleVariable
+
+    #create the interpreter
     intp = Interpreter()    #IGNORE:W0612
     intp.create_test_module_with_builtins()
     #create a Siml value as function argument
-    val_1 = CLASS_FLOAT()  
-    val_1.role = RoleVariable  
+    val_1 = IFloat()  
+    val_1.__siml_role__ = RoleVariable  
 
     #create function call with unkown argument
     call = NodeFuncCall(NodeIdentifier('sqrt'), [val_1], {})
@@ -1054,79 +755,128 @@ def test_function_call_unknown_arguments_2(): #IGNORE:C01111
     ret_val = intp.eval(call)
     #evaluating a function call with unknown arguments must return a function call
     assert isinstance(ret_val, NodeFuncCall)
-    assert ret_val.type() is CLASS_FLOAT
+    assert istype(ret_val, IFloat)
     
-
-
-# --------- Test basic execution of statements (no interpreter object) ----------------------------------------------------------------
-def test_basic_execution_of_statements(): #IGNORE:C01111
-    msg = \
-'''
-Test basic execution of statements (no interpreter object)
-This low level test is now impossible
-'''
-    skip_test(msg)
+  
+  
+# -------- Test Interpreter - basic --------------------------------------------------------  
+def test_Interpreter_create_path_1(): #IGNORE:C01111
+    msg = 'Interpreter: create_path method: create non-existing path.'
+    #skip_test(msg)
     print msg
     
-#    from freeode.interpreter import (IModule, CLASS_FLOAT, CLASS_STRING,
-#                                     ExecutionEnvironment,
-#                                     ExpressionVisitor, StatementVisitor)
-#    import freeode.simlparser as simlparser
-#    from freeode.ast import RoleConstant
+    from freeode.interpreter import InterpreterObject, Interpreter
+    from freeode.util import DotName
+    
+    #create an interpreter 
+    intp = Interpreter()
+    
+    #the root object where the long name will be created
+    root = InterpreterObject()
+    #create all attributes so that this dotname can be looked up
+    #o_name_1 should be the object representing the rightmost element (name)
+    o_name_1 = intp.create_path(root, DotName('this.is_.a.long.dotted.name'))
+    
+    #see if all attributes have been created
+    o_name_2 = root.this.is_.a.long.dotted.name #pylint:disable-msg=E1101
+    #the create_path function must return the final element
+    assert o_name_1 is o_name_2
+
+
+
+def test_Interpreter_create_path_2(): #IGNORE:C01111
+    msg = 'Interpreter: create_path method: return existing path, extend path'
+    #skip_test(msg)
+    print msg
+    
+    from freeode.interpreter import InterpreterObject, Interpreter
+    from freeode.util import DotName
+    
+    #create an interpreter 
+    intp = Interpreter()
+    
+    #the root object where the long name will be created
+    root = InterpreterObject()
+    #create all attributes so that this dotname can be looked up
+    #o_name_1 should be the object representing the rightmost element (name)
+    o_name_1 = intp.create_path(root, DotName('this.is_.a.long.dotted.name'))
+    
+    #access existing path, don't try to create it twice
+    o_name_2 = intp.create_path(root, DotName('this.is_.a.long.dotted.name'))
+    assert o_name_1 is o_name_2
+    
+    #extend existing path
+    o_indeed = intp.create_path(root, DotName('this.is_.a.long.dotted.name.indeed'))
+    o_indeed_2 = o_name_1.indeed                     #pylint:disable-msg=E1103
+    assert o_indeed is o_indeed_2
+
+
+
+def test_Interpreter__siml_dotname__(): 
+    msg =  '''
+    Interpreter: __siml_doname__ attribute.
+    
+    The interpreter creates a __siml_doname__ for each function, which is 
+    unique and descriptive. This attribute is used to create a nicely named 
+    name space for the function locals.
+    
+    This test involves parsing and interpreting a small program; but the 
+    feature '__siml_doname__' is meant fo be used in conjunction with 
+    'create_path', which is tested above.
+    '''
+    #skip_test(msg)
+    print msg
+
+    from freeode.interpreter import Interpreter
+    from freeode.util import DotName, aa_make_tree #pylint:disable-msg=W0612
+    
+    #the mini test program
+    prog_txt = \
+'''
+class A:
+    func foo():
+        pass
+        
+func bar():
+    pass
+'''
+    
+    intp = Interpreter()
+    mod = intp.interpret_module_string(prog_txt, 'test-file', 'test')
+    
+#    print 'Module after interpretation: ----------------------------------'
+#    print aa_make_tree(mod)
+#    print 'Dotname of test.A.foo:'
+#    print mod.A.foo.__siml_dotname__ 
+#    print mod.bar.__siml_dotname__                           #pylint:disable-msg=E1101
+    
+    assert mod.A.foo.__siml_dotname__ == DotName('test.A.foo') #pylint:disable-msg=E1101
+    assert mod.bar.__siml_dotname__ == DotName('test.bar')     #pylint:disable-msg=E1101
+
+
+
+#def test_InterpreterObject_find_name(): #IGNORE:C01111
+#    msg = 'InterpreterObject: find_name method.'
+#    skip_test(msg)
+#    print msg
+#    from freeode.interpreter import (InterpreterObject, )
 #    
-#    prog_text = \
-#'''
-#data a:Float const 
-#data b:Float const 
-#a = 2*2 + 3*4
-#b = 2 * a
-#
-#data c:String const
-#c = 'Hello ' + 'world!'
-#'''
-#
-#    #create the built in library
-#    mod = IModule()
-#    mod.create_attribute('Float', CLASS_FLOAT)
-#    mod.create_attribute('String', CLASS_STRING)
-##    print
-##    print 'global namespace - before interpreting statements - built in library: ---------------'
-##    print mod
-#           
-#    #create dummy interpreter class, needed for assignment statement
-#    class Interpreter(object):
-#        def __init__(self):
-#            self.assign_target_roles = (RoleConstant,)
-#    #initialize the interpreter
-#    intp = Interpreter()
-#    env = ExecutionEnvironment()
-#    exv = ExpressionVisitor()
-#    exv.environment = env
-#    stv = StatementVisitor(None, exv)
-#    stv.interpreter = intp
-#    stv.environment = env
-#    #set up parsing the main module
-#    stv.environment.global_scope = mod
-#    stv.environment.local_scope = mod
-#
-#    #parse the program text
-#    ps = simlparser.Parser()
-#    module_code = ps.parseModuleStr(prog_text)
+#    obj = InterpreterObject()
+#    attr1 = InterpreterObject()
+#    attr2 = InterpreterObject()
 #    
-#    #interpreter main loop
-#    stv.exec_(module_code.statements)
-#        
-##    print
-##    print 'global namespace - after interpreting statements: -----------------------------------'
-##    print mod
-#    
-#    assert mod.get_attribute('a').value == 16             #IGNORE:E1103
-#    assert mod.get_attribute('b').value == 2*16           #IGNORE:E1103
-#    assert mod.get_attribute('c').value == 'Hello world!' #IGNORE:E1103
-  
-  
-  
-# -------- Test interpreter object - basic --------------------------------------------------------  
+#    #put attributes into object
+#    obj.create_attribute('attr1', attr1)
+#    obj.create_attribute('attr2', attr2)
+#    #find the names of the attributes
+#    name1 = obj.find_name(attr1)
+#    name2 = obj.find_name(attr2)
+#    #verify that the found names are correct
+#    assert name1 == 'attr1'
+#    assert name2 == 'attr2'
+
+
+
 def test_SimlFunction_1(): #IGNORE:C01111
     msg =  \
 '''
@@ -1137,30 +887,28 @@ User defined functions are created without parser.
     print msg
     
     from freeode.interpreter import (Interpreter, SimlFunction, 
-                                     ArgumentList, CLASS_FLOAT, CLASS_STRING)
+                                     Signature, IFloat, IString)
     from freeode.ast import NodeFuncArg, NodeReturnStmt, NodeIdentifier
     from freeode.util import UserException
 
-    #create the interpreter - initializes INTERPRETER
-    # this way SimlFunction can access the interpreter.
+    #create the interpreter
     intp = Interpreter()    #IGNORE:W0612
     lib = intp.built_in_lib
     #create a Siml value as function argument
-    val_1 = CLASS_FLOAT(1)
+    val_1 = IFloat(1)
     
     #create a function without statements (impossible in Siml)
     # func test(a:Float):
     #     ** nothing **
-    f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=None, statements=[], global_scope=lib)
+    f1 = SimlFunction('test', Signature([NodeFuncArg('a', IFloat)]), 
+                      statements=[], global_scope=lib)
     #call with existing value
     intp.apply(f1, (val_1,))
     
     #create a function with return statement - uses interpreter for executing the statement
     # func test(a:Float) -> Float:
     #     return a
-    f2 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=CLASS_FLOAT, 
+    f2 = SimlFunction('test', Signature([NodeFuncArg('a', IFloat)], IFloat), 
                       statements=[NodeReturnStmt([NodeIdentifier('a')])], 
                       global_scope=lib)
     #call function and see if value is returned
@@ -1170,39 +918,12 @@ User defined functions are created without parser.
     #create a function with wrong return type
     # func test(a:Float) -> String:
     #     return a
-    f3= SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=CLASS_STRING, 
+    f3= SimlFunction('test', Signature([NodeFuncArg('a', IFloat)], IString), 
                       statements=[NodeReturnStmt([NodeIdentifier('a')])], 
                       global_scope=lib)
-    try:
-        ret_val = intp.apply(f3, (val_1,))
-    except UserException:
-        print 'Getting expected exception: type mismatch at function return'
-    else:
-        fail_test('There was wrong return type, but no exception!') #IGNORE:E1101
-
-
-
-def test_SimlFunction_2(): 
-    msg =  'SimlFunction: get_complete_path method'
-    #skip_test(msg)
-    print msg
-
-    from freeode.interpreter import (SimlFunction, DotName)
-    
-    #the root object where the long name will be created
-    root = SimlFunction('root')
-    sub1 = SimlFunction('sub1')
-    sub2 = SimlFunction('sub2')
-
-    root.create_attribute('sub1', sub1)
-    sub1.create_attribute('sub2', sub2)
-    
-    print root
-    
-    long_name = sub2.get_complete_path()
-    
-    assert long_name == DotName('root.sub1.sub2')
+    def raise_1():
+        intp.apply(f3, (val_1,))
+    assert_raises(UserException, 3200320, raise_1)
 
 
 
@@ -1212,28 +933,30 @@ def test_SimlFunction_3(): #IGNORE:C01111
 Test SimlFunction: storage of local variables during code collection.
 User defined functions are created without parser.
 '''
-    #skip_test('Test disabled')
+    #skip_test(msg)
     print msg
     
     from freeode.interpreter import (Interpreter, SimlFunction, IModule,
-                                     ArgumentList, CLASS_FLOAT)
+                                     Signature, IFloat)
     from freeode.ast import NodeFuncArg
+    from freeode.util import DotName, aa_make_tree 
+    
 
     #create the interpreter 
     intp = Interpreter()        
     
     #create a Siml value as function argument
-    val_1 = CLASS_FLOAT(1)
+    val_1 = IFloat(1)
 
     #create a function without statements (impossible in Siml)
     # func test(a:Float):
     #     ** nothing **
-    f1 = SimlFunction('test', ArgumentList([NodeFuncArg('a', CLASS_FLOAT)]), 
-                      return_type=None, statements=[], 
-                      global_scope=intp.built_in_lib)
+    f1 = SimlFunction('test', Signature([NodeFuncArg('a', IFloat)]), 
+                      statements=[], global_scope=intp.built_in_lib, loc=None,
+                      dot_name=DotName('test_module.test'))
     #create module where the function lives
-    mod1 = IModule('test-module')
-    mod1.create_attribute('test', f1)
+    mod1 = IModule()
+    mod1.test = f1
     
     #call with existing value
     # and set interpreter up to collect code. In this mode local variables of all 
@@ -1242,43 +965,68 @@ User defined functions are created without parser.
     intp.apply(f1, (val_1,))
     _stmts, fn_locals = intp.stop_collect_code()
     
-    print fn_locals
+    #print aa_make_tree(fn_locals)
     
-    #there must be one element in the locals storage, some base namespace for 
-    # the function argument 'a'
-    assert len(fn_locals.attributes) > 0
+    #The function argument 'a' must appear in the storage for local variables
+    assert fn_locals.test.i1.a is val_1
+
+
+
+def test_SimlFunction_descriptor_character():
+    msg = \
+    '''
+    Test cooperation of user defined functions and classes. 
+    User defined classes are descriptors, their __get__ method is tested here.'''
+    #skip_test(msg)
+    print msg
     
-    #get the local variable 'a' 
-    ns_test = fn_locals.get_attribute('test')
-    ns_1    = ns_test.  get_attribute('1')
-    float_a = ns_1.     get_attribute('a')
-    assert float_a is val_1
-
-
-
+    from freeode.interpreter import InterpreterObject, SimlFunction, SimlBoundMethod
+    
+    #Create a user defined function
+    func1 = SimlFunction('func1')
+    #Create class with one  method: func1
+    #type(name, bases, dict) -> a new type
+    Foo = type('Foo', (InterpreterObject,), 
+               {'func1':func1})
+    #Create instance of the new class
+    foo = Foo()
+    
+    #test access via the class object - must return the function
+    #print Foo.func1
+    assert Foo.func1 is func1
+    
+    #test access via a class' instance - must return SimlBoundMethod
+    #print foo.func1
+    assert isinstance(foo.func1, SimlBoundMethod)
+    assert foo.func1.im_func is func1
+    assert foo.func1.im_self is foo
+    
+    
+        
 # -------- Test administrative functions ------------------------------------------------------------------------
 def test_determine_result_role_1(): #IGNORE:C01111
     msg = 'Test determine_result_role: '
     #skip_test(msg)
     print msg
+    
     from freeode.interpreter import IFloat, determine_result_role
     from freeode.ast import RoleConstant, RoleParameter, RoleVariable
     
     #some constants
     c_1 = IFloat()
-    c_1.role = RoleConstant
+    c_1.__siml_role__ = RoleConstant
     c_2 = IFloat()
-    c_2.role = RoleConstant
+    c_2.__siml_role__ = RoleConstant
     #some parameters
     p_1 = IFloat()
-    p_1.role = RoleParameter
+    p_1.__siml_role__ = RoleParameter
     p_2 = IFloat()
-    p_2.role = RoleParameter
+    p_2.__siml_role__ = RoleParameter
     #some variables
     v_1 = IFloat()
-    v_1.role = RoleVariable
+    v_1.__siml_role__ = RoleVariable
     v_2 = IFloat()
-    v_2.role = RoleVariable
+    v_2.__siml_role__ = RoleVariable
     
     #determine the most variable role among the arguments
     assert issubclass(determine_result_role((c_1, p_1, v_1), 
@@ -1301,54 +1049,44 @@ def test_determine_result_role_2(): #IGNORE:C01111
     
     #unknown role
     u = IFloat()
-    u.role = RoleUnkown
+    u.__siml_role__ = RoleUnkown
     #some constants
     c_1 = IFloat()
-    c_1.role = RoleConstant
+    c_1.__siml_role__ = RoleConstant
     c_2 = IFloat()
-    c_2.role = RoleConstant
+    c_2.__siml_role__ = RoleConstant
     #some parameters
     p_1 = IFloat()
-    p_1.role = RoleParameter
+    p_1.__siml_role__ = RoleParameter
     p_2 = IFloat()
-    p_2.role = RoleParameter
+    p_2.__siml_role__ = RoleParameter
     #some variables
     v_1 = IFloat()
-    v_1.role = RoleVariable
+    v_1.__siml_role__ = RoleVariable
     v_2 = IFloat()
-    v_2.role = RoleVariable
+    v_2.__siml_role__ = RoleVariable
     
     #one argument with RoleUnknown - should raise exception
-    try: 
+    def raise_1(): 
         determine_result_role((c_1, p_1, v_1, u), 
                               {'a':c_2, 'b':p_2, 'c':v_2, })
-    except ValueError, e:
-        print 'Exception is OK.'
-        print e
-    else:
-        assert False, 'Exception missing.'
+    assert_raises(ValueError, None, raise_1)
     #one argument with RoleUnknown - should raise exception
-    try:
+    def raise_2(): 
         determine_result_role((c_1, p_1), {'a':c_2, 'b':p_2, 'u':u})
-    except ValueError, e:
-        print 'Exception is OK.'
-        print e
-    else:
-        assert False, 'Exception missing.'
+    assert_raises(ValueError, None, raise_2)
     #one argument with RoleUnknown - should raise exception
-    try:
+    def raise_3(): 
         determine_result_role((c_1, u), {'a':c_2})
-    except ValueError, e:
-        print 'Exception is OK.'
-        print e
-    else:
-        assert False, 'Exception missing.'
+    assert_raises(ValueError, None, raise_3)
 
 
 
 def test_is_role_more_variable_1(): #IGNORE:C01111
-    #skip_test('Test is_role_more_variable: compare the variablenes of two roles.')
-    print 'Test is_role_more_variable: compare the variablenes of two roles.'
+    msg = 'Test is_role_more_variable: compare the variable-character of two roles.'
+    #skip_test(msg)
+    print msg
+
     from freeode.interpreter import (is_role_more_variable)
     from freeode.ast import (RoleConstant, RoleParameter, RoleVariable, RoleUnkown)
 
@@ -1372,29 +1110,17 @@ def test_is_role_more_variable_2(): #IGNORE:C01111
     from freeode.interpreter import (is_role_more_variable)
     from freeode.ast import (RoleConstant, RoleParameter)
     
-    try: 
+    def raise_1(): 
         is_role_more_variable(float, RoleConstant)
-    except ValueError, e:
-        print 'Exception is OK!'
-        print e
-    else:
-        assert False, 'Exception missing'
+    assert_raises(AssertionError, None, raise_1)
         
-    try: 
+    def raise_2(): 
         is_role_more_variable(RoleParameter, float)
-    except ValueError, e:
-        print 'Exception is OK!'
-        print e
-    else:
-        assert False, 'Exception missing'
+    assert_raises(AssertionError, None, raise_2)
         
-    try: 
+    def raise_3(): 
         is_role_more_variable(RoleParameter, 1)
-    except TypeError, e:
-        print 'Exception is OK!'
-        print e
-    else:
-        assert False, 'Exception missing'
+    assert_raises(AssertionError, None, raise_3)
         
         
 
@@ -1407,83 +1133,83 @@ def test_set_role_recursive_1(): #IGNORE:C01111
     
     #create a little tree of objects
     c1 = InterpreterObject()
-    c1.role = RoleConstant
+    c1.__siml_role__ = RoleConstant
     p1 = InterpreterObject()
-    p1.role = RoleParameter
+    p1.__siml_role__ = RoleParameter
     v1 = InterpreterObject()
-    v1.role = RoleVariable
+    v1.__siml_role__ = RoleVariable
     u1 = InterpreterObject()
-    u1.role = RoleUnkown
+    u1.__siml_role__ = RoleUnkown
     root = InterpreterObject()
-    root.role = RoleVariable
-    root.create_attribute('c1', c1)
-    root.create_attribute('p1', p1)
-    root.create_attribute('v1', v1)
-    root.create_attribute('u1', u1)
+    root.__siml_role__ = RoleVariable
+    root.c1 = c1 
+    root.p1 = p1 
+    root.v1 = v1 
+    root.u1 = u1 
     #set the roles in the whole tree
     ########## This line varies ############
     set_role_recursive(root, RoleVariable) 
     #test the new roles
-    assert root.role == RoleVariable
-    assert c1.role == RoleConstant
-    assert p1.role == RoleParameter
-    assert v1.role == RoleVariable
-    assert u1.role == RoleVariable
+    assert root.__siml_role__ == RoleVariable
+    assert c1.__siml_role__ == RoleConstant
+    assert p1.__siml_role__ == RoleParameter
+    assert v1.__siml_role__ == RoleVariable
+    assert u1.__siml_role__ == RoleVariable
     
     #create a little tree of objects
     c1 = InterpreterObject()
-    c1.role = RoleConstant
+    c1.__siml_role__ = RoleConstant
     p1 = InterpreterObject()
-    p1.role = RoleParameter
+    p1.__siml_role__ = RoleParameter
     v1 = InterpreterObject()
-    v1.role = RoleVariable
+    v1.__siml_role__ = RoleVariable
     u1 = InterpreterObject()
-    u1.role = RoleUnkown
+    u1.__siml_role__ = RoleUnkown
     root = InterpreterObject()
-    root.role = RoleVariable
-    root.create_attribute('c1', c1)
-    root.create_attribute('p1', p1)
-    root.create_attribute('v1', v1)
-    root.create_attribute('u1', u1)
+    root.__siml_role__ = RoleVariable
+    root.c1 = c1 
+    root.p1 = p1 
+    root.v1 = v1 
+    root.u1 = u1 
     #set the roles in the whole tree
     ########## This line varies ############
     set_role_recursive(root, RoleParameter) 
     #test the new roles
-    assert root.role == RoleParameter
-    assert c1.role == RoleConstant
-    assert p1.role == RoleParameter
-    assert v1.role == RoleParameter
-    assert u1.role == RoleParameter
+    assert root.__siml_role__ == RoleParameter
+    assert c1.__siml_role__ == RoleConstant
+    assert p1.__siml_role__ == RoleParameter
+    assert v1.__siml_role__ == RoleParameter
+    assert u1.__siml_role__ == RoleParameter
     
     #create a little tree of objects
     c1 = InterpreterObject()
-    c1.role = RoleConstant
+    c1.__siml_role__ = RoleConstant
     p1 = InterpreterObject()
-    p1.role = RoleParameter
+    p1.__siml_role__ = RoleParameter
     v1 = InterpreterObject()
-    v1.role = RoleVariable
+    v1.__siml_role__ = RoleVariable
     u1 = InterpreterObject()
-    u1.role = RoleUnkown
+    u1.__siml_role__ = RoleUnkown
     root = InterpreterObject()
-    root.role = RoleVariable
-    root.create_attribute('c1', c1)
-    root.create_attribute('p1', p1)
-    root.create_attribute('v1', v1)
-    root.create_attribute('u1', u1)
+    root.__siml_role__ = RoleVariable
+    root.c1 = c1 
+    root.p1 = p1 
+    root.v1 = v1 
+    root.u1 = u1 
     #set the roles in the whole tree
     ########## This line varies ############
     set_role_recursive(root, RoleConstant) 
     #test the new roles
-    assert root.role == RoleConstant
-    assert c1.role == RoleConstant
-    assert p1.role == RoleConstant
-    assert v1.role == RoleConstant
-    assert u1.role == RoleConstant
+    assert root.__siml_role__ == RoleConstant
+    assert c1.__siml_role__ == RoleConstant
+    assert p1.__siml_role__ == RoleConstant
+    assert v1.__siml_role__ == RoleConstant
+    assert u1.__siml_role__ == RoleConstant
     
     
 
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
-    test_SimlFunction_1()
-    pass #pylint: disable-msg=W0107
+    test_operator_dispatch_2()
+    pass #pylint:disable-msg=W0107

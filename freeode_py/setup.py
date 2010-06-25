@@ -50,7 +50,7 @@
 
 
 from distutils.core import setup
-from freeode.ast import PROGRAM_VERSION
+from freeode.util import PROGRAM_VERSION
 
 setup(name = 'freeode',
       version = PROGRAM_VERSION,

@@ -44,17 +44,11 @@ from __future__ import absolute_import              #IGNORE:W0410
 
 
 from types import ClassType, FunctionType, NoneType #, TupleType, StringType
-import copy
-import weakref
+#import copy
+#import weakref
 
 #import freeode.third_party.pyparsing as pyparsing
-from freeode.util import AATreeMaker
-
-#version of the Siml compiler.
-PROGRAM_VERSION = '0.4.0a3'
-#How much debug information is printed
-# 0: No debug information; 1: some; ....
-DEBUG_LEVEL = 1
+from freeode.util import AATreeMaker, Enum
 
 
 
@@ -74,11 +68,12 @@ class Node(object):
     '''
     
     #Object that creates an ASCII art tree from nodes
-    __siml_aa_tree_maker__ = AATreeMaker()
+    __siml_aa_tree_maker__ = AATreeMaker(top_names= ['name', '__siml_role__', 
+                                                     '__siml_type__'],)
     
-    #we don't own instances of these classes.
-    #tuple of types that are not copied deeply
-    _weak_types = weakref.ProxyTypes + (weakref.ReferenceType,)
+#    #we don't own instances of these classes.
+#    #tuple of types that are not copied deeply
+#    _weak_types = weakref.ProxyTypes + (weakref.ReferenceType,)
     
     def __init__(self, **args): 
         '''Create an attribute for each named argument.'''
@@ -93,36 +88,36 @@ class Node(object):
         '''
         return self.__siml_aa_tree_maker__.make_tree(self)   
              
-    def copy(self):
-        '''
-        Return a (recursive) deep copy of the node.
-
-        Only objects owned by this object are copied deeply.
-        For objects owned by other nodes proxies should be created:
-        self.foo = proxy(other.foo)
-        '''
-        return copy.deepcopy(self)
-
-    def __deepcopy__(self, memo_dict):
-        '''
-        Hook that does the copying for Node.copy.
-        Called by copy.deepcopy()
-        
-        copy - weakref interaction problems:
-        http://coding.derkeiler.com/Archive/Python/comp.lang.python/2008-02/msg01873.html
-        '''
-        #TODO: new ast.Node.copy mechanism for shallow copy, just referencing
-        #create empty instance of self.__class__
-        new_obj = Node.__new__(self.__class__)
-        for name, attr in self.__dict__.iteritems():
-            if isinstance(attr, Node._weak_types):
-                #attribute owned by other object: no copy only reference
-                setattr(new_obj, name, attr)
-            else:
-                #attribute owned by self: make deep copy
-                new_attr = copy.deepcopy(attr, memo_dict)
-                setattr(new_obj, name, new_attr)
-        return new_obj
+#    def copy(self):
+#        '''
+#        Return a (recursive) deep copy of the node.
+#
+#        Only objects owned by this object are copied deeply.
+#        For objects owned by other nodes proxies should be created:
+#        self.foo = proxy(other.foo)
+#        '''
+#        return copy.deepcopy(self)
+#
+#    def __deepcopy__(self, memo_dict):
+#        '''
+#        Hook that does the copying for Node.copy.
+#        Called by copy.deepcopy()
+#        
+#        copy - weakref interaction problems:
+#        http://coding.derkeiler.com/Archive/Python/comp.lang.python/2008-02/msg01873.html
+#        '''
+#        #TODO: new ast.Node.copy mechanism for shallow copy, just referencing
+#        #create empty instance of self.__class__
+#        new_obj = Node.__new__(self.__class__)
+#        for name, attr in self.__dict__.iteritems():
+#            if isinstance(attr, Node._weak_types):
+#                #attribute owned by other object: no copy only reference
+#                setattr(new_obj, name, attr)
+#            else:
+#                #attribute owned by self: make deep copy
+#                new_attr = copy.deepcopy(attr, memo_dict)
+#                setattr(new_obj, name, new_attr)
+#        return new_obj
 
 
 
@@ -190,11 +185,11 @@ class NodeAttrAccess(Node):
     loc: 
         Location in input string
     '''
-    def __init__(self):
+    def __init__(self, arguments=tuple(), loc=None):
         super(NodeAttrAccess, self).__init__()
         self.operator = '.'
-        self.arguments = tuple()
-        self.loc = None        
+        self.arguments = arguments
+        self.loc = loc        
 
 
 class NodeParentheses(Node):
@@ -208,9 +203,9 @@ class NodeParentheses(Node):
         arguments: list(Node())
             Mathematical expression between the parentheses. 
             Naming is chosen to unify operators and function call
-        type: InterpreterObject
+        __siml_type__: type
             Type of the results of the operation. For decorating the AST.
-        role: AttributeRole
+        __siml_role__: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: TextLocation; None
             Location in input string
@@ -222,9 +217,9 @@ class NodeParentheses(Node):
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}
         #unknown variable aspect
-        self.type = None
-        self.role = RoleUnkown
-        self.is_known = None
+        self.__siml_type__ = None
+        self.__siml_role__ = RoleUnkown
+        #self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #for error messages
@@ -247,9 +242,9 @@ class NodeOpInfix2(Node):
             The Siml function that the interpreter called when the function
             call was interpreted. (Because not all arguments were known at 
             compile time, an annotated function call was created.) 
-        type: InterpreterObject
+        __siml_type__: type
             Type of the results of the operation. For decorating the AST.
-        role: AttributeRole
+        __siml_role__: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: TextLocation; None
             Location in input string
@@ -261,11 +256,10 @@ class NodeOpInfix2(Node):
         self.operator = operator
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
-        #decorations
-        #self.function_object = None
-        self.type = None
-        self.role = RoleUnkown
-        self.is_known = None
+        #decorations - look like CodeGeneratorObject
+        #self.is_known = False
+        self.__siml_type__ = None
+        self.__siml_role__ = RoleUnkown
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #for error messages
@@ -288,9 +282,9 @@ class NodeOpPrefix1(Node):
             The Siml function that the interpreter called when the function
             call was interpreted. (Because not all arguments were known at 
             compile time, an annotated function call was created.) 
-        type: InterpreterObject
+        __siml_type__: type
             Type of the results of the operation. For decorating the AST.
-        role: AttributeRole
+        __siml_role__: AttributeRole
             Role of the results of the operation. For decorating the AST.
         loc: 
             Location in input string
@@ -303,9 +297,9 @@ class NodeOpPrefix1(Node):
         self.arguments = arguments if arguments is not None else tuple()
         self.keyword_arguments = {}  #for uniform handling with functions
         #decorations
-        self.type = None
-        self.role = RoleUnkown
-        self.is_known = None
+        self.__siml_type__ = None
+        self.__siml_role__ = RoleUnkown
+        #self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #for error messages
@@ -321,7 +315,7 @@ class NodeFuncCall(Node):
     
     Data attributes:
     ----------------
-        name: NodeIdentifier/callable object
+        function: NodeIdentifier/callable object
             expression that yields the function object, or the function 
             object that will be called. 
             The function object is present when an unevaluated function call 
@@ -331,9 +325,9 @@ class NodeFuncCall(Node):
         keyword_arguments: 
             Dictionary of keyword arguments
             
-        type: InterpreterObject
+        __siml_type__: type
             Type of the results of the operation. (unevaluated function call)
-        role: AttributeRole
+        __siml_role__: AttributeRole
             Role of the results of the operation. (unevaluated function call)
         is_known: None/False
             - None for calls that have not been processed by the interpreter.
@@ -342,11 +336,6 @@ class NodeFuncCall(Node):
             unknown variables.
         loc: 
             Location in input string
-            
-    TODO: unify functions and operators and
-    TODO: remove NodeOpInfix2, NodeOpPrefix1
-    TODO:    is_operator: True/False
-    TODO:    operator_placement: prefix/infix/suffix 
     '''
     #TODO: give NodeFuncCall a nice constructor
     def __init__(self, function=None, arguments=None, keyword_arguments=None, 
@@ -358,9 +347,9 @@ class NodeFuncCall(Node):
         self.keyword_arguments = keyword_arguments \
                                  if keyword_arguments is not None else {}
         #--- for the type system (treatment of unevaluated calls) -----------#
-        self.type = None
-        self.role = RoleUnkown
-        self.is_known = None
+        self.__siml_type__ = None
+        self.__siml_role__ = RoleUnkown
+        #self.is_known = None
         #--- information flow graph construction ----------------------------#
         self.inputs = None
         #--- for error messages ---------------------------------------------#
@@ -384,8 +373,11 @@ class NodePassStmt(Node):
 
 class NodeExpressionStmt(Node):
     '''
-    AST node intended for a function call. It can however contain any 
-    expression. The expressions result is discarded.
+    AST node for a statement that contains just an expression. The expression's 
+    result is discarded.
+    
+    The expressions are usually function calls  with side effects: print(), 
+    graph(), store().
     
     Data attributes:
         expression: Node()
@@ -471,12 +463,12 @@ class NodeAssignment(Node):
         loc: 
             Location in input string    
     '''
-    def __init__(self):
-        super(NodeAssignment, self).__init__()
-        self.target = None
-        self.expression = None
+    def __init__(self, target=None, expression=None, loc=None):
+        Node.__init__(self)
+        self.target = target
+        self.expression = expression
         #--- errors -----
-        self.loc = None
+        self.loc = loc
         #--- data flow analysis -------
         self.inputs = None
         self.outputs = None
@@ -575,37 +567,6 @@ class NodeStmtList(Node):
         self.statements = []
         self.loc = None
 
-
-class EnumMeta(type):
-    '''Metaclass for the Enum class. Contains Enum's magic __repr__ method'''
-    def __repr__(self):
-        return self.__name__
-    
-class Enum(object):
-    '''
-    Class for use as an enum or global constant.
-    
-    Don't instantiate this class! Inherit from it, and use the class object 
-    itself as the enum or constant. When the class is converted to a 
-    string it becomes its own class name. This is nice for debugging or pretty 
-    printing.
-    
-    The class has a custom metaclass: EnumMeta.
-    >>> type(Enum)
-    <class 'freeode.ast.EnumMeta'>
-    
-    USAGE:
-    ------
-    >>> class EAST(Enum): pass
-    >>> class WEST(Enum): pass
-    >>> class NORTH(Enum): pass
-    >>> class SOUTH(Enum): pass
-    
-    >>> print NORTH, SOUTH, EAST, WEST
-    NORTH SOUTH EAST WEST
-    '''
-    __metaclass__ = EnumMeta
-    
 
 class AttributeRole(Enum):
     '''
@@ -710,9 +671,9 @@ class NodeFuncArg(Node):
     Attributes:
         name: str
             Name of argument
-        type:
+        type: ast.Node usually ast.NodeIdentifier
             Type of argument
-        default_value:
+        default_value: ast.Node usually ast.NodeAttrAccess or ast.NodeFloat
             default value
         loc:
             Location in input file
@@ -726,32 +687,31 @@ class NodeFuncArg(Node):
         
         
         
-class SimpleArgumentList(Node):
+class SimpleSignature(Node):
     """
-    Contains arguments of a function definition.
-    - Checks the arguments when function definition is parsed
+    Contains arguments of a function definition and the return type.
     """
-    def __init__(self, arguments, loc=None):
+    def __init__(self, arguments=None, return_type=None, loc=None):
         '''
         ARGUMENTS
         ---------
-        arguments: [ast.NodeFuncArg, ...] or SimpleArgumentList
+        arguments: [ast.NodeFuncArg, ...] or SimpleSignature
             The functions arguments
+        return_type: ast.Node usually ast.NodeIdentifier
+            Type of the function's return value.
         loc: ast.TextLocation 
-            Location where the function is defined in the program text
+            Location where the function is defined in the program text.
         '''
         Node.__init__(self)
         
         #special case copy construction
-        if isinstance(arguments, SimpleArgumentList):
+        if isinstance(arguments, SimpleSignature):
             loc = arguments.loc
             arguments = arguments.arguments
 
-        #--- the primary data ------------------------------------------#
-        #place in program text where function is defined
+        self.arguments = arguments if arguments is not None else []
+        self.return_type = return_type
         self.loc = loc            
-        #list of argument definitions [ast.NodeFuncArg, ...]
-        self.arguments = arguments
 
 
 
@@ -767,24 +727,20 @@ class NodeFuncDef(Node):
     Attributes:
         name: str
             Name of the function
-        arguments:
-            Positional arguments
-        keyword_arguments:
-            Keyword arguments
+        signature: SimpleSignature
+            The function arguments (positional- and keyword-arguments) with 
+            type annotations.
         statements: list(Node()]
             Statements of function body
-        return_type: 
-            Class name of return value; tuple of strings: ('Real',)???
         loc: 
             Location in input string
     """
-    def __init__(self):
+    def __init__(self, name, signature, statements, loc=None):
         Node.__init__(self)
-        self.name = None
-        self.arguments = SimpleArgumentList([])
-        self.statements = []
-        self.return_type = None
-        self.loc = None
+        self.name = name
+        self.signature = signature #SimpleSignature([])
+        self.statements = statements #[]
+        self.loc = loc
 
 
 
@@ -956,256 +912,6 @@ class NodeModule(Node):
 #            return (node, depth)
 #        else:
 #            return node
-
- 
-
-#TODO: make class work with inherited handler methods.
-class Visitor(object):
-    '''
-    #TODO: abandon this code and replace by a suitable library! (No need to invent the wheel myself again.)
-    #TODO: Replacement library should also support type checking!
-    
-    Visitor for the AST
-
-    This class is useful when there are decisions necessary based on the type
-    of an object. The class is an alternative to big if statements that
-    look like this:
-
-    if isinstance(node, NodeClassDef):
-        .....
-    elif isinstance(node, NodeFuncDef):
-        ....
-    elif isinstance(node, NodeDataDef):
-        ....
-    .....
-    .....
-
-    Features:
-    - A designated (handler) method is called for each type.
-    - Single dispatch
-    - Switching which method is used is done based on type and
-      inheritance
-    - Ambigous situations can be avoided with a priority value. Functions with
-      high priority values are considered before functions with low priority
-      values.
-    - The algorithm for matching is 'issubclass'.
-    - Association between type and method is done with decorators.
-
-    USAGE:
-    ------
-        - Define class that inherits from Visitor
-        - Use @Visitor.when_type(classObject, priority) to define a handler
-          method for a speciffic type.
-        - Use @Visitor.default for the default function, which is called when
-          no handler method matches.
-        - In the main loop use self.dispatch(theObject) to call the appropriate 
-          handler method.
-
-    >>> class NodeVisitor(Visitor):
-    ...     def __init__(self):
-    ...         Visitor.__init__(self)
-    ...     @Visitor.when_type(NodeClassDef)
-    ...     def visitClassDef(self, classDef):
-    ...         print 'seen class def'
-    ...     @Visitor.when_type(NodeFuncDef)
-    ...     def visitFuncDef(self, funcDef):
-    ...         print 'seen func def'
-    ...     def mainLoop(self, node_list):
-    ...         for node in node_list:
-    ...             self.dispatch(node)
-
-    >>> nl = []
-    >>> nl.append(NodeClassDef())
-    >>> nl.append(NodeClassDef())
-    >>> nl.append(NodeFuncDef())
-    >>> nl.append(NodeFuncDef())
-    >>> nv = NodeVisitor()
-    >>> nv.mainLoop(nl)
-    seen class def
-    seen class def
-    seen func def
-    seen func def
-    
-    An example with priorities is part of the unit tests:
-    TestVisitor.test_priority_2
-
-    CREDITS
-    -------
-    Ideas were taken from:
-    Phillip J. Eby's 'simplegeneric' library and his very good online articles:
-    http://cheeseshop.python.org/pypi/simplegeneric/0.6
-    http://peak.telecommunity.com/DevCenter/VisitorRevisited
-
-    External documentation:
-    - Single dispatch:
-    See: http://cheeseshop.python.org/pypi/simplegeneric/0.6
-    See: http://peak.telecommunity.com/DevCenter/VisitorRevisited
-    - Multiple dispatch:
-    See: http://www.artima.com/weblogs/viewpost.jsp?thread=101605
-    See: http://gnosis.cx/download/gnosis/magic/multimethods.py
-    - Introduction to Decorators
-    http://personalpages.tds.net/~kent37/kk/00001.html
-
-    Thanks to all authors for writing high quality online articles
-    and free software.
-    '''
-
-    def __init__(self):
-        cls = self.__class__
-        #Create rule table and cache only once.
-        #TODO: make sure that only '_ruleTable' in most derived class is found.
-        if not hasattr(cls, '_ruleTable'):
-            #List of types, functions and priorities
-            cls._ruleTable = []
-            #Dictionary of types and functions, no inheritance is considered
-            #TODO: better self._cache ??? currently:
-            #  - all instances use same cache: OK
-            #  - when new visitor is instanciated the cache is emptied: Bad 
-            cls._cache = {}
-            #populate the rule table if necessary
-            self._createRuleTable()
-
-
-    def dispatch(self, inObject, *args):
-        '''
-        Call the different handler functions depending on the type of inObject
-        '''
-        # pylint: disable-msg=W0212
-        cls = self.__class__
-        objCls = inObject.__class__
-        #search handler function in cache
-        handlerFunc = cls._cache.get(objCls, None)    
-        if handlerFunc is None:
-            #Handler function is not in cache
-            #search handler function in rule table and store it in cache
-            handlerFunc = self._findFuncInRuleTable(objCls)
-            cls._cache[objCls] = handlerFunc    
-        return handlerFunc(self, inObject, *args) 
-
-
-    def _simpleDefaultFunc(self, inObject, *_args):
-        raise TypeError('No function to handle type %s in class %s'
-                        % (str(type(inObject)), str(type(self))))
-
-
-    @classmethod
-    def _findFuncInRuleTable(cls, objCls):
-        '''
-        Find a function to handle a given class in the rule table.
-        If no matching rules could be found return the default rule
-
-        The algorithm for matching is 'issubclass'
-        '''
-        #find handler function for class 'objCls'
-        for func1, cls1, _prio1 in cls._ruleTable:
-            if issubclass(objCls, cls1):
-                return func1
-        #no specific handler could be found: return the default function
-        func1, cls1, _prio1 = cls._ruleTable[-1] #IGNORE:E1101
-        return func1
-
-
-    @classmethod
-    def _createRuleTable(cls):
-        '''
-        Create the rule table.
-        Look at all methods of the class, if they have
-        _dispatchIfType and _dispatchPriority attributes
-        put them into the rule table.
-
-        - The rule table is sorted according to _dispatchPriority.
-        - If _dispatchIfType has the value None the function is considered
-          the default function
-        '''
-        ruleTable = []
-        defaultFunc = Visitor._simpleDefaultFunc #IGNORE:W0212
-        #TODO: look into methods of parent classes too
-        #loop over the class' attributes and put them into the table if appropriate
-        for func in cls.__dict__.itervalues():
-            if not isinstance(func, FunctionType):
-                continue
-            if not (hasattr(func, '_dispatchIfType') and
-                    hasattr(func, '_dispatchPriority')):
-                continue
-            if func._dispatchIfType == None: #IGNORE:W0212
-                defaultFunc = func
-            else:
-                ruleTable.append((func, func._dispatchIfType, func._dispatchPriority)) #IGNORE:W0212
-        #sort rule table according to priority
-        getPrio = lambda tup: tup[2]
-        ruleTable.sort(key=getPrio, reverse=True)
-        #put default function at end of table
-        ruleTable.append((defaultFunc, NoneType, 0.0))
-        #store the tble in the most derived class
-        cls._ruleTable = ruleTable
-
-
-    @staticmethod
-    def when_type(inType, inPriority=1.0):
-        '''
-        Decorator to mark a method with some extra data members that carry
-        information with which argument type it should be invoked.
-
-        Use as decorator in method definition:
-            @Visitor.when_type(int, 5)
-            def handleInt(self, intVal):
-                .....
-
-        ARGUMENTS:
-            inType     : The type of the (second) argument for which
-                         the decorated method is associated.
-                         TODO: May also be a tuple of types.
-            inPriority : The priority if multiple methods fit on one type.
-                         Higher numbers mean higher priority.
-        '''
-        #Test if arguments are of the required type
-        legalTypes = (type, ClassType)
-        if not isinstance(inType, legalTypes):
-            raise TypeError(
-                'Visitor.when_type: Argument 1 must be a type or class, but it is: %s'
-                % str(type(inType)))
-        if not isinstance(inPriority, (int, float)):
-            raise TypeError(
-                'Visitor.when_type: Argument 2 must be an int or float number, '
-                'but it is: %s'
-                % str(type(inPriority)))
-        #create function that really attatches the decorations
-        #(the extra data members)
-        def decorateWithType(funcToDecorate):
-            if not isinstance(funcToDecorate, FunctionType):
-                raise TypeError(
-                    'Visitor.when_type: Can only decorate class methods, '
-                    'but I got: %s'
-                    % str(type(funcToDecorate)))
-            funcToDecorate._dispatchIfType = inType
-            funcToDecorate._dispatchPriority = float(inPriority)
-            return funcToDecorate
-        #give the decorator function to the Pyton interpreter;
-        #the interpreter will call the function.
-        return decorateWithType
-
-
-    @staticmethod
-    def default(funcToDecorate):
-        '''
-        Decorator to mark a function as the default function
-
-        Use as decorator in method definition:
-            @Visitor.default
-            def handleAnyType(self, val):
-
-        The decorated method will have the least priority.
-        There can be only one default function in a class definition.
-        '''
-        if not isinstance(funcToDecorate, FunctionType):
-            raise TypeError(
-                'Visitor.default: Can only decorate class methods, '
-                'but I got: %s \n'
-                '(No arguments for @Visitor.default are allowed)'
-                % str(type(funcToDecorate)))
-        funcToDecorate._dispatchIfType = None
-        funcToDecorate._dispatchPriority = 0.0
-        return funcToDecorate
 
 
 

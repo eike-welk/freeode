@@ -298,8 +298,9 @@ func test_1():
     
     func = ast.statements[0]
     assert isinstance(func, NodeFuncDef)
-    assert len(func.arguments.arguments) == 0
+    assert len(func.signature.arguments) == 0
     assert len(func.statements) == 1
+    assert func.signature.return_type is None
 
     
     
@@ -308,7 +309,8 @@ def test_parse_function_definition_2(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    import freeode.simlparser as p
+    import freeode.simlparser as p 
+    from freeode.ast import NodeFuncDef
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -325,6 +327,12 @@ func test_1(a, b, c):
     ast = parser.parseModuleStr(test_prog)
     #print ast    
 
+    func = ast.statements[0]
+    assert isinstance(func, NodeFuncDef)
+    assert len(func.signature.arguments) == 3
+    assert len(func.statements) == 1
+    assert func.signature.return_type is None
+    
 
 
 def test_parse_function_definition_3(): #IGNORE:C01111
@@ -332,7 +340,8 @@ def test_parse_function_definition_3(): #IGNORE:C01111
     #py.test.skip(msg)
     print msg
     
-    import freeode.simlparser as p
+    import freeode.simlparser as p 
+    from freeode.ast import NodeFuncDef, NodeFuncArg, NodeFloat
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -347,8 +356,22 @@ func test_1(a=0, b=2, c=5):
     #print test_prog
     print
     ast = parser.parseModuleStr(test_prog)
-    #print ast   
+    #print ast       
+    
+    #Test some general properties of the function node
+    func = ast.statements[0]
+    assert isinstance(func, NodeFuncDef)
+    assert len(func.signature.arguments) == 3
+    assert len(func.statements) == 1
+    assert func.signature.return_type is None
 
+    #See if the default values are really there.
+    a, b, c = func.signature.arguments
+    assert isinstance(a, NodeFuncArg)
+    assert isinstance(a.default_value, NodeFloat)
+    assert isinstance(b.default_value, NodeFloat)
+    assert isinstance(c.default_value, NodeFloat)
+     
 
 
 def test_parse_function_definition_4(): #IGNORE:C01111
@@ -357,6 +380,7 @@ def test_parse_function_definition_4(): #IGNORE:C01111
     print msg
     
     import freeode.simlparser as p
+    from freeode.ast import NodeFuncDef, NodeFuncArg, NodeIdentifier
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -373,6 +397,20 @@ func test_1(a:Float, b:String, c:Float):
     ast = parser.parseModuleStr(test_prog)
     #print ast   
 
+    #Test some general properties of the function node
+    func = ast.statements[0]
+    assert isinstance(func, NodeFuncDef)
+    assert len(func.signature.arguments) == 3
+    assert len(func.statements) == 1
+    assert func.signature.return_type is None
+
+    #See if the type annotations  are really there.
+    a, b, c = func.signature.arguments
+    assert isinstance(a, NodeFuncArg)
+    assert isinstance(a.type, NodeIdentifier)
+    assert isinstance(b.type, NodeIdentifier)
+    assert isinstance(c.type, NodeIdentifier)
+
 
 
 def test_parse_function_definition_5(): #IGNORE:C01111
@@ -381,6 +419,7 @@ def test_parse_function_definition_5(): #IGNORE:C01111
     print msg
     
     import freeode.simlparser as p
+    from freeode.ast import NodeFuncDef
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -398,7 +437,14 @@ func test_1(a:String, b, c:Float, d:Float=2, e=3, f:Float=4) -> Float:
     #print ast   
     #assert False, 'Test'
     
-    
+    #Test some general properties of the function node
+    func = ast.statements[0]
+    assert isinstance(func, NodeFuncDef)
+    assert len(func.signature.arguments) == 6
+    assert len(func.statements) == 1
+    assert func.signature.return_type is not None
+
+
     
 def test_parse_function_definition_6(): #IGNORE:C01111
     msg = 'Test to parse a function definition with return type specification.'
@@ -406,6 +452,7 @@ def test_parse_function_definition_6(): #IGNORE:C01111
     print msg
     
     import freeode.simlparser as p
+    from freeode.ast import NodeFuncDef, NodeIdentifier
     
     parser = p.Parser()
     #For debugging: keep Pyparsing's  original parse results.
@@ -422,6 +469,16 @@ func test_1() -> Float:
     ast = parser.parseModuleStr(test_prog)
     #print ast 
 #    assert False, 'Test'
+    
+    #Test some general properties of the function node
+    func = ast.statements[0]
+    assert isinstance(func, NodeFuncDef)
+    assert len(func.signature.arguments) == 0
+    assert len(func.statements) == 1
+    assert func.signature.return_type is not None
+    
+    assert isinstance(func.signature.return_type, NodeIdentifier)
+    
     
     
 # ---------- complete program -----------------------------------------------------

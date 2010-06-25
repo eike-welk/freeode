@@ -36,7 +36,7 @@ from py.test import raises            # pylint: disable-msg=F0401,E0611,W0611
 
 def test_MakeDataFlowDecorations_1(): #IGNORE:C01111
     msg = '''Test the creation of data flow annotations.'''
-    #py.test.skip(msg)
+    skip_test(msg)
     print msg
     
     from freeode.optimizer import MakeDataFlowDecorations
