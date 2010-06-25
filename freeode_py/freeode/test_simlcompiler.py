@@ -28,18 +28,16 @@ Test code for the "simlcompiler.py" module.
 from __future__ import division
 from __future__ import absolute_import              #IGNORE:W0410
 
-#The py library is not standard. Preserve ability to use some test functions
-# for debugging when the py library, and the py.test testing framework, are 
-# not installed. 
-try:                      
-    import py
-except ImportError:
-    print 'No py library, many tests may fail!'
+from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
+
+from freeode.util import assert_raises
+
 
 
 def test_do_compile(): #IGNORE:C01111
     msg = 'Test do_compile: Compile and execute a program. (Bypasses program argument handling.)'
-    py.test.skip(msg + '\n'
+    skip_test(msg + '\n'
                  'The PYTHONPATH must be set to a useful value,\n'
                  'so that the compiled program can find the SIML runtime libraries.')
     print msg
@@ -75,11 +73,10 @@ class RunTest:                                     #line 20
 
     func initialize(this):
         system.initialize(0.03)
-#        solutionParameters.simulationTime = 100
-#        solutionParameters.reportingInterval = 1
-                                                   #line 30
-#    func final(this):
-#        graph(system.V)
+        solution_parameters(100, 1)
+                     
+    func final(this):                              #line 30
+        graph(system.V)
         
 
 compile RunTest
@@ -94,6 +91,7 @@ compile RunTest
     main.output_file_name = 'ttest_1.py'
     main.do_compile()
     
+    #TODO: assert correct function of program without graph
     exit_val = os.system('./ttest_1.py')
     assert exit_val == 0
     

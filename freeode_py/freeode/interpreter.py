@@ -2205,7 +2205,11 @@ class Interpreter(object):
 
 
     def exec_NodeExpressionStmt(self, node):
-        '''Intended to call functions. Compute expression and forget result'''
+        '''
+        Compute expression and forget result.
+        These are usually function calls  with side effects: print(), graph(), 
+        store().
+        '''
         ret_val = self.eval(node.expression)
         if ret_val is None or isinstance(ret_val, InterpreterObject):
             #function was evaluated at compile time, forget result

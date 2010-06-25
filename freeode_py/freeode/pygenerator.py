@@ -39,8 +39,7 @@ from __future__ import division
 
 import cStringIO
 from util import DotName, PROGRAM_VERSION, aa_make_tree
-from freeode.ast import (Visitor,
-                         NodeFuncCall, NodeParentheses,  
+from freeode.ast import (NodeFuncCall, NodeParentheses,  
                          NodeAssignment, NodeIfStmt, 
                          NodeExpressionStmt, 
                          RoleIntermediateVariable, RoleInputVariable, 
@@ -89,19 +88,10 @@ class ExpressionGenerator(object):
          
         Return
         ------
-        str, formula in Python language
+        str
+            Expression (formula) in Python language
         '''
-        #print aa_make_tree(expr)
-        
-        #TODO: create generalized function to handle CodeGeneratorObject
-        #      IFloat, IString, IBool
-        if isinstance(expr, IFloat):
-            return self._createNum(expr)
-        elif isinstance(expr, IString):
-            return self._createString(expr)
-        elif isinstance(expr, NodeParentheses):
-            return self._createParentheses(expr)
-        elif isinstance(expr, NodeFuncCall):
+        if isinstance(expr, NodeFuncCall):
             if expr.function in ExpressionGenerator.known_functions:
                 return self._create_func_call(expr)
             elif expr.function in ExpressionGenerator.known_binops:
@@ -113,6 +103,11 @@ class ExpressionGenerator(object):
             else:
                 raise Exception('Python generator does not know function: %s'
                                 % str(expr.function))
+                
+        elif isinstance(expr, (IFloat, IString, IBool)):
+            return self._create_interpreter_obj(expr)
+        elif isinstance(expr, NodeParentheses):
+            return self._create_parentheses(expr)
         else:
             #Internal error: unknown node
             raise Exception('Unknown node in ExpressionGenerator: %s\n'
@@ -138,6 +133,7 @@ class ExpressionGenerator(object):
         return ret_str
         
         
+    #Table that maps functions to Python functions 
     function_name = {BUILTIN_LIB.sin:'sin', BUILTIN_LIB.cos:'cos', 
                      BUILTIN_LIB.tan:'tan', BUILTIN_LIB.sqrt:'sqrt',
                      BUILTIN_LIB.exp:'exp', BUILTIN_LIB.log:'log', 
@@ -164,7 +160,8 @@ class ExpressionGenerator(object):
         return ret_str
         
     
-    binop_str = {func(IFloat.__add__):'+', func(IString.__add__):'+',
+    #Table that maps functions to binary operators    
+    binop_str = {func(IFloat.__add__):' + ', func(IString.__add__):'+',
                  func(IFloat.__sub__):' - ', 
                  func(IFloat.__mul__):' * ', 
                  func(IFloat.__div__):' / ',  
@@ -189,6 +186,7 @@ class ExpressionGenerator(object):
                 self.create_expression(func_call.arguments[1]))
         
         
+    #Table that maps functions to prefix operators    
     prefopt_str = {func(IFloat.__neg__):'-', func(IBool.__siml_not__):' not '}
     known_prefopts = set(prefopt_str.keys())
     
@@ -198,30 +196,31 @@ class ExpressionGenerator(object):
         return op_str + self.create_expression(func_call.arguments[0])
 
 
-    #@Visitor.when_type(IFloat, 1)
-    def _createNum(self, variable):
-        '''Number: 123.5 or variable with type Float'''
-        if isrole(variable, RoleConstant):
-            return 'float64(%s)' % str(variable.value)
+    def _create_interpreter_obj(self, obj):
+        '''
+        Create Python string that represents a variable or an immediate constant.
+        '''
+        if isrole(obj, RoleConstant):
+            if isinstance(obj, IFloat):
+                return 'float64(%s)' % str(obj.value)
+            elif isinstance(obj, IString):
+                return '"' + obj.value + '"'
+            elif isinstance(obj, IBool):
+                return str(obj.value)
+            else:
+                raise Exception('Unknown type of immediate constant: ' 
+                                + str(type(obj))) 
         else:
-            return variable.target_name
+            return obj.target_name
         
-    #@Visitor.when_type(IString, 1)
-    def _createString(self, variable):
-        '''String: 'hello world' or variable with type String'''
-        if isrole(variable, RoleConstant):
-            return '\'' + variable.value + '\''
-        else:
-            return variable.target_name
-        
-    #@Visitor.when_type(NodeParentheses, 1)
-    def _createParentheses(self, iltFormula):
+
+    def _create_parentheses(self, iltFormula):
         #pair of prentheses: ( ... )
         return '(' + self.create_expression(iltFormula.arguments[0]) + ')'
                 
 
 
-class StatementGenerator(Visitor):
+class StatementGenerator(object):
     '''
     Generate statements in Python from an AST or ILT syntax tree.
     
@@ -245,23 +244,7 @@ class StatementGenerator(Visitor):
         '''Put a string of python code into the buffer.'''
         self.out_py.write(string)
 
-#    def createStatement(self, iltStmt, indent):
-#        '''
-#        Take ILT sub-tree and convert it into one
-#        or several Python statements.
-#        This is the dispatcher function for the statements.
-#
-#        ARGUMENT:
-#            iltStmt : tree of Node objects
-#            indent  : string of whitespace, put in front of each line
-#        RETURN:
-#            None
-#        OUTPUT:
-#            self.out_py - text is written to object
-#        '''
-#        self.dispatch(iltStmt, indent)
-        
-        
+
     def create_statements(self, stmt_list, indent):
         '''
         Take list of statement nodes. Convert it into one or several 
@@ -280,33 +263,45 @@ class StatementGenerator(Visitor):
             self.out_py - text is written to object
         '''
         for node in stmt_list:
-            self.dispatch(node, indent)
+            if isinstance(node, NodeAssignment):
+                self._create_assignment(node, indent)
+            elif isinstance(node, NodeIfStmt):
+                self._create_if_stmt(node, indent)
+            elif isinstance(node, NodeExpressionStmt):
+                self._create_expression_stmt(node, indent)
+            else:
+                raise Exception('Unknown node in StatementGenerator:\n'
+                                     + str(node))
 
 
-    def create_expression(self, iltFormula):
+    def create_expression(self, expr):
         '''
         Take ILT sub-tree that describes a formula (expression) and
         convert it into a formula in the Python programming language.
         (recursive)
 
         ARGUMENT:
-            iltFormula : tree of Node objects
+            expr : tree of Node objects
         RETURN:
             string, formula in Python language
         '''
-        return self.genFormula.create_expression(iltFormula)
+        return self.genFormula.create_expression(expr)
 
 
-    @Visitor.when_type(NodeAssignment, 1)
-    def _createAssignment(self, iltStmt, indent):
-        #Assignment  ---------------------------------------------------------
-        self.write(indent + iltStmt.target.target_name + ' = ' +
-                    self.create_expression(iltStmt.expression) + '\n')
+    def _create_assignment(self, assign_stmt, indent):
+        '''
+        Create fragment of Python program for an assignment statement.
+        Called for: NodeAssignment
+        '''
+        self.write(indent + assign_stmt.target.target_name + ' = ' +
+                    self.create_expression(assign_stmt.expression) + '\n')
     
         
-    @Visitor.when_type(NodeIfStmt, 1)
-    def _createIfStmt(self, if_stmt, indent):
-        #if statement --------------------------------------------------------
+    def _create_if_stmt(self, if_stmt, indent):
+        '''
+        Create fragment of Python program for an "if" statement.
+        Called for: NodeIfStmt
+        '''
         ind4 = ' '*4
         index_else = len(if_stmt.clauses) - 1
         for index, clause  in enumerate(if_stmt.clauses):
@@ -328,17 +323,16 @@ class StatementGenerator(Visitor):
                 self.write(indent + ind4 + 'pass\n')
 
 
-    @Visitor.when_type(NodeExpressionStmt, 1)
-    def _createExpressionStmt(self, iltStmt, indent):
-        #Expression with side effects: print(), graph(), store()
+    #@Visitor.when_type(NodeExpressionStmt, 1)
+    def _create_expression_stmt(self, iltStmt, indent):
+        '''
+        Create fragment of Python program for an expression statement.
+        These are usually function calls  with side effects: print(), graph(), 
+        store().
+        Called for: NodeExpressionStmt
+        '''
         self.write(indent + self.create_expression(iltStmt.expression) + '\n')            
             
-    @Visitor.default
-    def _ErrorUnknownNode(self, iltStmt, _indent):
-        #Internal error: unknown statement -----------------------------------
-        raise Exception('Unknown node in StatementGenerator:\n'
-                             + str(iltStmt))
-
 
 
 class SimulationClassGenerator(object):
