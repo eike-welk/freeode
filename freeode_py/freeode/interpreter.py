@@ -1215,7 +1215,7 @@ def siml_print(*args, **kwargs):
         str_expr = INTERPRETER.eval(str_call)
         new_args += (str_expr,) #collect the call's result
     #create a new call to the print function
-    print_call = NodeFuncCall(siml_print, new_args, {})
+    print_call = NodeFuncCall(siml_print, new_args, kwargs)
     decorate_call(print_call, INone)
     return print_call
 
@@ -2348,7 +2348,7 @@ class Interpreter(object):
         #If code is created, create a node for an if statement
         if self.is_collecting_code():
             is_collecting_code = True
-            new_if = NodeIfStmt(None, node.loc)
+            new_if = NodeIfStmt(None, True, node.loc)
         try:
             #A clause consists of: <condition>, <list of statements>.
             #This is inspired by Lisp's 'cond' special-function.
@@ -2378,7 +2378,7 @@ class Interpreter(object):
                 #If code is created, create node for a clause
                 #Tell interpreter to put generated statements into body of clause
                 if is_collecting_code:
-                    new_clause = NodeClause(condition_ev, [], clause.loc)
+                    new_clause = NodeClause(condition_ev, [], True, clause.loc)
                     new_if.clauses.append(new_clause)
                     self.push_statement_list(new_clause.statements)
                 #interpret the statements

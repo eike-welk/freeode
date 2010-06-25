@@ -109,10 +109,7 @@ class ExpressionGenerator(object):
         elif isinstance(expr, NodeParentheses):
             return self._create_parentheses(expr)
         else:
-            #Internal error: unknown node
-            raise Exception('Unknown node in ExpressionGenerator: %s\n'
-                            'Tree: \n%s \n' 
-                            % (str(expr), aa_make_tree(expr)))
+            raise Exception('Unknown node in ExpressionGenerator: %s\n' % str(expr))
     
     
     def _create_graph_func_call(self, call):

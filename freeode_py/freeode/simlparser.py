@@ -406,12 +406,14 @@ class Parser(object):
         loc_ex = self.createTextLocation(loc) #Store position
         #'if', 'elif' have different structure than 'else' clause
         keyword = toks[0]
-        if keyword in ['if', 'elif']:
+        if keyword in ['if', 'elif', 'cif']:
             condition = toks[1]
             statements = toks[3].asList()
+            runtime_if = False if keyword == 'cif' else True
         elif keyword == 'else':
             condition = NodeFloat('1', loc_ex) #always true  - there is no bool yet
             statements = toks[2].asList()
+            runtime_if = True
         else:
             raise Exception('Unknown keyword in if ... elif ... else statement.')
         #repackage statements; they are stored in nested lists
@@ -419,7 +421,7 @@ class Parser(object):
         for sublist in statements:
             stmts_flat.append(sublist[0])
         #create node for this clause and return it
-        node = NodeClause(condition, stmts_flat, loc_ex)
+        node = NodeClause(condition, stmts_flat, runtime_if, loc_ex)
         return node
 
     def _action_if_statement(self, _s, loc, toks): 
@@ -438,9 +440,10 @@ class Parser(object):
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #Group() ads an extra pair of brackets
+        tok_list = toks.asList()[0] #Group() ads an extra pair of brackets
+        runtime_if = tok_list[0].runtime_if
         loc_ex = self.createTextLocation(loc) #Store position
-        node = NodeIfStmt(tokList, loc_ex)
+        node = NodeIfStmt(tok_list, runtime_if, loc_ex)
         return node
 
     def _action_assign_stmt(self, _s, loc, toks): 
@@ -1034,7 +1037,7 @@ class Parser(object):
         #------------- if ...........................................................................................
         #Flow control - if then else
         if_stmt = Group \
-            (             (kw('if')   - expression + ':' + suite)   .setParseAction(self._action_if_clause)
+            (((kw('cif') | kw('if'))  - expression + ':' + suite)   .setParseAction(self._action_if_clause)
              + ZeroOrMore((kw('elif') - expression + ':' + suite)   .setParseAction(self._action_if_clause)
                                                                     .setFailAction(ChMsg(prepend='elif: ')))
              + Optional(  (kw('else') - ':' + suite)                .setParseAction(self._action_if_clause)

@@ -48,7 +48,7 @@ from types import ClassType, FunctionType, NoneType #, TupleType, StringType
 #import weakref
 
 #import freeode.third_party.pyparsing as pyparsing
-from freeode.util import AATreeMaker, Enum
+from freeode.util import AATreeMaker, Enum, TextLocation
 
 
 
@@ -408,14 +408,26 @@ class NodeClause(Node):
         statements are executed. 
     statements: [Node]
         List of statements that are executed when the condition is true.
+    runtime_if: bool
+        If true a runtime 'if' has been detected; otherwise the clause belongs 
+        to a compile time 'cif' statement.
+        This attribute is only important for the first clause of an 'if' or 
+        'cif' statement. 
     loc: TextLocation
         Location in the program text which is represented by the node. 
         (For error messages.)    
     '''
-    def __init__(self, condition=None, statements=None, loc=None):
+    def __init__(self, condition=None, statements=None, runtime_if=True, 
+                  loc=None):
+#        assert isinstance(condition, (Node, InterpreterObject)) or condition is None
+        assert isinstance(statements, list) or statements is None
+        assert isinstance(runtime_if, bool)
+        assert isinstance(loc, TextLocation) or loc is None       
         Node.__init__(self)
+        
         self.condition = condition
         self.statements = statements
+        self.runtime_if = runtime_if
         #--- errors -----
         self.loc = loc
         #--- data flow analysis -------
@@ -436,14 +448,24 @@ class NodeIfStmt(Node):
         are executed when the condition is true.
         The first element represents an if, the next elements represent elif 
         clauses, and a last element with a constant True/1 as the condition
-        represents an else. 
+        represents an else. (Same as in Lisp.)
+    is_runtime: bool
+        If true this node encodes an 'if' statement which is executed at runtime  
+        and for which code is generated.  
+        Otherwise this is a 'cif' statement which is executed at compile time. 
+        'cif' statements are macros.
     loc: TextLocation
         Location in the program text which is represented by the node. 
         (For error messages.)    
     '''
-    def __init__(self, clauses=None, loc=None):
-        super(NodeIfStmt, self).__init__()
+    def __init__(self, clauses=None, runtime_if=True, loc=None):
+        assert isinstance(clauses, list) or clauses is None
+        assert isinstance(runtime_if, bool)
+        assert isinstance(loc, TextLocation) or loc is None       
+        Node.__init__(self)
+        
         self.clauses = clauses if clauses is not None else []
+        self.runtime_if = runtime_if
         #--- errors -----
         self.loc = loc
         #--- data flow analysis -------

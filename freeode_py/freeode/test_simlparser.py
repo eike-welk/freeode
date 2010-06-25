@@ -162,8 +162,54 @@ data a, b, c: Float const
 
 
 # ---------- if statement -----------------------------------------------------
+def test_cif_stmt_1(): #IGNORE:C01111
+    msg = 'Test to parse a cif statement. The cif statement is executed at compile time,'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser   
+    from freeode.ast import NodeIfStmt, NodeClause, NodeFloat
+    #from freeode.util import aa_make_tree
+    
+    parser = Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+    #Parser.noTreeModification = 1
+
+    test_prog = (
+'''
+cif a==1:
+    b = 1
+    c = 1
+elif a==2:
+    b = 2
+else:
+    b = 3
+''' )
+    #print test_prog
+    print
+    ast = parser.parseModuleStr(test_prog)
+    #print aa_make_tree(ast) 
+    
+    if_stmt = ast.statements[0]
+    assert isinstance(if_stmt, NodeIfStmt)
+    assert if_stmt.runtime_if == False
+    assert len(if_stmt.clauses) == 3 
+    if_clause = if_stmt.clauses[0]
+    assert isinstance(if_clause, NodeClause)
+    assert len(if_clause.statements) == 2
+    elif_clause = if_stmt.clauses[1]
+    assert isinstance(elif_clause, NodeClause)
+    assert len(elif_clause.statements) == 1
+    else_clause = if_stmt.clauses[2]
+    assert isinstance(else_clause, NodeClause)
+    assert len(else_clause.statements) == 1
+    assert isinstance(else_clause.condition, NodeFloat)
+    
+
+
 def test_if_stmt_1(): #IGNORE:C01111
-    msg = 'Test to parse an if statement.'
+    msg = 'Test to parse an if statement. The if statement is executed at run time,'
     #py.test.skip(msg)
     print msg
     
@@ -192,6 +238,7 @@ else:
     
     if_stmt = ast.statements[0]
     assert isinstance(if_stmt, NodeIfStmt)
+    assert if_stmt.runtime_if == True
     assert len(if_stmt.clauses) == 3 
     if_clause = if_stmt.clauses[0]
     assert isinstance(if_clause, NodeClause)
@@ -542,5 +589,5 @@ compile RunTest
 # ---------- call function for debugging here ---------------------------------
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_class_def_1()
+    test_cif_stmt_1()
     pass
