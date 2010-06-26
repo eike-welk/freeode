@@ -2307,32 +2307,53 @@ class Interpreter(object):
         self.collect_statement(new_assign)
 
 
-    def exec_NodeIfStmt(self, node):
+    def exec_NodeIfStmt_compile_time(self, node):
+        '''
+        Interpret a "cif" statement.
+        
+        This compile time "if" statement always executes at compile time. It is
+        used to create macros; different code can be generated depending on the 
+        situation: 
+        Code is never generated for the "cif" statement itself. But when the 
+        statements in the body of a clause are executed code may be generated. 
+        
+        Properties:
+        - The conditions must be decidable at compile time (evaluate to 
+          Bool/Float constants).
+        - There can be "return" statements in the body of any clause.
+        - No "else" clause required.
+        - No special requirements about the use of variables.
+        '''
+        #A clause consists of: <condition>, <list of statements>.
+        #This is inspired by Lisp's 'cond' special-function.
+        #http://www.cis.upenn.edu/~matuszek/LispText/lisp-cond.html
+        for clause in node.clauses:
+            #interpret the condition
+            condition_ev = self.eval(clause.condition)
+            #Test some possible errors
+            if not istype(condition_ev, (IBool, IFloat)):
+                raise UserException('Conditions must evaluate to Bool or Float.',
+                                    loc=clause.loc)#, errno=3700510)
+            if not isknownconst(condition_ev):
+                raise UserException('Conditions of the "cif" statement must be known at compile time.',
+                                    loc=clause.loc)#, errno=3700520)
+            #Execute the statements in the clause's body if the condition is true
+            if bool(condition_ev.value) == True:
+                self.exec_(clause.statements)
+                break #Only execute the first true clause
+
+    
+    def exec_NodeIfStmt_run_time(self, node):
         '''
         Interpret an "if" statement.
 
-        If no code is generated (in constant contexts) the if statement works
-        like in Python. All expressions must offcourse evaluate
-        to constants; especially the conditions.
-
-        If code is generated multiple clauses/branches of the 'if' statement
-        must potentially be visited. This is the algorithm:
-        - The interpreter visits each clause where the condition's truth
-          value can not be determined at compile time (the condition evaluates
-          to an expression or to an unknown variable).
-        - The interpreter visits clauses where the condition evaluates to
-          True at compile time.
-        - A clauses where the condition evaluates to True is the last clause
-          which is visited by the interpreter. Further clauses are ignored.
-        - If statements that can be completely decided at compile time are
-          optimized away.
-
-        There are additional requirements for if statements when code is
-        generated:
-        - The last clause of every if statement must have a condition that
-          evaluates to True (constant with value equivalent to True). In
-          other words: In the compiled code each if statement must end
-          with an else clause.
+        This runtime "if" statement is always executed at runtime (not at 
+        compile time), code is always generated for it. 
+        
+        There are additional requirements for this statement:
+        - An "else" clause is reqired. (Really: the last condition must 
+          evaluate to constant True.)
+        - No "return" is permitted statement in any clause. 
         - All clauses must assign to the same variables.
         '''
         #TODO: Infrastructure to integrate protection against duplicate
@@ -2342,13 +2363,14 @@ class Interpreter(object):
         #      - Local variables of functions however, will be created
         #      uniquely for each function invocation. They can therefore
         #      only be assigned once, even in an 'if' statement.
-        is_collecting_code = False
-        is_seen_else_clause = False
-        new_if = None
+
         #If code is created, create a node for an if statement
-        if self.is_collecting_code():
-            is_collecting_code = True
-            new_if = NodeIfStmt(None, True, node.loc)
+        if not self.is_collecting_code():
+            raise UserException('Generating code is illegal in this context, '
+                                'but the "if" statement always generates code.', 
+                                node.loc)#, errno=3700610)
+
+        new_if = NodeIfStmt(None, True, node.loc)
         try:
             #A clause consists of: <condition>, <list of statements>.
             #This is inspired by Lisp's 'cond' special-function.
@@ -2357,69 +2379,32 @@ class Interpreter(object):
                 #interpret the condition
                 condition_ev = self.eval(clause.condition)
                 if not istype(condition_ev, (IBool, IFloat)):
-                    raise UserException('Conditions must evaluate to '
-                                        'instances of Bool or Float.',
-                                        loc=clause.loc)#, errno=3700510)
-
-                #Condition evaluates to constant False: Do not enter clause.
-                if isknownconst(condition_ev) and bool(condition_ev.value) is False:
-                    continue
-                #Condition evaluates to constant True
-                #This is the last clause, the 'else' clause
-                elif isknownconst(condition_ev) and bool(condition_ev.value) is True:
-                    is_seen_else_clause = True
-                #Condition evaluates to unknown value
-                #This is only legal when code is created
-                elif not is_collecting_code:
-                    raise UserException('Only conditions with constant values '
-                                        'are legal in this context.',
-                                        loc=clause.loc)#, errno=3700520)
-
-                #If code is created, create node for a clause
-                #Tell interpreter to put generated statements into body of clause
-                if is_collecting_code:
-                    new_clause = NodeClause(condition_ev, [], True, clause.loc)
-                    new_if.clauses.append(new_clause)
-                    self.push_statement_list(new_clause.statements)
-                #interpret the statements
+                    raise UserException('Conditions must evaluate to Bool or Float.',
+                                        loc=clause.loc)#, errno=3700620)
+                #create node for a clause
+                new_clause = NodeClause(condition_ev, [], True, clause.loc)
+                new_if.clauses.append(new_clause)
+                #Tell interpreter to put generated statements into body of new clause
+                self.push_statement_list(new_clause.statements)
+                #Interpret the statements in the body of every clause.
                 self.exec_(clause.statements)
                 #Tell interpreter to put generated statements into previous location
-                if is_collecting_code:
-                    self.pop_statement_list()
+                self.pop_statement_list()
 
-                if is_seen_else_clause:
-                    break
-        except ReturnFromFunctionException, e:
-            raise UserException('Return statemens are illegal inside "if" '
-                                'statements.', loc=e.loc)
-
-        #Optimizations of the generated 'if' statement, and checking of
-        #special constraints.
-        #  The optimizations give the 'if' statement additionally the power of
-        #  makros and C++ templates: Different code can be generated depending
-        #  on the situation.
-        #
-        #remove 'if' statements where all clauses evaluated to false
-        if is_collecting_code and len(new_if.clauses) == 0:
-            new_if = None
-        #see if 'if' statement has the required 'else' clause
-        elif is_collecting_code and not is_seen_else_clause:
-            last_clause = new_if.clauses[-1]
-            raise UserException('Generated "if" statements must end with a '
-                                'clause that is always True; usually an '
-                                '"else".', loc=last_clause.loc, errno=3700530)
-        #if there is only one clause (which is always executed),
-        #optimize if statement away.
-        elif is_collecting_code and len(new_if.clauses) == 1:
-            for stmt in new_if.clauses[0].statements:
-                self.collect_statement(stmt)
-            new_if = None
-
-        #Store generated if statement in interpreter
-        if new_if is not None:
+            #Test for existence of 'else' clause
+            last_cond = new_if.clauses[-1].condition
+            if not (istype(last_cond, (IBool, IFloat)) and isknownconst(last_cond) and 
+                    bool(condition_ev.value) == True):
+                last_clause = new_if.clauses[-1]
+                raise UserException('"if" statements must have an "else" clause.', 
+                                    loc=last_clause.loc, errno=3700630)
+            #Store generated if statement in interpreter
             self.collect_statement(new_if)
-        return
-
+            return
+        except ReturnFromFunctionException, e:
+            raise UserException('Return statements are illegal inside "if" '
+                                'statements.', loc=e.loc, errno=3700640)
+                
 
     def exec_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
@@ -2734,7 +2719,10 @@ class Interpreter(object):
                 elif isinstance(node, NodeAssignment):
                     self.exec_NodeAssignment(node)
                 elif isinstance(node, NodeIfStmt):
-                    self.exec_NodeIfStmt(node)
+                    if node.runtime_if == True:
+                        self.exec_NodeIfStmt_run_time(node)
+                    else:
+                        self.exec_NodeIfStmt_compile_time(node)
                 elif isinstance(node, NodeFuncDef):
                     self.exec_NodeFuncDef(node)
                 elif isinstance(node, NodeClassDef):

@@ -410,7 +410,7 @@ a = 2 * b
         
   
   
-def test_if_statement_1(): #IGNORE:C01111
+def test_if_statement_error_1(): #IGNORE:C01111
     msg = '''
     Test the if statement. Code is generated and condition involves variables.
     There is no catch all (else) statement. The interpreter must complain about it.
@@ -441,20 +441,52 @@ compile A
 
     #interpret the program
     intp = Interpreter()
-    try:
+    def raise_1():
         intp.interpret_module_string(prog_text, None, 'test')
-    except UserException, e:
-        print 'Exception is OK'
-        print e
-        assert e.errno == 3700530
-        print 'Correct exception was raised.'
-    else:
-        assert False, 'No exception is raised.'
+    assert_raises(UserException, 3700630, raise_1)
 
+
+
+def test_if_statement_error_2(): #IGNORE:C01111
+    msg = '''
+    Test the if statement. There is a return statement in the body of the "if"
+    statement. The interpreter must detect the error.
+    '''
+    #skip_test(msg)
+    print msg
+    
+    from freeode.util import UserException
+    from freeode.interpreter import Interpreter    
+    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+
+
+    prog_text = \
+'''
+class A:
+    data a,b: Float
+    data c: Float const
+    
+    func dynamic(this):       
+        if a == 1:
+            b = 1
+        elif a == 2:
+            b = 2
+            return
+        else:
+            b = 3
+
+compile A
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    def raise_1():
+        intp.interpret_module_string(prog_text, None, 'test')
+    assert_raises(UserException, 3700640, raise_1)
 
 
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_Interpreter_statement_dispatch_2()
+    test_if_statement_1()
     pass #pylint: disable-msg=W0107

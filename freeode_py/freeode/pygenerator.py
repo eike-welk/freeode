@@ -109,7 +109,8 @@ class ExpressionGenerator(object):
         elif isinstance(expr, NodeParentheses):
             return self._create_parentheses(expr)
         else:
-            raise Exception('Unknown node in ExpressionGenerator: %s\n' % str(expr))
+            raise Exception('Unknown node type in ExpressionGenerator: %s\n' 
+                            % str(type(expr)))
     
     
     def _create_graph_func_call(self, call):
@@ -125,7 +126,7 @@ class ExpressionGenerator(object):
             ret_str += '"' + str(arg.siml_dot_name) + '"' + ','
         ret_str += '], '
         for arg_name, arg in call.keyword_arguments.iteritems():
-            ret_str += arg_name + '=' + self.dispatch(arg) + ','
+            ret_str += arg_name + '=' + self.create_expression(arg) + ','
         ret_str += ')'
         return ret_str
         
