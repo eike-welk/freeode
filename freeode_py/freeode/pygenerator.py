@@ -38,7 +38,7 @@ generates some python classes that perform the simulations.
 from __future__ import division
 
 import cStringIO
-from util import DotName, PROGRAM_VERSION, aa_make_tree
+from util import DotName, PROGRAM_VERSION, func, aa_make_tree
 from freeode.ast import (NodeFuncCall, NodeParentheses,  
                          NodeAssignment, NodeIfStmt, 
                          NodeExpressionStmt, 
@@ -52,14 +52,6 @@ from  freeode.interpreter import (IFloat, IString, IBool, CompiledClass,
 
 
 
-def func(function_or_method):
-    '''Always return function, even when method is passed.'''
-    if hasattr(function_or_method, 'im_func'):
-        return function_or_method.im_func
-    else:
-        return function_or_method
-    
-    
 class ExpressionGenerator(object):
     '''
     Take ILT sub-tree that describes a formula and
@@ -601,6 +593,8 @@ class SimulationClassGenerator(object):
         self.write(ind8 + '#create all algebraic variables '
                           'to prevent runtime errors.\n')
         for var in (self.algebraic_variables_ordered):
+            if var.target_name == 'time':
+                continue #time is an argument of the dynamic function
             self.write(ind8 + '%s = nan \n' % (var.target_name))
 
         #emit the method's statements

@@ -421,10 +421,10 @@ class SimulatorBase(object):
 
 def secureShow():
     '''Show the graphs; but don't crash if no graphs exist.'''
-    #from matplotlib._pylab_helpers import Gcf
-    ##see if there are any diagrams
-    #if len(Gcf.get_all_fig_managers()) == 0:
-        #return
+    from matplotlib._pylab_helpers import Gcf
+    #see if there are any diagrams
+    if len(Gcf.get_all_fig_managers()) == 0:
+        return
     #enter mainloop
     show()
 

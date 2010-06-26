@@ -958,7 +958,7 @@ def test_interpreter_user_defined_operators_1(): #IGNORE:C01111
 
     from freeode.interpreter import Interpreter, IFloat, SimlFunction
     from freeode.util import DotName
-    #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
+    from freeode.util import func #, aa_make_tree  #pylint:disable-msg=W0612 
 
     prog_text = \
 '''                                     #1
@@ -1013,7 +1013,7 @@ compile A
     assert stmt0.target is not a_x 
     assert stmt0.target is not b_x 
     assert stmt0.target is not c_x
-    assert stmt0.expression.function is IFloat.__add__.im_func
+    assert stmt0.expression.function is func(IFloat.__add__)
     #second statement (c=a+b) assigns to c.x
     assert stmt1.target is c_x
     #second statement assigns temporary result of previous computation to attribute c.x
@@ -1094,7 +1094,7 @@ def test_interpreter_expression_statement_1(): #IGNORE:C01111
     #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
     from freeode.interpreter import Interpreter, IFloat, SimlFunction
     from freeode.ast import NodeExpressionStmt
-    from freeode.util import DotName
+    from freeode.util import DotName, func
 
     prog_text = \
 '''
@@ -1130,7 +1130,7 @@ compile A
     assert len(dynamic.statements) == 1
     stmt0 = dynamic.statements[0]
     assert isinstance(stmt0, NodeExpressionStmt)
-    assert stmt0.expression.function is IFloat.__add__.im_func
+    assert stmt0.expression.function is func(IFloat.__add__)
     #assert False
 
 
@@ -1959,6 +1959,6 @@ replace_attr(a.f, f_new)
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_if_statement_error_2()
+    test_isinstance_1()
     pass #pylint: disable-msg=W0107
 

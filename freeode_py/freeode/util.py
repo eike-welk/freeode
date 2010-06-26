@@ -72,6 +72,20 @@ class Enum(object):
     
 
 
+def func(function_or_method):
+    '''
+    Convert bound and unbound methods into functions.
+    
+    Works with Python and Siml methods. If argument is a function it is 
+    returned unchanged. 
+    '''
+    if hasattr(function_or_method, 'im_func'):
+        return function_or_method.im_func
+    else:
+        return function_or_method
+    
+    
+    
 class AATreeMaker(object):
     '''
     Create an ASCII-art tree to visualize arbitrary Python objects. All of its
@@ -399,7 +413,7 @@ def aa_make_tree(in_obj):
 
 
 class UserException(Exception):
-    '''Exception that transports user visible error messages'''
+    '''Exception that transports user visible error messages.'''
     def __init__(self, message, loc=None, errno=None):
         Exception.__init__(self)
         self.msg = message

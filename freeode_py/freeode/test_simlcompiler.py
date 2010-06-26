@@ -37,13 +37,14 @@ from freeode.util import assert_raises
 
 def test_do_compile(): #IGNORE:C01111
     msg = 'Test do_compile: Compile and execute a program. (Bypasses program argument handling.)'
-    skip_test(msg + '\n'
-                 'The PYTHONPATH must be set to a useful value,\n'
-                 'so that the compiled program can find the SIML runtime libraries.')
+#    skip_test(msg + '\n'
+#                 'The PYTHONPATH must be set to a useful value,\n'
+#                 'so that the compiled program can find the SIML runtime libraries.')
     print msg
     
     from freeode.simlcompiler import SimlCompilerMain
     import os
+    from subprocess import Popen, PIPE
     
     prog_text = \
 '''
@@ -76,27 +77,33 @@ class RunTest:                                     #line 20
         solution_parameters(100, 1)
                      
     func final(this):                              #line 30
-        graph(system.V)
+        #graph(system.V)
+        print('Hello!')
         
 
 compile RunTest
 '''
 
-    prog_text_file = open('ttest_1.siml','w')
+    base_name = 'testprog_SimlCompilerMain_do_compile'
+    prog_text_file = open(base_name + '.siml','w')
     prog_text_file.write(prog_text)
     prog_text_file.close()
     
     main = SimlCompilerMain()
-    main.input_file_name = 'ttest_1.siml'
-    main.output_file_name = 'ttest_1.py'
+    main.input_file_name =  base_name + '.siml'
+    main.output_file_name = base_name + '.py'
     main.do_compile()
     
-    #TODO: assert correct function of program without graph
-    exit_val = os.system('./ttest_1.py')
-    assert exit_val == 0
-    
-    os.remove('ttest_1.siml')
-    os.remove('ttest_1.py')
+    sim = Popen('./' + base_name + '.py', shell=True, stdout=PIPE)
+    res_txt, _ = sim.communicate()
+    print 'Program output: ', res_txt
+    #TODO: scan the program's output to check if it's working.
+     
+    print  'Return code: ', sim.returncode
+    assert sim.returncode == 0
+
+    os.remove(base_name + '.siml')
+    os.remove(base_name + '.py')
     
   
 #TODO: try to compile all example models as test
