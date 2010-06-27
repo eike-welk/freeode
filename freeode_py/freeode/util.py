@@ -428,7 +428,7 @@ class UserException(Exception):
         return 'Error! ' + num_str + self.msg + '\n' + str(self.loc) + '\n'
 
     def __repr__(self):
-        return self.__class__.__name__ + str((self.msg, self.loc, self.errno))
+        return self.__class__.__name__ + repr((self.msg, self.loc, self.errno))
 
 
 

@@ -1577,6 +1577,12 @@ def create_built_in_lib():
         return IFloat(math.tan(x.value))
     lib.tan = w_tan
     
+    @signature([IFloat], IFloat)
+    def w_abs(x):
+        test_allknown(x)
+        return IFloat(abs(x.value))
+    lib.abs = w_abs
+    
     @signature([IFloat, IFloat], IFloat)
     def w_max(a, b):
         test_allknown(a, b)

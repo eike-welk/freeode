@@ -36,15 +36,18 @@ from freeode.util import assert_raises
 
 
 def test_do_compile(): #IGNORE:C01111
-    msg = 'Test do_compile: Compile and execute a program. (Bypasses program argument handling.)'
+    msg = '''Test do_compile: Compile and execute a program. 
+    Bypasses program argument handling. 
+    Checks if the simulation is computing the right value too.'''
+
 #    skip_test(msg + '\n'
 #                 'The PYTHONPATH must be set to a useful value,\n'
 #                 'so that the compiled program can find the SIML runtime libraries.')
     print msg
     
-    from freeode.simlcompiler import SimlCompilerMain
     import os
     from subprocess import Popen, PIPE
+    from freeode.simlcompiler import SimlCompilerMain
     
     prog_text = \
 '''
@@ -74,11 +77,11 @@ class RunTest:                                     #line 20
 
     func initialize(this):
         system.initialize(0.03)
-        solution_parameters(100, 1)
+        solution_parameters(200, 1)
                      
     func final(this):                              #line 30
         #graph(system.V)
-        print('Hello!')
+        print("final-values: ", system.V, time)
         
 
 compile RunTest
@@ -97,17 +100,27 @@ compile RunTest
     sim = Popen('./' + base_name + '.py', shell=True, stdout=PIPE)
     res_txt, _ = sim.communicate()
     print 'Program output: ', res_txt
-    #TODO: scan the program's output to check if it's working.
-     
     print  'Return code: ', sim.returncode
+    
+    #Program must say that it terminated successfully 
     assert sim.returncode == 0
 
+    #Scan the program's output to check if it's working.
+    final_vals = []
+    for line in res_txt.split('\n'):
+        if line.startswith('final-values:'):
+            vals = line.split()[1:]
+            final_vals = map(float, vals)
+        
+    #Test if the values that the program returns are correct
+    v, time = final_vals
+    assert abs(v - 0.379) < 0.001 and time == 200
+
+    #clean up
     os.remove(base_name + '.siml')
     os.remove(base_name + '.py')
     
   
-#TODO: try to compile all example models as test
-
 
 if __name__ == '__main__':
     # Debugging code may go here.

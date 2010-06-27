@@ -127,6 +127,7 @@ class ExpressionGenerator(object):
     function_name = {BUILTIN_LIB.sin:'sin', BUILTIN_LIB.cos:'cos', 
                      BUILTIN_LIB.tan:'tan', BUILTIN_LIB.sqrt:'sqrt',
                      BUILTIN_LIB.exp:'exp', BUILTIN_LIB.log:'log', 
+                     BUILTIN_LIB.abs:'abs', 
                      BUILTIN_LIB.min:'min' , BUILTIN_LIB.max:'max',
                      getattr(BUILTIN_LIB, 'print'):'print', 
                      BUILTIN_LIB.save:'self.save',
@@ -529,7 +530,7 @@ class SimulationClassGenerator(object):
         for var in (self.algebraic_variables.values() + 
                     self.state_variables.values() + 
                     self.time_differentials.values()):
-            self.write(ind8 + '%s = 0 \n' % (var.target_name, ))
+            self.write(ind8 + '%s = 0.0 \n' % (var.target_name, ))
 
 #        #create dict for parameter override
 #        self.write(ind8 + '#create dict for parameter override \n')
@@ -577,7 +578,7 @@ class SimulationClassGenerator(object):
             return
         #write method definition
         ind8 = ' '*8; ind12 = ' '*12 #; ind16 = ' '*16
-        self.write('    def dynamic(self, time, state, returnAlgVars=False): \n')
+        self.write('    def dynamic(self, time, state_vars, returnAlgVars=False): \n')
         self.write(ind8 + '\'\'\' \n')
         self.write(ind8 + 'Compute time derivative of state variables. \n')
         self.write(ind8 + 'This function will be called by the solver repeatedly. \n')
@@ -587,7 +588,7 @@ class SimulationClassGenerator(object):
         #take the state variables out of the state vector
         self.write(ind8 + '#take the state variables out of the state vector \n')
         for n_var, var in enumerate(self.state_variables_ordered):
-            self.write(ind8 + '%s = state[%d] \n' % (var.target_name, n_var))
+            self.write(ind8 + '%s = state_vars[%d] \n' % (var.target_name, n_var))
         #Create all algebraic variables
         #TODO: remove this, once proper detection of unused variables exists
         self.write(ind8 + '#create all algebraic variables '
@@ -635,7 +636,7 @@ class SimulationClassGenerator(object):
             return
         #write method definition
         ind8 = ' '*8 #; ind12 = ' '*12; ind16 = ' '*16
-        self.write('    def final(self): \n')
+        self.write('    def final(self, state_alg_vars): \n')
         self.write(ind8 + '\'\'\' \n')
         self.write(ind8 + 'Display and save simulation results. \n')
         self.write(ind8 + 'This function will be called once; after the simulation results \n')
@@ -643,12 +644,24 @@ class SimulationClassGenerator(object):
         self.write(ind8 + '\'\'\' \n')
         self.write(ind8 + '#Make parameters visible in final method. \n')
         self.write(ind8 + 'param = self.param \n')
-        #TODO: create all variables, with values from the last iteration?
+        
+        #take state and algebraic variables out of the array, 
+        #values are from last iteration
+        self.write(ind8 + '#take take state and algebraic variables out of their array. \n')
+        for n_var, var in enumerate(self.state_variables_ordered + 
+                                    self.algebraic_variables_ordered):
+            self.write(ind8 + '%s = state_alg_vars[%d] \n' % (var.target_name, n_var))
+            
+        #Create the algebraic variables
+        self.write(ind8 + '#Create time differentials with value 0.\n')
+        for var in (self.time_differentials.values()):
+            self.write(ind8 + '%s = 0.0 \n' % (var.target_name, ))
+            
         #generate code for the statements
         self.write(ind8 + '#the final method\'s statements \n')
         stmtGen = StatementGenerator(self.out_py)
         stmtGen.create_statements(method.statements, ind8) #IGNORE:E1103
-        self.write(ind8 + "print 'simulation %s finished.'\n" % self.class_py_name)
+        self.write(ind8 + "print('simulation %s finished.') \n" % self.class_py_name)
         self.write(ind8 + '\n')
 
 
@@ -740,8 +753,9 @@ class ProgramGenerator(object):
 ################################################################################
 
 
-from numpy import array, nan, float64
+from __future__ import print_function
 from math import pi, sin, cos, tan, sqrt, exp, log
+from numpy import array, nan, float64
 from freeode.simulatorbase import SimulatorBase
 from freeode.simulatorbase import simulatorMainFunc
 

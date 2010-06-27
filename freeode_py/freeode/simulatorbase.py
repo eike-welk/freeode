@@ -274,7 +274,7 @@ class SimulatorBase(object):
     def initialize(self, *args, **kwArgs):
         '''
         Compute the initial values.
-        Dummy function; must be reimplemented in derived classes!
+        Dummy function; must be re-implemented in derived classes!
         arguments:
             *args    : two ways to specify parameter values are possible:
                        dict: initialize({'g':10.81})
@@ -288,29 +288,29 @@ class SimulatorBase(object):
         #p_fnord = self._overrideParam('fnord', 23)
 
 
-    def dynamic(self, t, y, returnAlgVars=False):
+    def dynamic(self, time, state_vars, returnAlgVars=False):
         '''
         Compute time derivative of state attributes.
         This function will be called by the solver repeatedly.
-        Dummy function; must be reimplemented in derived classes!
+        Dummy function; must be re-implemented in derived classes!
         '''
         pass
 
 
-    def final(self):
+    def final(self, state_alg_vars):
         '''
         Display and save simulation results.
         This function will be called once; after the simulation results
         have been computed.
-        Dummy function; must be reimplemented in derived classes!
+        Dummy function; must be re-implemented in derived classes!
         '''
         pass
 
 
 #    def outputEquations(self, y):
 #        '''
-#        Compute the algebraic variable from the state variables.
-#        Dummy function; must be reimplemented in derived classes!
+#        Compute the algebraic variables from the state variables.
+#        Dummy function; must be re-implemented in derived classes!
 #        '''
 #        pass
 
@@ -355,9 +355,11 @@ class SimulatorBase(object):
         #generate run time error
         if not solver.successful():
             print >> sys.stderr, 'error: simulation was terminated'
+            #TODO: set exit state to 1
+            #TODO: terminate simulation?
             #return
         #run final function
-        self.final()
+        self.final(self.resultArray[i-1,:])
 
 
     def simulateSteadyState(self):
