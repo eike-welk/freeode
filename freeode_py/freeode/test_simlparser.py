@@ -563,11 +563,10 @@ class RunTest:
     func init():
         g = 9.81
         test.init()
-#        solutionParameters.simulationTime = 100
-#        solutionParameters.reportingInterval = 1
+        solution_parameters(100, 1)
 
     func final():
-#        graph test.V, test.h
+        graph(test.V, test.h)
         print('Simulation finished successfully.')
         
 
@@ -580,14 +579,231 @@ compile RunTest
     # Exit immediately from all action functions
 #   Parser.noTreeModification = 1
 
-    ast = parser.parseModuleStr(test_prog)
-    #print ast
+    _ast = parser.parseModuleStr(test_prog)
+    #print _ast
     #assert False, 'Test'
 
 
 
+# ---------- errors -----------------------------------------------------------
+def test_parser_stack_overflow_bug(): #IGNORE:C01111
+    msg = '''
+    Some relatively short input made the the parser crash because of stack 
+    exhaustion.
+    
+    This test is for fixed bug: #389924
+        https://bugs.launchpad.net/freeode/+bug/389924
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser
+    from freeode.util import assert_raises
+    from freeode.util import UserException
+    
+    #--- first example ------------------------------------------------------
+    #http://launchpadlibrarian.net/28144614/crash_parser3.siml
+    prog_text = \
+'''
+#This file causes a compiler internal error which is difficult to debug:
+#RuntimeError: maximum recursion depth exceeded
+#Now trying illegal syntax
+
+#func a():
+#func a():
+func a():
+
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:  #There must be an if statement at the end for the error to happen
+    a()
+'''
+    parser = Parser()
+    assert_raises(UserException, None, 
+                  parser.parseModuleStr, (prog_text,))
+    
+    #--- second example --------------------------------------------------
+    #Modified version of:
+    #http://launchpadlibrarian.net/28144614/crash_parser3.siml
+    prog_text = \
+'''
+func a():
+    pass
+
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:  #There must be an if statement at the end for the error to happen
+    a()
+'''
+    parser = Parser()
+    _ast = parser.parseModuleStr(prog_text)
+    
+    #--- third example ------------------------------------------------------
+    #http://launchpadlibrarian.net/28144624/crash_parser4.siml
+    prog_text = \
+'''
+#This file causes a compiler internal error which is difficult to debug:
+#RuntimeError: maximum recursion depth exceeded
+#Now trying illegal syntax
+
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+
+'''
+    
+    parser = Parser()
+    assert_raises(UserException, None, 
+                  parser.parseModuleStr, (prog_text,))
+    
+    #--- fourth example ------------------------------------------------------
+    #http://launchpadlibrarian.net/28144635/crash_parser5.siml
+    prog_text = \
+'''
+#This file causes a compiler internal error which is difficult to debug:
+#RuntimeError: maximum recursion depth exceeded
+#Now trying illegal syntax
+
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+'''
+    
+    parser = Parser()
+    assert_raises(UserException, None, 
+                  parser.parseModuleStr, (prog_text,))
+       
+    
+    
 # ---------- call function for debugging here ---------------------------------
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_cif_stmt_1()
+    test_parser_stack_overflow_bug()
     pass

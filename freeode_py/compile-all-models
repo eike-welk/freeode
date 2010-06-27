@@ -5,4 +5,5 @@
 set -x #enable debug output
 
 compiler="./simlc"
+#compiler="pypy simlc"
 find -L . -name "*.siml" -exec $compiler {} ";"
