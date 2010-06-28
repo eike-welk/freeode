@@ -13,7 +13,7 @@
 
 #Compute Fibonacci numbers recursively
 func fibo_r(n):
-    if n == 0:
+    cif n == 0:
         return 0
     elif n == 1:
         return 1
@@ -31,12 +31,12 @@ func fibo_c(n):
 
 data n: Float
 n = 10
-print('Compute the Fibonacci number:', n)
+printc('Compute the Fibonacci number:', n)
 data fib_r, fib_c: Float
 fib_r = fibo_r(n)  #fibo_x(10) == 55
 fib_c = fibo_c(n)
-print('Recursive algorithm: ', fib_r)
-print('Closed solution:     ', fib_c)
+printc('Recursive algorithm: ', fib_r)
+printc('Closed solution:     ', fib_c)
 
 
 
@@ -44,12 +44,12 @@ print('Closed solution:     ', fib_c)
 func print_fibo_series(n):
     data fib: Float
     #first compute and print the lower numbers
-    if n > 0:
+    cif n > 0:
         print_fibo_series(n-1)
     #then print the current number
     fib = fibo_r(n)
-    print(n, ': ', fib)
+    printc(n, ': ', fib)
 
 
-print('The Fibonacci series:')
-print_fibo_series(20) #6765
+printc('The Fibonacci series:')
+print_fibo_series(15) #610

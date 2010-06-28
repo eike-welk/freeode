@@ -385,22 +385,60 @@ def test_debug_print():
     
     freeode.util.DEBUG_LEVEL = 2
     
-    print 'freeode.util.DEBUG_LEVEL: ', freeode.util.DEBUG_LEVEL
     #Testing debug levels
+    print 'freeode.util.DEBUG_LEVEL: ', freeode.util.DEBUG_LEVEL
+    print 'Two lines should with debug levels 3 and 2 should be printed:'
     debug_print('This text should appear. lev=3', lev=3)
     debug_print('This text should appear too. lev=2', lev=2)
     debug_print('This text should NOT appear. lev=1', lev=1)
+    print
     #test a few other data types
     debug_print('String, int, float, function:', 1, 2.0, debug_print, 
                 sep=" ", lev=2)
     #test all legal keyword arguments
     debug_print('Print', 'with', 'big', 'spaces', 'between', 'words,', 
                 sep='      ', end='\n\n\n\n', lev=2)
-    debug_print('and also with many newlines at the end.', lev=2)
+    debug_print('and also with many newlines at the end.', end='\n\n', lev=2)
     #Test illegal keyword arguments
     debug_print('Some illegal keyword arguments.', foo=2, bar='hello', lev=2)
         
+        
     
+def test_search_result_lines(): #IGNORE:C01111
+    msg = '''Test function test_search_result_lines'''
+#    skip_test(msg)
+    print msg
+    
+    from freeode.util import assert_raises, search_result_lines, Line
+    
+    in_text = '''
+lkasdf kldfj ladkfj 
+test1: 4 5 6
+klasdf asdf 
+foo test2: 1 2 3
+klajfd 
+'''
+    search_result_lines(in_text, [Line(['test1:', 4, 5, 6]),
+                                  Line(['foo test2:', 1, 2, 3])])
+    
+    def raise1():
+        search_result_lines(in_text, [Line(['test1:', 4, 5, 7]),
+                                      Line(['foo test2:', 1, 2, 3])])
+    assert_raises(AssertionError, None, raise1)
+    
+    def raise2():
+        search_result_lines(in_text, [Line(['test1:', 4, 5, 6, 7]),
+                                      Line(['foo test2:', 1, 2, 3])])
+    assert_raises(AssertionError, None, raise2)
+    
+    def raise3():
+        search_result_lines(in_text, [Line(['test0:', 0, 0, 0, 0]),
+                                      Line(['test1:', 4, 5, 6]),
+                                      Line(['foo test2:', 1, 2, 3])])
+    assert_raises(AssertionError, None, raise3)
+    
+    
+ 
 if __name__ == '__main__':
     # Debugging code may go here.
     test_debug_print()

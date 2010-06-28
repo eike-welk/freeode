@@ -17,6 +17,7 @@ class Batch:
         #Give initial values to the state variables.
         X      = 0.1;  #initial biomass concentration
         S      = 20;   #initial sugar concentration
+        print('initial-values:', X, S)
 
 
     #compute dynamic behaviour - the system's 'equations'
@@ -29,6 +30,7 @@ class Batch:
     #show results
     func final(this):
         graph(mu, X, S);
+        print('final-values:', X, S)
 
 
 compile Batch

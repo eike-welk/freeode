@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2009 by Eike Welk                                       *
+#    Copyright (C) 2009 - 2010 by Eike Welk                                *
 #    eike.welk@gmx.net                                                     *
 #                                                                          *
 #    License: GPL                                                          *
@@ -22,8 +22,7 @@
 #***************************************************************************
 
 """
-Test code for the "interpreter.py" module
-    Test basic functionality.
+Test code for the "pygenerator.py" module
 """
 
 from __future__ import division
@@ -499,4 +498,4 @@ if __name__ == '__main__':
     # Debugging code may go here.
     test_ProgramGenerator__all_variables_visible()
     #test_ProgramGenerator__create_program_3()
-    pass
+    pass #pylint:disable-msg=W0107

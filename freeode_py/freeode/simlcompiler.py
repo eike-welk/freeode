@@ -46,8 +46,10 @@ class SimlCompilerMain(object):
         super(SimlCompilerMain, self).__init__()
         self.input_file_name = ''
         self.output_file_name = ''
-        #which process should be run after compiling
+        #which simulation should be run after compiling
         self.runSimulation = None #can be: None, 'all', '0', '1', ...
+        #does the user want to suppress graphs?
+        self.no_graphs = False
 
 
     def parse_cmd_line(self):
@@ -61,15 +63,17 @@ class SimlCompilerMain(object):
         optPars.add_option('-o', '--outfile', dest='outfile',
                            help='explicitly specify name of output file',
                            metavar='<output_file>')
+        optPars.add_option('--no-graphs', dest='no_graphs',
+                           action="store_true", default=False,
+                           help='do not show any graph windows when running ' \
+                                'the simulation')
         optPars.add_option('-r', '--run', dest='runone',
-                           help='run generated simulation program after '
-                              + 'compiling. Specify which process to simulate '
-                              + 'with number or use special value "all" '
-                              + '(number counts from top).',
+                           help='run generated simulation program after ' \
+                                'compiling. Specify which process to simulate ' \
+                                'with number or use special value "all" ' \
+                                '(number counts from top).',
                            metavar='<number>')
-#        optPars.add_option('--runall', dest='runall',
-#                           action="store_true", default=False,
-#                           help='run all simulation processes after compiling')
+
         #do the parsing
         (options, args) = optPars.parse_args()
 
@@ -112,6 +116,9 @@ class SimlCompilerMain(object):
             #convert into string containing a number
             self.runSimulation = str(int(options.runone))
 
+        #See if user wants to suppress graph windows.
+        if options.no_graphs:
+            self.no_graphs = True
 
     def do_compile(self):
         '''Do the work'''
@@ -144,13 +151,14 @@ class SimlCompilerMain(object):
         '''Run the generated program if the user wants it.'''
         if self.runSimulation == None:
             return
-
-        #optStr = ' -r %s' % self.runSimulation
-        cmdStr = 'python %s -r %s --prepend-newline' % (self.output_file_name,
-                                                        self.runSimulation)
-        proc = Popen([cmdStr], shell=True, #bufsize=1000,
+        no_graphs_opt = '--no-graphs' if self.no_graphs else ''
+            
+        cmd_str = 'python %s -r %s %s --prepend-newline' % (self.output_file_name,
+                                                        self.runSimulation,
+                                                        no_graphs_opt)
+        proc = Popen([cmd_str], shell=True, #bufsize=1000,
                      stdin=None, stdout=None, stderr=None, close_fds=True)
-        print 'running generated program. PID: %d\n\n' % proc.pid
+        print 'running generated program. PID: %d\n' % proc.pid
 
 
     def main_func(self): 

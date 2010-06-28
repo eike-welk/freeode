@@ -41,8 +41,6 @@ class BioReactor:
 class Batch: #Define a concrete simulation experiment
     #Define parameters.
     data D: Float param
-    data showGraph: Float param
-
     #Say which model will be used.
     data r: BioReactor
 
@@ -57,12 +55,12 @@ class Batch: #Define a concrete simulation experiment
         r.Sf     = 20   #sugar concentration in feed liquid (inflow)
         D        = 0    #dilution rate (inflow speed)
         r.ms     = 0.02 #sugar consumption when bacteria are not growing
-        showGraph = 1 #flag, if 1: show graph; do not show graph otherwise
 
         #Set initial values to the state variables.
         #Note: the full path has to be specified for variables.
         r.X = 0.1 #initial biomass concentration
         r.S = 20  #initial sugar concentration
+        print('initial-values-batch:', r.X, r.S)
 
 
     func dynamic(this):
@@ -72,11 +70,9 @@ class Batch: #Define a concrete simulation experiment
 
     #Show results
     func final(this):
-        if showGraph != 0:
-            graph(r.mu, r.X, r.S, title='Batch')
-        else:
-            pass
+        graph(r.mu, r.X, r.S, title='Batch')
         #save('batch.simres')
+        print('final-values-batch:', r.X, r.S)
 
 
 
@@ -92,8 +88,6 @@ class Batch: #Define a concrete simulation experiment
 class Conti: #Define a concrete simulation experiment
     #Define parameters.
     data D: Float param
-    data showGraph: Float param
-
     #Say which model will be used.
     data r: BioReactor
 
@@ -101,20 +95,21 @@ class Conti: #Define a concrete simulation experiment
         #Specify options for the simulation algorithm.
         #Total simulation time: 40 h; time between data points: 0.1 h
         solution_parameters(duration=30, reporting_interval=0.01)
+        #solution_parameters(duration=300, reporting_interval=0.01)
 
         #Set values to the parameters.
         r.mu_max = 0.32 #[1/h] max growth speed
         r.Ks     = 0.01 #at this sugar concentration growth speed is 0.5 * mu_max
         r.Yxs    = 0.5  #one g sugar gives this much biomass
         r.Sf     = 20   #sugar concentration in feed liquid (inflow)
-        D        = 0.15  #[1/h] dilution rate (inflow speed)
+        D        = 0.3  #[1/h] dilution rate (inflow speed)
         r.ms     = 0.02 #sugar consumption when bacteria are not growing
-        showGraph = 1 #flag, if 1: show graph; do not show graph otherwise
 
         #Set initial values to the state variables.
         #Note: the full path has to be specified for variables.
         r.X = 0.1 #initial biomass concentration
-        r.S = 0  #initial sugar concentration
+        r.S = 20  #initial sugar concentration
+        print('initial-values-conti:', r.X, r.S)
 
 
     func dynamic(this):
@@ -124,12 +119,10 @@ class Conti: #Define a concrete simulation experiment
 
     #Show results
     func final(this):
-        if showGraph != 0:
-            graph(r.mu, r.X, r.S, title='Conti')
-            graph(r.D, r.mu, title='Conti')
-        else:
-            pass
-
+        graph(r.mu, r.X, r.S, title='Conti')
+        graph(r.D, r.mu, title='Conti')
+        print('final-values-conti:', r.X, r.S)
+       
 
 
 #Biological reactor with constant inflow and outflow
@@ -142,8 +135,7 @@ class Conti: #Define a concrete simulation experiment
 #The production flowrate is close to the maximum growth speed (0.3 1/h).
 class ContiSmartStart: #Define a concrete simulation experiment
     #Define parameters.
-    data D_prod, showGraph: Float param
-
+    data D_prod: Float param
     #Say which model will be used.
     data r: BioReactor
 
@@ -159,12 +151,12 @@ class ContiSmartStart: #Define a concrete simulation experiment
         r.Sf     = 20   #sugar concentration in feed liquid (inflow)
         D_prod   = 0.3  #[1/h] dilution rate (inflow speed) for production
         r.ms     = 0.02 #sugar consumption when bacteria are not growing
-        showGraph = 1 #flag, if 1: show graph; do not show graph otherwise
 
         #Set initial values to the state variables.
         #Note: the full path has to be specified for variables.
         r.X = 0.1 #initial biomass concentration
         r.S = 20  #initial sugar concentration
+        print('initial-values-smart:', r.X, r.S)
 
 
     func dynamic(this):
@@ -180,12 +172,10 @@ class ContiSmartStart: #Define a concrete simulation experiment
 
     #Show results
     func final(this):
-        if showGraph != 0:
-            graph(r.mu, r.X, r.S, title='ContiSmartStart - mu, X, S')
-            graph(r.D, r.mu, title='ContiSmartStart - mu, D')
-        else:
-            pass
+        graph(r.mu, r.X, r.S, title='ContiSmartStart - mu, X, S')
+        graph(r.D, r.mu, title='ContiSmartStart - mu, D')
         #save('ContiSmartStart-results.csv')
+        print('final-values-smart:', r.X, r.S)
 
 
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ############################################################################
-#    Copyright (C) 2006 - 2009 by Eike Welk                                #
+#    Copyright (C) 2006 - 20010 by Eike Welk                                #
 #    eike.welk@gmx.net                                                     #
 #                                                                          #
 #    License: GPL                                                          #
@@ -754,6 +754,8 @@ class ProgramGenerator(object):
 
 
 from __future__ import print_function
+from __future__ import division
+from __future__ import absolute_import 
 from math import pi, sin, cos, tan, sqrt, exp, log
 from numpy import array, nan, float64
 from freeode.simulatorbase import SimulatorBase

@@ -28,7 +28,9 @@ Utility classes and functions.
 from __future__ import division
 from __future__ import absolute_import          
 
+import os
 import sys
+from subprocess import Popen, PIPE
 from types import NoneType
 import freeode.third_party.pyparsing as pyparsing
 
@@ -648,23 +650,141 @@ def debug_print(*args, **kwargs):
     end='\n': str
         This string is appended at the end of the printed output.
     '''
+    #TODO: change debug level to debug area: a set of strings
     #process keyword arguments
     lev = kwargs.get('lev', 0)
     if int(lev) < DEBUG_LEVEL:
         return
     end = str(kwargs.get('end', '\n'))
-    sep = str(kwargs.get('sep', ''))
+    sep = str(kwargs.get('sep', ' '))
 
     #test for illegal keyword arguments
     legal_kwargs = set(['lev', 'sep','end'])
     real_kwargs = set(kwargs.keys())
     if not(real_kwargs <= legal_kwargs):
         err_kwargs = real_kwargs - legal_kwargs
-        print 'WARNING: got unexpected keyword argument(s): %s' \
-               % ', '.join(err_kwargs)
+        print 'WARNING: "debug_print" got unexpected keyword argument(s): %s' \
+              % ', '.join(err_kwargs)
+        print '         Legal keyword arguments are: %s' % ', '.join(legal_kwargs)
     
     #print the positional arguments
     for arg in args:
         sys.stdout.write(str(arg) + sep)
     sys.stdout.write(end)
 
+
+# ----- Testing program output -------------------------------------------------
+class Line(object):
+    '''
+    Represents a line that is expected in the output of a program.
+    
+    The line has the pattern:
+        string float float float ....
+    '''
+    def __init__(self, item_list=['foo:', 1., 2.], tol=1e-3, converter=float):
+        '''
+        item_list : [str, float, float, ...] or str
+            The items that are expected in the line.
+            - If item_list is a string it is split into a list; elements [1:] 
+              are then converted to float with the converter function.
+        tol : float
+            Tolerance for comparing the found values with the expected values.
+        converter: call-able object or None
+            This function is called with each of the detected values as its argument.
+            The function's result is compared to the values of the template. 
+            If convertes is None no conversion takes place
+        '''
+        object.__init__(self)
+        if isinstance(item_list, str):
+            item_list = item_list.split()
+            self.vals = map(converter, item_list[1:])
+        else:
+            #item_list is list
+            self.vals = item_list[1:]
+        self.start = str(item_list[0])
+        self.tol = tol
+        self.converter = converter
+        self.is_matched = False
+    
+    def make_line(self):
+        'Create the line that the template describes.'
+        return self.start + ' ' + ' '.join(map(str,self.vals))
+         
+
+        
+        
+def search_result_lines(text, line_templates):
+    '''
+    Test if a number of special lines can be found in a text.
+    
+    The lines which are expected in the text are given by a list of Line 
+    objects. Each line has the pattern:
+        string float float float ....
+        
+    Spaces at the start and end of each line are ignored (stripped).
+    
+    The string at the beginning identifies the line, the numbers following 
+    the string must match within the given tolerance. All lines must occur in 
+    the text. 
+    
+    If any mismatch is detected an AssertionError is raised.
+    
+    ARGUMENTS
+    ---------
+    text: str
+        The text which is scanned
+    line_templates: list(Line)
+        Description of the lines that must appear in the text
+    '''        
+    for line in text.split('\n'): 
+        s_line = line.strip()
+        #see if the line is one of the interesting lines
+        for tmpl in line_templates:
+            #The line is one of the interesting lines -> extract the values
+            if s_line.startswith(tmpl.start):
+                try:
+                    val_line = s_line[len(tmpl.start):] #remove tmpl.start
+                    s_vals = val_line.split()
+                    #Convert the values with the conversion function
+                    if tmpl.converter:
+                        vals = map(tmpl.converter, s_vals)
+                    else:
+                        vals = s_vals
+                    #Test the assertions
+                    if len(vals) != len(tmpl.vals):
+                        raise AssertionError()
+                    def compare((a, b)):
+                        return abs(a - b) < tmpl.tol
+                    if not all(map(compare, zip(vals, tmpl.vals))):
+                        raise AssertionError()
+                    tmpl.is_matched = True
+                    break #Assume each line is matched by only one template
+                except AssertionError, _err:
+                    raise AssertionError(
+                    'Error: text template was violated! \n' +
+                    'Expected line: "%s" \n' % tmpl.make_line() +
+                    'Got line     : "%s" \n' % line)
+                    
+    #Test if all templates are matched        
+    for tmpl in line_templates:
+        if tmpl.is_matched == False:
+            raise AssertionError('Not all templates were matched! \n' +
+                                 'Missing line: "%s" \n' % tmpl.make_line())
+
+
+
+def compile_run(in_name, out_name, extra_args='', run_sims='all', clean_up=True):
+    '''Compile and run a simulation.'''
+    #Run compiler and simulation(s); catch the output
+    cmd_str = 'python simlc %s -o %s -r %s %s' % (in_name, out_name, 
+                                                  run_sims, extra_args)
+    sim = Popen(cmd_str, shell=True, stdout=PIPE)
+    res_txt, _ = sim.communicate()
+    debug_print('Program output: ', res_txt, lev=3)
+    debug_print('Return code: ', sim.returncode, lev=2)
+    #Clean up
+    if clean_up:
+        os.remove(out_name)
+    #Program must say that it terminated successfully 
+    assert sim.returncode == 0, 'Program exited with error.'
+    return res_txt

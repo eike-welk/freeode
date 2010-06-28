@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2009 by Eike Welk                                       *
+#    Copyright (C) 2009 - 2010 by Eike Welk                                *
 #    eike.welk@gmx.net                                                     *
 #                                                                          *
 #    License: GPL                                                          *
@@ -107,7 +107,7 @@ compile RunTest
 
     #Scan the program's output to check if it's working.
     final_vals = []
-    for line in res_txt.split('\n'):
+    for line in res_txt.split('\n'): #pylint:disable-msg=E1103 
         if line.startswith('final-values:'):
             vals = line.split()[1:]
             final_vals = map(float, vals)
@@ -126,4 +126,4 @@ if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
     test_do_compile()
-    pass
+    pass #pylint:disable-msg=W0107

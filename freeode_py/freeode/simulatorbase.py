@@ -472,8 +472,12 @@ def parseCommandLineOptions(simulationClassList):
                        action="store_true", default=False,
                        help='prepend output with one newline '
                           + '(useful when started from the compiler)')
+    optPars.add_option('--no-graphs', dest='show_graphs',
+                       action="store_false", default=True,
+                       help='do not show any graph windows when running ' \
+                            'the simulation')
     #do the parsing
-    (options, args) = optPars.parse_args()
+    options, _args = optPars.parse_args()
 
     #print start message
     if options.prepend_newline:
@@ -502,9 +506,11 @@ def parseCommandLineOptions(simulationClassList):
     #There are three different places where simulations are run!
     if options.run == 'all': #special argument 'all': -r all
         runSimulations(simulationClassList)
-        secureShow()
+        if options.show_graphs:
+            secureShow()
         sys.exit(0)
     elif options.run: #argument is int number: -r 2
+        #TODO: use str.isdigit()
         #test if argument is a number
         try: int(options.run)
         except:
@@ -517,13 +523,15 @@ def parseCommandLineOptions(simulationClassList):
                           % num)
         #run simulation
         runSimulations(simulationClassList[num])
-        secureShow()
+        if options.show_graphs:
+            secureShow()
         sys.exit(0)
 
     #default action: run all simulations
     #print 'Freeode (%s) main function ...' % ast.progVersion
     runSimulations(simulationClassList)
-    secureShow()
+    if options.show_graphs:
+        secureShow()
     sys.exit(0)
 
 

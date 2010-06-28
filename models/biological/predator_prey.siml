@@ -44,7 +44,6 @@
 class ClassicModel:
     data x, y: Float #state variables
     data a, b, c, d: Float param
-    data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
         #  | growth | predation
@@ -61,7 +60,6 @@ class ClassicModel:
         x = 2
         y = 2
         #administrative parameters
-        showGraph = 1
         solution_parameters(duration = 30, reporting_interval = 0.1)
 
 
@@ -74,15 +72,12 @@ class ClassicModel:
         x = start_x
         y = start_y
         #administrative parameters
-        showGraph = 0
         solution_parameters(duration = duration, reporting_interval = 0.1)
 
 
     func final(this):
-        if showGraph == 1:
-            graph(x, y, title='Classic Predator Prey Model')
-        else:
-            pass
+        graph(x, y, title='Classic Predator Prey Model')
+        print('classic_final', x, y, time)
 
 
 
@@ -95,7 +90,6 @@ class ClassicModel:
 class LogisticPrey:
     data x, y: Float #state variables
     data a, b, c, d, K: Float param
-    data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
         #  | growth        | predation
@@ -113,7 +107,6 @@ class LogisticPrey:
         x = 2
         y = 2
         #administrative parameters
-        showGraph = 1
         solution_parameters(duration = 30, reporting_interval = 0.1)
 
 
@@ -127,15 +120,12 @@ class LogisticPrey:
         x = start_x
         y = start_y
         #administrative parameters
-        showGraph = 0
         solution_parameters(duration = duration, reporting_interval = 0.1)
 
 
     func final(this):
-        if showGraph == 1:
-            graph(x, y, title='Predator Prey Model; Logistic Growth of Prey')
-        else:
-            pass
+        graph(x, y, title='Predator Prey Model; Logistic Growth of Prey')
+        print('logistic_final', x, y, time)
 
 
 
@@ -161,7 +151,6 @@ class EnhancedModel:
     data muX, muY: Float #growth rates
     data hunting_yield: Float #Amount of animals killed by huntiong
     data muXMax, muYMax, Yxy, Dy, Kx, Ky, Hx, Hy: Float param
-    data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
         muX = muXMax *(Kx-x)/Kx  #prey's growth rate (logistic growth)
@@ -187,7 +176,6 @@ class EnhancedModel:
         x = 2
         y = 2
         #administrative parameters
-        showGraph = 1
         solution_parameters(duration = 30, reporting_interval = 0.1)
 
 
@@ -206,15 +194,12 @@ class EnhancedModel:
         x = start_x
         y = start_y
         #administrative parameters
-        showGraph = 0
         solution_parameters(duration = duration, reporting_interval = 0.1)
 
 
     func final(this):
-        if showGraph == 1:
-            graph(x, y, title='Strongly Modified Predator Prey Model')
-        else:
-            pass
+        graph(x, y, title='Strongly Modified Predator Prey Model')
+        print('enhanced_final', x, y, time)
 
 
 

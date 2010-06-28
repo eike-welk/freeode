@@ -2,7 +2,9 @@
 #    eike.welk@post.rwth-aachen.de
 
 
-
+# TODO: ---------------- Model is currently DEFUNCT! -------------------
+#       The language does not support derivatives of user defined types.
+#
 #-----------------------------------------------------------------------------
 #          Trajectory of Slanted Throw
 #-----------------------------------------------------------------------------

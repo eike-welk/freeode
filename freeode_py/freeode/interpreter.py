@@ -326,10 +326,12 @@ class CodeGeneratorObject(InterpreterObject):
    
 def test_allknown(*args):
     '''
-    Test if all arguments are known constants. 
+    Test if all arguments are known constants. Raise UnknownArgumentsException 
+    if any argument is unknown. 
     
-    Raise UnknownArgumentsException if any argument is unknown; raising 
-    UnknownArgumentsException (usually) tells the interpreter to generate code. 
+    Code generation:
+    The decision (Exception) to generate code for a built in function originates
+    usually from here! 
     
     All arguments must be CodeGeneratorObject.
     '''
@@ -668,8 +670,8 @@ class Proxy(InterpreterObject):
 
 def make_pyfunc_loc(py_func):
     '''Create a TextLocation object for a Python function.'''
-    file_name = py_func.__code__.co_filename
-    line_no = py_func.__code__.co_firstlineno
+    file_name = inspect.getfile(py_func)
+    _lines, line_no = inspect.getsourcelines(py_func)
     loc = TextLocation(file_name=file_name, line_no=line_no)
     return loc
     
@@ -1269,7 +1271,7 @@ def siml_printc(*args, **kwargs):
         else:
             out_str += aa_make_tree(arg1) + sep
     out_str += end.value
-    print out_str
+    print out_str,
             
 
 
@@ -1877,10 +1879,9 @@ class Interpreter(object):
         val_expr = self.eval(node.arguments[0])
 
         #see if there is an object between the brackets, that can express only
-        #one value. No matter wether known or unknown, there are no brackets
+        #one value. No matter whether known or unknown, there are no brackets
         #necessary in this case. Return the object without brackets
-        if isinstance(val_expr, (InterpreterObject, NodeFuncCall,
-                                 NodeParentheses)):
+        if isinstance(val_expr, (InterpreterObject, NodeParentheses)):
             #return the object
             return val_expr
         #otherwise there is an unevaluated expression between the brackets.
@@ -2056,6 +2057,7 @@ class Interpreter(object):
             if isinstance(func_obj, SimlFunction): 
                 ret_val = self.apply_siml(func_obj, bound_args)
             else:
+                #Code generation: The exception to generate code comes from here!
                 ret_val = func_obj(*posargs, **kwargs)  #pylint:disable-msg=W0142
             
             #TODO: maybe also convert string -> IString, float -> IFloat
@@ -2069,7 +2071,9 @@ class Interpreter(object):
             return ret_val
         
         except UnknownArgumentsException:
-            #Some arguments were unknown; create an unevaluated function call
+            #Some arguments were unknown.
+            #Code generation: The code for an unevaluated function call is 
+            #(usually) created here. 
             new_call = NodeFuncCall(func_obj, posargs, kwargs, loc)
             decorate_call(new_call, func_obj.siml_signature.return_type)
             return new_call
