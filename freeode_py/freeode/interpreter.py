@@ -61,10 +61,11 @@ import math
 import os
 import types
 import inspect
+import time
 from copy import deepcopy
 
 from freeode.util import (UserException, DotName, TextLocation, AATreeMaker, 
-                          aa_make_tree, DEBUG_LEVEL, EnumMeta)
+                          aa_make_tree, DEBUG_LEVEL, EnumMeta, debug_print)
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
                          RoleAlgebraicVariable, RoleTimeDifferential, 
                          RoleStateVariable, RoleInputVariable,
@@ -1187,7 +1188,7 @@ def siml_print(*args, **kwargs):
         Only produce output when the program's debug level is greater or equal 
         this value.
     end='\n': String
-        This string is appendet at the end of the printed output.
+        This string is appended at the end of the printed output.
         
     The function executes at runtime; calling this function always creates code.
     '''
@@ -1234,7 +1235,7 @@ def siml_printc(*args, **kwargs):
         Only produce output when the program's debug level is greater or equal 
         this value.
     end='\n': String
-        This string is appendet at the end of the printed output.
+        This string is appended at the end of the printed output.
         
     The function executes at compile time; calling this function does not create 
     code.
@@ -2947,6 +2948,13 @@ class Interpreter(object):
 
     def interpret_module_string(self, text, file_name=None, module_name='test'):
         '''Interpret the program text of a module.'''
+        time0 = time.clock()
+        #parse the program text
+        prs = simlparser.Parser()
+        ast = prs.parseModuleStr(text, file_name, module_name)
+        time1 = time.clock()
+        debug_print('Time spent in parser: ', time1 - time0, 's', lev=1)
+        
         #create the new module and import the built in objects
         mod = IModule(self.built_in_lib, module_name, file_name)
         #put module into root namespace (symbol table)
@@ -2962,14 +2970,13 @@ class Interpreter(object):
                                     loc=TextLocation(0, text, file_name))
         #put the frame on the frame stack
         self.push_environment(env)
-        #parse the program text
-        prs = simlparser.Parser()
-        ast = prs.parseModuleStr(text, file_name, module_name)
         #execute the statements - interpret the AST
         self.exec_(ast.statements)
         #remove frame from stack
         self.pop_environment()
         
+        time2 = time.clock()
+        debug_print('Time spent in interpreter: ', time2-time1, 's', lev=1)
         return mod
 
 

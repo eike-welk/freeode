@@ -373,7 +373,35 @@ def test_assert_raises():
 
 
 
+def test_debug_print():
+    msg = """Test debug printing function. 
+             The output must be viewed to check correct operation.
+             """
+    #skip_test(msg)
+    print msg
+    
+    from freeode.util import debug_print
+    import freeode.util
+    
+    freeode.util.DEBUG_LEVEL = 2
+    
+    print 'freeode.util.DEBUG_LEVEL: ', freeode.util.DEBUG_LEVEL
+    #Testing debug levels
+    debug_print('This text should appear. lev=3', lev=3)
+    debug_print('This text should appear too. lev=2', lev=2)
+    debug_print('This text should NOT appear. lev=1', lev=1)
+    #test a few other data types
+    debug_print('String, int, float, function:', 1, 2.0, debug_print, 
+                sep=" ", lev=2)
+    #test all legal keyword arguments
+    debug_print('Print', 'with', 'big', 'spaces', 'between', 'words,', 
+                sep='      ', end='\n\n\n\n', lev=2)
+    debug_print('and also with many newlines at the end.', lev=2)
+    #Test illegal keyword arguments
+    debug_print('Some illegal keyword arguments.', foo=2, bar='hello', lev=2)
+        
+    
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_assert_raises()
+    test_debug_print()
     pass #pylint: disable-msg=W0107

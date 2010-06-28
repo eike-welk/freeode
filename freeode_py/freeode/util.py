@@ -635,4 +635,36 @@ def make_unique_dotname(base_name, existing_names):
 
 
 
+def debug_print(*args, **kwargs):
+    '''
+    Print the positional arguments to the standard output
+    
+    The function supports a number of keyword arguments:
+    lev=0 : int
+        Only produce output when the program's debug level is greater or equal 
+        this value.
+    sep='' : str
+        This string is inserted between the printed arguments.
+    end='\n': str
+        This string is appended at the end of the printed output.
+    '''
+    #process keyword arguments
+    lev = kwargs.get('lev', 0)
+    if int(lev) < DEBUG_LEVEL:
+        return
+    end = str(kwargs.get('end', '\n'))
+    sep = str(kwargs.get('sep', ''))
+
+    #test for illegal keyword arguments
+    legal_kwargs = set(['lev', 'sep','end'])
+    real_kwargs = set(kwargs.keys())
+    if not(real_kwargs <= legal_kwargs):
+        err_kwargs = real_kwargs - legal_kwargs
+        print 'WARNING: got unexpected keyword argument(s): %s' \
+               % ', '.join(err_kwargs)
+    
+    #print the positional arguments
+    for arg in args:
+        sys.stdout.write(str(arg) + sep)
+    sys.stdout.write(end)
 
