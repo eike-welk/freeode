@@ -74,8 +74,7 @@ class MakeDataFlowDecorations(object):
             expr.inputs = inputs
             return inputs
         else:
-            raise Exception('Unexpected type of argument '
-                            'for Siml function. type: %s; value: %s' 
+            raise Exception('Unexpected node in expression. type: %s; value: %s' 
                             % (str(type(arg)), str(arg)))
         
     

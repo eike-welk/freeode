@@ -726,7 +726,7 @@ class SimlFunction(InterpreterObject):
     '''
     Function written in Siml (user defined function).
     '''
-    def __init__(self, name, signature=Signature(),
+    def __init__(self, name, signature=Signature(), #pylint:disable-msg=W0621
                   statements=None, global_scope=None, loc=None, dot_name=None):
         #CallableObject.__init__(self, name)
         InterpreterObject.__init__(self)

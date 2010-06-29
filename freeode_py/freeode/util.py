@@ -434,7 +434,7 @@ class UserException(Exception):
 
 
 
-def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-msg=W0102
+def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-msg=W0102,W0621
     '''
     Test if a function raises the expected exception. Can test error number of 
     UserException.
@@ -681,7 +681,7 @@ class Line(object):
     The line has the pattern:
         string float float float ....
     '''
-    def __init__(self, item_list=['foo:', 1., 2.], tol=1e-3, converter=float):
+    def __init__(self, item_list=['foo:', 1., 2.], tol=1e-3, converter=float): #pylint:disable-msg=W0102
         '''
         item_list : [str, float, float, ...] or str
             The items that are expected in the line.
@@ -696,7 +696,7 @@ class Line(object):
         '''
         object.__init__(self)
         if isinstance(item_list, str):
-            item_list = item_list.split()
+            item_list = item_list.split() #pylint:disable-msg=E1103
             self.vals = map(converter, item_list[1:])
         else:
             #item_list is list
@@ -754,7 +754,7 @@ def search_result_lines(text, line_templates):
                     if len(vals) != len(tmpl.vals):
                         raise AssertionError()
                     def compare((a, b)):
-                        return abs(a - b) < tmpl.tol
+                        return abs(a - b) < tmpl.tol   #pylint:disable-msg=W0631
                     if not all(map(compare, zip(vals, tmpl.vals))):
                         raise AssertionError()
                     tmpl.is_matched = True

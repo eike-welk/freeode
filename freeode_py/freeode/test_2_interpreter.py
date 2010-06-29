@@ -235,8 +235,9 @@ func foo4(a:Float=1, b:Float=2):
     #run mini program
     intp.interpret_module_string(prog_text, None, 'test')
     
-    mod = intp.modules['test']
+    _mod = intp.modules['test']
   
+    #TODO: write assertions
 #    print
 #    print 'module after interpreter run: ---------------------------------'
 #    print aa_make_tree(mod)

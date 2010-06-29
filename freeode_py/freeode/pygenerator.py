@@ -38,7 +38,7 @@ generates some python classes that perform the simulations.
 from __future__ import division
 
 import cStringIO
-from util import DotName, PROGRAM_VERSION, func, aa_make_tree
+from util import DotName, PROGRAM_VERSION, func 
 from freeode.ast import (NodeFuncCall, NodeParentheses,  
                          NodeAssignment, NodeIfStmt, 
                          NodeExpressionStmt, 

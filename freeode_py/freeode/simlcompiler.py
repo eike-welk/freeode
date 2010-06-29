@@ -148,14 +148,17 @@ class SimlCompilerMain(object):
 
 
     def run_program(self):
-        '''Run the generated program if the user wants it.'''
+        '''
+        Run the generated program if the user wants it.
+        Does not wait for the simulation to terminate.
+        '''
         if self.runSimulation == None:
             return
-        no_graphs_opt = '--no-graphs' if self.no_graphs else ''
-            
+        
+        no_graphs_opt = '--no-graphs' if self.no_graphs else ''   
         cmd_str = 'python %s -r %s %s --prepend-newline' % (self.output_file_name,
-                                                        self.runSimulation,
-                                                        no_graphs_opt)
+                                                            self.runSimulation,
+                                                            no_graphs_opt)
         proc = Popen([cmd_str], shell=True, #bufsize=1000,
                      stdin=None, stdout=None, stderr=None, close_fds=True)
         print 'running generated program. PID: %d\n' % proc.pid

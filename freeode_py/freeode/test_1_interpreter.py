@@ -258,7 +258,7 @@ def test_SimlClass_2(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import SimlClass, SimlFunction, IFloat, istype
-    from freeode.util import aa_make_tree
+    #from freeode.util import aa_make_tree
     
     #construct a class object with SimlClass as base class, with
     # - a1: IFloat data attribute
@@ -942,7 +942,7 @@ User defined functions are created without parser.
     from freeode.interpreter import (Interpreter, SimlFunction, IModule,
                                      Signature, IFloat)
     from freeode.ast import NodeFuncArg
-    from freeode.util import DotName, aa_make_tree 
+    from freeode.util import DotName #, aa_make_tree 
     
 
     #create the interpreter 

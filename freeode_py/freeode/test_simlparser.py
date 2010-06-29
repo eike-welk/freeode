@@ -26,14 +26,12 @@ Test code for the interpreter module
 """
 
 from __future__ import division
-from __future__ import absolute_import              #IGNORE:W0410
+from __future__ import absolute_import              
 
-#import for test helper functions:
-# py.test.fail('bad, bad, bad'); py.test.skip('no test')
-try:                      
-    import py                                       
-except ImportError:
-    print 'No py library, many tests may fail!'
+from py.test import skip as skip_test  #pylint:disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test  #pylint:disable-msg=F0401,E0611,W0611
+
+from freeode.util import assert_raises #pylint:disable-msg=W0611
 
 
 
@@ -598,7 +596,6 @@ def test_parser_stack_overflow_bug(): #IGNORE:C01111
     print msg
     
     from freeode.simlparser import Parser
-    from freeode.util import assert_raises
     from freeode.util import UserException
     
     #--- first example ------------------------------------------------------
@@ -806,4 +803,4 @@ if a:
 if __name__ == '__main__':
     # Debugging code may go here.
     test_parser_stack_overflow_bug()
-    pass
+    pass #pylint:disable-msg=W0107
