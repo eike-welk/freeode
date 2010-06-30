@@ -336,12 +336,20 @@ def test_allknown(*args):
     All arguments must be CodeGeneratorObject.
     '''
     for arg in args:
-        if isinstance(arg, CodeGeneratorObject) and arg.is_known:
-            assert isrole(arg, RoleConstant), \
-                'All objects that are known at compile time must be constants.'
-            #We know: The argument is a known constant; test the next argument.
+        if isinstance(arg, CodeGeneratorObject):
+            is_const = isrole(arg, RoleConstant)
+            if arg.is_known:
+                assert is_const, 'Known object which is no const: %s' % arg
+                #We know: argument is a known constant; test next argument.
+                continue
+            elif is_const: 
+                raise UserException('Read access to unknown const.')
+            else:
+                #Unknown variable or parameter
+                raise UnknownArgumentsException()
         else:
-            raise UnknownArgumentsException()
+            raise TypeError('All arguments must be CodeGeneratorObject. Got: ' 
+                            + repr(arg))
 
         
 def isknownconst(siml_obj):
@@ -1752,7 +1760,13 @@ class CompiledClass(object):
         'Return true if attribute with name exists.'
         return name in self.attributes
 
-
+    def find_attribute_name(self, in_attr):
+        for name, attr in self.attributes.iteritems():
+            if attr is in_attr:
+                return name
+        return None
+    
+    
 
 #The one and only interpreter
 INTERPRETER = None
@@ -1921,7 +1935,7 @@ class Interpreter(object):
         func = self.get_attribute(inst_rhs.__siml_type__, func_name, node.loc)
 
         #Call the special function; may return an unevaluated function call
-        result = self.apply(func, (inst_rhs,))
+        result = self.apply(func, (inst_rhs,), loc=node.loc)
         return result
 
 
@@ -1965,7 +1979,7 @@ class Interpreter(object):
         func = self.get_attribute(ev_lhs.__siml_type__, lfunc_name, node.loc)
         try:
             #Call the special function; may return an unevaluated function call
-            result = self.apply(func, (ev_lhs, ev_rhs))
+            result = self.apply(func, (ev_lhs, ev_rhs), loc=node.loc)
             return result
         except NotImplementedError:# IncompatibleTypeError?
             #TODO: if an operator is not implemented the special function should raise
@@ -2628,7 +2642,8 @@ class Interpreter(object):
             except AttributeError:
                 #Create empty function for the missing main funcion
                 func_flat = SimlFunction(func_name, Signature([NodeFuncArg('this')]),
-                                         statements=[], global_scope=self.built_in_lib)
+                                         statements=[], global_scope=self.built_in_lib,
+                                         loc=node.loc)
                 flat_object.create_attribute(DotName(func_name), func_flat)
                 print 'Warning: main function %s is not defined.' % str(func_name)
                 continue
@@ -2659,7 +2674,8 @@ class Interpreter(object):
             #create a new main function for the flat object with the collected code
             func_flat = SimlFunction(func_name, spec.proto.siml_signature,
                                      statements=stmt_list,
-                                     global_scope=self.built_in_lib)
+                                     global_scope=self.built_in_lib, 
+                                     loc=func_tree.im_func.loc)
             #Put new main function into flat object
             flat_object.create_attribute(DotName(func_name), func_flat)
 

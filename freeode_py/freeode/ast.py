@@ -215,8 +215,8 @@ class NodeParentheses(Node):
         self.__siml_role__ = RoleUnkown
         #self.is_known = None
         #--- information flow graph construction ----------------------------#
-        self.inputs = None
-        #for error messages
+#        self.inputs = None
+        #--- for error messages ---------------------------------------------#
         self.loc = loc
 
 
@@ -255,8 +255,8 @@ class NodeOpInfix2(Node):
         self.__siml_type__ = None
         self.__siml_role__ = RoleUnkown
         #--- information flow graph construction ----------------------------#
-        self.inputs = None
-        #for error messages
+#        self.inputs = None
+        #--- for error messages
         self.loc = loc
 
 
@@ -295,8 +295,8 @@ class NodeOpPrefix1(Node):
         self.__siml_role__ = RoleUnkown
         #self.is_known = None
         #--- information flow graph construction ----------------------------#
-        self.inputs = None
-        #for error messages
+#        self.inputs = None
+        #--- for error messages
         self.loc = loc
 
 
@@ -345,7 +345,7 @@ class NodeFuncCall(Node):
         self.__siml_role__ = RoleUnkown
         #self.is_known = None
         #--- information flow graph construction ----------------------------#
-        self.inputs = None
+#        self.inputs = None
         #--- for error messages ---------------------------------------------#
         self.loc = loc
 
@@ -425,8 +425,8 @@ class NodeClause(Node):
         #--- errors -----
         self.loc = loc
         #--- data flow analysis -------
-        self.inputs = None
-        self.outputs = None
+#        self.inputs = None
+#        self.outputs = None
         
         
 class NodeIfStmt(Node):
@@ -463,8 +463,8 @@ class NodeIfStmt(Node):
         #--- errors -----
         self.loc = loc
         #--- data flow analysis -------
-        self.inputs = None
-        self.outputs = None
+#        self.inputs = None
+#        self.outputs = None
 
 
 class NodeAssignment(Node):
@@ -486,8 +486,8 @@ class NodeAssignment(Node):
         #--- errors -----
         self.loc = loc
         #--- data flow analysis -------
-        self.inputs = None
-        self.outputs = None
+#        self.inputs = None
+#        self.outputs = None
 
 
 class NodeReturnStmt(Node):
