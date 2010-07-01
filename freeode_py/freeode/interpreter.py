@@ -332,24 +332,25 @@ def test_allknown(*args):
     Code generation:
     The decision (Exception) to generate code for a built in function originates
     usually from here! 
+
+    ARGUMENTS
+    ---------
+    *args : CodeGeneratorObject, NodeFuncCall, NodeParentheses 
+    Any number of arguments are permitted. 
     
-    All arguments must be CodeGeneratorObject.
+    Returns
+    -------
+    None
     '''
     for arg in args:
-        if isinstance(arg, CodeGeneratorObject):
-            is_const = isrole(arg, RoleConstant)
-            if arg.is_known:
-                assert is_const, 'Known object which is no const: %s' % arg
+        dont_read_unknown_const(arg)
+        if isknownconst(arg):
                 #We know: argument is a known constant; test next argument.
                 continue
-            elif is_const: 
-                raise UserException('Read access to unknown const.')
-            else:
-                #Unknown variable or parameter
-                raise UnknownArgumentsException()
         else:
-            raise TypeError('All arguments must be CodeGeneratorObject. Got: ' 
-                            + repr(arg))
+            #Unknown variable or parameter
+            raise UnknownArgumentsException()
+       
 
         
 def isknownconst(siml_obj):
@@ -377,6 +378,13 @@ def isknownconst(siml_obj):
         return False
 
 
+def dont_read_unknown_const(obj):
+    '''Raise UserException if obj is an unknown constant.'''
+    if isinstance(obj, CodeGeneratorObject) and \
+       isrole(obj, RoleConstant) and not obj.is_known:
+        raise UserException('Illegal read access to unknown constant.', 
+                            errno=3190110)
+      
       
 class Signature(object):
     """
@@ -941,13 +949,12 @@ class IBool(CodeGeneratorObject):
     @signature([BOOLP, BOOLP], INone) 
     def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
-        if other.value is not None:
-            if self.is_known:
-                raise UserException('Duplicate assignment.')
-            self.value = other.value
-            self.is_known = True
-        else:
-            raise UnknownArgumentsException()
+        if self.is_known:
+            raise UserException('Duplicate assignment.')
+        dont_read_unknown_const(other) 
+        #perform the assignment
+        self.value = other.value
+        self.is_known = True
         
     #printing
     def __str__(self):#convenience for sane behavior from Python
@@ -1017,13 +1024,12 @@ class IString(CodeGeneratorObject):
     @signature([STRINGP, STRINGP], INone) 
     def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
-        if isinstance(other, IString) and other.value is not None:
-            if self.is_known:
-                raise UserException('Duplicate assignment.')
-            self.value = other.value
-            self.is_known = True
-        else:
-            raise UnknownArgumentsException()
+        if self.is_known:
+            raise UserException('Duplicate assignment.')
+        dont_read_unknown_const(other) 
+        #perform the assignment
+        self.value = other.value
+        self.is_known = True
         
     #Printing
     def __str__(self):#convenience for sane behavior from Python
@@ -1152,14 +1158,13 @@ class IFloat(CodeGeneratorObject):
     @signature([FLOATP, FLOATP], INone) 
     def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
-        if isinstance(other, IFloat) and other.value is not None:
-            if self.is_known:
-                raise UserException('Duplicate assignment.')
-            self.value = other.value
-            self.is_known = True
-        else:
-            raise UnknownArgumentsException()
-
+        if self.is_known:
+            raise UserException('Duplicate assignment.')
+        dont_read_unknown_const(other) 
+        #perform the assignment
+        self.value = other.value
+        self.is_known = True
+        
     def __str__(self): #convenience for sane behavior from Python
         if self.value is None:
             return '<unknown Float>'
@@ -2304,32 +2309,24 @@ class Interpreter(object):
             self.apply(assign_func, (value,))
             return
         
-        #Only built in functions from here on: ------------------
+        #Only built in assignment functions from here on: ------------------
+        #Implies: target is built in type
         #Test if assignment is possible according to the role.
         if is_role_more_variable(value.__siml_role__, target.__siml_role__):
             raise UserException('Incompatible roles in assignment. '
                                 'LHS: %s RHS: %s' % (str(target.__siml_role__),
                                                      str(value.__siml_role__)), loc)
-        #perform assignment - function is built in and target is constant
+        #Generating code for an assignment has to be handled here entirely. 
+        #assign(...) generates a NodeFuncCall, not NodeAssignment  
         if isrole(target, RoleConstant):
-            try:
-                self.apply(assign_func, (value,))
-            except UnknownArgumentsException:
-                UserException('Unknown value in assignment to constant.', loc)
-            return
-        #Generate code for one assignment (of fundamental types)
-        #target is a parameter or a variable
-        new_assign = NodeAssignment(target, value, loc)
-        #create sets of input and output objects for the optimizer
-#        #TODO: maybe put this into optimizer?
-#        if isinstance(value, InterpreterObject):
-#            new_assign.inputs = set([value])
-#        else:
-#            #value is an expression
-#            new_assign.inputs = value.inputs
-#        new_assign.outputs = set([target])
-        #append generated assignment statement to the alredy generated code.
-        self.collect_statement(new_assign)
+            #perform assignment - target is a constant
+            self.apply(assign_func, (value,))
+        else: 
+            #Generate code for assignment - target is a parameter or a variable
+            dont_read_unknown_const(value) 
+            new_assign = NodeAssignment(target, value, loc)
+            #append generated assignment statement to the alredy generated code.
+            self.collect_statement(new_assign)
 
 
     def exec_NodeIfStmt_compile_time(self, node):

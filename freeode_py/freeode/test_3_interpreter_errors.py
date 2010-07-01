@@ -485,8 +485,124 @@ compile A
     assert_raises(UserException, 3700640, raise_1)
 
 
+def test_unknown_const_1(): #IGNORE:C01111
+    msg = '''The interpreter must find any illegal use of unknown constants.
+    Reading unknown constants in anything that generates code is illegal.
+    '''
+    #skip_test(msg)
+    print msg
+    
+    from freeode.interpreter import Interpreter
+    from freeode.util import UserException
+
+    # --- operator and unknown constant ----------------------
+    prog_text = \
+'''
+class A:
+    data c: Float const
+    
+    func initialize(this):
+        c + 2
+              
+compile A
+'''
+    #interpret the program
+    intp = Interpreter()
+    #intp.interpret_module_string(prog_text, None, 'test')
+    assert_raises(UserException, 3190110, 
+                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+    #return
+    
+    # --- built in function and unknown constant ----------------------
+    prog_text = \
+'''
+class A:
+    data c: Float const
+    
+    func initialize(this):
+        sqrt(c)
+              
+compile A
+'''
+    #interpret the program
+    intp = Interpreter()
+    #intp.interpret_module_string(prog_text, None, 'test')
+    assert_raises(UserException, 3190110, 
+                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+    #return
+
+    # --- print function and unknown constant ----------------------
+    prog_text = \
+'''
+class A:
+    data c: Float const
+    
+    func initialize(this):
+        print(c)
+              
+compile A
+'''
+    #interpret the program
+    intp = Interpreter()
+    #intp.interpret_module_string(prog_text, None, 'test')
+    assert_raises(UserException, 3190110, 
+                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+    #return
+
+    # --- printc function must work, it does never generate code. -------------
+    prog_text = \
+'''
+class A:
+    data c: Float const
+    
+    func initialize(this):
+        printc(c)
+              
+compile A
+'''
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+    #return
+
+    # --- assignment and unknown constant ----------------------
+    prog_text = \
+'''
+class A:
+    data p: Float param
+    data c: Float const
+    
+    func initialize(this):
+        p = c
+              
+compile A
+'''
+    #interpret the program
+    intp = Interpreter()
+    #intp.interpret_module_string(prog_text, None, 'test')
+    assert_raises(UserException, 3190110, 
+                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+
+    # --- assignment and unknown constant ----------------------
+    prog_text = \
+'''
+class A:
+    data c1, c2: Float const
+    
+    func initialize(this):
+        c1 = c2
+              
+compile A
+'''
+    #interpret the program
+    intp = Interpreter()
+    #intp.interpret_module_string(prog_text, None, 'test')
+    assert_raises(UserException, 3190110, 
+                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+
+
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_if_statement_error_2()
+    test_unknown_const_1()
     pass #pylint: disable-msg=W0107

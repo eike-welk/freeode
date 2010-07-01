@@ -232,7 +232,6 @@ class VariableUsageChecker(object):
     For example the init*** functions must compute all parameters and all initial 
     variables.
     '''
-    
     def __init__(self):
         #The simulation object that is analyzed
         self.sim_obj = CompiledClass('--dummy--')
@@ -246,17 +245,8 @@ class VariableUsageChecker(object):
         self.intermediate_variables = set() #algebraic variables 
         self.output_variables = set() #time derivatives
         #TODO: also care for the external inputs - arguments of main functions 
-        
-#        #currently known attributes - to check data flow and single assignment
-#        self.known_attributes = set()
-#        #attributes that can legally be the target of assignments
-#        self.legal_outputs = set()
-#        #these variables must be assigned by the main function;
-#        #at the end of the main function these variables must be known
-#        self.required_assignments = set()
+ 
 
-
-    
     def set_annotated_sim_object(self, sim_obj):
         '''Store simulation object and categorize its attributes'''
         assert isinstance(sim_obj, CompiledClass)
@@ -296,21 +286,13 @@ class VariableUsageChecker(object):
                 self.constants.add(attr)
     
     
-#    def check_constant_writes(self):
-#        '''
-#        Search for code that writes to constants. 
-#        Raise an error if any is found.
-#        '''  
-#        #TODO: Determine if it is possible to provoke such a situation at all.
-        
-
     def check_function_var_access(self, func, known_attributes, 
                                      legal_outputs, required_assignments):
         '''
         Check if a function makes illegal access to any variable.
         Raise UserException if any illegal access is found.
         '''
-        #Check for illegal reads (currently unknown attributes
+        #Check for illegal reads (currently unknown attributes)
         if not(func.inputs <= known_attributes):
             ill_input = func.inputs - known_attributes
             ill_names, err_locs = [], []
@@ -321,7 +303,8 @@ class VariableUsageChecker(object):
             err_locs = map(str, err_locs)
             raise UserException('Illegal read access to variable(s) ' +
                                 ', '.join(ill_names) + '\n' +
-                                '\n'.join(err_locs), func.loc)
+                                '\n'.join(err_locs), func.loc, 
+                                errno=4500100)
                 
         #Check for illegal assignments
         if not(func.outputs <= legal_outputs):
@@ -334,7 +317,8 @@ class VariableUsageChecker(object):
             err_locs = map(str, err_locs)
             raise UserException('Illegal assignment to variable(s): ' +
                                 ', '.join(ill_names) + '\n' +
-                                '\n'.join(err_locs), func.loc)
+                                '\n'.join(err_locs), func.loc, 
+                                errno=4500200)
             
         #Test for missing assignments
         if not(required_assignments <= func.outputs):
@@ -344,8 +328,9 @@ class VariableUsageChecker(object):
                 missing_names.append(self.sim_obj.find_attribute_name(attr))
                 missing_names = map(str, missing_names)
             raise UserException('Missing assignment to variable(s): ' +
-                                ', '.join(missing_names), func.loc)
-       
+                                ', '.join(missing_names), func.loc, 
+                                errno=4500300)
+
         
     def check_initialize_function(self, func):
         '''Check one of the initialization functions'''

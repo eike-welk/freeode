@@ -348,7 +348,7 @@ printc(foo)
 printc(bar)
 
 #print unevaluated expression
-data a,b: Float
+data a,b: Float variable
 printc(a+b)
 '''
     #create the interpreter
@@ -859,11 +859,11 @@ data a: Float const
 data b: Float variable
 data c: Float variable
 a = 2*2 #constant no statement emitted
-b = 2*a #emit b = 8; compute 2*a at compile time
-c = 2*b #emit everything
-#print('a = ', a)
-#print('b = ', b)
-#print('c = ', c)
+b = 2+a #emit b = 8; compute 2*a at compile time
+c = 2-b #emit everything
+#printc('a = ', a)
+#printc('b = ', b)
+#printc('c = ', c)
 '''
 
     #create the interpreter
@@ -887,7 +887,7 @@ c = 2*b #emit everything
     # b = 4
     assert isinstance(stmts[0], NodeAssignment)
     assert isinstance(stmts[0].expression, IFloat) # 8
-    assert stmts[0].expression.value == 8
+    assert stmts[0].expression.value == 6
     assert stmts[0].target is mod.b
     # c = 2*b
     assert isinstance(stmts[1], NodeAssignment)
@@ -1960,6 +1960,6 @@ replace_attr(a.f, f_new)
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_isinstance_1()
+    test_Interpreter_assign_emit_code_2()
     pass #pylint: disable-msg=W0107
 

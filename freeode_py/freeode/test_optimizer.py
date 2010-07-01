@@ -178,30 +178,39 @@ compile A
         
 
 def test_VariableUsageChecker_1(): #IGNORE:C01111
-    msg = '''Test the creation of data flow annotations.'''
+    msg = '''Test checking of variable usage. Simple program with no errors.
+    
+    These are the rules:
+    Constants (rules enforced in the interpreter):
+        - All constants must be known.
+        - No assignments to constants.
+        
+    Parameters:
+        - All must be assigned in all init**** function.
+        - No assignment to parameters elsewhere.
+        
+    Variables:
+        - All derivatives must be assigned in dynamic function.
+        - No states must be assigned in dynamic function.
+        - All states must be assigned initial values in init*** function.
+    '''
     #skip_test(msg)
     print msg
     
     from freeode.optimizer import MakeDataFlowDecorations, VariableUsageChecker
-    from freeode.interpreter import Interpreter, IFloat
-    #from freeode.ast import NodeAssignment
-    from freeode.util import DotName
+    from freeode.interpreter import Interpreter
+    from freeode.util import DotName #, aa_make_tree
 
     prog_text = \
 '''
 class A:
     data p1,p2: Float param
     data a,b,c: Float
-    data co: Float const
     
     func initialize(this):
-        #co + 2
-        #print(co)
-        #p1 = co
         p1 = 1
         p2 = 1
         a = 0
-        
         data lo: Float
         lo = 1
         
@@ -213,7 +222,6 @@ class A:
             c = p1
         else:
             c = p2 
-            
         data lo: Float
         lo = 1
 
@@ -221,7 +229,6 @@ class A:
     func final(this):
         b = 1
         print(a, b, p1)
-        
         data lo: Float
         lo = 1
         
@@ -249,70 +256,34 @@ compile A
     #Find all input and output variables
     vu = VariableUsageChecker()
     vu.set_annotated_sim_object(sim) 
+    
     #Check the usage of the variables 
     initialize = vu.main_funcs[DotName('initialize')]
     vu.check_initialize_function(initialize) 
+    
     dynamic = vu.main_funcs[DotName('dynamic')]
     vu.check_dynamic_function(dynamic) 
+    
     final = vu.main_funcs[DotName('final')]
     vu.check_final_function(final) 
     
+#    print aa_make_tree(initialize)
+#    print aa_make_tree(dynamic)
+#    print aa_make_tree(final)
+#    
+#    def get_varnames(var_set, sim_obj):
+#        var_names = []
+#        for attr in var_set:
+#            var_names.append(sim_obj.find_attribute_name(attr))
+#        var_names = map(str, var_names)
+#        print var_names
+#        return var_names
+# 
+#    get_varnames(initialize.outputs, sim)
+#    get_varnames(dynamic.outputs, sim)
+#    get_varnames(final.outputs, sim)
     
-    #print len(set([1,2,5]) & set([1,2,3,4]))
-    
-    print 'test_VariableUsageChecker_1 end'
-
-
-
-
-
-def test_unknown_const_1(): #IGNORE:C01111
-    msg = '''Test correct treatment of unknown constants.'''
-    #skip_test(msg)
-    print msg
-    
-    from freeode.optimizer import MakeDataFlowDecorations, VariableUsageChecker
-    from freeode.interpreter import Interpreter
-    from freeode.util import DotName
-
-    prog_text = \
-'''
-data c1: Float const
-
-class A:
-    data a, b: Float
-    data c2: Float const
-    
-    func dynamic(this):       
-        $a = c1
-        b = a
-
-compile A
-'''
-
-    #interpret the program
-    intp = Interpreter()
-    intp.interpret_module_string(prog_text, None, 'test')
-
-    #the module
-    #mod = intp.modules['test']
-    #print mod
-    
-    #get the flattened version of the A class
-    sim = intp.get_compiled_objects()[0]
-    #aa_make_tree(sim)
-    
-    #create the input and output decorations on each statement of the 
-    #function
-    dd = MakeDataFlowDecorations()
-    dd.decorate_simulation_object(sim)
-
-    #Check the usage of the variables  
-    vu = VariableUsageChecker()
-    def raise1():
-        vu.set_annotated_sim_object(sim) 
-    assert_raises(Exception, None, raise1)
-
+    #TODO: assertions
 
 
 if __name__ == '__main__':
