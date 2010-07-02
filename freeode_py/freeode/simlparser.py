@@ -406,10 +406,10 @@ class Parser(object):
         loc_ex = self.createTextLocation(loc) #Store position
         #'if', 'elif' have different structure than 'else' clause
         keyword = toks[0]
-        if keyword in ['if', 'elif', 'cif']:
+        if keyword in ['if', 'elif', 'ifc']:
             condition = toks[1]
             statements = toks[3].asList()
-            runtime_if = False if keyword == 'cif' else True
+            runtime_if = False if keyword == 'ifc' else True
         elif keyword == 'else':
             condition = NodeFloat('1', loc_ex) #always true  - there is no bool yet
             statements = toks[2].asList()
@@ -1037,7 +1037,7 @@ class Parser(object):
         #------------- if ...........................................................................................
         #Flow control - if then else
         if_stmt = Group \
-            (((kw('cif') | kw('if'))  - expression + ':' + suite)   .setParseAction(self._action_if_clause)
+            (((kw('ifc') | kw('if'))  - expression + ':' + suite)   .setParseAction(self._action_if_clause)
              + ZeroOrMore((kw('elif') - expression + ':' + suite)   .setParseAction(self._action_if_clause)
                                                                     .setFailAction(ChMsg(prepend='elif: ')))
              + Optional(  (kw('else') - ':' + suite)                .setParseAction(self._action_if_clause)

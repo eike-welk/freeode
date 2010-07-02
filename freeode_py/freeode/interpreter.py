@@ -2331,12 +2331,12 @@ class Interpreter(object):
 
     def exec_NodeIfStmt_compile_time(self, node):
         '''
-        Interpret a "cif" statement.
+        Interpret a "ifc" statement.
         
         This compile time "if" statement always executes at compile time. It is
         used to create macros; different code can be generated depending on the 
         situation: 
-        Code is never generated for the "cif" statement itself. But when the 
+        Code is never generated for the "ifc" statement itself. But when the 
         statements in the body of a clause are executed code may be generated. 
         
         Properties:
@@ -2357,7 +2357,7 @@ class Interpreter(object):
                 raise UserException('Conditions must evaluate to Bool or Float.',
                                     loc=clause.loc)#, errno=3700510)
             if not isknownconst(condition_ev):
-                raise UserException('Conditions of the "cif" statement must be known at compile time.',
+                raise UserException('Conditions of the "ifc" statement must be known at compile time.',
                                     loc=clause.loc)#, errno=3700520)
             #Execute the statements in the clause's body if the condition is true
             if bool(condition_ev.value) == True:

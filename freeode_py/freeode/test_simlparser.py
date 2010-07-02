@@ -160,8 +160,8 @@ data a, b, c: Float const
 
 
 # ---------- if statement -----------------------------------------------------
-def test_cif_stmt_1(): #IGNORE:C01111
-    msg = 'Test to parse a cif statement. The cif statement is executed at compile time,'
+def test_ifc_stmt_1(): #IGNORE:C01111
+    msg = 'Test to parse a ifc statement. The ifc statement is executed at compile time,'
     #py.test.skip(msg)
     print msg
     
@@ -176,7 +176,7 @@ def test_cif_stmt_1(): #IGNORE:C01111
 
     test_prog = (
 '''
-cif a==1:
+ifc a==1:
     b = 1
     c = 1
 elif a==2:
@@ -420,7 +420,7 @@ func test_1(a=0, b=2, c=5):
 
 
 def test_parse_function_definition_4(): #IGNORE:C01111
-    msg = 'Test to parse a function definition with argument type specifications.'
+    msg = 'Test to parse a function definition with argument type speifcications.'
     #py.test.skip(msg)
     print msg
     

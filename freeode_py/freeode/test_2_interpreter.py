@@ -1695,9 +1695,9 @@ four = add2(2)
 
 
 
-def test_cif_statement_1(): #IGNORE:C01111
+def test_ifc_statement_1(): #IGNORE:C01111
     msg = '''
-    Test the "cif" statement. Just constant code, no code creation.
+    Test the "ifc" statement. Just constant code, no code creation.
     '''
     #skip_test(msg)
     print msg
@@ -1710,7 +1710,7 @@ def test_cif_statement_1(): #IGNORE:C01111
 data a,b: Float const
 a = 2 
 
-cif a == 1:
+ifc a == 1:
     b = 1
 elif a == 2:
     b = 2
@@ -1732,9 +1732,9 @@ else:
     
     
     
-def test_cif_statement_2(): #IGNORE:C01111
+def test_ifc_statement_2(): #IGNORE:C01111
     msg = '''
-    Test the "cif" statement. Code generation is enabled. However all conditions 
+    Test the "ifc" statement. Code generation is enabled. However all conditions 
     evaluate to false. No statements are generated inside the dynamic function.
     '''
     #skip_test(msg)
@@ -1751,7 +1751,7 @@ class A:
     data a,b: Float
     
     func dynamic(this):       
-        cif 0 == 1:
+        ifc 0 == 1:
             b = 1
         elif 0 == 2:
             b = 2

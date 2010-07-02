@@ -36,7 +36,7 @@
 
 #Compute Fibonacci numbers recursively
 func fibo_r(n):
-    cif n == 0:
+    ifc n == 0:
         return 0
     elif n == 1:
         return 1
@@ -67,7 +67,7 @@ printc('Closed solution:     ', fib_c)
 func print_fibo_series(n):
     data fib: Float
     #first compute and print the lower numbers
-    cif n > 0:
+    ifc n > 0:
         print_fibo_series(n-1)
     #then print the current number
     fib = fibo_r(n)
