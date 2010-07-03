@@ -37,8 +37,8 @@ import freeode.third_party.pyparsing as pyparsing
 #version of the Siml compiler.
 PROGRAM_VERSION = '0.4.0a3'
 #How much debug information is printed
-# 0: No debug information; 1: some; ....
-DEBUG_LEVEL = 1
+# Control the amount of debug information that is printed
+DEBUG_AREAS = set(['general', 'perf'])
 
 
 
@@ -642,9 +642,8 @@ def debug_print(*args, **kwargs):
     Print the positional arguments to the standard output
     
     The function supports a number of keyword arguments:
-    lev=0 : int
-        Only produce output when the program's debug level is greater or equal 
-        this value.
+    area='general' : str
+        Only produce output when area is in global set DEBUG_AREAS.
     sep='' : str
         This string is inserted between the printed arguments.
     end='\n': str
@@ -652,14 +651,14 @@ def debug_print(*args, **kwargs):
     '''
     #TODO: change debug level to debug area: a set of strings
     #process keyword arguments
-    lev = kwargs.get('lev', 0)
-    if int(lev) < DEBUG_LEVEL:
+    area = str(kwargs.get('area', 'general'))
+    if area not in DEBUG_AREAS:
         return
     end = str(kwargs.get('end', '\n'))
     sep = str(kwargs.get('sep', ' '))
 
     #test for illegal keyword arguments
-    legal_kwargs = set(['lev', 'sep','end'])
+    legal_kwargs = set(['area', 'sep','end'])
     real_kwargs = set(kwargs.keys())
     if not(real_kwargs <= legal_kwargs):
         err_kwargs = real_kwargs - legal_kwargs
@@ -780,8 +779,8 @@ def compile_run(in_name, out_name, extra_args='', run_sims='all', clean_up=True)
                                                   run_sims, extra_args)
     sim = Popen(cmd_str, shell=True, stdout=PIPE)
     res_txt, _ = sim.communicate()
-    debug_print('Program output: ', res_txt, lev=3)
-    debug_print('Return code: ', sim.returncode, lev=2)
+    debug_print('Program output: \n', res_txt, sep='')
+    debug_print('Return code: ', sim.returncode)
     #Clean up
     if clean_up:
         os.remove(out_name)

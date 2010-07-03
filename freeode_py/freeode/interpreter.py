@@ -65,7 +65,7 @@ import time
 from copy import deepcopy
 
 from freeode.util import (UserException, DotName, TextLocation, AATreeMaker, 
-                          aa_make_tree, DEBUG_LEVEL, EnumMeta, debug_print)
+                          aa_make_tree, DEBUG_AREAS, EnumMeta, debug_print)
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
                          RoleAlgebraicVariable, RoleTimeDifferential, 
                          RoleStateVariable, RoleInputVariable,
@@ -1199,25 +1199,27 @@ def siml_print(*args, **kwargs):
     TODO: How can user defined objects be printed at runtime?
 
     The function supports a number of keyword arguments:
-    debug_level=0: Float
-        Only produce output when the program's debug level is greater or equal 
-        this value.
+    area='' : str
+        Only produce output when area is in global set DEBUG_AREAS.
+        The special value '' means: print unconditionally.
+        To change use command line option --debug-area=area1,area2, ...    
     end='\n': String
         This string is appended at the end of the printed output.
         
     The function executes at runtime; calling this function always creates code.
     '''
     #check keyword arguments
-    legal_kwarg_names = set(['debug_level', 'end'])
+    legal_kwarg_names = set(['area', 'end'])
     for arg_name, in kwargs.keys():
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
-    debug_level = kwargs.get('debug_level', IFloat(0))
-    if not istype(debug_level, IFloat):
-        raise UserException('Argument "debug_level" must be of type Float')
+    area = kwargs.get('area', IString(''))
+    if not isinstance(area, IString):
+        raise UserException('Argument "area" must be of type String')
     end = kwargs.get('end', IString('\n'))
-    if not istype(end, IString):
+    if not isinstance(end, IString):
         raise UserException('Argument "end" must be of type IString')
+    _sep=' '
 
     #create code that prints at runtime
     new_args = tuple()
@@ -1246,9 +1248,10 @@ def siml_printc(*args, **kwargs):
     The arguments are converted to strings and printed at compile time.
     
     The function supports a number of keyword arguments:
-    debug_level=0: Float
-        Only produce output when the program's debug level is greater or equal 
-        this value.
+    area='' : str
+        Only produce output when area is in global set DEBUG_AREAS.
+        The special value '' means: print unconditionally.
+        To change use command line option --debug-area=area1,area2, ...
     end='\n': String
         This string is appended at the end of the printed output.
         
@@ -1260,22 +1263,23 @@ def siml_printc(*args, **kwargs):
     #      also true for siml_print, siml_graph
     #TODO: Or implement *args, **kwargs in Siml.
     #check keyword arguments
-    legal_kwarg_names = set(['debug_level', 'end'])
+    legal_kwarg_names = set(['area', 'end'])
     for arg_name, in kwargs.keys():
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
-    debug_level = kwargs.get('debug_level', IFloat(0))
-    if not isinstance(debug_level, IFloat):
-        raise UserException('Argument "debug_level" must be of type Float')
+    area = kwargs.get('area', IString(''))
+    if not isinstance(area, IString):
+        raise UserException('Argument "area" must be of type String')
     end = kwargs.get('end', IString('\n'))
     if not isinstance(end, IString):
         raise UserException('Argument "end" must be of type IString')
     sep=' '
-    
+
     #observe debug level
-    if debug_level.value > DEBUG_LEVEL:
+    area = str(area)
+    if not (area == '' or area in DEBUG_AREAS):
         return
-    
+
     #create output string
     out_str = ''
     for arg1 in args:
@@ -2985,7 +2989,7 @@ class Interpreter(object):
         prs = simlparser.Parser()
         ast = prs.parseModuleStr(text, file_name, module_name)
         time1 = time.clock()
-        debug_print('Time spent in parser: ', time1 - time0, 's', lev=1)
+        debug_print('Time spent in parser: ', time1 - time0, 's', area='perf')
         
         #create the new module and import the built in objects
         mod = IModule(self.built_in_lib, module_name, file_name)
@@ -3008,7 +3012,7 @@ class Interpreter(object):
         self.pop_environment()
         
         time2 = time.clock()
-        debug_print('Time spent in interpreter: ', time2-time1, 's', lev=1)
+        debug_print('Time spent in interpreter: ', time2-time1, 's', area='perf')
         return mod
 
 

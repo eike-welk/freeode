@@ -4,6 +4,6 @@
 
 set -x #enable debug output
 
-compiler="python simlc"
+compiler="python simlc --debug-area=perf"
 #compiler="pypy simlc"
 find -L . -name "*.siml" -exec $compiler {} ";"

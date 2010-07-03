@@ -375,32 +375,34 @@ def test_assert_raises():
 
 def test_debug_print():
     msg = """Test debug printing function. 
-             The output must be viewed to check correct operation.
-             """
+          The output must be viewed to check correct operation.
+          """
     #skip_test(msg)
     print msg
     
     from freeode.util import debug_print
     import freeode.util
     
-    freeode.util.DEBUG_LEVEL = 2
+    freeode.util.DEBUG_AREAS.add('test')
     
     #Testing debug levels
-    print 'freeode.util.DEBUG_LEVEL: ', freeode.util.DEBUG_LEVEL
-    print 'Two lines should with debug levels 3 and 2 should be printed:'
-    debug_print('This text should appear. lev=3', lev=3)
-    debug_print('This text should appear too. lev=2', lev=2)
-    debug_print('This text should NOT appear. lev=1', lev=1)
+    print 'freeode.util.DEBUG_AREAS: ', freeode.util.DEBUG_AREAS
+    print 'Two lines should be printed with debug area "test":'
+    debug_print('This text should appear. area="test"', area="test")
+    debug_print('This text should appear too. area="test"', area="test")
+    debug_print('This text should NOT appear. area="foo"', area="foo")
     print
     #test a few other data types
     debug_print('String, int, float, function:', 1, 2.0, debug_print, 
-                sep=" ", lev=2)
+                sep=" ", area="test")
     #test all legal keyword arguments
     debug_print('Print', 'with', 'big', 'spaces', 'between', 'words,', 
-                sep='      ', end='\n\n\n\n', lev=2)
-    debug_print('and also with many newlines at the end.', end='\n\n', lev=2)
+                sep='      ', end='\n\n\n\n', area="test")
+    debug_print('and also with many newlines at the end.', end='\n\n', 
+                area="test")
     #Test illegal keyword arguments
-    debug_print('Some illegal keyword arguments.', foo=2, bar='hello', lev=2)
+    debug_print('Some illegal keyword arguments.', foo=2, bar='hello', 
+                area="test")
         
         
     

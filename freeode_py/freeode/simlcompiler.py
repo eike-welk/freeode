@@ -39,7 +39,7 @@ from subprocess import Popen #, PIPE, STDOUT
 import freeode.interpreter as interpreter
 import freeode.pygenerator as pygenerator
 from freeode.optimizer import check_simulation_objects
-from freeode.util import UserException, PROGRAM_VERSION
+from freeode.util import UserException, PROGRAM_VERSION, DEBUG_AREAS
 
 
 class SimlCompilerMain(object):
@@ -74,6 +74,10 @@ class SimlCompilerMain(object):
                                 'with number or use special value "all" ' \
                                 '(number counts from top).',
                            metavar='<number>')
+        optPars.add_option('--debug-area', dest='debug_area',
+                           help='specify debug areas to control printing of ' \
+                                'debug information.',
+                           metavar='<area>')
 
         #do the parsing
         (options, args) = optPars.parse_args()
@@ -120,6 +124,13 @@ class SimlCompilerMain(object):
         #See if user wants to suppress graph windows.
         if options.no_graphs:
             self.no_graphs = True
+            
+        #Set the debug areas
+        DEBUG_AREAS.clear()
+        if options.debug_area:
+            DEBUG_AREAS.update(set(options.debug_area.split(',')))
+            #print 'Setting debug areas: ',   DEBUG_AREAS
+    
 
     def do_compile(self):
         '''Do the work'''
