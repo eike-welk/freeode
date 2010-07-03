@@ -159,6 +159,6 @@ def test_predator_prey(): #IGNORE:C01111
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_predator_prey()
+    test_competition()
     pass #pylint:disable-msg=W0107
 

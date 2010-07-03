@@ -260,7 +260,7 @@ compile A
     assert abs(x_vals[-1] - 30) < 1e-6
     
     #clean up
-    #os.remove(progname + '.py')
+    os.remove(progname + '.py')
 
 
 

@@ -35,13 +35,13 @@ from freeode.util import compile_run, search_result_lines, Line
 
 
 
-def test_tank(): #IGNORE:C01111
-    msg = '''Test model: tank.siml'''
+def test_fibonacci_compile_time(): #IGNORE:C01111
+    msg = '''Test model: fibonacci_compile_time.siml'''
 #    skip_test(msg)
     print msg
  
-    directory = '../models/mechanical/'
-    base_name = 'tank'
+    directory = '../models/other/'
+    base_name = 'fibonacci_compile_time'
     output_suffix = '_test1'
     
     #Special name for output, to avoid race condition if input  file is used 
@@ -50,21 +50,22 @@ def test_tank(): #IGNORE:C01111
     out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs')#, clean_up=False)
+    res_txt = compile_run(in_name, out_name, '--no-graphs')
     #Search for the test lines
-    search_result_lines(res_txt, [Line('initial-values: 0.0     0.0'), 
-                                  Line('final-values:   0.030 600.0')
+    search_result_lines(res_txt, [Line(['Recursive algorithm:', 55.0 ]), 
+                                  Line(['Closed solution:',     55.0 ]),
+                                  Line(['15.0 :', 610.0 ])
                                   ])
 
 
 
-def test_tuned_abs_damper(): #IGNORE:C01111
-    msg = '''Test model: tuned_abs_damper.siml'''
+def test_sum_compile_time(): #IGNORE:C01111
+    msg = '''Test model: sum_compile_time.siml'''
 #    skip_test(msg)
     print msg
  
-    directory = '../models/mechanical/'
-    base_name = 'tuned_abs_damper'
+    directory = '../models/other/'
+    base_name = 'sum_compile_time'
     output_suffix = '_test1'
     
     #Special name for output, to avoid race condition if input  file is used 
@@ -73,14 +74,15 @@ def test_tuned_abs_damper(): #IGNORE:C01111
     out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    _res_txt = compile_run(in_name, out_name, '--no-graphs')
-    #No testing; I don't understand any of it
-    #TODO: do some testing
+    res_txt = compile_run(in_name, out_name, '--no-graphs')
+    #Search for the test lines
+    search_result_lines(res_txt, [Line(['Recursive sum:' , 55.0 ]), 
+                                  Line(['Closed formula:', 55.0 ])
+                                  ])
 
 
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_tuned_abs_damper()
+    test_sum_compile_time()
     pass #pylint:disable-msg=W0107
-

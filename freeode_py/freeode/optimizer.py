@@ -46,7 +46,7 @@ from freeode.interpreter import (InterpreterObject, SimlFunction,
                                  isrole, 
                                  isknownconst,
                                  )
-from freeode.util import UserException
+from freeode.util import UserException, DotName
 
 
 
@@ -59,7 +59,13 @@ class MultiDict(dict):
         http://code.activestate.com/recipes/440502-a-dictionary-with-multiple-values-for-each-key/
     '''
     def __setitem__(self, key, value):
-        '''Add the given value to the list of values for this key.'''
+        '''
+        Add the given value to the list of values for this key.
+        
+        Sets are accepted as keys too:
+            Each item in the set is treated as a key, and the value is added
+            to the list for this key.
+        '''
         if isinstance(key, set):
             for key_item in key:
                 self.setdefault(key_item, []).append(value)
@@ -183,6 +189,9 @@ class MakeDataFlowDecorations(object):
             elif isinstance(stmt, NodeExpressionStmt):
                 inp = self.discover_expr_input_variables(stmt.expression)
                 inputs.update(inp)
+                self.input_locs[inp] = stmt.loc
+                stmt.inputs = inp
+                stmt.outputs = set()
             else:
                 raise Exception('Unexpected type of statement '
                                 'type: %s; value: %s' 
@@ -241,18 +250,28 @@ class VariableUsageChecker(object):
         #The data attributes get into these sets according to their roles
         self.constants = set()
         self.parameters = set()
+        self.external_parameters = set()
         self.input_variables = set() #state variables
         self.intermediate_variables = set() #algebraic variables 
         self.output_variables = set() #time derivatives
-        #TODO: also care for the external inputs - arguments of main functions 
  
 
     def set_annotated_sim_object(self, sim_obj):
-        '''Store simulation object and categorize its attributes'''
+        '''
+        Store simulation object and categorize its attributes
+        
+        ARGUMENT
+        --------
+        sim_obj : CompiledClass
+            Simulation object with annotations created by
+            MakeDataFlowDecorations.decorate_simulation_object(...)
+        '''
         assert isinstance(sim_obj, CompiledClass)
         self.sim_obj = sim_obj
         
-        #TODO: care for the external inputs - arguments of main functions 
+        #care for the external inputs - arguments of main functions 
+        self.external_parameters = set(sim_obj.external_inputs)
+        
         #iterate over simulation's attributes
         #put data attributes into sets according to their role
         for name, attr in sim_obj.attributes.iteritems():
@@ -334,12 +353,12 @@ class VariableUsageChecker(object):
         
     def check_initialize_function(self, func):
         '''Check one of the initialization functions'''
-        #TODO: care for the external inputs - arguments of main functions 
         #these attributes are already known when the main function is executed
-        known_attributes = self.constants 
+        time = self.sim_obj.get_attribute(DotName('time'))
+        known_attributes = self.constants | self.external_parameters | set([time])
         #these variables are legal targets for assignments
         legal_outputs = self.parameters | self.input_variables | \
-                        self.intermediate_variables 
+                        self.intermediate_variables  | self.external_parameters
         #these variables must be assigned by the main function
         #at the end of the main function these variables must be known
         required_assignments = self.parameters | self.input_variables
@@ -352,7 +371,9 @@ class VariableUsageChecker(object):
         '''check the dynamic function'''
         #these attributes are already known when the main function is executed
         #It in illegal to assign to them
-        known_attributes = self.constants | self.parameters | self.input_variables
+        time = self.sim_obj.get_attribute(DotName('time'))
+        known_attributes = self.constants | self.parameters | \
+                           self.input_variables | set([time])
         #these variables are legal targets for assignments
         legal_outputs = self.intermediate_variables | self.output_variables
         #these variables must be assigned by the main function
@@ -367,8 +388,10 @@ class VariableUsageChecker(object):
     def check_final_function(self, func):
         '''check the final function'''
         #these attributes are already known when the main function is executed
+        time = self.sim_obj.get_attribute(DotName('time'))
         known_attributes = self.constants | self.parameters | \
-                                self.input_variables | self.intermediate_variables
+                           self.input_variables | self.intermediate_variables | \
+                           set([time])
         #these variables are legal targets for assignments
         legal_outputs = set(self.intermediate_variables)
         #these variables must be assigned by the main function
@@ -378,7 +401,35 @@ class VariableUsageChecker(object):
         self.check_function_var_access(func, known_attributes, legal_outputs, 
                                        required_assignments)
         
+
+    def check_simulation_object(self, sim_obj):
+        '''
+        Test semantic errors in a simulation object
         
+        
+        ARGUMENT
+        --------
+        sim_obj : CompiledClass
+            Simulation object with annotations created by
+            MakeDataFlowDecorations.decorate_simulation_object(...)
+        '''
+        self.__init__()
+        assert isinstance(sim_obj, CompiledClass)
+        self.set_annotated_sim_object(sim_obj)
+        
+        #check the parameterized initialization functions
+        for name, func in sim_obj.attributes.iteritems():
+            if str(name).startswith('init_'):
+                self.check_initialize_function(func)
+        #check the main functions with fixed names
+        ini_func = sim_obj.get_attribute(DotName('initialize'))
+        self.check_initialize_function(ini_func)
+        dyn_func = sim_obj.get_attribute(DotName('dynamic'))
+        self.check_dynamic_function(dyn_func)
+        fin_func = sim_obj.get_attribute(DotName('final'))
+        self.check_final_function(fin_func)
+
+
 #    def check_assignment(self, assignment):
 #        '''Check one assignment statement'''
 #        assert isinstance(assignment, NodeAssignment)
@@ -422,6 +473,18 @@ class VariableUsageChecker(object):
 #        self.check_statement_list(function.statements)
     
     
+def check_simulation_objects(obj_list):
+    '''
+    Check a list of simulation objects for errors. Raises UserException when
+    errors are detected.
+    '''
+    deco = MakeDataFlowDecorations()
+    check = VariableUsageChecker()
+    
+    for sim_obj in obj_list:
+        deco.decorate_simulation_object(sim_obj)
+        check.check_simulation_object(sim_obj)
+        
     
 #TODO: test: the methods of a flat object must not use any data from 
 #      outside of the flat_object.

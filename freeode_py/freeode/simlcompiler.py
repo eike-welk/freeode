@@ -38,6 +38,7 @@ from subprocess import Popen #, PIPE, STDOUT
 #import freeode.simlparser as simlparser
 import freeode.interpreter as interpreter
 import freeode.pygenerator as pygenerator
+from freeode.optimizer import check_simulation_objects
 from freeode.util import UserException, PROGRAM_VERSION
 
 
@@ -128,7 +129,9 @@ class SimlCompilerMain(object):
 
         #the compilation proper
         intp.interpret_module_file(self.input_file_name, '__main__')
-        prog_gen.create_program(self.input_file_name, intp.get_compiled_objects())
+        sims = intp.get_compiled_objects()
+        check_simulation_objects(sims)
+        prog_gen.create_program(self.input_file_name, sims)
         prog_str = prog_gen.get_buffer()
 
         #write generated program to file
@@ -181,18 +184,16 @@ class SimlCompilerMain(object):
             raise #for sys.exit() - the error message was already printed
         except Exception: #Any other exception must be a malfunction of the compiler
             print >> sys.stderr, ('\n'
-                  'Oh my golly! Compiler internal error! \n\n'
-                  'Please file a bug report at the project\'s website, '
-                  'or send an e-mail \n'
-                  'with with a bug report to the developer(s).\n'
-                  'The bug report should include the traceback '
-                  'at the end of this message. \n'
-                  'Please include also a short description of the error. \n'
-                  'Bug-website: \n'
-                  '  https://bugs.launchpad.net/freeode \n'
-                  'E-mail: \n'
-                  '  eike@users.berlios.de \n\n'
-                  'SIML compiler version: %s \n' %  PROGRAM_VERSION)
+    'Oh my golly! Compiler internal error! \n\n'
+    'Please file a bug report at the project\'s website, or send an e-mail \n'
+    'with with a bug report to the developer(s).\n'
+    'The bug report should include the traceback  at the end of this message. \n'
+    'Please also include the program that cased the error if possible. \n'
+    'Bug-website: \n'
+    '  https://bugs.launchpad.net/freeode \n'
+    'E-mail: \n'
+    '  eike@users.berlios.de \n\n'
+    'SIML compiler version: %s \n' %  PROGRAM_VERSION)
             raise #gets traceback and ends program
         #return with success
         sys.exit(0)

@@ -102,6 +102,7 @@ class A:
         else:
             c = p2 
             d = p2
+        print(a)
 
 compile A
 '''
@@ -139,16 +140,16 @@ compile A
     #dd.decorate_main_function(dyn)
 
     #see if the inputs and outputs were detected correctly
-    # a = p1   
+    # a = p1--------------------------------------
     stmt0 = dyn.statements[0]
     assert stmt0.inputs == set([p1])
     assert stmt0.outputs == set([a])
-    #  b = a - p2
+    #  b = a - p2 --------------------------------
     stmt1 = dyn.statements[1]
     assert stmt1.inputs == set([a, p2])
     assert stmt1.outputs == set([b])
     
-    #'if' statement
+    #'if' statement ------------------------------
     stmt2 = dyn.statements[2]
     #look at inputs
     assert stmt2.inputs.issuperset(set([a, p1, p2])) 
@@ -160,25 +161,39 @@ compile A
     #look at outputs
     assert stmt2.outputs == set([c, d])
     
-    #the dynamic function
+    #print(a) -------------------------------------
+    stmt3 = dyn.statements[3]
+    assert stmt3.inputs == set([a])
+    assert stmt3.outputs == set()
+    #the dynamic function as a whole --------------
     assert dyn.inputs == set([p1, p2, one_obj])
     assert dyn.outputs == set([a, b, c, d])
     
     #The input_locs, output_locs mappings for creating error messages
+    #Parameter p1
+    assert p1 not in dyn.output_locs #p1 is written nowhere
     p1_in_locs = dyn.input_locs[p1]
-    assert len(p1_in_locs) == 4
-    assert p1_in_locs[0].line_no() == stmt0.loc.line_no()
-    assert p1_in_locs[1].line_no() == stmt2.loc.line_no()
+    assert len(p1_in_locs) == 4 #p1 read in 4 places
+    assert p1_in_locs[0].line_no() == stmt0.loc.line_no() #read in statement 0
+    assert p1_in_locs[1].line_no() == stmt2.loc.line_no() #read in 'if' statement
+    #  + read in two lines in body of 'if' statement
 #    for loc in p1_in_locs:
 #        print loc
+    #Variable a
     a_out_loc = dyn.output_locs[a]
-    assert len(a_out_loc) == 1
-    assert a_out_loc[0].line_no() == stmt0.loc.line_no()
+    assert len(a_out_loc) == 1 #a written in 1 place
+    assert a_out_loc[0].line_no() == stmt0.loc.line_no() #written in statement 0
+    a_in_loc = dyn.input_locs[a]
+    assert len(a_in_loc) == 3 #a read in 3 places
+    assert a_in_loc[0].line_no() == stmt1.loc.line_no()
+    assert a_in_loc[1].line_no() == stmt2.loc.line_no()
+    assert a_in_loc[2].line_no() == stmt3.loc.line_no()
     
         
 
 def test_VariableUsageChecker_1(): #IGNORE:C01111
     msg = '''Test checking of variable usage. Simple program with no errors.
+    Use individual checking functions.
     
     These are the rules:
     Constants (rules enforced in the interpreter):
@@ -207,12 +222,19 @@ class A:
     data p1,p2: Float param
     data a,b,c: Float
     
+    func init_1(this, ext1, ext2):
+        ext2 = 1 #not useful but legal for simplicity
+        p1 = ext1
+        p2 = 1
+        a = 0
+        
     func initialize(this):
         p1 = 1
         p2 = 1
         a = 0
-        data lo: Float
-        lo = 1
+        print(time)
+        #data lo: Float
+        #lo = p1
         
     func dynamic(this): 
         $a = p1
@@ -222,15 +244,15 @@ class A:
             c = p1
         else:
             c = p2 
-        data lo: Float
-        lo = 1
+        #data lo: Float
+        #lo = p1
 
 
     func final(this):
         b = 1
         print(a, b, p1)
-        data lo: Float
-        lo = 1
+        #data lo: Float
+        #lo = p1
         
         
 compile A
@@ -258,6 +280,9 @@ compile A
     vu.set_annotated_sim_object(sim) 
     
     #Check the usage of the variables 
+    init_1 = vu.main_funcs[DotName('init_1')]
+    vu.check_initialize_function(init_1) 
+    
     initialize = vu.main_funcs[DotName('initialize')]
     vu.check_initialize_function(initialize) 
     
@@ -284,6 +309,71 @@ compile A
 #    get_varnames(final.outputs, sim)
     
     #TODO: assertions
+
+
+def test_check_simulation_objects_1(): #IGNORE:C01111
+    msg = '''Test checking of variable usage. Simple program with no errors.
+    Use high level checking function.
+    '''
+    #skip_test(msg)
+    print msg
+    
+    from freeode.optimizer import check_simulation_objects
+    from freeode.interpreter import Interpreter
+    from freeode.util import DotName #, aa_make_tree
+
+    prog_text = \
+'''
+class A:
+    data p1,p2: Float param
+    data a,b,c: Float
+    
+    func init_1(this, ext1, ext2):
+        ext2 = 1 #not useful but legal for simplicity
+        p1 = ext1
+        p2 = 1
+        a = 0
+        
+    func initialize(this):
+        p1 = 1
+        p2 = 1
+        a = 0
+        data lo: Float
+        lo = p1
+        
+    func dynamic(this): 
+        $a = p1
+        b = a - p2
+        
+        if a > p1:
+            c = p1
+        else:
+            c = p2 
+        data lo: Float
+        lo = p1
+
+
+    func final(this):
+        b = 1
+        print(a, b, p1)
+        data lo: Float
+        lo = p1
+        
+        
+compile A
+'''
+
+    #interpret the program
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, None, 'test')
+
+    #the module
+    #mod = intp.modules['test']
+    #print mod
+    
+    #do the checks
+    check_simulation_objects(intp.get_compiled_objects())
+
 
 
 if __name__ == '__main__':

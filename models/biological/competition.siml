@@ -177,7 +177,6 @@ class Case2:
 #The steady state node in the middle of the diagram is a saddle.
 class Case3:
     data m: CompetitionModel
-    data showGraph: Float param #Flag if graphs should be shown
 
     func initialize(this):
         #parameters

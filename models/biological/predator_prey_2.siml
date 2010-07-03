@@ -55,7 +55,6 @@ class EnhancedModel:
     data muX, muY: Float #growth rates
     data hunting_yield: Float #Amount of animals killed by hunting
     data muXMax, muYMax, Yxy, Dy, Kx, Ky, Hx, Hy: Float param
-    data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
         xp = max(x, 0); yp = max(y, 0)

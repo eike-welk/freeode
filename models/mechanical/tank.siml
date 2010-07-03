@@ -143,7 +143,7 @@ class Tank:
 
         $V = q_in - q_out
         #print('h: ', h, 'time: ', time)
-
+        
 
     func initialize(this):
         V = 0
@@ -155,7 +155,7 @@ class Tank:
         #duration of simulation, interval at which values are stored; both in [s]
         solution_parameters(duration=600, reporting_interval=1)
         print('initial-values:', V, time) 
-
+        
 
     func final(this):
         #save('fill-tank')
