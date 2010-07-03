@@ -193,7 +193,8 @@ class ExpressionGenerator(object):
         '''
         if isrole(obj, RoleConstant):
             if isinstance(obj, IFloat):
-                return 'float64(%s)' % str(obj.value)
+#                return 'float64(%s)' % str(obj.value)
+                return str(obj.value)
             elif isinstance(obj, IString):
                 return '"' + obj.value + '"'
             elif isinstance(obj, IBool):
