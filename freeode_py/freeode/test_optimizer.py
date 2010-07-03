@@ -214,7 +214,7 @@ def test_VariableUsageChecker_1(): #IGNORE:C01111
     
     from freeode.optimizer import MakeDataFlowDecorations, VariableUsageChecker
     from freeode.interpreter import Interpreter
-    from freeode.util import DotName #, aa_make_tree
+    from freeode.util import DotName, aa_make_tree
 
     prog_text = \
 '''
@@ -233,8 +233,8 @@ class A:
         p2 = 1
         a = 0
         print(time)
-        #data lo: Float
-        #lo = p1
+        data lo: Float
+        lo = p1
         
     func dynamic(this): 
         $a = p1
@@ -244,15 +244,15 @@ class A:
             c = p1
         else:
             c = p2 
-        #data lo: Float
-        #lo = p1
+        data lo: Float variable
+        lo = p1
 
 
     func final(this):
         b = 1
         print(a, b, p1)
-        #data lo: Float
-        #lo = p1
+        data lo: Float variable
+        lo = p1
         
         
 compile A
@@ -268,7 +268,8 @@ compile A
     
     #get the flattened version of the A class
     sim = intp.get_compiled_objects()[0]
-    #aa_make_tree(sim)
+    #print aa_make_tree(sim)
+    #print aa_make_tree(sim.func_locals)
     
     #create the input and output decorations on each statement of the 
     #function
@@ -349,14 +350,14 @@ class A:
             c = p1
         else:
             c = p2 
-        data lo: Float
+        data lo: Float variable
         lo = p1
 
 
     func final(this):
         b = 1
         print(a, b, p1)
-        data lo: Float
+        data lo: Float variable
         lo = p1
         
         

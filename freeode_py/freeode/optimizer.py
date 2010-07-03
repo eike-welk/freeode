@@ -250,10 +250,11 @@ class VariableUsageChecker(object):
         #The data attributes get into these sets according to their roles
         self.constants = set()
         self.parameters = set()
-        self.external_parameters = set()
+        self.external_parameters = set() #arguments of the init_* functions
         self.input_variables = set() #state variables
         self.intermediate_variables = set() #algebraic variables 
         self.output_variables = set() #time derivatives
+        self.func_locals = set() #local variables of all functions.
  
 
     def set_annotated_sim_object(self, sim_obj):
@@ -271,6 +272,8 @@ class VariableUsageChecker(object):
         
         #care for the external inputs - arguments of main functions 
         self.external_parameters = set(sim_obj.external_inputs)
+        #local variables of all functions.
+        self.func_locals = set(sim_obj.func_locals)
         
         #iterate over simulation's attributes
         #put data attributes into sets according to their role
@@ -330,7 +333,9 @@ class VariableUsageChecker(object):
             ill_output = func.outputs - legal_outputs
             ill_names, err_locs = [], []
             for attr in ill_output:
-                ill_names.append(self.sim_obj.find_attribute_name(attr))
+                attr_str = '%s (%s)' % (str(self.sim_obj.find_attribute_name(attr)),
+                                        str(attr.__siml_role__)) 
+                ill_names.append(attr_str)
                 err_locs += func.output_locs[attr]
             ill_names = map(str, ill_names)
             err_locs = map(str, err_locs)
@@ -361,7 +366,8 @@ class VariableUsageChecker(object):
                         self.intermediate_variables  | self.external_parameters
         #these variables must be assigned by the main function
         #at the end of the main function these variables must be known
-        required_assignments = self.parameters | self.input_variables
+        required_assignments = (self.parameters | self.input_variables) \
+                               - self.func_locals
         
         self.check_function_var_access(func, known_attributes, legal_outputs, 
                                        required_assignments)

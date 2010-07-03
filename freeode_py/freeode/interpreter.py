@@ -1747,6 +1747,8 @@ class CompiledClass(object):
         #supplied from the outside at runtime. Currently arguments of
         #initialization functions.
         self.external_inputs = []
+        #Function locals of all functions
+        self.func_locals = []
         #The flattened attributes indexed by their DotName
         self.attributes = {}
         self.attributes.update(extra_attributes)
@@ -1771,7 +1773,15 @@ class CompiledClass(object):
                 return name
         return None
     
-    
+#    def set_func_locals(self, func_locals):
+#        '''
+#        Create list of local variables of all functions.
+#        The local variables (off course) appear in self.attributes too.
+#        '''
+#        assert isinstance(func_locals, InterpreterObject)
+#        self.func_locals = func_locals.__dict__.values()
+        
+        
 
 #The one and only interpreter
 INTERPRETER = None
@@ -2192,9 +2202,10 @@ class Interpreter(object):
         else:
             raise Exception('Unknown node type for expressions: ' 
                             + str(type(expr_node)))
-
+        return
     
-    # --- Statements ------------------------------------------
+    
+    # --- Statements ----------------------------------------------------------
     #    Execute statements
     #
     #    Each eval_* function executes one type of statement (AST-Node).
@@ -2562,9 +2573,6 @@ class Interpreter(object):
 #        if node.name is not None:
 #            setattr(self.environment.local_scope, node.name, tree_object)
 
-        #provide a module where local variables of functions can be stored
-        func_locals = InterpreterObject()
-
         #specify and discover main functions ---------------------------------------
         #TODO: Implement automatic calling of main functions in child objects.
         #TODO: additional main function for steady-state simulations:
@@ -2628,6 +2636,8 @@ class Interpreter(object):
         #create (empty) flat object
         flat_object = CompiledClass(class_obj.__name__, {DotName('time'):TIME}, 
                                     node.loc)
+        #provide a module where local variables of functions can be stored
+        func_locals = InterpreterObject()
 
         #call the main functions of tree_object and collect code
         for spec in main_func_specs:
@@ -2665,9 +2675,9 @@ class Interpreter(object):
 
             #call the main function and collect code
             self.start_collect_code(func_locals=func_locals)
-                                                #assign_target_roles=legal_roles)
             self.apply(func_tree, tuple(args_list), {})  
-            stmt_list, dummy = self.stop_collect_code()
+            stmt_list, _locals = self.stop_collect_code()
+            
             #create a new main function for the flat object with the collected code
             func_flat = SimlFunction(func_name, spec.proto.siml_signature,
                                      statements=stmt_list,
@@ -2719,9 +2729,13 @@ class Interpreter(object):
 
         #flatten regular data first
         flatten(tree_object, flat_object, DotName())
-        #flatten local variables
-        flatten(func_locals, flat_object, DotName('__func_local__'))
-
+        #TODO: remove bad hack
+        #flatten local variables - hack to get list of function locals 
+        func_locals_flat = CompiledClass('dummy')
+        flatten(func_locals, func_locals_flat, DotName('__func_local__'))
+        flat_object.attributes.update(func_locals_flat.attributes)
+        flat_object.func_locals = func_locals_flat.attributes.values()
+        
         #store new object in interpreter
         self.add_compiled_object(flat_object)
 
@@ -2774,9 +2788,10 @@ class Interpreter(object):
         except UndefinedAttributeError, e:
             raise UserException('Undefined attribute "%s".' % e.attr_name,
                                 loc=node.loc, errno=3800920)
+        return
+    
 
-
-    # --- code collection ------------------------------------------------------   
+    # --- collect code -----------------------------------------------------  
     def start_collect_code(self, stmt_list=None, func_locals=None, ):
         '''
         Set up everything for the code collection process
