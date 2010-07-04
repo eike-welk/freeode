@@ -39,10 +39,7 @@ def test_do_compile(): #IGNORE:C01111
     msg = '''Test do_compile: Compile and execute a program. 
     Bypasses program argument handling. 
     Checks if the simulation is computing the right value too.'''
-
-#    skip_test(msg + '\n'
-#                 'The PYTHONPATH must be set to a useful value,\n'
-#                 'so that the compiled program can find the SIML runtime libraries.')
+#    skip_test(msg)
     print msg
     
     import os
@@ -92,6 +89,7 @@ compile RunTest
     prog_text_file.write(prog_text)
     prog_text_file.close()
     
+    #TODO: change to using search_result_lines(...) and compile_run(...)
     main = SimlCompilerMain()
     main.input_file_name =  base_name + '.siml'
     main.output_file_name = base_name + '.py'
@@ -115,7 +113,7 @@ compile RunTest
     #Test if the values that the program returns are correct
     v, time = final_vals
     assert abs(v - 0.379) < 0.001 and time == 200
-
+    
     #clean up
     os.remove(base_name + '.siml')
     os.remove(base_name + '.py')
