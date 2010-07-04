@@ -649,7 +649,6 @@ def debug_print(*args, **kwargs):
     end='\n': str
         This string is appended at the end of the printed output.
     '''
-    #TODO: change debug level to debug area: a set of strings
     #process keyword arguments
     area = str(kwargs.get('area', 'general'))
     if area not in DEBUG_AREAS:

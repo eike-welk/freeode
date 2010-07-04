@@ -50,7 +50,7 @@ def test_fibonacci_compile_time(): #IGNORE:C01111
     out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs')
+    res_txt = compile_run(in_name, out_name, '--no-graphs --debug-areas=perf')
     #Search for the test lines
     search_result_lines(res_txt, [Line(['Recursive algorithm:', 55.0 ]), 
                                   Line(['Closed solution:',     55.0 ]),
@@ -74,7 +74,7 @@ def test_sum_compile_time(): #IGNORE:C01111
     out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs')
+    res_txt = compile_run(in_name, out_name, '--no-graphs --debug-areas=perf')
     #Search for the test lines
     search_result_lines(res_txt, [Line(['Recursive sum:' , 55.0 ]), 
                                   Line(['Closed formula:', 55.0 ])
@@ -82,7 +82,57 @@ def test_sum_compile_time(): #IGNORE:C01111
 
 
 
+def test_debug_areas(): #IGNORE:C01111
+    msg = '''Test model: debug_areas.siml'''
+#    skip_test(msg)
+    print msg
+ 
+    directory = '../models/other/'
+    base_name = 'debug_areas'
+    output_suffix = '_test1'
+    
+    #Special name for output, to avoid race condition if input  file is used 
+    #by other test too
+    in_name = directory + base_name + '.siml'
+    out_name = directory + base_name + output_suffix + '.py'
+    
+    #Run compiler and simulation with standard debug areas. All special output 
+    #should be disabled
+    res_txt = compile_run(in_name, out_name, '')
+    #Search for the test lines
+    search_result_lines(res_txt, [Line('print-always: 1'), 
+                                  Line('init-x: 0.0'), 
+                                  Line('final-x: 100.0')
+                                  ])
+
+    #Run compiler and simulation with debug area "debug-compile-time" (and "perf")
+    #enabled. All additional output with this debug area should be displayed.
+    res_txt = compile_run(in_name, out_name, '--debug-areas=debug-compile-time,perf')
+    #Search for the test lines
+    search_result_lines(res_txt, [Line('print-always: 1'), 
+                                  Line('init-x: 0.0'), 
+                                  Line('final-x: 100.0'), 
+                                  Line('debug-compile-time1: 1'), 
+                                  Line('debug-compile-time2: 2'), 
+                                  Line('debug-compile-time3: 3'), 
+                                  Line('debug-compile-time4: 4')
+                                  ])
+
+    #Run compiler and simulation with debug area "debug-run-time" (and "perf")
+    #enabled. All additional output with this debug area should be displayed.
+    res_txt = compile_run(in_name, out_name, '--debug-areas=debug-run-time,perf')
+    #Search for the test lines
+    search_result_lines(res_txt, [Line('print-always: 1'), 
+                                  Line('init-x: 0.0'), 
+                                  Line('final-x: 100.0'), 
+                                  Line('debug-run-time2: 2'), 
+                                  Line('debug-run-time3: 3'), 
+                                  Line('debug-run-time4: 4')
+                                  ])
+
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_sum_compile_time()
+    test_debug_areas()
     pass #pylint:disable-msg=W0107

@@ -28,6 +28,7 @@ options, compiling and running the compiled program.
 
 
 from __future__ import division
+from __future__ import absolute_import     
 
 #import pdb
 import optparse
@@ -51,6 +52,9 @@ class SimlCompilerMain(object):
         self.runSimulation = None #can be: None, 'all', '0', '1', ...
         #does the user want to suppress graphs?
         self.no_graphs = False
+        #debug areas as strings, they are passed like this to the simulation
+        #if it is run
+        self.debug_areas = ''
 
 
     def parse_cmd_line(self):
@@ -74,10 +78,10 @@ class SimlCompilerMain(object):
                                 'with number or use special value "all" ' \
                                 '(number counts from top).',
                            metavar='<number>')
-        optPars.add_option('--debug-area', dest='debug_area',
+        optPars.add_option('--debug-areas', dest='debug_areas',
                            help='specify debug areas to control printing of ' \
                                 'debug information.',
-                           metavar='<area>')
+                           metavar='<area,...>')
 
         #do the parsing
         (options, args) = optPars.parse_args()
@@ -127,8 +131,9 @@ class SimlCompilerMain(object):
             
         #Set the debug areas
         DEBUG_AREAS.clear()
-        if options.debug_area:
-            DEBUG_AREAS.update(set(options.debug_area.split(',')))
+        if options.debug_areas:
+            DEBUG_AREAS.update(set(options.debug_areas.split(',')))
+            self.debug_areas = options.debug_areas
             #print 'Setting debug areas: ',   DEBUG_AREAS
     
 
@@ -169,10 +174,12 @@ class SimlCompilerMain(object):
         if self.runSimulation == None:
             return
         
-        no_graphs_opt = '--no-graphs' if self.no_graphs else ''   
-        cmd_str = 'python %s -r %s %s --prepend-newline' % (self.output_file_name,
-                                                            self.runSimulation,
-                                                            no_graphs_opt)
+        no_graphs_opt = '--no-graphs ' if self.no_graphs else ''   
+        debug_areas_opt = '--debug-areas=%s ' % self.debug_areas \
+                          if self.debug_areas else ''
+        run_opt = '-r %s ' % self.runSimulation
+        cmd_str = 'python ' + self.output_file_name + ' --prepend-newline ' + \
+                  no_graphs_opt + debug_areas_opt + run_opt
         proc = Popen([cmd_str], shell=True, #bufsize=1000,
                      stdin=None, stdout=None, stderr=None, close_fds=True)
         print 'running generated program. PID: %d\n' % proc.pid

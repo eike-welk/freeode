@@ -36,9 +36,10 @@ generates some python classes that perform the simulations.
 '''
 
 from __future__ import division
+from __future__ import absolute_import     
 
 import cStringIO
-from util import DotName, PROGRAM_VERSION, func 
+from freeode.util import DotName, PROGRAM_VERSION, func 
 from freeode.ast import (NodeFuncCall, NodeParentheses,  
                          NodeAssignment, NodeIfStmt, 
                          NodeExpressionStmt, 
@@ -129,7 +130,7 @@ class ExpressionGenerator(object):
                      BUILTIN_LIB.exp:'exp', BUILTIN_LIB.log:'log', 
                      BUILTIN_LIB.abs:'abs', 
                      BUILTIN_LIB.min:'min' , BUILTIN_LIB.max:'max',
-                     getattr(BUILTIN_LIB, 'print'):'print', 
+                     getattr(BUILTIN_LIB, 'print'):'debug_print', 
                      BUILTIN_LIB.save:'self.save',
                      BUILTIN_LIB.solution_parameters:'self.set_solution_parameters',
                      func(IFloat.__siml_str__):'str', 
@@ -662,7 +663,7 @@ class SimulationClassGenerator(object):
         self.write(ind8 + '#the final method\'s statements \n')
         stmtGen = StatementGenerator(self.out_py)
         stmtGen.create_statements(method.statements, ind8) #IGNORE:E1103
-        self.write(ind8 + "print('simulation %s finished.') \n" % self.class_py_name)
+        self.write(ind8 + "debug_print('simulation %s finished.') \n" % self.class_py_name)
         self.write(ind8 + '\n')
 
 
@@ -754,13 +755,11 @@ class ProgramGenerator(object):
 ################################################################################
 
 
-from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import 
 from math import pi, sin, cos, tan, sqrt, exp, log
 from numpy import array, nan, float64
-from freeode.simulatorbase import SimulatorBase
-from freeode.simulatorbase import simulatorMainFunc
+from freeode.simulatorbase import SimulatorBase, simulatorMainFunc, debug_print
 
 
 '''     )

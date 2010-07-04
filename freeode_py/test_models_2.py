@@ -73,7 +73,7 @@ def test_tuned_abs_damper(): #IGNORE:C01111
     out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    _res_txt = compile_run(in_name, out_name, '--no-graphs')
+    _res_txt = compile_run(in_name, out_name, '--no-graphs')#, clean_up=False)
     #No testing; I don't understand any of it
     #TODO: do some testing
 
@@ -81,6 +81,6 @@ def test_tuned_abs_damper(): #IGNORE:C01111
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_tuned_abs_damper()
+    test_tank()
     pass #pylint:disable-msg=W0107
 

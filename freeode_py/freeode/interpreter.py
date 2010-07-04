@@ -1210,7 +1210,7 @@ def siml_print(*args, **kwargs):
     '''
     #check keyword arguments
     legal_kwarg_names = set(['area', 'end'])
-    for arg_name, in kwargs.keys():
+    for arg_name in kwargs.keys():
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
     area = kwargs.get('area', IString(''))
@@ -1264,7 +1264,7 @@ def siml_printc(*args, **kwargs):
     #TODO: Or implement *args, **kwargs in Siml.
     #check keyword arguments
     legal_kwarg_names = set(['area', 'end'])
-    for arg_name, in kwargs.keys():
+    for arg_name in kwargs.keys():
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
     area = kwargs.get('area', IString(''))

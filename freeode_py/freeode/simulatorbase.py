@@ -30,6 +30,7 @@ and not by the Siml compiler.
 
 
 from __future__ import division
+from __future__ import absolute_import     
 
 import sys
 
@@ -40,12 +41,48 @@ import scipy.optimize.minpack as minpack
 
 from freeode.storage import DictStore
 
-##try to import the gnuplot lib
-#try:
-#    import Gnuplot, Gnuplot.funcutils
-#    exist_gnuplot_lib = True
-#except:
-#    exist_gnuplot_lib = False
+
+
+#Global set of debug areas that control the output of the print function.
+DEBUG_AREAS = set()
+
+
+def debug_print(*args, **kwargs):
+    '''
+    Print the positional arguments to the standard output. The output is 
+    controlled byt the global set DEBUG_AREAS, and the corresponding argument 
+    area.
+    
+    The function supports a number of keyword arguments:
+    area='' : str
+        Only produce output when area is in global set DEBUG_AREAS.
+        The special value '' means: print unconditionally.
+        To change use command line option --debug-area=area1,area2, ...
+    sep='' : str
+        This string is inserted between the printed arguments.
+    end='\n': str
+        This string is appended at the end of the printed output.
+    '''
+    #process keyword arguments
+    area = str(kwargs.get('area', ''))
+    if not (area == '' or area in DEBUG_AREAS):
+        return
+    end = str(kwargs.get('end', '\n'))
+    sep = str(kwargs.get('sep', ' '))
+
+    #test for illegal keyword arguments
+    legal_kwargs = set(['area', 'sep','end'])
+    real_kwargs = set(kwargs.keys())
+    if not(real_kwargs <= legal_kwargs):
+        err_kwargs = real_kwargs - legal_kwargs
+        print 'WARNING: "debug_print" got unexpected keyword argument(s): %s' \
+              % ', '.join(err_kwargs)
+        print '         Legal keyword arguments are: %s' % ', '.join(legal_kwargs)
+    
+    #print the positional arguments
+    for arg in args:
+        sys.stdout.write(str(arg) + sep)
+    sys.stdout.write(end)
 
 
 
@@ -476,6 +513,11 @@ def parseCommandLineOptions(simulationClassList):
                        action="store_false", default=True,
                        help='do not show any graph windows when running ' \
                             'the simulation')
+    optPars.add_option('--debug-areas', dest='debug_areas',
+                       help='specify debug areas to control printing of ' \
+                            'debug information.',
+                       metavar='<area,...>')
+    
     #do the parsing
     options, _args = optPars.parse_args()
 
@@ -495,6 +537,12 @@ def parseCommandLineOptions(simulationClassList):
             #print number and simulation name
             print i, ': ', simName
         sys.exit(0) #exit successfully
+
+    #Set the debug areas
+    DEBUG_AREAS.clear()
+    if options.debug_areas:
+        DEBUG_AREAS.update(set(options.debug_areas.split(',')))
+        #print 'Setting debug areas: ',   DEBUG_AREAS
 
 #    #user wants to go into interactive mode
 #    if options.interactive:

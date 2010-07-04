@@ -5,7 +5,8 @@
 import os
 
 #Run tests on 2 CPUs and produce only short back trace; run all tests.
-os.system("py.test -n 2 --tb=short --report=skipped")
+os.system("py.test -n 15 --tb=short --report=skipped")
+#os.system("py.test --tx 2*popen//python=pypy --dist=load --tb=short --report=skipped")
 
 
 #Run fewer tests
