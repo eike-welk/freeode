@@ -28,6 +28,7 @@ options, compiling and running the compiled program.
 
 
 from __future__ import division
+from __future__ import absolute_import     
 
 #import pdb
 import optparse
@@ -38,7 +39,8 @@ from subprocess import Popen #, PIPE, STDOUT
 #import freeode.simlparser as simlparser
 import freeode.interpreter as interpreter
 import freeode.pygenerator as pygenerator
-from freeode.util import UserException, PROGRAM_VERSION
+from freeode.optimizer import check_simulation_objects
+from freeode.util import UserException, PROGRAM_VERSION, DEBUG_AREAS
 
 
 class SimlCompilerMain(object):
@@ -46,8 +48,13 @@ class SimlCompilerMain(object):
         super(SimlCompilerMain, self).__init__()
         self.input_file_name = ''
         self.output_file_name = ''
-        #which process should be run after compiling
+        #which simulation should be run after compiling
         self.runSimulation = None #can be: None, 'all', '0', '1', ...
+        #does the user want to suppress graphs?
+        self.no_graphs = False
+        #debug areas as strings, they are passed like this to the simulation
+        #if it is run
+        self.debug_areas = ''
 
 
     def parse_cmd_line(self):
@@ -61,15 +68,21 @@ class SimlCompilerMain(object):
         optPars.add_option('-o', '--outfile', dest='outfile',
                            help='explicitly specify name of output file',
                            metavar='<output_file>')
+        optPars.add_option('--no-graphs', dest='no_graphs',
+                           action="store_true", default=False,
+                           help='do not show any graph windows when running ' \
+                                'the simulation')
         optPars.add_option('-r', '--run', dest='runone',
-                           help='run generated simulation program after '
-                              + 'compiling. Specify which process to simulate '
-                              + 'with number or use special value "all" '
-                              + '(number counts from top).',
+                           help='run generated simulation program after ' \
+                                'compiling. Specify which process to simulate ' \
+                                'with number or use special value "all" ' \
+                                '(number counts from top).',
                            metavar='<number>')
-#        optPars.add_option('--runall', dest='runall',
-#                           action="store_true", default=False,
-#                           help='run all simulation processes after compiling')
+        optPars.add_option('--debug-areas', dest='debug_areas',
+                           help='specify debug areas to control printing of ' \
+                                'debug information.',
+                           metavar='<area,...>')
+
         #do the parsing
         (options, args) = optPars.parse_args()
 
@@ -112,6 +125,17 @@ class SimlCompilerMain(object):
             #convert into string containing a number
             self.runSimulation = str(int(options.runone))
 
+        #See if user wants to suppress graph windows.
+        if options.no_graphs:
+            self.no_graphs = True
+            
+        #Set the debug areas
+        DEBUG_AREAS.clear()
+        if options.debug_areas:
+            DEBUG_AREAS.update(set(options.debug_areas.split(',')))
+            self.debug_areas = options.debug_areas
+            #print 'Setting debug areas: ',   DEBUG_AREAS
+    
 
     def do_compile(self):
         '''Do the work'''
@@ -121,7 +145,9 @@ class SimlCompilerMain(object):
 
         #the compilation proper
         intp.interpret_module_file(self.input_file_name, '__main__')
-        prog_gen.create_program(self.input_file_name, intp.get_compiled_objects())
+        sims = intp.get_compiled_objects()
+        check_simulation_objects(sims)
+        prog_gen.create_program(self.input_file_name, sims)
         prog_str = prog_gen.get_buffer()
 
         #write generated program to file
@@ -141,16 +167,22 @@ class SimlCompilerMain(object):
 
 
     def run_program(self):
-        '''Run the generated program if the user wants it.'''
+        '''
+        Run the generated program if the user wants it.
+        Does not wait for the simulation to terminate.
+        '''
         if self.runSimulation == None:
             return
-
-        #optStr = ' -r %s' % self.runSimulation
-        cmdStr = 'python %s -r %s --prepend-newline' % (self.output_file_name,
-                                                        self.runSimulation)
-        proc = Popen([cmdStr], shell=True, #bufsize=1000,
+        
+        no_graphs_opt = '--no-graphs ' if self.no_graphs else ''   
+        debug_areas_opt = '--debug-areas=%s ' % self.debug_areas \
+                          if self.debug_areas else ''
+        run_opt = '-r %s ' % self.runSimulation
+        cmd_str = 'python ' + self.output_file_name + ' --prepend-newline ' + \
+                  no_graphs_opt + debug_areas_opt + run_opt
+        proc = Popen([cmd_str], shell=True, #bufsize=1000,
                      stdin=None, stdout=None, stderr=None, close_fds=True)
-        print 'running generated program. PID: %d\n\n' % proc.pid
+        print 'running generated program. PID: %d\n' % proc.pid
 
 
     def main_func(self): 
@@ -170,18 +202,16 @@ class SimlCompilerMain(object):
             raise #for sys.exit() - the error message was already printed
         except Exception: #Any other exception must be a malfunction of the compiler
             print >> sys.stderr, ('\n'
-                  'Oh my golly! Compiler internal error! \n\n'
-                  'Please file a bug report at the project\'s website, '
-                  'or send an e-mail \n'
-                  'with with a bug report to the developer(s).\n'
-                  'The bug report should include the traceback '
-                  'at the end of this message. \n'
-                  'Please include also a short description of the error. \n'
-                  'Bug-website: \n'
-                  '  https://bugs.launchpad.net/freeode \n'
-                  'E-mail: \n'
-                  '  eike@users.berlios.de \n\n'
-                  'SIML compiler version: %s \n' %  PROGRAM_VERSION)
+    'Oh my golly! Compiler internal error! \n\n'
+    'Please file a bug report at the project\'s website, or send an e-mail \n'
+    'with with a bug report to the developer(s).\n'
+    'The bug report should include the traceback  at the end of this message. \n'
+    'Please also include the program that cased the error if possible. \n'
+    'Bug-website: \n'
+    '  https://bugs.launchpad.net/freeode \n'
+    'E-mail: \n'
+    '  eike@users.berlios.de \n\n'
+    'SIML compiler version: %s \n' %  PROGRAM_VERSION)
             raise #gets traceback and ends program
         #return with success
         sys.exit(0)

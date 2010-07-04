@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2009 by Eike Welk                                       *
+#    Copyright (C) 2009 - 2010 by Eike Welk                                *
 #    eike.welk@gmx.net                                                     *
 #                                                                          *
 #    License: GPL                                                          *
@@ -26,24 +26,25 @@ Test code for the "simlcompiler.py" module.
 """
 
 from __future__ import division
-from __future__ import absolute_import              #IGNORE:W0410
+from __future__ import absolute_import              
 
-from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
-from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
+from py.test import skip as skip_test  #pylint:disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test  #pylint:disable-msg=F0401,E0611,W0611
 
-from freeode.util import assert_raises
+from freeode.util import assert_raises #pylint:disable-msg=W0611
 
 
 
 def test_do_compile(): #IGNORE:C01111
-    msg = 'Test do_compile: Compile and execute a program. (Bypasses program argument handling.)'
-    skip_test(msg + '\n'
-                 'The PYTHONPATH must be set to a useful value,\n'
-                 'so that the compiled program can find the SIML runtime libraries.')
+    msg = '''Test do_compile: Compile and execute a program. 
+    Bypasses program argument handling. 
+    Checks if the simulation is computing the right value too.'''
+#    skip_test(msg)
     print msg
     
-    from freeode.simlcompiler import SimlCompilerMain
     import os
+    from subprocess import Popen, PIPE
+    from freeode.simlcompiler import SimlCompilerMain
     
     prog_text = \
 '''
@@ -73,37 +74,54 @@ class RunTest:                                     #line 20
 
     func initialize(this):
         system.initialize(0.03)
-        solution_parameters(100, 1)
+        solution_parameters(200, 1)
                      
     func final(this):                              #line 30
-        graph(system.V)
+        #graph(system.V)
+        print("final-values: ", system.V, time)
         
 
 compile RunTest
 '''
 
-    prog_text_file = open('ttest_1.siml','w')
+    base_name = 'testprog_SimlCompilerMain_do_compile'
+    prog_text_file = open(base_name + '.siml','w')
     prog_text_file.write(prog_text)
     prog_text_file.close()
     
+    #TODO: change to using search_result_lines(...) and compile_run(...)
     main = SimlCompilerMain()
-    main.input_file_name = 'ttest_1.siml'
-    main.output_file_name = 'ttest_1.py'
+    main.input_file_name =  base_name + '.siml'
+    main.output_file_name = base_name + '.py'
     main.do_compile()
     
-    #TODO: assert correct function of program without graph
-    exit_val = os.system('./ttest_1.py')
-    assert exit_val == 0
+    sim = Popen('./' + base_name + '.py', shell=True, stdout=PIPE)
+    res_txt, _ = sim.communicate()
+    print 'Program output: ', res_txt
+    print  'Return code: ', sim.returncode
     
-    os.remove('ttest_1.siml')
-    os.remove('ttest_1.py')
+    #Program must say that it terminated successfully 
+    assert sim.returncode == 0
+
+    #Scan the program's output to check if it's working.
+    final_vals = []
+    for line in res_txt.split('\n'): #pylint:disable-msg=E1103 
+        if line.startswith('final-values:'):
+            vals = line.split()[1:]
+            final_vals = map(float, vals)
+        
+    #Test if the values that the program returns are correct
+    v, time = final_vals
+    assert abs(v - 0.379) < 0.001 and time == 200
+    
+    #clean up
+    os.remove(base_name + '.siml')
+    os.remove(base_name + '.py')
     
   
-#TODO: try to compile all example models as test
-
 
 if __name__ == '__main__':
     # Debugging code may go here.
     #test_expression_evaluation_1()
     test_do_compile()
-    pass
+    pass #pylint:disable-msg=W0107

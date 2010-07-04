@@ -26,14 +26,12 @@ Test code for the interpreter module
 """
 
 from __future__ import division
-from __future__ import absolute_import              #IGNORE:W0410
+from __future__ import absolute_import              
 
-#import for test helper functions:
-# py.test.fail('bad, bad, bad'); py.test.skip('no test')
-try:                      
-    import py                                       
-except ImportError:
-    print 'No py library, many tests may fail!'
+from py.test import skip as skip_test  #pylint:disable-msg=F0401,E0611,W0611
+from py.test import fail as fail_test  #pylint:disable-msg=F0401,E0611,W0611
+
+from freeode.util import assert_raises #pylint:disable-msg=W0611
 
 
 
@@ -162,8 +160,54 @@ data a, b, c: Float const
 
 
 # ---------- if statement -----------------------------------------------------
+def test_ifc_stmt_1(): #IGNORE:C01111
+    msg = 'Test to parse a ifc statement. The ifc statement is executed at compile time,'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser   
+    from freeode.ast import NodeIfStmt, NodeClause, NodeFloat
+    #from freeode.util import aa_make_tree
+    
+    parser = Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+    #Parser.noTreeModification = 1
+
+    test_prog = (
+'''
+ifc a==1:
+    b = 1
+    c = 1
+elif a==2:
+    b = 2
+else:
+    b = 3
+''' )
+    #print test_prog
+    print
+    ast = parser.parseModuleStr(test_prog)
+    #print aa_make_tree(ast) 
+    
+    if_stmt = ast.statements[0]
+    assert isinstance(if_stmt, NodeIfStmt)
+    assert if_stmt.runtime_if == False
+    assert len(if_stmt.clauses) == 3 
+    if_clause = if_stmt.clauses[0]
+    assert isinstance(if_clause, NodeClause)
+    assert len(if_clause.statements) == 2
+    elif_clause = if_stmt.clauses[1]
+    assert isinstance(elif_clause, NodeClause)
+    assert len(elif_clause.statements) == 1
+    else_clause = if_stmt.clauses[2]
+    assert isinstance(else_clause, NodeClause)
+    assert len(else_clause.statements) == 1
+    assert isinstance(else_clause.condition, NodeFloat)
+    
+
+
 def test_if_stmt_1(): #IGNORE:C01111
-    msg = 'Test to parse an if statement.'
+    msg = 'Test to parse an if statement. The if statement is executed at run time,'
     #py.test.skip(msg)
     print msg
     
@@ -192,6 +236,7 @@ else:
     
     if_stmt = ast.statements[0]
     assert isinstance(if_stmt, NodeIfStmt)
+    assert if_stmt.runtime_if == True
     assert len(if_stmt.clauses) == 3 
     if_clause = if_stmt.clauses[0]
     assert isinstance(if_clause, NodeClause)
@@ -375,7 +420,7 @@ func test_1(a=0, b=2, c=5):
 
 
 def test_parse_function_definition_4(): #IGNORE:C01111
-    msg = 'Test to parse a function definition with argument type specifications.'
+    msg = 'Test to parse a function definition with argument type speifcications.'
     #py.test.skip(msg)
     print msg
     
@@ -516,11 +561,10 @@ class RunTest:
     func init():
         g = 9.81
         test.init()
-#        solutionParameters.simulationTime = 100
-#        solutionParameters.reportingInterval = 1
+        solution_parameters(100, 1)
 
     func final():
-#        graph test.V, test.h
+        graph(test.V, test.h)
         print('Simulation finished successfully.')
         
 
@@ -533,14 +577,230 @@ compile RunTest
     # Exit immediately from all action functions
 #   Parser.noTreeModification = 1
 
-    ast = parser.parseModuleStr(test_prog)
-    #print ast
+    _ast = parser.parseModuleStr(test_prog)
+    #print _ast
     #assert False, 'Test'
 
 
 
+# ---------- errors -----------------------------------------------------------
+def test_parser_stack_overflow_bug(): #IGNORE:C01111
+    msg = '''
+    Some relatively short input made the the parser crash because of stack 
+    exhaustion.
+    
+    This test is for fixed bug: #389924
+        https://bugs.launchpad.net/freeode/+bug/389924
+    '''
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser
+    from freeode.util import UserException
+    
+    #--- first example ------------------------------------------------------
+    #http://launchpadlibrarian.net/28144614/crash_parser3.siml
+    prog_text = \
+'''
+#This file causes a compiler internal error which is difficult to debug:
+#RuntimeError: maximum recursion depth exceeded
+#Now trying illegal syntax
+
+#func a():
+#func a():
+func a():
+
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:  #There must be an if statement at the end for the error to happen
+    a()
+'''
+    parser = Parser()
+    assert_raises(UserException, None, 
+                  parser.parseModuleStr, (prog_text,))
+    
+    #--- second example --------------------------------------------------
+    #Modified version of:
+    #http://launchpadlibrarian.net/28144614/crash_parser3.siml
+    prog_text = \
+'''
+func a():
+    pass
+
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:
+    a()
+if a:  #There must be an if statement at the end for the error to happen
+    a()
+'''
+    parser = Parser()
+    _ast = parser.parseModuleStr(prog_text)
+    
+    #--- third example ------------------------------------------------------
+    #http://launchpadlibrarian.net/28144624/crash_parser4.siml
+    prog_text = \
+'''
+#This file causes a compiler internal error which is difficult to debug:
+#RuntimeError: maximum recursion depth exceeded
+#Now trying illegal syntax
+
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+func a():
+
+'''
+    
+    parser = Parser()
+    assert_raises(UserException, None, 
+                  parser.parseModuleStr, (prog_text,))
+    
+    #--- fourth example ------------------------------------------------------
+    #http://launchpadlibrarian.net/28144635/crash_parser5.siml
+    prog_text = \
+'''
+#This file causes a compiler internal error which is difficult to debug:
+#RuntimeError: maximum recursion depth exceeded
+#Now trying illegal syntax
+
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+if a:
+'''
+    
+    parser = Parser()
+    assert_raises(UserException, None, 
+                  parser.parseModuleStr, (prog_text,))
+       
+    
+    
 # ---------- call function for debugging here ---------------------------------
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_class_def_1()
-    pass
+    test_parser_stack_overflow_bug()
+    pass #pylint:disable-msg=W0107

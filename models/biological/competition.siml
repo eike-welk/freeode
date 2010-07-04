@@ -1,5 +1,28 @@
-#    Copyright (C) 2009 by Eike Welk
-#    eike.welk@post.rwth-aachen.de
+#############################################################################
+#    Copyright (c) 2007 - 2010  Eike Welk                                   #      #
+#    eike.welk@gmx.net                                                      #
+#                                                                           #
+#    License: Expat License (X11 License)                                   #
+#                                                                           #
+#    Permission is hereby granted, free of charge, to any person obtaining  #
+#    a copy of this software and associated documentation files (the        #
+#    "Software"), to deal in the Software without restriction, including    #
+#    without limitation the rights to use, copy, modify, merge, publish,    #
+#    distribute, sublicense, and/or sell copies of the Software, and to     #
+#    permit persons to whom the Software is furnished to do so, subject to  #
+#    the following conditions:                                              #
+#                                                                           #
+#    The above copyright notice and this permission notice shall be         #
+#    included in all copies or substantial portions of the Software.        #
+#                                                                           #
+#    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        #
+#    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     #
+#    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. #
+#    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   #
+#    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   #
+#    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      #
+#    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 #
+#############################################################################
 
 
 
@@ -35,6 +58,7 @@
 # sqrt(c*a) : frequency of oscillation
 
 
+
 #This is the usual predator prey model
 class CompetitionModel:
     data N1, N2: Float #state variables
@@ -49,7 +73,6 @@ class CompetitionModel:
         $N1 = r1*N1 * (k1-N1 - b12*N2)/k1
         $N2 = r2*N2 * (k2-N2 - b21*N1)/k2
 
-    #TODO: This function currently crashes the parser
     #Function to detect the four different cases.
     #The simulation's final outcome is independent of the growth rate.
     #Thes cases are derived from mathematical analysis of the ODE and
@@ -69,11 +92,9 @@ class CompetitionModel:
 
 
 
-
 #N2 will always outgrow N1.
 class Case1:
     data m: CompetitionModel
-    data showGraph: Float param #Flag if graphs should be shown
 
     func initialize(this):
         #parameters
@@ -86,39 +107,34 @@ class Case1:
         #Print which case it is.
         m.print_case()
         #administrative parameters
-        showGraph = 1 #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
 
-    ##Additional initialization function where some information can be supplied
-    ##by a Python script
-    #func init_states(this, N1, N2):
-        ##parameters
-        #m.r1 = 1; m.r2 = 1   #growth rates
-        #m.k1 = 5; m.k2 = 10  #carrying capacities
-        #m.b12 = 1; m.b21 = 1 #sensitivity against presence of the other species
-        ##initial values
-        #m.N1 = N1
-        #m.N2 = N2
-        ##administrative parameters
-        #showGraph = 0 #don't show the graph
-        #solution_parameters(duration=20, reporting_interval=0.1)
+    #Additional initialization function where some information can be supplied
+    #by a Python script
+    func init_states(this, N1, N2):
+        #parameters
+        m.r1 = 1; m.r2 = 1   #growth rates
+        m.k1 = 5; m.k2 = 10  #carrying capacities
+        m.b12 = 1; m.b21 = 1 #sensitivity against presence of the other species
+        #initial values
+        m.N1 = N1
+        m.N2 = N2
+        #administrative parameters
+        solution_parameters(duration=20, reporting_interval=0.1)
 
     #this function is called repeatedly by the solver
     func dynamic(this):
         m.dynamic()
 
     func final(this):
-        if showGraph == 1:
-            graph(m.N1, m.N2, title='Competition of two species; case 1.',)
-        else:
-            pass
-
+        graph(m.N1, m.N2, title='Competition of two species; case 1.',)
+        print("case1-final:", m.N1, m.N2)
+        
 
 
 #N1 will always outgrow N2.
 class Case2:
     data m: CompetitionModel
-    data showGraph: Float param #Flag if graphs should be shown
 
     func initialize(this):
         #parameters
@@ -131,32 +147,29 @@ class Case2:
         #Print which case it is.
         m.print_case()
         #administrative parameters
-        showGraph = 1; #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
 
-    ##Additional initialization function where some information can be supplied
-    ##by a Python script
-    #func init_states(this, N1, N2):
-        ##parameters
-        #m.r1 = 1; m.r2 = 1   #growth rates
-        #m.k1 = 10; m.k2 = 5  #carrying capacities
-        #m.b12 = 1; m.b21 = 1 #sensitivity against presence of the other species
-        ##initial values
-        #m.N1 = N1
-        #m.N2 = N2
-        ##administrative parameters
-        #showGraph = 1; #yes, show the graph
-        #solution_parameters(duration=20, reporting_interval=0.1)
+    #Additional initialization function where some information can be supplied
+    #by a Python script
+    func init_states(this, N1, N2):
+        #parameters
+        m.r1 = 1; m.r2 = 1   #growth rates
+        m.k1 = 10; m.k2 = 5  #carrying capacities
+        m.b12 = 1; m.b21 = 1 #sensitivity against presence of the other species
+        #initial values
+        m.N1 = N1
+        m.N2 = N2
+        #administrative parameters
+        solution_parameters(duration=20, reporting_interval=0.1)
 
     #this function is called repeatedly by the solver
     func dynamic(this):
         m.dynamic()
 
     func final(this):
-        if showGraph == 1:
-            graph(m.N1, m.N2, title='Competition of two species; case 2.')
-        else:
-            pass
+        graph(m.N1, m.N2, title='Competition of two species; case 2.')
+        print("case2-final:", m.N1, m.N2)
+        
 
 
 #Which species will survive, depends on initial value and on growth speed.
@@ -164,7 +177,6 @@ class Case2:
 #The steady state node in the middle of the diagram is a saddle.
 class Case3:
     data m: CompetitionModel
-    data showGraph: Float param #Flag if graphs should be shown
 
     func initialize(this):
         #parameters
@@ -177,7 +189,6 @@ class Case3:
         #Print which case it is.
         m.print_case()
         #administrative parameters
-        showGraph = 1; #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
 
     #Additional initialization function where some information can be supplied
@@ -193,7 +204,6 @@ class Case3:
         #Print which case it is.
         m.print_case()
         #administrative parameters
-        showGraph = 0; #no graph
         solution_parameters(duration=20, reporting_interval=0.1)
 
     #this function is called repeatedly by the solver
@@ -201,16 +211,14 @@ class Case3:
         m.dynamic()
 
     func final(this):
-        if showGraph == 1:
-            graph(m.N1, m.N2, title='Competition of two species; case 3.')
-        else:
-            pass
+        graph(m.N1, m.N2, title='Competition of two species; case 3.')
+        print("case3-final:", m.N1, m.N2)
+
 
 
 #Stable coexistence of both species.
 class Case4:
     data m: CompetitionModel
-    data showGraph: Float param #Flag if graphs should be shown
 
     func initialize(this):
         #parameters
@@ -223,7 +231,6 @@ class Case4:
         #Print which case it is.
         m.print_case()
         #administrative parameters
-        showGraph = 1; #yes, show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
 
     #Additional initialization function where some information can be supplied
@@ -237,7 +244,6 @@ class Case4:
         m.N1 = 2
         m.N2 = 0.5
         #administrative parameters
-        showGraph = 0; #don't show the graph
         solution_parameters(duration=20, reporting_interval=0.1)
 
     #this function is called repeatedly by the solver
@@ -245,10 +251,8 @@ class Case4:
         m.dynamic()
 
     func final(this):
-        if showGraph == 1:
             graph(m.N1, m.N2, title='Competition of two species; case 4.')
-        else:
-            pass
+            print("case4-final:", m.N1, m.N2)
 
 
 

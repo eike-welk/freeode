@@ -258,7 +258,7 @@ def test_SimlClass_2(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import SimlClass, SimlFunction, IFloat, istype
-    from freeode.util import aa_make_tree
+    #from freeode.util import aa_make_tree
     
     #construct a class object with SimlClass as base class, with
     # - a1: IFloat data attribute
@@ -477,7 +477,9 @@ def test_operator_dispatch_2(): #IGNORE:C01111
     #skip_test(msg)
     print msg
     from freeode.interpreter import Interpreter, IFloat, istype
-    from freeode.ast import NodeOpInfix2, NodeOpPrefix1, NodeFuncCall, RoleVariable
+    from freeode.ast import (NodeOpInfix2, NodeOpPrefix1, NodeFuncCall, 
+                             RoleVariable)
+    from freeode.util import func #, aa_make_tree
 
     intp = Interpreter()
     
@@ -490,14 +492,14 @@ def test_operator_dispatch_2(): #IGNORE:C01111
     res = intp.eval(op_sub)
     print res
     assert isinstance(res, NodeFuncCall)
-    assert res.function is IFloat.__sub__.im_func
+    assert res.function is func(IFloat.__sub__)
     assert istype(res, IFloat)
     
     op_neg = NodeOpPrefix1('-', [val_2])
     res = intp.eval(op_neg)
     print res
     assert isinstance(res, NodeFuncCall)
-    assert res.function is IFloat.__neg__.im_func
+    assert res.function is func(IFloat.__neg__)
     assert istype(res, IFloat)
     
 
@@ -646,11 +648,11 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     #skip_test(msg)
     print msg
 
-    from freeode.ast import RoleVariable, NodeOpInfix2, NodeFuncCall
+    from freeode.ast import RoleVariable, NodeFuncCall
     from freeode.interpreter import (IModule, IFloat, ExecutionEnvironment, 
                                      Interpreter, istype)
     import freeode.simlparser as simlparser
-    from freeode.util import aa_make_tree
+    from freeode.util import func #, aa_make_tree
     
     #parse the expression
     ps = simlparser.Parser()
@@ -677,12 +679,13 @@ def test_expression_evaluation_5(): #IGNORE:C01111
     intp = Interpreter()
     intp.environment = env
     res = intp.eval(ex)
-    print
-    print 'Result object - should be an unevaluated expression: --------------------------------------------------------------'
-    print aa_make_tree(res)
+#    print
+#    print 'Result object - should be an unevaluated expression: --------------------------------------------------------------'
+#    print aa_make_tree(res)
     assert isinstance(res, NodeFuncCall)
-    assert res.function is IFloat.__add__.im_func
+    assert res.function is func(IFloat.__add__)
     assert istype(res, IFloat)
+
 
 
 def test_function_call_unknown_arguments_1(): #IGNORE:C01111
@@ -939,7 +942,7 @@ User defined functions are created without parser.
     from freeode.interpreter import (Interpreter, SimlFunction, IModule,
                                      Signature, IFloat)
     from freeode.ast import NodeFuncArg
-    from freeode.util import DotName, aa_make_tree 
+    from freeode.util import DotName #, aa_make_tree 
     
 
     #create the interpreter 

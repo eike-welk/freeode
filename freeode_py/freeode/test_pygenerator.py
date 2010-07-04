@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #***************************************************************************
-#    Copyright (C) 2009 by Eike Welk                                       *
+#    Copyright (C) 2009 - 2010 by Eike Welk                                *
 #    eike.welk@gmx.net                                                     *
 #                                                                          *
 #    License: GPL                                                          *
@@ -22,8 +22,7 @@
 #***************************************************************************
 
 """
-Test code for the "interpreter.py" module
-    Test basic functionality.
+Test code for the "pygenerator.py" module
 """
 
 from __future__ import division
@@ -258,7 +257,7 @@ compile A
     #solve (trivial) ODE and test solution
     a.simulateDynamic()
     x_vals = a.getResults()['x']
-    assert x_vals[-1] - 30 < 1e-6
+    assert abs(x_vals[-1] - 30) < 1e-6
     
     #clean up
     os.remove(progname + '.py')
@@ -404,8 +403,99 @@ compile A
     
 
 
+def test_ProgramGenerator__all_variables_visible():
+    msg = \
+    ''' 
+    Tests if all variables are visible in all main functions.
+    Especially tests for existence an correct treatment of the variable 'time'.
+    Runs the generated program as an external program.
+    
+    References:
+    Fixed bug #598632
+        https://bugs.launchpad.net/freeode/+bug/598632
+    Blueprint:
+        https://blueprints.launchpad.net/freeode/+spec/final-main-function-specification
+    '''
+    #skip_test(msg)
+    print msg
+    
+    import os
+    from subprocess import Popen, PIPE
+    from freeode.pygenerator import ProgramGenerator
+    from freeode.interpreter import Interpreter
+    
+    prog_text = \
+'''
+class A:
+    data x: Float
+    data b: Float param
+    
+    func initialize(this):
+        x = 0
+        b = 1
+        solution_parameters(duration = 30, reporting_interval = 0.1)
+        print("initial-values: ", b, x, $x, time)
+    
+    func dynamic(this):
+        $x = b
+        if abs(x - time) > 1e-6:
+            print('dynamic-error: x = ', x, ', time = ', time)
+        else:
+            pass
+    
+    func final(this):
+        print("final-values: ", b, x, $x, time)
+compile A
+'''
+    
+    #interpret the compile time code
+    intp = Interpreter()
+    intp.interpret_module_string(prog_text, '--no-file-name--', '__main__')
+    #create the output text
+    pg = ProgramGenerator()
+    pg.create_program('foo.siml', intp.get_compiled_objects())
+    #print pg.get_buffer()
+    
+    #write the buffer into a file, import the file as a module
+    progname = 'prog_test_ProgramGenerator__all_variables_visible'
+    prog_text_file = open(progname + '.py','w')
+    prog_text_file.write(pg.get_buffer())
+    prog_text_file.close()
+    
+    sim = Popen('python ' + progname + '.py', shell=True, stdout=PIPE)
+    res_txt, _ = sim.communicate()
+#    print 'Program output: \n', res_txt     
+#    print  'Return code: ', sim.returncode
+    #the program must say that it terminated successfully
+    assert sim.returncode == 0
+
+    #Scan the program's output to check if it's working.
+    init_vals, final_vals = [], []
+    dyn_error = False
+    for line in res_txt.split('\n'):
+        if line.startswith('initial-values:'):
+            vals = line.split()[1:]
+            init_vals = map(float, vals)
+        elif line.startswith('final-values:'):
+            vals = line.split()[1:]
+            final_vals = map(float, vals)
+        elif line.startswith('dynamic-error:'):
+            dyn_error = True
+        
+    #Test if the values that the program returns are correct
+    b, x, d_x, time = init_vals
+    assert b == 1 and x == 0 and d_x == 0 and time == 0
+    b, x, d_x, time = final_vals
+    assert b == 1 and x == 30 and d_x == 0 and time == 30
+    assert dyn_error == False, 'Error in dynamic function detected'
+    
+    #clean up
+    os.remove(progname + '.py')
+
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_ExpressionGenerator_1()
+    test_ProgramGenerator__all_variables_visible()
     #test_ProgramGenerator__create_program_3()
-    pass
+    pass #pylint:disable-msg=W0107

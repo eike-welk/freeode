@@ -10,17 +10,25 @@ is in the Python programming language, using the Numpy and Scipy libraries.
 
 
 Prerequisites:
-- The generated simulation programs depend on three libraries for numerical
-  computations and plotting: "numpy", "scipy", "matplotlib". Homepages:
+- The compiler needs Python version 2.6 or newer; however below Python 3.0. 
+  It contains a modified copy of the Pyparsing library. 
+  http://www.python.org/
+- The generated simulation programs additionally depend on three libraries for 
+  numerical computations and plotting: "numpy", "scipy", "matplotlib". 
   http://numpy.scipy.org/
   http://www.scipy.org/
   http://matplotlib.sourceforge.net/
 
-  These libraries should exist for most Linux distributions.
+  These libraries exist for most popular operation systems (Linux/Windows/Mac). 
+  Installation instructions:
+    http://www.scipy.org/Installing_SciPy/Linux
   Suse users go to:
-  http://repos.opensuse.org/science/
+    http://download.opensuse.org/repositories/science/
+    Package search:
+    http://software.opensuse.org/search
   Windows users go to:
-  http://code.enthought.com/enthon/
+    http://www.pythonxy.com/
+    http://code.enthought.com/enthon/
 
 
 
@@ -54,8 +62,8 @@ The compiler understands the --help option.
 
 Syntax:
 The syntax of the SIML language is fairly simple. However there exists
-currently no description of the syntax, or even a tutorial. To learn
-the syntax you must look at the *.siml example files.
+currently no description of the syntax, or even a tutorial. To learn the
+syntax you must look at the *.siml example files in the directory "../models".
 
 
 

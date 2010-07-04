@@ -1,7 +1,28 @@
-#    Copyright (C) 2009 by Eike Welk
-#    eike.welk@post.rwth-aachen.de
-
-
+#############################################################################
+#    Copyright (c) 2007 - 2010  Eike Welk                                          #
+#    eike.welk@gmx.net                                                      #
+#                                                                           #
+#    License: Expat License (X11 License)                                   #
+#                                                                           #
+#    Permission is hereby granted, free of charge, to any person obtaining  #
+#    a copy of this software and associated documentation files (the        #
+#    "Software"), to deal in the Software without restriction, including    #
+#    without limitation the rights to use, copy, modify, merge, publish,    #
+#    distribute, sublicense, and/or sell copies of the Software, and to     #
+#    permit persons to whom the Software is furnished to do so, subject to  #
+#    the following conditions:                                              #
+#                                                                           #
+#    The above copyright notice and this permission notice shall be         #
+#    included in all copies or substantial portions of the Software.        #
+#                                                                           #
+#    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        #
+#    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     #
+#    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. #
+#    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   #
+#    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   #
+#    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      #
+#    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 #
+#############################################################################
 
 #-----------------------------------------------------------------------------
 #          Different Predator Prey Models
@@ -44,7 +65,6 @@
 class ClassicModel:
     data x, y: Float #state variables
     data a, b, c, d: Float param
-    data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
         #  | growth | predation
@@ -61,7 +81,6 @@ class ClassicModel:
         x = 2
         y = 2
         #administrative parameters
-        showGraph = 1
         solution_parameters(duration = 30, reporting_interval = 0.1)
 
 
@@ -74,15 +93,12 @@ class ClassicModel:
         x = start_x
         y = start_y
         #administrative parameters
-        showGraph = 0
         solution_parameters(duration = duration, reporting_interval = 0.1)
 
 
     func final(this):
-        if showGraph == 1:
-            graph(x, y, title='Classic Predator Prey Model')
-        else:
-            pass
+        graph(x, y, title='Classic Predator Prey Model')
+        print('classic_final', x, y, time)
 
 
 
@@ -95,7 +111,6 @@ class ClassicModel:
 class LogisticPrey:
     data x, y: Float #state variables
     data a, b, c, d, K: Float param
-    data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
         #  | growth        | predation
@@ -113,7 +128,6 @@ class LogisticPrey:
         x = 2
         y = 2
         #administrative parameters
-        showGraph = 1
         solution_parameters(duration = 30, reporting_interval = 0.1)
 
 
@@ -127,15 +141,12 @@ class LogisticPrey:
         x = start_x
         y = start_y
         #administrative parameters
-        showGraph = 0
         solution_parameters(duration = duration, reporting_interval = 0.1)
 
 
     func final(this):
-        if showGraph == 1:
-            graph(x, y, title='Predator Prey Model; Logistic Growth of Prey')
-        else:
-            pass
+        graph(x, y, title='Predator Prey Model; Logistic Growth of Prey')
+        print('logistic_final', x, y, time)
 
 
 
@@ -161,7 +172,6 @@ class EnhancedModel:
     data muX, muY: Float #growth rates
     data hunting_yield: Float #Amount of animals killed by huntiong
     data muXMax, muYMax, Yxy, Dy, Kx, Ky, Hx, Hy: Float param
-    data showGraph: Float param #Flag if graphs should be shown
 
     func dynamic(this):
         muX = muXMax *(Kx-x)/Kx  #prey's growth rate (logistic growth)
@@ -187,7 +197,6 @@ class EnhancedModel:
         x = 2
         y = 2
         #administrative parameters
-        showGraph = 1
         solution_parameters(duration = 30, reporting_interval = 0.1)
 
 
@@ -206,15 +215,12 @@ class EnhancedModel:
         x = start_x
         y = start_y
         #administrative parameters
-        showGraph = 0
         solution_parameters(duration = duration, reporting_interval = 0.1)
 
 
     func final(this):
-        if showGraph == 1:
-            graph(x, y, title='Strongly Modified Predator Prey Model')
-        else:
-            pass
+        graph(x, y, title='Strongly Modified Predator Prey Model')
+        print('enhanced_final', x, y, time)
 
 
 

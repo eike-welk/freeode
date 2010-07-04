@@ -28,15 +28,17 @@ Utility classes and functions.
 from __future__ import division
 from __future__ import absolute_import          
 
+import os
 import sys
+from subprocess import Popen, PIPE
 from types import NoneType
 import freeode.third_party.pyparsing as pyparsing
 
 #version of the Siml compiler.
 PROGRAM_VERSION = '0.4.0a3'
 #How much debug information is printed
-# 0: No debug information; 1: some; ....
-DEBUG_LEVEL = 1
+# Control the amount of debug information that is printed
+DEBUG_AREAS = set(['general', 'perf'])
 
 
 
@@ -72,6 +74,20 @@ class Enum(object):
     
 
 
+def func(function_or_method):
+    '''
+    Convert bound and unbound methods into functions.
+    
+    Works with Python and Siml methods. If argument is a function it is 
+    returned unchanged. 
+    '''
+    if hasattr(function_or_method, 'im_func'):
+        return function_or_method.im_func
+    else:
+        return function_or_method
+    
+    
+    
 class AATreeMaker(object):
     '''
     Create an ASCII-art tree to visualize arbitrary Python objects. All of its
@@ -399,7 +415,7 @@ def aa_make_tree(in_obj):
 
 
 class UserException(Exception):
-    '''Exception that transports user visible error messages'''
+    '''Exception that transports user visible error messages.'''
     def __init__(self, message, loc=None, errno=None):
         Exception.__init__(self)
         self.msg = message
@@ -414,11 +430,11 @@ class UserException(Exception):
         return 'Error! ' + num_str + self.msg + '\n' + str(self.loc) + '\n'
 
     def __repr__(self):
-        return self.__class__.__name__ + str((self.msg, self.loc, self.errno))
+        return self.__class__.__name__ + repr((self.msg, self.loc, self.errno))
 
 
 
-def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-msg=W0102
+def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-msg=W0102,W0621
     '''
     Test if a function raises the expected exception. Can test error number of 
     UserException.
@@ -621,4 +637,152 @@ def make_unique_dotname(base_name, existing_names):
 
 
 
+def debug_print(*args, **kwargs):
+    '''
+    Print the positional arguments to the standard output
+    
+    The function supports a number of keyword arguments:
+    area='general' : str
+        Only produce output when area is in global set DEBUG_AREAS.
+    sep='' : str
+        This string is inserted between the printed arguments.
+    end='\n': str
+        This string is appended at the end of the printed output.
+    '''
+    #process keyword arguments
+    area = str(kwargs.get('area', 'general'))
+    if area not in DEBUG_AREAS:
+        return
+    end = str(kwargs.get('end', '\n'))
+    sep = str(kwargs.get('sep', ' '))
 
+    #test for illegal keyword arguments
+    legal_kwargs = set(['area', 'sep','end'])
+    real_kwargs = set(kwargs.keys())
+    if not(real_kwargs <= legal_kwargs):
+        err_kwargs = real_kwargs - legal_kwargs
+        print 'WARNING: "debug_print" got unexpected keyword argument(s): %s' \
+              % ', '.join(err_kwargs)
+        print '         Legal keyword arguments are: %s' % ', '.join(legal_kwargs)
+    
+    #print the positional arguments
+    for arg in args:
+        sys.stdout.write(str(arg) + sep)
+    sys.stdout.write(end)
+
+
+# ----- Testing program output -------------------------------------------------
+class Line(object):
+    '''
+    Represents a line that is expected in the output of a program.
+    
+    The line has the pattern:
+        string float float float ....
+    '''
+    def __init__(self, item_list=['foo:', 1., 2.], tol=1e-3, converter=float): #pylint:disable-msg=W0102
+        '''
+        item_list : [str, float, float, ...] or str
+            The items that are expected in the line.
+            - If item_list is a string it is split into a list; elements [1:] 
+              are then converted to float with the converter function.
+        tol : float
+            Tolerance for comparing the found values with the expected values.
+        converter: call-able object or None
+            This function is called with each of the detected values as its argument.
+            The function's result is compared to the values of the template. 
+            If convertes is None no conversion takes place
+        '''
+        object.__init__(self)
+        if isinstance(item_list, str):
+            item_list = item_list.split() #pylint:disable-msg=E1103
+            self.vals = map(converter, item_list[1:])
+        else:
+            #item_list is list
+            self.vals = item_list[1:]
+        self.start = str(item_list[0])
+        self.tol = tol
+        self.converter = converter
+        self.is_matched = False
+    
+    def make_line(self):
+        'Create the line that the template describes.'
+        return self.start + ' ' + ' '.join(map(str,self.vals))
+         
+
+        
+        
+def search_result_lines(text, line_templates):
+    '''
+    Test if a number of special lines can be found in a text.
+    
+    The lines which are expected in the text are given by a list of Line 
+    objects. Each line has the pattern:
+        string float float float ....
+        
+    Spaces at the start and end of each line are ignored (stripped).
+    
+    The string at the beginning identifies the line, the numbers following 
+    the string must match within the given tolerance. All lines must occur in 
+    the text. 
+    
+    If any mismatch is detected an AssertionError is raised.
+    
+    ARGUMENTS
+    ---------
+    text: str
+        The text which is scanned
+    line_templates: list(Line)
+        Description of the lines that must appear in the text
+    '''        
+    for line in text.split('\n'): 
+        s_line = line.strip()
+        #see if the line is one of the interesting lines
+        for tmpl in line_templates:
+            #The line is one of the interesting lines -> extract the values
+            if s_line.startswith(tmpl.start):
+                try:
+                    val_line = s_line[len(tmpl.start):] #remove tmpl.start
+                    s_vals = val_line.split()
+                    #Convert the values with the conversion function
+                    if tmpl.converter:
+                        vals = map(tmpl.converter, s_vals)
+                    else:
+                        vals = s_vals
+                    #Test the assertions
+                    if len(vals) != len(tmpl.vals):
+                        raise AssertionError()
+                    def compare((a, b)):
+                        return abs(a - b) < tmpl.tol   #pylint:disable-msg=W0631
+                    if not all(map(compare, zip(vals, tmpl.vals))):
+                        raise AssertionError()
+                    tmpl.is_matched = True
+                    break #Assume each line is matched by only one template
+                except AssertionError, _err:
+                    raise AssertionError(
+                    'Error: text template was violated! \n' +
+                    'Expected line: "%s" \n' % tmpl.make_line() +
+                    'Got line     : "%s" \n' % line)
+                    
+    #Test if all templates are matched        
+    for tmpl in line_templates:
+        if tmpl.is_matched == False:
+            raise AssertionError('Not all templates were matched! \n' +
+                                 'Missing line: "%s" \n' % tmpl.make_line())
+
+
+
+def compile_run(in_name, out_name, extra_args='', run_sims='all', clean_up=True):
+    '''Compile and run a simulation.'''
+    #Run compiler and simulation(s); catch the output
+    cmd_str = 'python simlc %s -o %s -r %s %s' % (in_name, out_name, 
+                                                  run_sims, extra_args)
+    sim = Popen(cmd_str, shell=True, stdout=PIPE)
+    res_txt, _ = sim.communicate()
+    debug_print('Program output: \n', res_txt, sep='')
+    debug_print('Return code: ', sim.returncode)
+    #Clean up
+    if clean_up:
+        os.remove(out_name)
+    #Program must say that it terminated successfully 
+    assert sim.returncode == 0, 'Program exited with error.'
+    return res_txt

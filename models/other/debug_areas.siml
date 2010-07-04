@@ -1,5 +1,5 @@
 #############################################################################
-#    Copyright (c) 2007 - 2010  Eike Welk                                          #
+#    Copyright (c) 2009 - 2010  Eike Welk                                          #
 #    eike.welk@gmx.net                                                      #
 #                                                                           #
 #    License: Expat License (X11 License)                                   #
@@ -26,43 +26,35 @@
 
 
 
-#Biological reactor with no inflow or outfow
-class Batch:
-    #Define values that stay constant during the simulation.
-    data mu_max, Ks, Yxs: Float param
-    #Define values that change during the simulation.
-    data mu, X, S: Float
+#-----------------------------------------------------------------------------
+#
+#          Test the debug area feature of "print" and "printc"
+#  
+#-----------------------------------------------------------------------------
 
-    #Initialize the simulation.
+#debug areas at compile time
+printc("debug-compile-time1: 1", area="debug-compile-time")
+printc("print-always: 1")
+
+class A:
+    data x: Float
+    
     func initialize(this):
-        #Specify options for the simulation algorithm.
-        solution_parameters(duration=20, reporting_interval=0.1)
-        #Give values to the parameters
-        mu_max = 0.32; #max growth speed
-        Ks     = 0.01; #at this sugar concentration growth speed is 0.5*mu_max
-        Yxs    = 0.5;  #one g sugar gives this much biomass
-        #Give initial values to the state variables.
-        X      = 0.1;  #initial biomass concentration
-        S      = 20;   #initial sugar concentration
+        x = 0
+        solution_parameters(100, 10)
+        print ("init-x:", x)
+        print("debug-run-time2: 2", area="debug-run-time")
+        printc("debug-compile-time2: 2", area="debug-compile-time")
         
-        #For the test scripts.
-        print('initial-values:', X, S)
-
-
-    #compute dynamic behaviour - the system's 'equations'
     func dynamic(this):
-        mu = mu_max * S/(S+Ks); #growth speed (of biomass)
-        $X = mu*X;              #change of biomass concentration
-        $S = -1/Yxs*mu*X;       #change of sugar concentration
-
-
-    #show results
-    func final(this):
-        graph(mu, X, S);
+        $x = 1
+        print("debug-run-time3: 3", area="debug-run-time")
+        printc("debug-compile-time3: 3", area="debug-compile-time")
         
-        #For the test scripts, the example programs are run and the output 
-        #is analyzed.
-        print('final-values:', X, S)
+    func final(this):
+        print ("final-x:", x)
+        print("debug-run-time4: 4", area="debug-run-time")
+        printc("debug-compile-time4: 4", area="debug-compile-time")
+        
 
-
-compile Batch
+compile A

@@ -61,10 +61,11 @@ import math
 import os
 import types
 import inspect
+import time
 from copy import deepcopy
 
 from freeode.util import (UserException, DotName, TextLocation, AATreeMaker, 
-                          aa_make_tree, DEBUG_LEVEL, EnumMeta)
+                          aa_make_tree, DEBUG_AREAS, EnumMeta, debug_print)
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
                          RoleAlgebraicVariable, RoleTimeDifferential, 
                          RoleStateVariable, RoleInputVariable,
@@ -325,20 +326,31 @@ class CodeGeneratorObject(InterpreterObject):
    
 def test_allknown(*args):
     '''
-    Test if all arguments are known constants. 
+    Test if all arguments are known constants. Raise UnknownArgumentsException 
+    if any argument is unknown. 
     
-    Raise UnknownArgumentsException if any argument is unknown; raising 
-    UnknownArgumentsException (usually) tells the interpreter to generate code. 
+    Code generation:
+    The decision (Exception) to generate code for a built in function originates
+    usually from here! 
+
+    ARGUMENTS
+    ---------
+    *args : CodeGeneratorObject, NodeFuncCall, NodeParentheses 
+    Any number of arguments are permitted. 
     
-    All arguments must be CodeGeneratorObject.
+    Returns
+    -------
+    None
     '''
     for arg in args:
-        if isinstance(arg, CodeGeneratorObject) and arg.is_known:
-            assert isrole(arg, RoleConstant), \
-                'All objects that are known at compile time must be constants.'
-            #We know: The argument is a known constant; test the next argument.
+        dont_read_unknown_const(arg)
+        if isknownconst(arg):
+                #We know: argument is a known constant; test next argument.
+                continue
         else:
+            #Unknown variable or parameter
             raise UnknownArgumentsException()
+       
 
         
 def isknownconst(siml_obj):
@@ -366,6 +378,13 @@ def isknownconst(siml_obj):
         return False
 
 
+def dont_read_unknown_const(obj):
+    '''Raise UserException if obj is an unknown constant.'''
+    if isinstance(obj, CodeGeneratorObject) and \
+       isrole(obj, RoleConstant) and not obj.is_known:
+        raise UserException('Illegal read access to unknown constant.', 
+                            errno=3190110)
+      
       
 class Signature(object):
     """
@@ -667,8 +686,8 @@ class Proxy(InterpreterObject):
 
 def make_pyfunc_loc(py_func):
     '''Create a TextLocation object for a Python function.'''
-    file_name = py_func.__code__.co_filename
-    line_no = py_func.__code__.co_firstlineno
+    file_name = inspect.getfile(py_func)
+    _lines, line_no = inspect.getsourcelines(py_func)
     loc = TextLocation(file_name=file_name, line_no=line_no)
     return loc
     
@@ -723,7 +742,7 @@ class SimlFunction(InterpreterObject):
     '''
     Function written in Siml (user defined function).
     '''
-    def __init__(self, name, signature=Signature(),
+    def __init__(self, name, signature=Signature(), #pylint:disable-msg=W0621
                   statements=None, global_scope=None, loc=None, dot_name=None):
         #CallableObject.__init__(self, name)
         InterpreterObject.__init__(self)
@@ -930,13 +949,12 @@ class IBool(CodeGeneratorObject):
     @signature([BOOLP, BOOLP], INone) 
     def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
-        if other.value is not None:
-            if self.is_known:
-                raise UserException('Duplicate assignment.')
-            self.value = other.value
-            self.is_known = True
-        else:
-            raise UnknownArgumentsException()
+        if self.is_known:
+            raise UserException('Duplicate assignment.')
+        dont_read_unknown_const(other) 
+        #perform the assignment
+        self.value = other.value
+        self.is_known = True
         
     #printing
     def __str__(self):#convenience for sane behavior from Python
@@ -1006,13 +1024,12 @@ class IString(CodeGeneratorObject):
     @signature([STRINGP, STRINGP], INone) 
     def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
-        if isinstance(other, IString) and other.value is not None:
-            if self.is_known:
-                raise UserException('Duplicate assignment.')
-            self.value = other.value
-            self.is_known = True
-        else:
-            raise UnknownArgumentsException()
+        if self.is_known:
+            raise UserException('Duplicate assignment.')
+        dont_read_unknown_const(other) 
+        #perform the assignment
+        self.value = other.value
+        self.is_known = True
         
     #Printing
     def __str__(self):#convenience for sane behavior from Python
@@ -1141,14 +1158,13 @@ class IFloat(CodeGeneratorObject):
     @signature([FLOATP, FLOATP], INone) 
     def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
-        if isinstance(other, IFloat) and other.value is not None:
-            if self.is_known:
-                raise UserException('Duplicate assignment.')
-            self.value = other.value
-            self.is_known = True
-        else:
-            raise UnknownArgumentsException()
-
+        if self.is_known:
+            raise UserException('Duplicate assignment.')
+        dont_read_unknown_const(other) 
+        #perform the assignment
+        self.value = other.value
+        self.is_known = True
+        
     def __str__(self): #convenience for sane behavior from Python
         if self.value is None:
             return '<unknown Float>'
@@ -1183,25 +1199,27 @@ def siml_print(*args, **kwargs):
     TODO: How can user defined objects be printed at runtime?
 
     The function supports a number of keyword arguments:
-    debug_level=0: Float
-        Only produce output when the program's debug level is greater or equal 
-        this value.
+    area='' : str
+        Only produce output when area is in global set DEBUG_AREAS.
+        The special value '' means: print unconditionally.
+        To change use command line option --debug-area=area1,area2, ...    
     end='\n': String
-        This string is appendet at the end of the printed output.
+        This string is appended at the end of the printed output.
         
     The function executes at runtime; calling this function always creates code.
     '''
     #check keyword arguments
-    legal_kwarg_names = set(['debug_level', 'end'])
-    for arg_name, in kwargs.keys():
+    legal_kwarg_names = set(['area', 'end'])
+    for arg_name in kwargs.keys():
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
-    debug_level = kwargs.get('debug_level', IFloat(0))
-    if not istype(debug_level, IFloat):
-        raise UserException('Argument "debug_level" must be of type Float')
+    area = kwargs.get('area', IString(''))
+    if not isinstance(area, IString):
+        raise UserException('Argument "area" must be of type String')
     end = kwargs.get('end', IString('\n'))
-    if not istype(end, IString):
+    if not isinstance(end, IString):
         raise UserException('Argument "end" must be of type IString')
+    _sep=' '
 
     #create code that prints at runtime
     new_args = tuple()
@@ -1215,7 +1233,7 @@ def siml_print(*args, **kwargs):
         str_expr = INTERPRETER.eval(str_call)
         new_args += (str_expr,) #collect the call's result
     #create a new call to the print function
-    print_call = NodeFuncCall(siml_print, new_args, {})
+    print_call = NodeFuncCall(siml_print, new_args, kwargs)
     decorate_call(print_call, INone)
     return print_call
 
@@ -1230,11 +1248,12 @@ def siml_printc(*args, **kwargs):
     The arguments are converted to strings and printed at compile time.
     
     The function supports a number of keyword arguments:
-    debug_level=0: Float
-        Only produce output when the program's debug level is greater or equal 
-        this value.
+    area='' : str
+        Only produce output when area is in global set DEBUG_AREAS.
+        The special value '' means: print unconditionally.
+        To change use command line option --debug-area=area1,area2, ...
     end='\n': String
-        This string is appendet at the end of the printed output.
+        This string is appended at the end of the printed output.
         
     The function executes at compile time; calling this function does not create 
     code.
@@ -1244,22 +1263,23 @@ def siml_printc(*args, **kwargs):
     #      also true for siml_print, siml_graph
     #TODO: Or implement *args, **kwargs in Siml.
     #check keyword arguments
-    legal_kwarg_names = set(['debug_level', 'end'])
-    for arg_name, in kwargs.keys():
+    legal_kwarg_names = set(['area', 'end'])
+    for arg_name in kwargs.keys():
         if arg_name not in legal_kwarg_names:
             raise UserException('Unknown keyword argument: %s' % arg_name)
-    debug_level = kwargs.get('debug_level', IFloat(0))
-    if not isinstance(debug_level, IFloat):
-        raise UserException('Argument "debug_level" must be of type Float')
+    area = kwargs.get('area', IString(''))
+    if not isinstance(area, IString):
+        raise UserException('Argument "area" must be of type String')
     end = kwargs.get('end', IString('\n'))
     if not isinstance(end, IString):
         raise UserException('Argument "end" must be of type IString')
     sep=' '
-    
+
     #observe debug level
-    if debug_level.value > DEBUG_LEVEL:
+    area = str(area)
+    if not (area == '' or area in DEBUG_AREAS):
         return
-    
+
     #create output string
     out_str = ''
     for arg1 in args:
@@ -1268,7 +1288,7 @@ def siml_printc(*args, **kwargs):
         else:
             out_str += aa_make_tree(arg1) + sep
     out_str += end.value
-    print out_str
+    print out_str,
             
 
 
@@ -1577,6 +1597,12 @@ def create_built_in_lib():
         return IFloat(math.tan(x.value))
     lib.tan = w_tan
     
+    @signature([IFloat], IFloat)
+    def w_abs(x):
+        test_allknown(x)
+        return IFloat(abs(x.value))
+    lib.abs = w_abs
+    
     @signature([IFloat, IFloat], IFloat)
     def w_max(a, b):
         test_allknown(a, b)
@@ -1725,6 +1751,8 @@ class CompiledClass(object):
         #supplied from the outside at runtime. Currently arguments of
         #initialization functions.
         self.external_inputs = []
+        #Function locals of all functions
+        self.func_locals = []
         #The flattened attributes indexed by their DotName
         self.attributes = {}
         self.attributes.update(extra_attributes)
@@ -1743,7 +1771,21 @@ class CompiledClass(object):
         'Return true if attribute with name exists.'
         return name in self.attributes
 
-
+    def find_attribute_name(self, in_attr):
+        for name, attr in self.attributes.iteritems():
+            if attr is in_attr:
+                return name
+        return None
+    
+#    def set_func_locals(self, func_locals):
+#        '''
+#        Create list of local variables of all functions.
+#        The local variables (off course) appear in self.attributes too.
+#        '''
+#        assert isinstance(func_locals, InterpreterObject)
+#        self.func_locals = func_locals.__dict__.values()
+        
+        
 
 #The one and only interpreter
 INTERPRETER = None
@@ -1870,10 +1912,9 @@ class Interpreter(object):
         val_expr = self.eval(node.arguments[0])
 
         #see if there is an object between the brackets, that can express only
-        #one value. No matter wether known or unknown, there are no brackets
+        #one value. No matter whether known or unknown, there are no brackets
         #necessary in this case. Return the object without brackets
-        if isinstance(val_expr, (InterpreterObject, NodeFuncCall,
-                                 NodeParentheses)):
+        if isinstance(val_expr, (InterpreterObject, NodeParentheses)):
             #return the object
             return val_expr
         #otherwise there is an unevaluated expression between the brackets.
@@ -1913,7 +1954,7 @@ class Interpreter(object):
         func = self.get_attribute(inst_rhs.__siml_type__, func_name, node.loc)
 
         #Call the special function; may return an unevaluated function call
-        result = self.apply(func, (inst_rhs,))
+        result = self.apply(func, (inst_rhs,), loc=node.loc)
         return result
 
 
@@ -1957,7 +1998,7 @@ class Interpreter(object):
         func = self.get_attribute(ev_lhs.__siml_type__, lfunc_name, node.loc)
         try:
             #Call the special function; may return an unevaluated function call
-            result = self.apply(func, (ev_lhs, ev_rhs))
+            result = self.apply(func, (ev_lhs, ev_rhs), loc=node.loc)
             return result
         except NotImplementedError:# IncompatibleTypeError?
             #TODO: if an operator is not implemented the special function should raise
@@ -2049,6 +2090,7 @@ class Interpreter(object):
             if isinstance(func_obj, SimlFunction): 
                 ret_val = self.apply_siml(func_obj, bound_args)
             else:
+                #Code generation: The exception to generate code comes from here!
                 ret_val = func_obj(*posargs, **kwargs)  #pylint:disable-msg=W0142
             
             #TODO: maybe also convert string -> IString, float -> IFloat
@@ -2062,7 +2104,9 @@ class Interpreter(object):
             return ret_val
         
         except UnknownArgumentsException:
-            #Some arguments were unknown; create an unevaluated function call
+            #Some arguments were unknown.
+            #Code generation: The code for an unevaluated function call is 
+            #(usually) created here. 
             new_call = NodeFuncCall(func_obj, posargs, kwargs, loc)
             decorate_call(new_call, func_obj.siml_signature.return_type)
             return new_call
@@ -2162,9 +2206,10 @@ class Interpreter(object):
         else:
             raise Exception('Unknown node type for expressions: ' 
                             + str(type(expr_node)))
-
+        return
     
-    # --- Statements ------------------------------------------
+    
+    # --- Statements ----------------------------------------------------------
     #    Execute statements
     #
     #    Each eval_* function executes one type of statement (AST-Node).
@@ -2279,60 +2324,73 @@ class Interpreter(object):
             self.apply(assign_func, (value,))
             return
         
-        #Only built in functions from here on: ------------------
+        #Only built in assignment functions from here on: ------------------
+        #Implies: target is built in type
         #Test if assignment is possible according to the role.
         if is_role_more_variable(value.__siml_role__, target.__siml_role__):
             raise UserException('Incompatible roles in assignment. '
                                 'LHS: %s RHS: %s' % (str(target.__siml_role__),
                                                      str(value.__siml_role__)), loc)
-        #perform assignment - function is built in and target is constant
+        #Generating code for an assignment has to be handled here entirely. 
+        #assign(...) generates a NodeFuncCall, not NodeAssignment  
         if isrole(target, RoleConstant):
-            try:
-                self.apply(assign_func, (value,))
-            except UnknownArgumentsException:
-                UserException('Unknown value in assignment to constant.', loc)
-            return
-        #Generate code for one assignment (of fundamental types)
-        #target is a parameter or a variable
-        new_assign = NodeAssignment(target, value, loc)
-        #create sets of input and output objects for the optimizer
-#        #TODO: maybe put this into optimizer?
-#        if isinstance(value, InterpreterObject):
-#            new_assign.inputs = set([value])
-#        else:
-#            #value is an expression
-#            new_assign.inputs = value.inputs
-#        new_assign.outputs = set([target])
-        #append generated assignment statement to the alredy generated code.
-        self.collect_statement(new_assign)
+            #perform assignment - target is a constant
+            self.apply(assign_func, (value,))
+        else: 
+            #Generate code for assignment - target is a parameter or a variable
+            dont_read_unknown_const(value) 
+            new_assign = NodeAssignment(target, value, loc)
+            #append generated assignment statement to the alredy generated code.
+            self.collect_statement(new_assign)
 
 
-    def exec_NodeIfStmt(self, node):
+    def exec_NodeIfStmt_compile_time(self, node):
+        '''
+        Interpret a "ifc" statement.
+        
+        This compile time "if" statement always executes at compile time. It is
+        used to create macros; different code can be generated depending on the 
+        situation: 
+        Code is never generated for the "ifc" statement itself. But when the 
+        statements in the body of a clause are executed code may be generated. 
+        
+        Properties:
+        - The conditions must be decidable at compile time (evaluate to 
+          Bool/Float constants).
+        - There can be "return" statements in the body of any clause.
+        - No "else" clause required.
+        - No special requirements about the use of variables.
+        '''
+        #A clause consists of: <condition>, <list of statements>.
+        #This is inspired by Lisp's 'cond' special-function.
+        #http://www.cis.upenn.edu/~matuszek/LispText/lisp-cond.html
+        for clause in node.clauses:
+            #interpret the condition
+            condition_ev = self.eval(clause.condition)
+            #Test some possible errors
+            if not istype(condition_ev, (IBool, IFloat)):
+                raise UserException('Conditions must evaluate to Bool or Float.',
+                                    loc=clause.loc)#, errno=3700510)
+            if not isknownconst(condition_ev):
+                raise UserException('Conditions of the "ifc" statement must be known at compile time.',
+                                    loc=clause.loc)#, errno=3700520)
+            #Execute the statements in the clause's body if the condition is true
+            if bool(condition_ev.value) == True:
+                self.exec_(clause.statements)
+                break #Only execute the first true clause
+
+    
+    def exec_NodeIfStmt_run_time(self, node):
         '''
         Interpret an "if" statement.
 
-        If no code is generated (in constant contexts) the if statement works
-        like in Python. All expressions must offcourse evaluate
-        to constants; especially the conditions.
-
-        If code is generated multiple clauses/branches of the 'if' statement
-        must potentially be visited. This is the algorithm:
-        - The interpreter visits each clause where the condition's truth
-          value can not be determined at compile time (the condition evaluates
-          to an expression or to an unknown variable).
-        - The interpreter visits clauses where the condition evaluates to
-          True at compile time.
-        - A clauses where the condition evaluates to True is the last clause
-          which is visited by the interpreter. Further clauses are ignored.
-        - If statements that can be completely decided at compile time are
-          optimized away.
-
-        There are additional requirements for if statements when code is
-        generated:
-        - The last clause of every if statement must have a condition that
-          evaluates to True (constant with value equivalent to True). In
-          other words: In the compiled code each if statement must end
-          with an else clause.
+        This runtime "if" statement is always executed at runtime (not at 
+        compile time), code is always generated for it. 
+        
+        There are additional requirements for this statement:
+        - An "else" clause is reqired. (Really: the last condition must 
+          evaluate to constant True.)
+        - No "return" is permitted statement in any clause. 
         - All clauses must assign to the same variables.
         '''
         #TODO: Infrastructure to integrate protection against duplicate
@@ -2342,13 +2400,14 @@ class Interpreter(object):
         #      - Local variables of functions however, will be created
         #      uniquely for each function invocation. They can therefore
         #      only be assigned once, even in an 'if' statement.
-        is_collecting_code = False
-        is_seen_else_clause = False
-        new_if = None
+
         #If code is created, create a node for an if statement
-        if self.is_collecting_code():
-            is_collecting_code = True
-            new_if = NodeIfStmt(None, node.loc)
+        if not self.is_collecting_code():
+            raise UserException('Generating code is illegal in this context, '
+                                'but the "if" statement always generates code.', 
+                                node.loc)#, errno=3700610)
+
+        new_if = NodeIfStmt(None, True, node.loc)
         try:
             #A clause consists of: <condition>, <list of statements>.
             #This is inspired by Lisp's 'cond' special-function.
@@ -2357,69 +2416,32 @@ class Interpreter(object):
                 #interpret the condition
                 condition_ev = self.eval(clause.condition)
                 if not istype(condition_ev, (IBool, IFloat)):
-                    raise UserException('Conditions must evaluate to '
-                                        'instances of Bool or Float.',
-                                        loc=clause.loc)#, errno=3700510)
-
-                #Condition evaluates to constant False: Do not enter clause.
-                if isknownconst(condition_ev) and bool(condition_ev.value) is False:
-                    continue
-                #Condition evaluates to constant True
-                #This is the last clause, the 'else' clause
-                elif isknownconst(condition_ev) and bool(condition_ev.value) is True:
-                    is_seen_else_clause = True
-                #Condition evaluates to unknown value
-                #This is only legal when code is created
-                elif not is_collecting_code:
-                    raise UserException('Only conditions with constant values '
-                                        'are legal in this context.',
-                                        loc=clause.loc)#, errno=3700520)
-
-                #If code is created, create node for a clause
-                #Tell interpreter to put generated statements into body of clause
-                if is_collecting_code:
-                    new_clause = NodeClause(condition_ev, [], clause.loc)
-                    new_if.clauses.append(new_clause)
-                    self.push_statement_list(new_clause.statements)
-                #interpret the statements
+                    raise UserException('Conditions must evaluate to Bool or Float.',
+                                        loc=clause.loc)#, errno=3700620)
+                #create node for a clause
+                new_clause = NodeClause(condition_ev, [], True, clause.loc)
+                new_if.clauses.append(new_clause)
+                #Tell interpreter to put generated statements into body of new clause
+                self.push_statement_list(new_clause.statements)
+                #Interpret the statements in the body of every clause.
                 self.exec_(clause.statements)
                 #Tell interpreter to put generated statements into previous location
-                if is_collecting_code:
-                    self.pop_statement_list()
+                self.pop_statement_list()
 
-                if is_seen_else_clause:
-                    break
-        except ReturnFromFunctionException, e:
-            raise UserException('Return statemens are illegal inside "if" '
-                                'statements.', loc=e.loc)
-
-        #Optimizations of the generated 'if' statement, and checking of
-        #special constraints.
-        #  The optimizations give the 'if' statement additionally the power of
-        #  makros and C++ templates: Different code can be generated depending
-        #  on the situation.
-        #
-        #remove 'if' statements where all clauses evaluated to false
-        if is_collecting_code and len(new_if.clauses) == 0:
-            new_if = None
-        #see if 'if' statement has the required 'else' clause
-        elif is_collecting_code and not is_seen_else_clause:
-            last_clause = new_if.clauses[-1]
-            raise UserException('Generated "if" statements must end with a '
-                                'clause that is always True; usually an '
-                                '"else".', loc=last_clause.loc, errno=3700530)
-        #if there is only one clause (which is always executed),
-        #optimize if statement away.
-        elif is_collecting_code and len(new_if.clauses) == 1:
-            for stmt in new_if.clauses[0].statements:
-                self.collect_statement(stmt)
-            new_if = None
-
-        #Store generated if statement in interpreter
-        if new_if is not None:
+            #Test for existence of 'else' clause
+            last_cond = new_if.clauses[-1].condition
+            if not (istype(last_cond, (IBool, IFloat)) and isknownconst(last_cond) and 
+                    bool(condition_ev.value) == True):
+                last_clause = new_if.clauses[-1]
+                raise UserException('"if" statements must have an "else" clause.', 
+                                    loc=last_clause.loc, errno=3700630)
+            #Store generated if statement in interpreter
             self.collect_statement(new_if)
-        return
-
+            return
+        except ReturnFromFunctionException, e:
+            raise UserException('Return statements are illegal inside "if" '
+                                'statements.', loc=e.loc, errno=3700640)
+                
 
     def exec_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
@@ -2555,9 +2577,6 @@ class Interpreter(object):
 #        if node.name is not None:
 #            setattr(self.environment.local_scope, node.name, tree_object)
 
-        #provide a module where local variables of functions can be stored
-        func_locals = InterpreterObject()
-
         #specify and discover main functions ---------------------------------------
         #TODO: Implement automatic calling of main functions in child objects.
         #TODO: additional main function for steady-state simulations:
@@ -2621,6 +2640,8 @@ class Interpreter(object):
         #create (empty) flat object
         flat_object = CompiledClass(class_obj.__name__, {DotName('time'):TIME}, 
                                     node.loc)
+        #provide a module where local variables of functions can be stored
+        func_locals = InterpreterObject()
 
         #call the main functions of tree_object and collect code
         for spec in main_func_specs:
@@ -2632,7 +2653,8 @@ class Interpreter(object):
             except AttributeError:
                 #Create empty function for the missing main funcion
                 func_flat = SimlFunction(func_name, Signature([NodeFuncArg('this')]),
-                                         statements=[], global_scope=self.built_in_lib)
+                                         statements=[], global_scope=self.built_in_lib,
+                                         loc=node.loc)
                 flat_object.create_attribute(DotName(func_name), func_flat)
                 print 'Warning: main function %s is not defined.' % str(func_name)
                 continue
@@ -2657,13 +2679,14 @@ class Interpreter(object):
 
             #call the main function and collect code
             self.start_collect_code(func_locals=func_locals)
-                                                #assign_target_roles=legal_roles)
             self.apply(func_tree, tuple(args_list), {})  
-            stmt_list, dummy = self.stop_collect_code()
+            stmt_list, _locals = self.stop_collect_code()
+            
             #create a new main function for the flat object with the collected code
             func_flat = SimlFunction(func_name, spec.proto.siml_signature,
                                      statements=stmt_list,
-                                     global_scope=self.built_in_lib)
+                                     global_scope=self.built_in_lib, 
+                                     loc=func_tree.im_func.loc)
             #Put new main function into flat object
             flat_object.create_attribute(DotName(func_name), func_flat)
 
@@ -2710,9 +2733,13 @@ class Interpreter(object):
 
         #flatten regular data first
         flatten(tree_object, flat_object, DotName())
-        #flatten local variables
-        flatten(func_locals, flat_object, DotName('__func_local__'))
-
+        #TODO: remove bad hack
+        #flatten local variables - hack to get list of function locals 
+        func_locals_flat = CompiledClass('dummy')
+        flatten(func_locals, func_locals_flat, DotName('__func_local__'))
+        flat_object.attributes.update(func_locals_flat.attributes)
+        flat_object.func_locals = func_locals_flat.attributes.values()
+        
         #store new object in interpreter
         self.add_compiled_object(flat_object)
 
@@ -2734,7 +2761,10 @@ class Interpreter(object):
                 elif isinstance(node, NodeAssignment):
                     self.exec_NodeAssignment(node)
                 elif isinstance(node, NodeIfStmt):
-                    self.exec_NodeIfStmt(node)
+                    if node.runtime_if == True:
+                        self.exec_NodeIfStmt_run_time(node)
+                    else:
+                        self.exec_NodeIfStmt_compile_time(node)
                 elif isinstance(node, NodeFuncDef):
                     self.exec_NodeFuncDef(node)
                 elif isinstance(node, NodeClassDef):
@@ -2762,9 +2792,10 @@ class Interpreter(object):
         except UndefinedAttributeError, e:
             raise UserException('Undefined attribute "%s".' % e.attr_name,
                                 loc=node.loc, errno=3800920)
+        return
+    
 
-
-    # --- code collection ------------------------------------------------------   
+    # --- collect code -----------------------------------------------------  
     def start_collect_code(self, stmt_list=None, func_locals=None, ):
         '''
         Set up everything for the code collection process
@@ -2953,6 +2984,13 @@ class Interpreter(object):
 
     def interpret_module_string(self, text, file_name=None, module_name='test'):
         '''Interpret the program text of a module.'''
+        time0 = time.clock()
+        #parse the program text
+        prs = simlparser.Parser()
+        ast = prs.parseModuleStr(text, file_name, module_name)
+        time1 = time.clock()
+        debug_print('Time spent in parser: ', time1 - time0, 's', area='perf')
+        
         #create the new module and import the built in objects
         mod = IModule(self.built_in_lib, module_name, file_name)
         #put module into root namespace (symbol table)
@@ -2968,14 +3006,13 @@ class Interpreter(object):
                                     loc=TextLocation(0, text, file_name))
         #put the frame on the frame stack
         self.push_environment(env)
-        #parse the program text
-        prs = simlparser.Parser()
-        ast = prs.parseModuleStr(text, file_name, module_name)
         #execute the statements - interpret the AST
         self.exec_(ast.statements)
         #remove frame from stack
         self.pop_environment()
         
+        time2 = time.clock()
+        debug_print('Time spent in interpreter: ', time2-time1, 's', area='perf')
         return mod
 
 
