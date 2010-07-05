@@ -1,5 +1,5 @@
 #############################################################################
-#    Copyright (c) 2007 - 2010  Eike Welk                                          #
+#    Copyright (c) 2007 - 2010  Eike Welk                                   #
 #    eike.welk@gmx.net                                                      #
 #                                                                           #
 #    License: Expat License (X11 License)                                   #
@@ -44,7 +44,7 @@ class Batch:
         #Give initial values to the state variables.
         X      = 0.1;  #initial biomass concentration
         S      = 20;   #initial sugar concentration
-        
+
         #For the test scripts.
         print('initial-values:', X, S)
 
@@ -59,7 +59,7 @@ class Batch:
     #show results
     func final(this):
         graph(mu, X, S);
-        
+
         #For the test scripts, the example programs are run and the output 
         #is analyzed.
         print('final-values:', X, S)

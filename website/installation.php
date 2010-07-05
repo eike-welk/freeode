@@ -24,9 +24,8 @@
     <li>Installation</li>
     <li><A href="installation.php#top">Top</A></li>
     <li><A href="installation.php#install-python">Python</A></li>
-    <li><A href="installation.php#install-pyparsing">Pyparsing</A></li>
-    <li><A href="installation.php#install-numpy-scipy">NumPy SciPy</A></li>
-    <li><A href="installation.php#install-matplotlib">Matplotlib</A></li>
+    <li><A href="installation.php#install-numpy-scipy-matplotlib">
+                   NumPy, SciPy, Matplotlib</A></li>
     <li><A href="installation.php#install-freeode">Freeode</A></li>
   </ul>
 </div>
@@ -37,19 +36,18 @@
   <h1>Installation</h1>
   <h2>Dependencies</h2>
   <p>
-    You need the
-    <A href="http://www.python.org/">Python</A>
-    language and some libraries:
-    The compiler uses the
-    <A href="http://pyparsing.wikispaces.com/">Pyparsing</A>
-    library.
-    The generated Python program needs the
+    The compiler only needs the
+    <A href="http://www.python.org/">Python</A> language.
+    The generated Python programs additionally need the
     <A href="http://numpy.scipy.org/">NumPy</A>
     ,
     <A href="http://www.scipy.org/">SciPy</A>
     and
     <A href="http://matplotlib.sourceforge.net/">Matplotlib</A>
-    libraries for numerical computations and plotting.
+    libraries for numerical computations and plotting. (The compiler contains 
+    a modified copy of the 
+    <A href="http://pyparsing.wikispaces.com/">Pyparsing</A> library, which 
+    therefore does not need to be installed.)
   </p>
 
   <p>
@@ -69,14 +67,7 @@
           <td><A href="http://www.python.org">Python</A></td>
           <td>programming language</td>
           <td>usually already installed</td>
-          <td>special binary distribution for scientist available</td>
-        </tr>
-
-        <tr>
-          <td><A href="http://pyparsing.wikispaces.com/">pyparsing</A></td>
-          <td>library for parsers</td>
-          <td>only sources</td>
-          <td>only sources</td>
+          <td>special binary distribution for scientists available</td>
         </tr>
 
         <tr>
@@ -106,96 +97,63 @@
   <!--============================== Installing Dependencies ========================================-->
   <h2>Installing Dependencies</h2>
 
-  <strong>
-    TODO: Add generic installation instructions for simple Python packages.
-    Shorten pyparsing and Freeode instructions.
-  </strong>
-
   <!--========================== Python ==========================-->
   <A name="install-python"></A>
   <h3>Python</h3>
+    <p>Freeode needs <strong>Python</strong> version between 
+	<strong>2.5</strong> and <strong>2.7</strong> (not Python 3.x).</p>
   <h4>Linux</h4>
   <p>
     <A href="http://www.python.org/">Python</A>
     should be already installed on your system.
-    If not, install it with your software management program.
-    Freeode needs <strong>Python</strong> version <strong>2.4</strong> or higher.</p>
+    If not, install it with your software management program (package manager).
+   </p>
   <h4>Windows</h4>
   <p>
     Most probably you will need to install Python on your computer.
-    For Windows there is a binary distributions, which is especially made for scientists:
+    For Windows there are binary distributions, which are especially made for 
+    scientists:
 
   </p>
+  <ul>
+    <li>Python(x,y): <A href="http://www.pythonxy.com/">download</A>.</li>
+  </ul>
   <ul>
     <li>Enthought Python: <A href="http://code.enthought.com/enthon/">download</A>.</li>
   </ul>
   <p>
-    It contains very many usefull features for scientific work.
-    Linux users (me) will envy you. I recommend that you install this distribution.
+    These distributions contain very many useful features for scientific work.
+    Linux users (me) will envy you. I recommend that you install one of them.
   </p>
   <p>
-    There is also the
-    <A href="www.activestate.com/Products/ActivePython/">ActivePython</A> distribution.
-    Dear readers, does this distribution contain NumPy, SciPy, and Matplotlib?
-    <em>Mail to eike at users.sourceforge.net</em>
+    The
+    <A href="http://www.activestate.com/Products/ActivePython/">ActivePython</A> 
+    distribution however seems not to contain the necessary libraries.
  </p>
 
 
-  <!--========================== Pyparsing ==========================-->
-  <A name="install-pyparsing"></A>
-  <h3>Pyparsing</h3>
+  <!--========================== Numpy, SciPy, Matplotlib ==========================-->
+  <A name="install-numpy-scipy-matplotlib"></A>
+  <h3>NumPy, SciPy, Matplotlib</h3>
   <p>
-    Get the latest source <strong>tar.gz</strong> package
-    (for example <strong>pyparsing-1.4.5.tar.gz</strong>) from the
-    <A href="http://sourceforge.net/project/showfiles.php?group_id=97203">download</A>
-    section and and extract the contents.
-    Then run the setup script (<strong>python setup.py install</strong>).
-    Ready.
+	The
+	<A href="http://www.scipy.org/">SciPy</A>
+	documentation contains
+	<A href="http://www.scipy.org/Installing_SciPy">instructions</A>
+	to install NumPy and SciPy. These cover Windows, Mac-OS, and a variety of 
+    Linux distributions.
   </p>
-  <p>
-    Alternatively you may try the binary packages and install them with your software
-    management tool.
-  </p>
+  <p>  
+	The Matplotlib
+	<A href="http://matplotlib.sourceforge.net/">website</A>
+	contains some
+	<A href="http://matplotlib.sourceforge.net/installing.html">installation instructions</A>.
+	Here is their
+	<A href="http://sourceforge.net/project/showfiles.php?group_id=80706">download area</A>.
   </p>
   <h4>Linux</h4>
-  <ul>
-    <li>
-      <A href="http://sourceforge.net/project/showfiles.php?group_id=97203">Download</A>
-      the latest source package (<strong>*.tar.gz</strong>).
-    </li>
-    <li>Open a shell window. Type:</li>
-  </ul>
-  <div id="code">
-    <pre>
-> cd **where you put the downloaded *.tar.gz file**
-> su                                #become root
-Password:
-> tar xvf pyparsing-1.4.5.tar.gz    #extract package contents
-> cd pyparsing-1.4.5/               #enter extracted directory
-> python setup.py install           #run installation script
-    </pre>
-  </div>
-  <h4>Windows</h4>
-  <ul>
-    <li>
-      <A href="http://sourceforge.net/project/showfiles.php?group_id=97203">Download</A>
-      the Windows installer (<strong>*.exe</strong>).
-    </li>
-    <li> Click on it. </li>
-  </ul>
-
-  <!--========================== Numpy, SciPy ==========================-->
-  <A name="install-numpy-scipy"></A>
-  <h3>NumPy, SciPy</h3>
-  <p>
-    The
-    <A href="http://www.scipy.org/">SciPy</A>
-    documentation contains
-    <A href="http://www.scipy.org/Installing_SciPy">instructions</A>
-    to install NumPy and SciPy. These cover Windows, Mac-OS, and a variety of Linux distributions.
-  </p>
-  <h4>Linux</h4>
-  <p>Binary distributions I know of:</p>
+  <p>Many distributions contain packages Numpy, SciPy, and Matplotlib, which 
+  then appear in the package manager. I specifically know of:</p>
   <ul>
     <li>
       <A href="http://www.opensuse.org/">openSuse</A>:
@@ -203,75 +161,37 @@ Password:
       <A href="http://software.opensuse.org/download/science/">
         http://software.opensuse.org/download/science/
       </A>.
-      The directories can be added as installation sources to Yast.
+      The directory that matches your version of openSuse can be added as an
+      installation source to Yast.
     </li>
     <li>
       <A href="http://www.ubuntu.com/">Ubuntu</A>:
-      Packages for Numpy, SciPy, and Matplotlib are in the Universe
+      Packages for Numpy, SciPy, and Matplotlib are in the 
+      <strong>Universe</strong> 
       <A href="http://www.ubuntu.com/ubuntu/components">component</A>.
-    </li>
-  </ul>
-  <p>
-    It is relatively easy to build both packages from sources.
-    Look at these
-    <A href="http://www.scipy.org/Installing_SciPy/BuildingGeneral">instructions</A>
-    that focus on building the underlying linear algebra libraries.
-    Some problems originate from the current state of free Fortran compilers:
-    The <A href="http://gcc.gnu.org/">GCC</A>
-    project changed its Fortran compiler from
-    <A href="http://gcc.gnu.org/wiki/GFortranG77">g77</A>
-    to the newer
-    <A href="http://gcc.gnu.org/wiki/GFortran">gfortran</A>
-    compiler.
-    Both compilers need different command line options and runtime libraries.
-  </p>
-  <h4>Windows</h4>
-  <p>
-    NumPy and SciPy (and Matplotlib) are included in Enthought's
-    <A href="http://code.enthought.com/enthon/">Python distribution</A>,
-    which I recommend.
-  </p>
-
-
-  <!--========================== Matplotlib ==========================-->
-  <A name="install-matplotlib"></A>
-  <h3>Matplotlib</h3>
-  The Matplotlib
-  <A href="http://matplotlib.sourceforge.net/">website</A>
-  contains some
-  <A href="http://matplotlib.sourceforge.net/installing.html">installation instructions</A>.
-  Here is their
-  <A href="http://sourceforge.net/project/showfiles.php?group_id=80706">download area</A>.
-  <h4>Linux</h4>
-  <p>Binary distributions I know of:</p>
-  <ul>
-    <li>
-      <A href="http://www.opensuse.org/">openSuse</A>:
-      A repository for Numpy, SciPy, and Matplotlib is here:
-      <A href="http://software.opensuse.org/download/science/">
-        http://software.opensuse.org/download/science/
-      </A>.
-      The directories can be added as installation sources to Yast.
-    </li>
-    <li>
-      <A href="http://www.ubuntu.com/">Ubuntu</A>:
-      Packages for Numpy, SciPy, and Matplotlib are in the Universe
-      <A href="http://www.ubuntu.com/ubuntu/components">component</A>.
+      Universe has to be enabled in the package manager, then packages
+      for Numpy, SciPy, and Matplotlib appear in the package manager together
+      with a large number of other packages.
     </li>
   </ul>
   <h4>Windows</h4>
   <p>
-    Matplotlib (and NumPy, SciPy) are included in Enthought's
-    <A href="http://code.enthought.com/enthon/">Python distribution</A>
-    which I recommend.
+    NumPy, SciPy and Matplotlib are included in both recommended Python 
+    distributions: 
+    <A href="http://www.pythonxy.com/">Python(x,y)</A> and
+    <A href="http://code.enthought.com/enthon/">Enthon</A>.
   </p>
-
 
 
   <!--============================== Installing Freeode ================================-->
   <A name="install-freeode"></A>
   <h2>Installing Freeode</h2>
   <p>
+    Freeode is distributed in several different formats: *.rpm, *.exe, *.tar.gz 
+    and *.zip. Files in *.rpm and *.exe can usually be installed by clicking 
+    on them. To use *.tar.gz and *.zip files you need to enter some 
+    commands on the command line to perform the installation.
+  
     Get the latest source <strong>tar.gz</strong> package
     (for example <strong>freeode-0.3.0.tar.gz</strong>) from the
     <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">download</A>
@@ -280,7 +200,7 @@ Password:
     Ready.
   </p>
   <p>
-    You can also create binary packages (<strong>rpm deb? exe</strong>) with this script;
+    You can also create binary packages (<strong>rpm, exe</strong>) with this script;
     to install them with the operating system's software management tool.
     Look at the comments inside the <strong>setup.py</strong> script.
   </p>

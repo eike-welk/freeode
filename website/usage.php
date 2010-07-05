@@ -42,7 +42,7 @@
     printed to the console. General usage is:
   </p>
   <p>
-    simlc &#060;input file name&#062; [&#060;options&#062;]
+    <strong>simlc &lt;input file name&#062; [&lt;options&gt;]</strong>
   </p>
   <p>
     When no options are given, the generated python program will have
@@ -53,7 +53,7 @@
   </p>
   <div id="code">
     <pre>
-$> simlc bioreactor_simple.siml
+$&gt; simlc bioreactor_simple.siml 
     </pre>
   </div>
 
@@ -69,20 +69,31 @@ $> simlc bioreactor_simple.siml
       <p>Print program's version number and exit.</p>
     </li>
     <li>
-      <strong>-o &#060;output_file>, --outfile=&#060;output_file></strong>
+      <strong>-o &lt;output_file&gt;, --outfile=&lt;output_file&gt;</strong>
       <p>Explicitly specify the name of the output file.</p>
     </li>
     <li>
-      <strong>-r &#060;number>, --run=&#060;number></strong>
+      <strong>-r &lt;number&gt;, --run=&lt;number&gt;</strong>
       <p>Run the generated simulation program after compiling.</p>
       <p>
 
-        The &#060;number> specifies which of the program's
+        The &lt;number&gt; specifies which of the program's
         simulation processes is run. The number counts from the top
         of the simulation program.
         The special value <strong>"all"</strong> means:
         run all simulation processes.
       </p>
+    </li>
+    <li>
+      <strong>--no-graphs</strong>
+      <p> Do not show any graph windows if running the simulation,  
+      in spite of calls to the <strong>graph</strong> functions. </p>
+    </li>
+    <li>
+      <strong>--debug-areas=&lt;area1,area2,...&gt;</strong>
+      <p>Specify debug areas to control printing of debug information, and the 
+      output of the <strong>printc</strong> function. 
+      This option is passed on to the simulation, if it is run.</p>
     </li>
   </ul>
 
@@ -105,11 +116,11 @@ $> simlc bioreactor_simple.siml
       <p>List the available simulations and exit.</p>
     </li>
     <li>
-      <strong>-r &#060;number>, --run=&#060;number></strong>
+      <strong>-r &lt;number&gt;, --run=&lt;number&gt;</strong>
       <p>Run the generated simulation program after compiling.</p>
       <p>
 
-        The &#060;number> specifies which of the program's
+        The &lt;number&gt; specifies which of the program's
         simulation processes is run. The number counts from the top
         of the simulation program.
         The special value <strong>"all"</strong> means:
@@ -120,8 +131,18 @@ $> simlc bioreactor_simple.siml
       <strong>--prepend-newline</strong>
       <p>
         Prepend the output with one newline.
-        Only usefull when the program is started from the compiler.
+        Only useful when the program is started from the compiler.
       </p>
+    </li>
+    <li>
+      <strong>--no-graphs</strong>
+      <p> Do not show any graph windows in spite of calls to the 
+      <strong>graph</strong> functions. </p>
+    </li>
+    <li>
+      <strong>--debug-areas=&lt;area1,area2,...&gt;</strong>
+      <p>Specify debug areas to control the output of the 
+      <strong>print</strong> function.</p>
     </li>
   </ul>
 
