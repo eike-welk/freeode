@@ -2332,7 +2332,7 @@ class Interpreter(object):
                                 'LHS: %s RHS: %s' % (str(target.__siml_role__),
                                                      str(value.__siml_role__)), loc)
         #Generating code for an assignment has to be handled here entirely. 
-        #assign(...) generates a NodeFuncCall, not NodeAssignment  
+        #apply(...) generates a NodeFuncCall, not NodeAssignment  
         if isrole(target, RoleConstant):
             #perform assignment - target is a constant
             self.apply(assign_func, (value,))

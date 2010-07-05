@@ -35,7 +35,7 @@ from types import NoneType
 import freeode.third_party.pyparsing as pyparsing
 
 #version of the Siml compiler.
-PROGRAM_VERSION = '0.4.0a3'
+PROGRAM_VERSION = '0.4.0'
 #How much debug information is printed
 # Control the amount of debug information that is printed
 DEBUG_AREAS = set(['general', 'perf'])
