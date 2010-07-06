@@ -145,11 +145,8 @@
   </p>
   <p>  
 	The Matplotlib
-	<A href="http://matplotlib.sourceforge.net/">website</A>
-	contains some
-	<A href="http://matplotlib.sourceforge.net/installing.html">installation instructions</A>.
-	Here is their
-	<A href="http://sourceforge.net/project/showfiles.php?group_id=80706">download area</A>.
+	<A href="http://matplotlib.sourceforge.net/">website</A> also contains some
+	<A href="http://matplotlib.sourceforge.net/users/installing.html">installation instructions</A>.
   </p>
   <h4>Linux</h4>
   <p>Many distributions contain packages Numpy, SciPy, and Matplotlib, which 
@@ -187,67 +184,101 @@
   <A name="install-freeode"></A>
   <h2>Installing Freeode</h2>
   <p>
-    Freeode is distributed in several different formats: *.rpm, *.exe, *.tar.gz 
-    and *.zip. Files in *.rpm and *.exe can usually be installed by clicking 
-    on them. To use *.tar.gz and *.zip files you need to enter some 
-    commands on the command line to perform the installation.
-  
-    Get the latest source <strong>tar.gz</strong> package
-    (for example <strong>freeode-0.3.0.tar.gz</strong>) from the
-    <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">download</A>
-    section and and extract the contents.
-    Then run the setup script (<strong>python setup.py install</strong>).
-    Ready.
+    Freeode is distributed in several different formats: Files in *.rpm and 
+    *.exe formats can usually be installed by clicking on them
+    (in RPM based Linux and Windows respectively). Software installed from these 
+    files can usually be easily removed from the computer, by the operating 
+    system's software management program.
+    To use *.tar.gz and *.zip files you need to enter some 
+    textual commands to perform the installation. The textual commands are quite 
+    powerful. You can create *.rpm and *.exe  files from the *.tar.gz and *.zip 
+    files. 
   </p>
   <p>
-    You can also create binary packages (<strong>rpm, exe</strong>) with this script;
-    to install them with the operating system's software management tool.
-    Look at the comments inside the <strong>setup.py</strong> script.
+    All files are available from Freeode's
+    <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">download area</A>
+    .
   </p>
-  <p>
-    Alternatively you may try the binary packages and install them with your software
-    management tool.
-  </p>
-  </p>
+
   <h4>Linux</h4>
-  <ul>
-    <li>
-      <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">Download</A>
-      the latest source package (<strong>*.tar.gz</strong>).
-    </li>
-    <li>Open a shell window. Type:</li>
-  </ul>
+  <p>On RPM based Distributions (Suse, Red Hat, Mandriva, ...) 
+  <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">download</A>
+  the latest <strong>*.rpm</strong> file
+  and click on it. The software management program (the package manager) should 
+  pop up and install the software, after asking you for the root password. 
+  To remove the package go to the package manager's list of installed 
+  software, search for a package named "freeode", and remove it.</p>
+  
+  <p>If you can't (or d'don't want to) use RPM packages, download the latest
+  <strong>*.tar.gz</strong> file, open a shell window and type the following 
+  commands:</p>
+
   <div id="code">
     <pre>
 > cd **where you put the downloaded *.tar.gz file**
+> tar xvf freeode-0.4.0.tar.gz     #extract package contents
+> cd freeode-0.4.0/                #enter extracted directory
 > su                               #become root
 Password:
-> tar xvf freeode-0.3.0.tar.gz     #extract package contents
-> cd freeode-0.3.0/                #enter extracted directory
 > python setup.py install          #run installation script
+> rm -rf build                     #remove the intermediate files
+> exit                             #give back root privileges 
     </pre>
   </div>
+  
+  <p>The command to create RPM files, if the supplied *.rpm file does not work 
+  on your system is:</p>
+  <div id="code">
+    <pre>
+> python setup.py bdist_rpm       #create RPM in directory dist/ 
+    </pre>
+  </div>
+  
   <h4>Windows</h4>
-  <p>Someone please try out the Windows installer! I want to know if it works.</p>
+  <p>
+	  <small><b>
+	  Someone please try out the Windows installer, and let me know if it really 
+	  works! Does un-installing work? The Windows installer has never been tested, 
+	  because Freeode's development happens entirely on Linux. Building Windows 
+	  installers is a built in feature of Python, which is even available on Linux.
+	  </b></small>
+  </p>
+  
+  <p>On Windows download the *.exe file and click on it. An installer
+  should pop up and install the software. You possibly need to enter the 
+  administrator password. Windows has a feature to remove software in the 
+  control panel (in Windows Vista it is  called "Programs and Features").</p>
+  
+  <p>For a text based installation do the following steps:
   <ul>
     <li>
       <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">Download</A>
-      the latest source package (<strong>*.tar.gz</strong>).
+      the latest (<strong>*zip</strong>) file.
     </li>
     <li>
       Extract the contents of the package.
-      You can for example use the
-      <A href="http://www.winzip.com/">Winzip</A>
-      program.
     </li>
-    <li>Open a DOS box. <em>How is this really called?</em></li>
-    <li>Got to the directory to where you downloaded the package.</li>
+    <li>Open a DOS box.</li>
+    <li>Change to the directory to where you downloaded the package.</li>
     <li>
-      Run the installation script: <strong>python setup.py install</strong>
-      (You might need administrator privileges.)
+      Run the installation script by typing: (You might need administrator 
+      privileges.)
+	  <div id="code">
+	    <pre>
+ python setup.py install 
+        </pre>
+      </div>
+    </li>
+    <li>
+      If you want to build a Windows installer, so that you can easily remove 
+      the software again, type the following command:
+      <div id="code">
+        <pre>
+ python setup.py bdist_wininst
+        </pre>
+      </div>
     </li>
  </ul>
-
 </div>
 
 

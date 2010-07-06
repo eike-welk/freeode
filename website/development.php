@@ -56,12 +56,11 @@
   <p>
     Development currently happens on Linux only.
     The
-    <A href="http://pydev.sourceforge.net/">Pydev</A>
-    extension for
+    <A href="http://pydev.org/">Pydev</A> extension for
     <A href="http://www.eclipse.org/">Eclipse</A>
     is used as the IDE. Pydev analyzes the program and can complete Python code much
     better than any other free IDE I know. It uses
-    <A href="www.logilab.org/857">Pylint</A>
+    <A href="http://www.logilab.org/857">Pylint</A>
     to flag errors and bad coding practice.
     Eclipse and Pydev are written in Java,
     and should therfore work on Windows
@@ -69,7 +68,7 @@
   </p>
   <p>
     Pydev's code completion is quite slow;
-    it can unfortunately not usefully work when all of NumPy
+    it can unfortunately not usefuly work when all of NumPy
     has been imported. It will then always hang for ~30s before it can show a list of
     possible completions (on Pentium M 1.4 GHz).
 <!--After typing: 'from scipy inport *' it will pause for about half a minute-->
@@ -86,25 +85,25 @@
 
 
   <A name="get-the-sources">
-  </A><h2>Getting the sources</h2>
+  </A><h2>Getting the sources, participate</h2>
   <p>
-    The latest version of all of the project's files, is available from the subversion
-    repository at BerliOS.
+    Freeode uses <A href="https://launchpad.net/">Launchpad</A> to coordinate 
+    development. The central location for all development activities is Freeode's 
+    <A href="https://launchpad.net/freeode">project page</A>.
+    The latest version of all of the project's files, is available in the 
+    <A href="https://launchpad.net/freeode/trunk">trunk series</A>.
   </p>
-  <p>
-    To check out (download) only the Python code, type the following in a shell window:
-  </p>
-  <div id="code">
-    <pre>svn checkout svn://svn.berlios.de/freeode/trunk/freeode_py </pre>
-  </div>
 
   <p>
-    To check out everything, including website, and some additional documentation, do:
+    To get the latest version of everything, including website, and some 
+    additional documentation, type:
   </p>
   <div id="code">
-    <pre>svn checkout svn://svn.berlios.de/freeode/trunk</pre>
+    <pre>bzr branch lp:freeode</pre>
   </div>
-
+    <p> This will create a directory named <kbd>freeode</kbd> in the current 
+    directory. The Python version of the  compiler is in: 
+    <kbd>freeode/freeode_py/</kbd>
   </div>
 
 

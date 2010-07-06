@@ -299,7 +299,7 @@ $> ./bioreactor_simple.py           <span style="font-style: italic;color: #8080
 
   <p>
   The compiler can also run the generated Program.
-  This is usefull for the development of simulation programs.
+  This is useful for the development of simulation programs.
   </p>
   <div id="code">
     <pre>
