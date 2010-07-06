@@ -30,12 +30,11 @@
     <li><A href="http://diveintopython.org/">Dive Into Python</A>
       <p>Alternative Python tutorial</p>
     </li>
-    <li><A href="http://www.amazon.com/gp/product/3540294155/">
+    <li><A href="http://www.amazon.com/Python-Scripting-Computational-Science-Engineering/dp/3540739157">
           Python Scripting for Computational Science</A>
       <p>
         Book. Introduction to Python and to numerical libraries for
-        scientists and engineers. A little dated
-        but still very usefull.
+        scientists and engineers. A little dated but still very useful.
       </p>
     </li>
   </ul>
@@ -50,15 +49,15 @@
         Sophisticated editor with flexible syntax coloring.
         Syntax coloring for the SIML language is possible;
         a highlighting XML-file is in the Freeode sources.
-        Also usefull for small scale Python programming.
+        Also useful for small scale Python programming.
       </p>
     </li>
-    <li><A href="http://www.die-offenbachs.de/detlev/eric3.html">Eric</A></li>
+    <li><A href="http://eric-ide.python-projects.org/index.html">Eric</A></li>
     <p>
-      Simple Python IDE. Favors experimention; very usefull for applications
+      Simple Python IDE. Favors experimention; very useful for applications
       using NumPy or SciPy. No flexible syntax coloring.
     </p>
-    <li><A href="http://pydev.sourceforge.net/">PyDev</A>
+    <li><A href="http://pydev.org/">PyDev</A>
       <p>
         Extension for Eclipse. Has the best code completion of the free
         Python IDEs I know. Fairly slow however.
@@ -69,10 +68,40 @@
 
   <h2>Similar Projects</h2>
   <ul>
-    <li><a href="http://math.colgate.edu:16080/~wweckesser/software/vfgen/">VFGEN</a>
+    <li><a href="http://www.warrenweckesser.net/vfgen/">VFGEN</a>
       <p>
         Differential equation is specified through XML.
         Can generate code for wide variety of solvers and other tools.
+      </p>
+    </li>
+  </ul>
+
+  <h2>Commercial Software</h2>
+  <ul>
+    <li><a href="http://www.psenterprise.com/gproms/">gPROMS</a>
+      <p>
+        Much more sophisticated than Freeode! It can solve ordinary and partial
+        differential equations. In addition to differential equations, it can
+        also simulate event based models that interact with the differential 
+        equations. Newer versions have a graphical editor.
+      </p>
+      <p>
+        The differential equation are modeled declaratively (as real equations), 
+        Freeode in contrast is imperative. This is 
+        quite elegant for writing the simulations and for code reuse. Debugging 
+        however is more hard, and it can lead to numerical instabilities.
+      </p>
+    </li>
+    <li><a href="http://www.modelica.org/">Modelica</a>
+      <p>
+        Modelica is a versatile language for simulating physical systems.
+        Continuous models can be specified in declarative (equation based) or 
+        imperative fashion. Event based models are also possible (IMHO). 
+        However partial differential equations can not be solved.
+      </p>  
+      <p> 
+        There are several free and commercial implementations available.
+        Some commercial implementations have a graphical editor.
       </p>
     </li>
   </ul>

@@ -1,4 +1,5 @@
 #! /bin/bash
 #install the Siml highlight file for the Katepart
 
-cp hl_siml.xml ~/.kde/share/apps/katepart/syntax
+#cp hl_siml.xml ~/.kde/share/apps/katepart/syntax
+cp hl_siml.xml ~/.kde4/share/apps/katepart/syntax

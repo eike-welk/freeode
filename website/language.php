@@ -44,45 +44,11 @@
   <a name="syntax"></a>
   <h2>The Syntax</h2>
   <p>
-    The syntax is roughly object orinented. A simulation consists
-    of one or more class definitions.
+    The syntax looks roughly like Python. Some keywords are different, variables  
+    have to be declared before use, and there is (currently) no inheritance. 
+    A simulation consists of one or more class definitions.
   </p>
-
-  <h3>class</h3>
-  <div id="code">
-    <pre>
-class <em>class_name</em>(<em>base_class</em>):
-    <em>#data members</em>
-
-    <em>#member functions</em>
-end
-    </pre>
-  </div>
-
-  <p>
-    The data attributes are defined first, then come the member functions.
-  </p>
-  <p>
-    There are two base classes:
-    <ul>
-      <li><strong>Process</strong>:
-          A numerical experiment.
-          Should contain models, initial values and parameters.
-          Classes inheriting from process are compiled into simulation objects.
-      </li>
-      <li><strong>Model</strong>:
-          Building blocks of the processes. The equations should go here.
-          Models can only exist as data attributes of processes.
-      </li>
-    </ul>
-  </p>
-  <p>
-    There is however no real inheritance; user defined classes can (currenltly)
-    not be base classes. Only the two predefined classes <strong>Process</strong>
-    and <strong>Model</strong> are possible base classes.
-  </p>
-</div>
-
+  
 
 <!--footer with the required berlios image-->
 <?php if( file_exists("footer.html") ){ include("footer.html"); } ?>

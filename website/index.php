@@ -180,39 +180,39 @@
   <h3>SIML Program</h3>
   <div id="code">
     <pre>
-<span style="font-style: italic;color: #808080;">#Biological reactor with no inflow or outfow</span>
-<span style="color: #0000ff;">class</span><span style="color: #000000;"> Batch</span><span style="color: #ff00ff;">(</span><span style="color: #000000;">Process</span><span style="color: #ff00ff;">):</span>
-<span style="color: #000000;">    </span><span style="font-style: italic;color: #808080;">#Define values that stay constant during the simulation.</span>
-<span style="color: #000000;">    </span><span style="color: #0000ff;">data</span><span style="color: #000000;"> mu_max, Ks, Yxs</span><span style="color: #ff00ff;">:</span><span style="color: #000000;"> Real </span><span style="color: #0000ff;">parameter</span><span style="color: #000000;">;</span>
-<span style="color: #000000;">    </span><span style="font-style: italic;color: #808080;">#Define values that change during the simulation.</span>
-<span style="color: #000000;">    </span><span style="color: #0000ff;">data</span><span style="color: #000000;"> mu, X, S</span><span style="color: #ff00ff;">:</span><span style="color: #000000;"> Real;</span>
+<span style='color: #888786'><i>#Biological reactor with no inflow or outfow</i></span>
+<span style='color: #141312'><b>class</b> Batch:</span>
+<span style='color: #141312'>    </span><span style='color: #888786'><i>#Define values that stay constant during the simulation.</i></span>
+<span style='color: #141312'>    <b>data</b> mu_max, Ks, Yxs: Float <b>param</b></span>
+<span style='color: #141312'>    </span><span style='color: #888786'><i>#Define values that change during the simulation.</i></span>
+<span style='color: #141312'>    <b>data</b> mu, X, S: Float</span>
 
-<span style="color: #000000;">    </span><span style="font-style: italic;color: #808080;">#Initialize the simulation.</span>
-<span style="color: #000000;">    </span><span style="color: #0000ff;">func</span><span style="color: #000000;"> init</span><span style="color: #ff00ff;">():</span>
-<span style="color: #000000;">        </span><span style="font-style: italic;color: #808080;">#Specify options for the simulation algorithm.</span>
-<span style="color: #000000;">        solutionParameters.simulationTime </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #0000ff;">20</span><span style="color: #000000;">;     </span><span style="font-style: italic;color: #808080;">#total simulation time</span>
-<span style="color: #000000;">        solutionParameters.reportingInterval </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #0000ff;">0.1</span><span style="color: #000000;">; </span><span style="font-style: italic;color: #808080;">#time between data points</span>
-<span style="color: #000000;">        </span><span style="font-style: italic;color: #808080;">#Give values to the parameters</span>
-<span style="color: #000000;">        mu_max </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #0000ff;">0.32</span><span style="color: #000000;">; </span><span style="font-style: italic;color: #808080;">#max growth speed</span>
-<span style="color: #000000;">        Ks     </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #0000ff;">0.01</span><span style="color: #000000;">; </span><span style="font-style: italic;color: #808080;">#at this sugar concentration growth speed is 0.5*mu_max</span>
-<span style="color: #000000;">        Yxs    </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #0000ff;">0.5</span><span style="color: #000000;">;  </span><span style="font-style: italic;color: #808080;">#one g sugar gives this much biomass</span>
-<span style="color: #000000;">        </span><span style="font-style: italic;color: #808080;">#Give initial values to the state variables.</span>
-<span style="color: #000000;">        X      </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #0000ff;">0.1</span><span style="color: #000000;">;  </span><span style="font-style: italic;color: #808080;">#initial biomass concentration</span>
-<span style="color: #000000;">        S      </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #0000ff;">20</span><span style="color: #000000;">;   </span><span style="font-style: italic;color: #808080;">#initial sugar concentration</span>
-<span style="color: #000000;">    </span><span style="color: #0000ff;">end</span>
+<span style='color: #141312'>    </span><span style='color: #888786'><i>#Initialize the simulation.</i></span>
+<span style='color: #141312'>    <b>func</b> </span><span style='color: #0095ff'><b>initialize</b></span><span style='color: #141312'>(</span><span style='color: #006e28'>this</span><span style='color: #141312'>):</span>
+<span style='color: #141312'>        </span><span style='color: #888786'><i>#Specify options for the simulation algorithm.</i></span>
+<span style='color: #141312'>        solution_parameters(duration=</span><span style='color: #b08000'>20</span><span style='color: #141312'>, reporting_interval=</span><span style='color: #b08000'>0.1</span><span style='color: #141312'>)</span>
+<span style='color: #141312'>        </span><span style='color: #888786'><i>#Give values to the parameters</i></span>
+<span style='color: #141312'>        mu_max = </span><span style='color: #b08000'>0.32</span><span style='color: #141312'>; </span><span style='color: #888786'><i>#max growth speed</i></span>
+<span style='color: #141312'>        Ks     = </span><span style='color: #b08000'>0.01</span><span style='color: #141312'>; </span><span style='color: #888786'><i>#at this sugar concentration growth speed is 0.5*mu_max</i></span>
+<span style='color: #141312'>        Yxs    = </span><span style='color: #b08000'>0.5</span><span style='color: #141312'>;  </span><span style='color: #888786'><i>#one g sugar gives this much biomass</i></span>
+<span style='color: #141312'>        </span><span style='color: #888786'><i>#Give initial values to the state variables.</i></span>
+<span style='color: #141312'>        X      = </span><span style='color: #b08000'>0.1</span><span style='color: #141312'>;  </span><span style='color: #888786'><i>#initial biomass concentration</i></span>
+<span style='color: #141312'>        S      = </span><span style='color: #b08000'>20</span><span style='color: #141312'>;   </span><span style='color: #888786'><i>#initial sugar concentration</i></span>
 
-<span style="color: #000000;">    </span><span style="font-style: italic;color: #808080;">#compute dynamic behaviour - the system's 'equations'</span>
-<span style="color: #000000;">    </span><span style="color: #0000ff;">func</span><span style="color: #000000;"> dynamic</span><span style="color: #ff00ff;">():</span>
-<span style="color: #000000;">        mu </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> mu_max </span><span style="color: #ff00ff;">*</span><span style="color: #000000;"> S</span><span style="color: #ff00ff;">/(</span><span style="color: #000000;">S</span><span style="color: #ff00ff;">+</span><span style="color: #000000;">Ks</span><span style="color: #ff00ff;">)</span><span style="color: #000000;">; </span><span style="font-style: italic;color: #808080;">#growth speed (of biomass)</span>
-<span style="color: #000000;">        </span><span style="color: #ff00ff;">$</span><span style="color: #000000;">X </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> mu</span><span style="color: #ff00ff;">*</span><span style="color: #000000;">X;              </span><span style="font-style: italic;color: #808080;">#change of biomass concentration</span>
-<span style="color: #000000;">        </span><span style="color: #ff00ff;">$</span><span style="color: #000000;">S </span><span style="color: #ff00ff;">=</span><span style="color: #000000;"> </span><span style="color: #ff00ff;">-</span><span style="color: #0000ff;">1</span><span style="color: #ff00ff;">/</span><span style="color: #000000;">Yxs</span><span style="color: #ff00ff;">*</span><span style="color: #000000;">mu</span><span style="color: #ff00ff;">*</span><span style="color: #000000;">X;       </span><span style="font-style: italic;color: #808080;">#change of sugar concentration</span>
-<span style="color: #000000;">    </span><span style="color: #0000ff;">end</span>
 
-<span style="color: #000000;">    </span><span style="font-style: italic;color: #808080;">#show results</span>
-<span style="color: #000000;">    </span><span style="color: #0000ff;">func</span><span style="color: #000000;"> final</span><span style="color: #ff00ff;">():</span>
-<span style="color: #000000;">        graph mu, X, S;</span>
-<span style="color: #000000;">    </span><span style="color: #0000ff;">end</span>
-<span style="color: #0000ff;">end</span>
+<span style='color: #141312'>    </span><span style='color: #888786'><i>#compute dynamic behaviour - the system's 'equations'</i></span>
+<span style='color: #141312'>    <b>func</b> </span><span style='color: #0095ff'><b>dynamic</b></span><span style='color: #141312'>(</span><span style='color: #006e28'>this</span><span style='color: #141312'>):</span>
+<span style='color: #141312'>        mu = mu_max * S/(S+Ks); </span><span style='color: #888786'><i>#growth speed (of biomass)</i></span>
+<span style='color: #141312'>        $X = mu*X;              </span><span style='color: #888786'><i>#change of biomass concentration</i></span>
+<span style='color: #141312'>        $S = -</span><span style='color: #b08000'>1</span><span style='color: #141312'>/Yxs*mu*X;       </span><span style='color: #888786'><i>#change of sugar concentration</i></span>
+
+
+<span style='color: #141312'>    </span><span style='color: #888786'><i>#show results</i></span>
+<span style='color: #141312'>    <b>func</b> </span><span style='color: #0095ff'><b>final</b></span><span style='color: #141312'>(</span><span style='color: #006e28'>this</span><span style='color: #141312'>):</span>
+<span style='color: #141312'>        </span><span style='color: #0057ae'>graph</span><span style='color: #141312'>(mu, X, S);</span>
+
+
+<span style='color: #141312'><b>compile</b> Batch</span>
     </pre>
   </div>
 
@@ -299,7 +299,7 @@ $> ./bioreactor_simple.py           <span style="font-style: italic;color: #8080
 
   <p>
   The compiler can also run the generated Program.
-  This is usefull for the development of simulation programs.
+  This is useful for the development of simulation programs.
   </p>
   <div id="code">
     <pre>

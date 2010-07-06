@@ -80,7 +80,8 @@ class SimlCompilerMain(object):
                            metavar='<number>')
         optPars.add_option('--debug-areas', dest='debug_areas',
                            help='specify debug areas to control printing of ' \
-                                'debug information.',
+                                'debug information. This option is passed on' \
+                                'to the simulation if it is run.',
                            metavar='<area,...>')
 
         #do the parsing
