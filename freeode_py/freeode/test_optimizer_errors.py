@@ -42,7 +42,7 @@ def test_VariableUsageChecker_1(): #IGNORE:C01111
     
     from freeode.optimizer import MakeDataFlowDecorations, VariableUsageChecker
     from freeode.interpreter import Interpreter
-    from freeode.util import DotName, UserException, aa_make_tree
+    from freeode.util import DotName, UserException#, aa_make_tree
 
     prog_text = \
 '''
@@ -143,4 +143,4 @@ if __name__ == '__main__':
     #test_unknown_const_1()
     #test_MultiDict_1()
     #test_unknown_const_1()
-    pass
+    pass  #pylint:disable-msg=W0107 

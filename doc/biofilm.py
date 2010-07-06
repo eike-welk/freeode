@@ -59,7 +59,7 @@ class Biofilm:
     def initCond(self):
         """
         Return a state vector (y) which can be used to start the simulation.
-        usefull initial conditions.
+        useful initial conditions.
         """
         c_1=ones(self.nPX,Float)
         y=zeros(self.nPX*4,Float)

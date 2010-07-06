@@ -33,7 +33,7 @@ class Reactor:
         self.Sf     = 5     #[g/L]
 
     def initCond(self):
-        """return usefull initial conditions. return: [S0, X0]"""
+        """return useful initial conditions. return: [S0, X0]"""
         return array([5, 0.1], Float)
         #return array([self.Ks/10, self.Sf*self.Yxs], Float)
 

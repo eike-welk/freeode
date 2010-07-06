@@ -214,7 +214,7 @@ def test_VariableUsageChecker_1(): #IGNORE:C01111
     
     from freeode.optimizer import MakeDataFlowDecorations, VariableUsageChecker
     from freeode.interpreter import Interpreter
-    from freeode.util import DotName, aa_make_tree
+    from freeode.util import DotName#, aa_make_tree
 
     prog_text = \
 '''
@@ -321,7 +321,7 @@ def test_check_simulation_objects_1(): #IGNORE:C01111
     
     from freeode.optimizer import check_simulation_objects
     from freeode.interpreter import Interpreter
-    from freeode.util import DotName #, aa_make_tree
+#    from freeode.util import aa_make_tree
 
     prog_text = \
 '''
@@ -383,6 +383,5 @@ if __name__ == '__main__':
     #test_unknown_const_1()
     #test_MultiDict_1()
     #test_unknown_const_1()
-    pass
-
+    pass  #pylint:disable-msg=W0107
 

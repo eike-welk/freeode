@@ -1032,7 +1032,7 @@ class ProgramTreeCreator(Visitor):
             classDef = environment.findDotName(dataDef.className)
             #TODO: Create pointers to class definitions? 
             #      - unnecessary data is expanded.
-            #      - usefull for type checking (implementation of isinstance())
+            #      - useful for type checking (implementation of isinstance())
             
             #Data at the top level of a module must be constant.
             if isinstance(stmtContainer, NodeModule) and \
