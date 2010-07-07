@@ -14,27 +14,40 @@ include COPYING.LIB
 
 #user info
 include README
+include README-TESTS
 
 #highlighting for kate
 include hl_siml.xml
 
-#example-models
+#this file
+include MANIFEST.in
+
+#tests ---------------------------------------------
+include test_models_1.py
+include test_models_2.py
+include test_models_other.py
+
+#example-models ------------------------------------
+#biological
 include models/biological/bioreactor_simple.siml
 include models/biological/bioreactor.siml
 
-include models/biological/competition_parameter_variation.py
-include models/biological/competition_phase_diagrams.py
+#include models/biological/competition_parameter_variation.py
+#include models/biological/competition_phase_diagrams.py
 include models/biological/competition.siml
 
-include models/biological/predator_prey_2_hunting_scenarios.py
-include models/biological/predator_prey_2_phase_diagrams.py
+#include models/biological/predator_prey_2_hunting_scenarios.py
+#include models/biological/predator_prey_2_phase_diagrams.py
 include models/biological/predator_prey_2.siml
 
-include models/biological/predator_prey_phase_diagrams.py
+#include models/biological/predator_prey_phase_diagrams.py
 include models/biological/predator_prey.siml
 
+#mechanical
 include models/mechanical/tank.siml
 include models/mechanical/tuned_abs_damper.siml
 
-#this file
-include MANIFEST.in
+#other
+include models/other/debug_areas.siml
+include models/other/fibonacci_compile_time.siml
+include models/other/sum_compile_time.siml
