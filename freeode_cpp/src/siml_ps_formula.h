@@ -20,7 +20,7 @@
  *   This file is based on the calculator/v_machine example from the       *
  *   spirit documentation. Published under the Boost Software License.     *
  *   Copyright (c) 1998-2003 Joel de Guzman                                *
- *   Thank you for this usefull example!                                   *
+ *   Thank you for this useful example!                                   *
  *   URL:                                                                  *
  *   http://www.boost.org/libs/spirit/example/fundamental/\                *
  *   more_calculators/vmachine_calc.cpp                                    *

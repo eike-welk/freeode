@@ -34,7 +34,7 @@ from __future__ import absolute_import              #IGNORE:W0410
 #import copy
 #import weakref
 #from weakref import ref
-import sys
+#import sys
 #import math
 
 from freeode.ast import (NodeParentheses, NodeExpressionStmt,

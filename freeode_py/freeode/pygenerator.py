@@ -732,6 +732,7 @@ class ProgramGenerator(object):
         '''
         self.write(
 '''#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 ################################################################################
 #                            Warning: Do not edit!                             #
 #                                                                              #

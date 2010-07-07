@@ -40,7 +40,7 @@ def test_bioreactor_simple(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/biological/'
+    directory = 'models/biological/'
     base_name = 'bioreactor_simple'
     output_suffix = '_test1'
     
@@ -63,7 +63,7 @@ def test_bioreactor(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/biological/'
+    directory = 'models/biological/'
     base_name = 'bioreactor'
     output_suffix = '_test1'
     
@@ -90,7 +90,7 @@ def test_competition(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/biological/'
+    directory = 'models/biological/'
     base_name = 'competition'
     output_suffix = '_test1'
     
@@ -115,7 +115,7 @@ def test_predator_prey_2(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/biological/'
+    directory = 'models/biological/'
     base_name = 'predator_prey_2'
     output_suffix = '_test1'
     
@@ -138,7 +138,7 @@ def test_predator_prey(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/biological/'
+    directory = 'models/biological/'
     base_name = 'predator_prey'
     output_suffix = '_test1'
     
@@ -159,6 +159,6 @@ def test_predator_prey(): #IGNORE:C01111
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_competition()
+    test_bioreactor_simple()
     pass #pylint:disable-msg=W0107
 

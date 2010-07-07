@@ -345,8 +345,8 @@ def test_allknown(*args):
     for arg in args:
         dont_read_unknown_const(arg)
         if isknownconst(arg):
-                #We know: argument is a known constant; test next argument.
-                continue
+            #We know: argument is a known constant; test next argument.
+            continue
         else:
             #Unknown variable or parameter
             raise UnknownArgumentsException()
@@ -1895,18 +1895,6 @@ class Interpreter(object):
     def eval_NodeParentheses(self, node):
         '''
         Evaluate pair of parentheses: return expression between parentheses.
-
-        TODO:
-        Unevaluated expressions (ast.Node) get the following annotations:
-        - Node.type              : type of function result
-        - Node.function_object   : the function object (self)
-        - Node.role              : Role of the argument
-        - Node.is_known=False    : For consistency; the function call can pose as an
-                                   unknown value, that has been already computed.
-
-        - Node.arguments         : [ast.Node]
-            List with unevaluated expression as first element.
-        - Node.keyword_arguments : {} Empty dict
         '''
         #compute values of expression
         val_expr = self.eval(node.arguments[0])
@@ -2332,7 +2320,7 @@ class Interpreter(object):
                                 'LHS: %s RHS: %s' % (str(target.__siml_role__),
                                                      str(value.__siml_role__)), loc)
         #Generating code for an assignment has to be handled here entirely. 
-        #assign(...) generates a NodeFuncCall, not NodeAssignment  
+        #apply(...) generates a NodeFuncCall, not NodeAssignment  
         if isrole(target, RoleConstant):
             #perform assignment - target is a constant
             self.apply(assign_func, (value,))

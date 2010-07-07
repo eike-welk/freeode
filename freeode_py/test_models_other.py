@@ -40,7 +40,7 @@ def test_fibonacci_compile_time(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/other/'
+    directory = 'models/other/'
     base_name = 'fibonacci_compile_time'
     output_suffix = '_test1'
     
@@ -64,7 +64,7 @@ def test_sum_compile_time(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/other/'
+    directory = 'models/other/'
     base_name = 'sum_compile_time'
     output_suffix = '_test1'
     
@@ -87,7 +87,7 @@ def test_debug_areas(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/other/'
+    directory = 'models/other/'
     base_name = 'debug_areas'
     output_suffix = '_test1'
     

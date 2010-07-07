@@ -491,7 +491,7 @@ def parseCommandLineOptions(simulationClassList):
     optPars = optparse.OptionParser(
                 usage='%prog [<option>]',
                 description='Simulation program. Run the contained simulations.')
-                #version='%prog ' + ast.progVersion) #the compiler version is not usefull here
+                #version='%prog ' + ast.progVersion) #the compiler version is not useful here
 
     optPars.add_option('-l', '--list', dest='list',
                        action="store_true", default=False,
@@ -530,7 +530,7 @@ def parseCommandLineOptions(simulationClassList):
     if options.list:
         print 'available simulations:'
         for i, sim in enumerate(simulationClassList):
-            #get some usefull simulation name
+            #get some useful simulation name
             simStr = str(sim) #looks like: <class '__main__.Experiment1'>
             nameStart = simStr.find('.') + 1
             simName = simStr[nameStart:-2]

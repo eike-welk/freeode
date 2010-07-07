@@ -40,7 +40,7 @@ def test_tank(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/mechanical/'
+    directory = 'models/mechanical/'
     base_name = 'tank'
     output_suffix = '_test1'
     
@@ -63,7 +63,7 @@ def test_tuned_abs_damper(): #IGNORE:C01111
 #    skip_test(msg)
     print msg
  
-    directory = '../models/mechanical/'
+    directory = 'models/mechanical/'
     base_name = 'tuned_abs_damper'
     output_suffix = '_test1'
     
