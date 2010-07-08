@@ -81,16 +81,16 @@ import freeode.simlparser as simlparser
 
 
 
-class DuplicateAttributeError(Exception):
-    '''
-    Exception raised by InterpreterObject
-    when the user tries to redefine an attribute.
-    '''
-    def __init__(self, msg='Duplicate Attribute', attr_name=None):
-        if attr_name is not None:
-            msg = msg + ': ' + str(attr_name)
-        Exception.__init__(self, msg)
-        self.attr_name = attr_name
+#class DuplicateAttributeError(Exception):
+#    '''
+#    Exception raised by InterpreterObject
+#    when the user tries to redefine an attribute.
+#    '''
+#    def __init__(self, msg='Duplicate Attribute', attr_name=None):
+#        if attr_name is not None:
+#            msg = msg + ': ' + str(attr_name)
+#        Exception.__init__(self, msg)
+#        self.attr_name = attr_name
 
 class UndefinedAttributeError(Exception):
     '''
@@ -2608,10 +2608,6 @@ class Interpreter(object):
             if e.loc is None:
                 e.loc = node.loc
             raise
-        # Create user visible 'Duplicate attribute' errors.
-        except DuplicateAttributeError, e:
-            raise UserException('Duplicate attribute %s.' % e.attr_name,
-                                loc=node.loc, errno=3800910)
         # Create user visible 'Undefined attribute' errors.
         except UndefinedAttributeError, e:
             raise UserException('Undefined attribute "%s".' % e.attr_name,
