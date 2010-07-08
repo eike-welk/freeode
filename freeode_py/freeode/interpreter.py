@@ -224,88 +224,6 @@ class InterpreterObject(object):
         #Long name for the code generator
         self.__siml_dotname__ = None
 
-#    def __deepcopy__(self, memo_dict):
-#        '''deepcopy that gets the parent right'''
-#        copied_self = super(InterpreterObject, self).__deepcopy__(memo_dict)
-#        for copied_attr in copied_self.attributes.itervalues():
-#            copied_attr.parent = ref(copied_self)
-#        return copied_self
-
-#    def find_name(self, in_attr):
-#        '''
-#        Find the name of an attribute.
-#
-#        ARGUMENTS
-#        ---------
-#        in_attr: InterpreterObject
-#            Attribute whose name will be searched. It must be an attribute of
-#            this object (self). If "in_attr" is not found an Exception object
-#            will be raised.
-#
-#        RETURNS
-#        -------
-#        str, DotName
-#        The attribue's name.
-#        '''
-#        for attr_name, attr in self.attributes.iteritems():
-#            if attr is in_attr:
-#                break
-#        else:
-#            raise Exception('"in_attr" is not attribute of this object.')
-#        return attr_name #IGNORE:W0631
-
-#    def get_complete_path(self):
-#        '''
-#        Get complete dotted name of the function.
-#
-#        Goes recursively to all parents, asks them for their names, and
-#        creates a DotName out of the names. This will usually produce a
-#        three component DotName structured like this: module.class.function
-#
-#        RETURNS
-#        -------
-#        DotName
-#        
-#        TODO: maybe move to Interpreter or to CodeCollector
-#        '''
-#        curr_object = self
-#        path = DotName(self.name)
-#        while curr_object.parent is not None:
-#            curr_object = curr_object.parent()      #IGNORE:E1102
-#            path = DotName(curr_object.name) + path
-#        return path
-
-
-
-#class CallableObject(InterpreterObject):
-#    '''
-#    Base class of all functions.
-#
-#    CONSTRUCTOR ARGUMENTS
-#    ---------------------
-#    name: DotName, str
-#        The function's name.
-#    '''
-#    def __init__(self, name):
-#        InterpreterObject.__init__(self)
-#        self.role = RoleConstant
-#        self.is_known = True
-#        self.name = name
-##        If True: the function is a basic building block of the language.
-##        The code generator can emit code for this function. The flattened
-##        simulation object must only contain calls to these functions.
-##        If False: This function must be replaced with a series of calls
-##        to fundamental functions.
-#        # TODO: rename to is_runtime_function
-#        # TODO: remove! This is unnecessary
-#        self.is_fundamental_function = False
-#        self.codegen_name = None
-#        self.signature = Signature()
-#
-#    def __call__(self, *args, **kwargs):
-#        '''All Siml-functions must implement this method'''
-#        raise NotImplementedError('__call__ method is not implemented. Use a derived class!')
-
 
 
 class CodeGeneratorObject(InterpreterObject):
@@ -322,6 +240,7 @@ class CodeGeneratorObject(InterpreterObject):
         #if True this object is a constant which is known at compile time. 
         #is_known is only meaningful for code-generator-objects. 
         self.is_known = False
+   
    
    
 def test_allknown(*args):
@@ -378,12 +297,14 @@ def isknownconst(siml_obj):
         return False
 
 
+
 def dont_read_unknown_const(obj):
     '''Raise UserException if obj is an unknown constant.'''
     if isinstance(obj, CodeGeneratorObject) and \
        isrole(obj, RoleConstant) and not obj.is_known:
         raise UserException('Illegal read access to unknown constant.', 
                             errno=3190110)
+      
       
       
 class Signature(object):
@@ -394,7 +315,7 @@ class Signature(object):
     - Parses the arguments and checks their type when the function is called.
     - Checks the type of the return value.
     
-    TODO: For inspiration look at 
+    For inspiration look at 
         (http://www.python.org/dev/peps/pep-3107)
         http://www.python.org/dev/peps/pep-0362/
         http://oakwinter.com/code/typecheck/
@@ -853,7 +774,7 @@ class IModule(InterpreterObject):
 
 
 #------- Built In Data --------------------------------------------------
-class INone(InterpreterObject):
+class INoneType(InterpreterObject):
     '''Siml's None object.'''
     def __init__(self):
         InterpreterObject.__init__(self)
@@ -870,7 +791,7 @@ class INone(InterpreterObject):
         return istr
 
 #The single None instance for Siml
-NONE = INone()
+NONE = INoneType()
 
 
 
@@ -946,7 +867,7 @@ class IBool(CodeGeneratorObject):
         return IBool(self.value or other.value)
     
     #assignment
-    @signature([BOOLP, BOOLP], INone) 
+    @signature([BOOLP, BOOLP], INoneType) 
     def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
         if self.is_known:
@@ -1021,7 +942,7 @@ class IString(CodeGeneratorObject):
         return IBool(self.value != other.value)
     
     #special function for assignment    
-    @signature([STRINGP, STRINGP], INone) 
+    @signature([STRINGP, STRINGP], INoneType) 
     def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
         if self.is_known:
@@ -1155,7 +1076,7 @@ class IFloat(CodeGeneratorObject):
         #return the associated derived variable
         return self.time_derivative #IGNORE:E1102
 
-    @signature([FLOATP, FLOATP], INone) 
+    @signature([FLOATP, FLOATP], INoneType) 
     def __siml_assign__(self, other):
         '''Called for Siml assignment ("=") operator.'''
         if self.is_known:
@@ -1187,7 +1108,7 @@ TIME.__siml_role__ = RoleAlgebraicVariable
 
 
 #-------------- Service -------------------------------------------------------------------
-@signature(None, INone)
+@signature(None, INoneType)
 def siml_print(*args, **kwargs):
     '''
     The runtime print function.
@@ -1196,8 +1117,6 @@ def siml_print(*args, **kwargs):
     For each argument print calls its '__siml_str__' function to create a text
     representation of the object.
     
-    TODO: How can user defined objects be printed at runtime?
-
     The function supports a number of keyword arguments:
     area='' : str
         Only produce output when area is in global set DEBUG_AREAS.
@@ -1234,12 +1153,12 @@ def siml_print(*args, **kwargs):
         new_args += (str_expr,) #collect the call's result
     #create a new call to the print function
     print_call = NodeFuncCall(siml_print, new_args, kwargs)
-    decorate_call(print_call, INone)
+    decorate_call(print_call, INoneType)
     return print_call
 
     
     
-@signature(None, INone)
+@signature(None, INoneType)
 def siml_printc(*args, **kwargs):
     '''
     The compile time print function.
@@ -1258,10 +1177,6 @@ def siml_printc(*args, **kwargs):
     The function executes at compile time; calling this function does not create 
     code.
     '''
-    #TODO: Make Interpreter.apply recognize Python argument parsing errors,
-    #      then all this ugly parameter parsing could be deleted. 
-    #      also true for siml_print, siml_graph
-    #TODO: Or implement *args, **kwargs in Siml.
     #check keyword arguments
     legal_kwarg_names = set(['area', 'end'])
     for arg_name in kwargs.keys():
@@ -1283,7 +1198,7 @@ def siml_printc(*args, **kwargs):
     #create output string
     out_str = ''
     for arg1 in args:
-        if isinstance(arg1, (INone, IBool, IString, IFloat)):
+        if isinstance(arg1, (INoneType, IBool, IString, IFloat)):
             out_str += str(arg1) + sep
         else:
             out_str += aa_make_tree(arg1) + sep
@@ -1292,7 +1207,7 @@ def siml_printc(*args, **kwargs):
             
 
 
-@signature(None, INone)
+@signature(None, INoneType)
 def siml_graph(*args, **kwargs):
     '''
     The graph special-function.
@@ -1338,7 +1253,7 @@ def siml_graph(*args, **kwargs):
 
 
 
-@signature([IString], INone)
+@signature([IString], INoneType)
 def siml_save(file_name): #pylint:disable-msg=W0613
     '''
     The store function.
@@ -1358,7 +1273,7 @@ def siml_save(file_name): #pylint:disable-msg=W0613
     raise UnknownArgumentsException('Exception to create function call.')
 
 
-@signature([IFloat, IFloat], INone)
+@signature([IFloat, IFloat], INoneType)
 def siml_solution_parameters(duration=None, reporting_interval=None): #pylint:disable-msg=W0613
     '''
     The solution_parameters function.
@@ -1448,10 +1363,6 @@ def istype(in_object, class_or_type_or_tuple):
     Similar to isinstance(...) but works with unevaluated expressions too.
     If the expression (in_object) would evaluate to an object of the
     correct type, the function returns True.
-
-    TODO: create new function i_isinstance(...) which checks at compile
-          time if object is really an instance of a certain type; excluding
-          unevaluated function calls.
     '''
     if in_object.__siml_type__ is not None:
         return issubclass(in_object.__siml_type__, class_or_type_or_tuple)
@@ -1550,7 +1461,7 @@ def create_built_in_lib():
     lib.time = TIME
     
     #basic data types
-    lib.NoneType = INone
+    lib.NoneType = INoneType
     lib.Bool = IBool
     lib.String = IString
     lib.Float = IFloat
@@ -1716,20 +1627,6 @@ def decorate_call(call, return_type):
     call.__siml_role__ = determine_result_role(call.arguments, call.keyword_arguments)
     #call.is_known = False
 
-#    #compute set of input variables
-#    #TODO: maybe put this into optimizer?
-#    inputs = set()
-#    for arg in list(call.arguments) + call.keyword_arguments.values():
-#        if isinstance(arg, InterpreterObject):
-#            inputs.add(arg)
-#        elif isinstance(arg, (NodeFuncCall, NodeOpInfix2, NodeOpPrefix1,
-#                              NodeParentheses)):
-#            inputs.update(arg.inputs)
-#        else:
-#            raise Exception('Unexpected type of argument '
-#                            'for Siml function. type: %s; value: %s'
-#                            % (str(type(arg)), str(arg)))
-#    call.inputs = inputs
 
 
 class ReturnFromFunctionException(Exception):
@@ -1921,18 +1818,6 @@ class Interpreter(object):
     def eval_NodeOpPrefix1(self, node):
         '''
         Evaluate unary operator and return result
-
-        TODO:
-        Unevaluated expressions (ast.Node) get the following annotations:
-        - Node.type              : type of function result
-        - Node.function_object   : the function object (self)
-        - Node.role              : Role taken from the argument with the most variable role
-        - Node.is_known=False    : For consistency; the function call can pose as an
-                                   unknown value, that has been already computed.
-
-        - Node.arguments         : Operators are returned with positional arguments.
-        - Node.keyword_arguments : For regular functions all arguments are specified
-                                   keyword arguments
         '''
         #compute values on rhs of operator
         inst_rhs = self.eval(node.arguments[0])
@@ -1965,17 +1850,6 @@ class Interpreter(object):
     def eval_NodeOpInfix2(self, node):
         '''
         Evaluate binary operator and return result
-
-        Unevaluated expressions (ast.Node) get the following annotations:
-        - Node.type              : type of function result
-        - Node.function_object   : the function object (self)
-        - Node.role              : Role taken from the argument with the most variable role
-        - Node.is_known=False  : For consistency; the function call can pose as an
-                                   unknown value.
-
-        - Node.arguments         : Operators are returned with positional arguments.
-        - Node.keyword_arguments : For regular functions all arguments are specified
-                                   keyword arguments
         '''
         #compute values on rhs and lhs of operator
         ev_lhs = self.eval(node.arguments[0])
@@ -1994,8 +1868,6 @@ class Interpreter(object):
             #      generating better error messages and calling the right-handed methods.
             #      Alternatively the operators could return the special value
             #      NotImplemented like Python operators do.
-            #TODO: Siml code can raise Siml_NotImplemented ??? Siml_IncompatibleTypeError
-            #      errors, they should also generate the same error messages.
             raise Exception( 'Handling of "NotImplemented" exception is not yet implented!')
         #TODO: special methods for boolean operators 'and', 'or'
         #      To retain the shortcut semantics split the execution of the
@@ -2285,19 +2157,6 @@ class Interpreter(object):
         #      - Putting function arguments into the function's namespace
         #        could be handled this way too.
 
-        #TODO: General smart infrastructure for enforcing single assignment
-        #      and guaranteed assignment.
-        #      The multiple init_xxx(...), initialize(...) methods lead to multiple
-        #      assignments. Allowing intermediate variables to be used in initialize
-        #      methods would lead to multiple assignments too.
-        #TODO: Infrastructure to integrate protection against duplicate
-        #      assignment with the 'if' statement.
-        #      - In an 'if' statement with n clauses each variable must/should
-        #      be assigned n times.
-        #      - Local variables of functions however, will be created
-        #      uniquely for each function invocation. They can therefore
-        #      only be assigned once, even in an 'if' statement.
-
         #Targets with RoleUnkown are converted to the role of value.
         #(for local variables of functions)
         if target.__siml_role__ is RoleUnkown:
@@ -2436,9 +2295,6 @@ class Interpreter(object):
         #TODO: Implement closures, for nested functions:
         #      Copy the global dictionary and update it with the current
         #      local dictionary.
-        #TODO: make copy of global namespace. needs:
-        #      - new ast.Node.copy mechanism for shallow copy, referencing
-        #      - new pretty printer mechanism to prevent duplicate printing
         func_sig = Signature(node.signature)
         #save the current global namespace in the function. Otherwise
         #access to global variables would have surprising results otherwise
@@ -2539,19 +2395,6 @@ class Interpreter(object):
         #      so there is only one place where data objects are constructed.
         #TODO: break this method up into several methods, because it's really
         #      too big.
-        #TODO: Structure of Compiled Object
-        #        Object:
-        #            - Functions
-        #            - State Variables
-        #            - Algebraic Variables
-        #            - Parameters
-        #            - Constants ?
-        #        Function:
-        #            - Inputs
-        #            - Outputs
-        #            - Internal temporary variables
-        #            - Code
-        #
         #Create data: --------------------------------------------------------------
         #get the type object - a NodeIdentifier is expected as class_spec
         class_obj = self.eval(node.class_spec)
@@ -2567,13 +2410,6 @@ class Interpreter(object):
 
         #specify and discover main functions ---------------------------------------
         #TODO: Implement automatic calling of main functions in child objects.
-        #TODO: additional main function for steady-state simulations:
-        #        init_steadystate(this, x01)
-        #      The function is called repeatedly during a steady-state simulation
-        #      to initialize the system with slightly different conditions. The
-        #      argument x01 varies during the steady state simulation in small steps
-        #      from 0 to 1. It is intended to control the variations of interesting
-        #      parameters during the steady-state simulation.
 
         #In different parts of code only variables with speciffic roles
         #are valid targets of an assign statement.
@@ -2904,8 +2740,6 @@ class Interpreter(object):
         RETURNS
         -------
         The attribute represented by the rightmost element of the path.
-        
-        TODO: maybe move to Interpreter or to CodeCollector
         '''
         curr_object = in_obj
         for name1 in path:
@@ -3057,5 +2891,4 @@ class Interpreter(object):
 
 if __name__ == '__main__':
     # Self-testing code goes here.
-    #TODO: add doctest tests.
     pass
