@@ -96,10 +96,8 @@ class ParamStorage(object):
 
 class SimulatorBase(object):
     """ Base class for the generated simulator classes """
-    #TODO: think about separate data storage object.
 
     def __init__(self):
-#        #TODO: this should be handled by the storage class
         self.variableNameMap = {}
         '''Maping between variable (siml) name and index in the result array'''
         self.time = None
@@ -179,7 +177,6 @@ class SimulatorBase(object):
         Example:
             >>> mySimulationObject.getAttribute('r.X')
         """
-        #TODO: also return parameters
         if attrName == 'time':
             return self.time
 #        elif attrName == 'all':
@@ -204,7 +201,6 @@ class SimulatorBase(object):
         result['time'] = self.getAttribute('time')
         for name in self.variableNameMap.keys():
             result[name] = self.getAttribute(name)
-        #TODO: also include parameters
         return result
 
     def graph(self, varNames, title=None):
@@ -590,7 +586,6 @@ def simulatorMainFunc(simulationClassList):
     Argument:
         simulationClassList: list of (generated) simulation classes
     '''
-    #print 'Hello world; main function ...'
     parseCommandLineOptions(simulationClassList)
     return
 

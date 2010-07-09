@@ -8,7 +8,8 @@
 #
 #-----------------------------------------------------------------------------------------
 
-from pyparsing import ParseElementEnhance, Keyword, Word, Group, ZeroOrMore, \
+from freeode.third_party.pyparsing import \
+    ParseElementEnhance, Keyword, Word, Group, ZeroOrMore, \
     OneOrMore, StringEnd, alphas, alphanums, ParseException, \
     ParseFatalException, _ustr
 
@@ -24,7 +25,6 @@ from pyparsing import ParseElementEnhance, Keyword, Word, Group, ZeroOrMore, \
 #       Otherwise, if the given expression matches, its parse results are returned
 #       and the ErrStop has no effect on the parse results.
 #
-#       TODO: usage
 #    """
 #
 #    def __init__(self, expr):
@@ -70,8 +70,6 @@ class ErrStop(ParseElementEnhance):
        Otherwise, if the given expression matches, its parse results are returned and
        the ErrStop has no effect on the parse results.
     """
-    #TODO: implement setErrorAction( callableObject )
-    #TODO: implement setErrorMessage( errorMsgStr )
     def __init__( self, expr ):
         super(ErrStop,self).__init__( expr, savelist=False )
         self.mayReturnEmpty = True

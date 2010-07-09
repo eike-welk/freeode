@@ -209,7 +209,6 @@ class MakeDataFlowDecorations(object):
         self.input_locs = MultiDict()
         self.output_locs = MultiDict()
 
-        #TODO: decorate function arguments
         inputs, outputs = self.decorate_statement_list(main_function.statements)
         main_function.inputs = inputs
         main_function.outputs = outputs
@@ -451,7 +450,6 @@ class VariableUsageChecker(object):
 #        
 #    def normalize_if_statement(self, _stmt):
 #        '''Put the same number of assignments into each clause of an if statement'''
-##        #TODO: create dummy assignments when clauses don't assign to the same variables
 ##        for clause in stmt.clauses:
 ##            missing_outputs = stmt.outputs - clause.outputs
 ##            for attr in missing_outputs:
@@ -464,7 +462,6 @@ class VariableUsageChecker(object):
 #        
 #        Calls the specialized checking functions.
 #        '''
-#        #TODO: reorder statements
 #        for stmt in stmt_list:
 #            if isinstance(stmt, NodeAssignment):
 #                self.check_assignment(stmt)
@@ -490,17 +487,3 @@ def check_simulation_objects(obj_list):
     for sim_obj in obj_list:
         deco.decorate_simulation_object(sim_obj)
         check.check_simulation_object(sim_obj)
-        
-    
-#TODO: test: the methods of a flat object must not use any data from 
-#      outside of the flat_object.
-
-#TODO: test if all variables are assigned once (single assignment)     
-#TODO: test if data flow is possible
-#TODO: reorder statements
-#TODO: create missing assignments in 'if' statements
-
-#TODO: remove unused variables
-#TODO: remove assignments to unused variables from each branch of in 'if' statement separately.
-#TODO: substitute away variables that are used only once
-

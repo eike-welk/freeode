@@ -1,19 +1,19 @@
-#Test script to develop a nice and extendable parser for expressions,
+#Test script to develop a nice and extendible parser for expressions,
 # using the latest features from Pyparsing.
 
-from pyparsing import *
+from freeode.third_party.pyparsing import *
 ParserElement.enablePackrat()
 
 S = Suppress
 L = Literal
 kw = Keyword
 
-def action_op_prefix(s, loc, toks):
+def action_op_prefix(_s, _loc, toks):
     toklist = toks.asList()[0]
 #    print "pre: ",  toklist
     return [toklist]
 
-def action_op_infix(s, loc, toks):
+def action_op_infix(_s, _loc, toks):
     if isinstance(toks,  ParseResults):
         toklist = toks.asList()[0]
     else:
@@ -29,12 +29,12 @@ def action_op_infix_left(s, loc, toks):
         processedToks = action_op_infix(s,  loc,  [processedToks,  toks0[i],  toks0[i+1]])
     return processedToks
 
-def action_call(s, loc, toks):
+def action_call(_s, _loc, toks):
 #    print "call: ",  toks
     toklist = toks.asList()[0]
     return [toklist]
 
-def action_slicing(s, loc, toks):
+def action_slicing(_s, _loc, toks):
 #    print "slice: ",  toks
     toklist = toks.asList()[0]
     return [toklist]
@@ -61,8 +61,6 @@ expression = Forward()
 
 #Atoms are the most basic elements of expressions.
 ##Brackets or braces are also categorized syntactically as atoms.
-#TODO: enclosures can also create tuples
-#enclosure = S('(') + expression + S(')')
 atom = identifier | literal #| enclosure
 
 #Function/method call: everything within the round brackets is parsed here;

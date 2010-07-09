@@ -162,7 +162,6 @@ def test_AATreeMaker_infinite_recursion(): #IGNORE:C01111
     
     from freeode.util import AATreeMaker
 
-    #TODO: test protection against infinite recursion
     class Test1(object):
         __siml_aa_tree_maker__ = AATreeMaker()
         def __init__(self, name, foo=None, bar=None):

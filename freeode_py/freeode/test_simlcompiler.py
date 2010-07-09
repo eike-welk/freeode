@@ -89,7 +89,6 @@ compile RunTest
     prog_text_file.write(prog_text)
     prog_text_file.close()
     
-    #TODO: change to using search_result_lines(...) and compile_run(...)
     main = SimlCompilerMain()
     main.input_file_name =  base_name + '.siml'
     main.output_file_name = base_name + '.py'

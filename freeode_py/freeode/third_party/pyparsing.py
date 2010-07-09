@@ -3550,6 +3550,7 @@ def indentedBlock(blockStatementExpr, indentStack, indent=True):
         smExpr = Group( Optional(NL) 
             #Removing the following line might increase speed. See:
             #http://pyparsing.wikispaces.com/message/view/home/13557997
+            #Fixes bug: https://bugs.launchpad.net/freeode/+bug/389924
             #This modification lets Pyparsing also parse more complex SIML
             #programs, that would crash with "Callstack exhausted" before.
             #

@@ -605,7 +605,6 @@ class TextLocation(object):
         #for higher level errors. Preserving the text of the original
         #Pyparsing error is transporting the column information for parsing
         #errors. Only parsing errors have useful column information.
-        #TODO: also print one line of program text
         return '  File "' + str(self.file_name) + '", line ' + str(self.line_no())
 
 
