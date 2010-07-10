@@ -1,0 +1,8 @@
+#!/bin/bash
+# Run all tests, sets the correct PYTHONPATH
+# <must be run in directory "freeode_py"
+
+set -x #enable debug output
+
+export PYTHONPATH=`pwd`
+py.test -n 2 --tb=short --report=skipped
