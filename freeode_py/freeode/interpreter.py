@@ -220,7 +220,6 @@ class InterpreterObject(object):
         #self.__siml_container__ = None
         #const, param, variable, ... (Comparable to storage class in C++)
         self.__siml_role__ = RoleUnkown
-        #TODO: self.save ??? True/False or Save/Optimize/Remove attribute is saved to disk as simulation result
         #Long name for the code generator
         self.__siml_dotname__ = None
 
@@ -337,7 +336,7 @@ class Signature(object):
             Location where the function is defined in the program text.
         '''
         object.__init__(self)
-        #special case copy construction
+        #special case: copy construction
         if isinstance(arguments, (SimpleSignature, Signature)):
             loc = arguments.loc
             return_type = arguments.return_type
@@ -471,7 +470,7 @@ class Signature(object):
         dict(<argument name>: <siml values, AST nodes>, ...)
         dict(str(): Node(), ...)
         '''
-        #TODO: implement support for *args and **kwargs
+        #To implement support for *args and **kwargs
         #  Description of semantics is here:
         #      http://docs.python.org/reference/expressions.html#calls
         #  A complete implementation is here:
@@ -793,16 +792,6 @@ class INoneType(InterpreterObject):
 #The single None instance for Siml
 NONE = INoneType()
 
-
-
-#TODO: Class that acts as an instance of an undetermined class. Necessary for local
-#      variables of true template functions. Currently only the arguments
-#      of a function have this property. Instances would need to be treated
-#      specially in assignments, similarly to RoleUnknown. It would always be
-#      unassigned, with unknown value.
-#
-#      class IAny(InterpreterObject): #or IUnknownType
-#          '''Instance of special undetermined class.'''
 
 
 #Forward declarations of some types, for type annotations.
@@ -1530,14 +1519,8 @@ def create_built_in_lib():
 BUILTIN_LIB = create_built_in_lib()
 
 
-#TODO: parent(o)
-#TODO: find_name(o, parent)
-#TODO: quote(expr)
-#TODO: quasi_quote(expr)
+
 #--------- Interpreter -------------------------------------------------------*
-
-
-
 def determine_result_role(arguments, keyword_arguments={}): #IGNORE:W0102
     '''
     Determine the most variable role among function arguments.
@@ -1631,7 +1614,6 @@ def decorate_call(call, return_type):
 
 class ReturnFromFunctionException(Exception):
     '''Functions return by raising this exception.'''
-    #TODO: Use this exception to transport return value?
     def __init__(self, loc=None):
         Exception.__init__(self)
         self.loc = loc
@@ -1727,7 +1709,6 @@ class Interpreter(object):
         self.locals_storage = None
 
         #tell all objects which is their interpreter
-        #TODO: this global variable should go away some day
         global INTERPRETER
         INTERPRETER = self
 
@@ -1863,31 +1844,12 @@ class Interpreter(object):
             result = self.apply(func, (ev_lhs, ev_rhs), loc=node.loc)
             return result
         except NotImplementedError:# IncompatibleTypeError?
-            #TODO: if an operator is not implemented the special function should raise
-            #      an NotImplementedError ??? IncompatibleTypeError exception, for
-            #      generating better error messages and calling the right-handed methods.
-            #      Alternatively the operators could return the special value
-            #      NotImplemented like Python operators do.
-            raise Exception( 'Handling of "NotImplemented" exception is not yet implented!')
-        #TODO: special methods for boolean operators 'and', 'or'
-        #      To retain the shortcut semantics split the execution of the
-        #      operator into two phases:
-        #      - first call __and1__(self), __or1__(self) if these operators
-        #        can compute the result they return True/False; otherwise they
-        #        return the special value NeedOtherOperand.
-        #      - if NeedOtherOperand was returned call:
-        #        __and2__(self, other), __rand2__(self, other)
-        #        __or2__(self, other),  __ror2__(self, other)
-        #      Calls with unknown arguments might always end up as: __xx2__
-        #
-        #      There is a PEP on this topic:
-        #      http://www.python.org/dev/peps/pep-0335/
-        #
-        #TODO: if unsuccessful in finding a suitable methods get the
+            raise Exception( 'Handling of "NotImplemented" exception is not yet implemented!')
+        #TODO: if unsuccessful in finding a suitable method get the
         #      right-handed methods from the RHS and try to call it.
         #      float.__sub__(a, b) == float.__rsub__(b, a)
         #
-        #TODO: *** Dispatching Binary Operators of Derived Classes ***
+        #   *** Dispatching Binary Operators of Derived Classes ***
         #      If the right operand’s type is a subclass of the left operand’s
         #      type and that subclass provides the reflected method for the operation,
         #      this method will be called before the left operand’s non-reflected
@@ -2152,11 +2114,6 @@ class Interpreter(object):
             loc: TextLocation, None
                 Location in program text for error messages
         '''
-        #TODO: assignment without defining the variable first (no data statement.)
-        #      This is very useful inside a function.
-        #      - Putting function arguments into the function's namespace
-        #        could be handled this way too.
-
         #Targets with RoleUnkown are converted to the role of value.
         #(for local variables of functions)
         if target.__siml_role__ is RoleUnkown:
@@ -2240,14 +2197,6 @@ class Interpreter(object):
         - No "return" is permitted statement in any clause. 
         - All clauses must assign to the same variables.
         '''
-        #TODO: Infrastructure to integrate protection against duplicate
-        #      assignment with the 'if' statement.
-        #      - In an 'if' statement with n clauses each variable must/should
-        #      be assigned n times.
-        #      - Local variables of functions however, will be created
-        #      uniquely for each function invocation. They can therefore
-        #      only be assigned once, even in an 'if' statement.
-
         #If code is created, create a node for an if statement
         if not self.is_collecting_code():
             raise UserException('Generating code is illegal in this context, '
@@ -2292,9 +2241,6 @@ class Interpreter(object):
 
     def exec_NodeFuncDef(self, node):
         '''Add function object to local namespace'''
-        #TODO: Implement closures, for nested functions:
-        #      Copy the global dictionary and update it with the current
-        #      local dictionary.
         func_sig = Signature(node.signature)
         #save the current global namespace in the function. Otherwise
         #access to global variables would have surprising results otherwise
@@ -2336,15 +2282,7 @@ class Interpreter(object):
                          new_env.local_scope.__dict__)
         self.set_attribute(self.environment.local_scope, node.name, new_class)
         
-    #TODO: Create a nice syntax for the data/compile statement with arbitrary keywords.
-    #TODO: A syntax for constructors - literals for user defined objects is needed.
-    #      (A constructor maybe needs builtin functions like:
-    #          set_assigned(...), setknown(...)
-    #TODO: Maybe a syntax for anonymous types - tree literals should be introduced:
-    #      data a:
-    #          data b,c: Float param
-    #          data d: String const
-    #
+
     def visit_NodeDataDef(self, node):
         '''Create object and put it into symbol table'''
         #get the type object - a NodeIdentifier is expected as class_spec
@@ -2379,22 +2317,6 @@ class Interpreter(object):
 
     def exec_NodeCompileStmt(self, node):
         '''Create object and record program code.'''
-        #TODO: Idea: replace the "compile" statement with a compile(...)
-        #      function. This function could be written in Siml, and call
-        #      several built in compilation functions.
-        #      - This would make cusomization of the compilation algorithm
-        #      quite easy for advanced users. They could write their own
-        #      compilation functions.
-        #      - Information that could be supplid by the users:
-        #        - base class of generated python class.
-        #        - which methods are the main methods
-        #        - signatures of the main methods
-        #        - which roles are legal for assignment
-        #TODO: creatation of the tree-shaped object should be done by
-        #      self.visit_NodeDataDef(...)
-        #      so there is only one place where data objects are constructed.
-        #TODO: break this method up into several methods, because it's really
-        #      too big.
         #Create data: --------------------------------------------------------------
         #get the type object - a NodeIdentifier is expected as class_spec
         class_obj = self.eval(node.class_spec)
@@ -2409,20 +2331,6 @@ class Interpreter(object):
 #            setattr(self.environment.local_scope, node.name, tree_object)
 
         #specify and discover main functions ---------------------------------------
-        #TODO: Implement automatic calling of main functions in child objects.
-
-        #In different parts of code only variables with speciffic roles
-        #are valid targets of an assign statement.
-        #      outside compile: only RoleConstant
-        #      in "init":       only RoleParameter, RoleVariable, RoleConstant
-        #      in "dynamic":    only RoleAlgebraicVariable, RoleConstant
-        #      in "final":      only RoleVariable, RoleConstant
-
-        #TODO: Mabe replace list with template object that is a CompiledClass
-        #      The template class would include all required main functions.
-        #      This way different output objects for optimization/solution of ODE
-        #      could be realized. In principle such objects could be written in Siml
-        #      Additional special propperties could be added by pragme statements.
         main_func_specs = \
             [Node(#target_roles=(RoleAlgebraicVariable, RoleTimeDifferential,
                                 #RoleConstant),

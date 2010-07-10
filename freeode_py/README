@@ -1,7 +1,7 @@
--------------------------------------------------------------------------------
+###############################################################################
                                    Freeode
                             SIML Simulation Language
--------------------------------------------------------------------------------
+###############################################################################
 
 This package contains a compiler for a specialized language (SIML) for the
 simulation of differential equations (ODE). The generated simulation program
@@ -9,7 +9,8 @@ is in the Python programming language, using the Numpy and Scipy libraries.
 
 
 
-Prerequisites:
+Prerequisites
+=============
 - The compiler needs Python version 2.6 or newer; however below Python 3.0. 
   It contains a modified copy of the Pyparsing library. 
   http://www.python.org/
@@ -32,20 +33,22 @@ Prerequisites:
 
 
 
-Installation:
+Installation
+============
 Issue the following commands in a terminal window (command line):
     python setup.py install
 
-The file "hl_siml.xml" is a syntax highlighting definition for the linux text
-editor "kate" (more exactly for all editors using the katepart). It will
-enable these editors to show SIML programs nicely colored for better
+The file "hl_siml.xml" is a syntax highlighting definition for the Linux text
+editor "kate" (more exactly for all editors using the "katepart" library). It 
+will enable these editors to show SIML programs nicely colored for better
 readability.
 Copy it to:
 ~/.kde/share/apps/katepart/syntax
 
 
 
-Usage:
+Usage
+=====
 Compile SIML programs with "simlc" script. The following command will read
 the file "tank.siml" and generate a simulation program "tank.py".
 	simlc tank.siml
@@ -60,7 +63,8 @@ The compiler understands the --help option.
 
 
 
-Syntax:
+Syntax
+======
 The syntax of the SIML language is fairly simple. However there exists
 currently no description of the syntax, or even a tutorial. To learn the
 syntax you must look at the *.siml example files in the directory "../models".
