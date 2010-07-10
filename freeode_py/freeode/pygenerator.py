@@ -38,18 +38,16 @@ generates some python classes that perform the simulations.
 from __future__ import division
 from __future__ import absolute_import     
 
+import datetime
 import cStringIO
 from freeode.util import DotName, PROGRAM_VERSION, func 
 from freeode.ast import (NodeFuncCall, NodeParentheses,  
                          NodeAssignment, NodeIfStmt, 
                          NodeExpressionStmt, 
                          RoleIntermediateVariable, RoleInputVariable, 
-                         RoleOutputVariable, RoleParameter, 
-                         RoleConstant, 
-                         )
+                         RoleOutputVariable, RoleParameter, RoleConstant)
 from  freeode.interpreter import (IFloat, IString, IBool, CompiledClass, 
-                                  CodeGeneratorObject, isrole, BUILTIN_LIB
-                                  )
+                                  CodeGeneratorObject, isrole, BUILTIN_LIB )
 
 
 
@@ -401,8 +399,6 @@ class SimulationClassGenerator(object):
             
         Returns: string
             Unique name; base_string with number appended if necessary
-            
-        TODO: unify with make_unique_name(...)!!!
         '''
         for number in range(1, 100000):
             if base_string not in existing_strings:
@@ -459,11 +455,6 @@ class SimulationClassGenerator(object):
         The ordered sequences of variables are:
             self.algebraic_variables_ordered
             self.state_variables_ordered
-            
-        #TODO: generalize this for functions for minimizing
-        #TODO: introduce pragma states_order
-        #TODO: introduce pragma input_order
-        #TODO: introduce pragma output_order
         '''
         #access the sort key for the sort function
         get_siml_name = lambda node: node.siml_dot_name
@@ -559,7 +550,7 @@ class SimulationClassGenerator(object):
             self.write('%s, ' % var.target_name)
         self.write('], \'float64\') \n')
         self.write(ind8 + 'self.algVectorLen = len(algVars) \n')
-        #TODO: compute self.variableNameMap from the actual sizes of the variables
+
         self.write(ind8 + '#Create mapping between variable names and array indices \n')
         #Create mapping between variable names and array indices
         self.write(ind8 + 'self.variableNameMap = {')
@@ -592,7 +583,6 @@ class SimulationClassGenerator(object):
         for n_var, var in enumerate(self.state_variables_ordered):
             self.write(ind8 + '%s = state_vars[%d] \n' % (var.target_name, n_var))
         #Create all algebraic variables
-        #TODO: remove this, once proper detection of unused variables exists
         self.write(ind8 + '#create all algebraic variables '
                           'to prevent runtime errors.\n')
         for var in (self.algebraic_variables_ordered):
@@ -690,8 +680,6 @@ class SimulationClassGenerator(object):
             self.write_initialize_method(name)
         self.write_dynamic_method()
         self.write_final_method()
-        #TODO: separate function to compute the algebraic variables.
-        #self.write_output_equations()
 
         self.write('\n\n')
 
@@ -743,7 +731,6 @@ class ProgramGenerator(object):
 # the objects defined in this file into the Python interpreter.                #
 ################################################################################
 '''     )
-        import datetime
         dt = datetime.datetime.today()
         date = dt.date().isoformat()
         time = dt.time().strftime('%H:%M:%S')
@@ -769,7 +756,6 @@ from freeode.simulatorbase import SimulatorBase, simulatorMainFunc, debug_print
 
     def write_program_end(self):
         '''Write last part of program, such as main routine.'''
-        #TODO: add program text to output file as string.
         self.write(
 '''
 
@@ -807,9 +793,3 @@ if __name__ == '__main__':
             procGen.create_sim_class(sim_object.class_name, sim_object)
 
         self.write_program_end()
-
-
-
-if __name__ == '__main__':
-    #TODO: add doctest tests.
-    pass

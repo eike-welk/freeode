@@ -1,7 +1,7 @@
--------------------------------------------------------------------------------
+###############################################################################
                              Running the Test Suite 
                       for SIML Compiler and Example Models
--------------------------------------------------------------------------------
+###############################################################################
  
 The test suite uses the "py.test" framework, which does a lot of magic, and 
 which can run on tests multiple CPUs and on multiple computers over a network: 
@@ -14,23 +14,29 @@ following plug  in:
 
 
 Installation
-------------
+============
 (tbd)
 
 
 USAGE
------
+=====
 
-=== Eclipse ===
+Eclipse
+-------
 To run the test from Pydev/Eclipse, there is a Python script in this directory:
     
     run_test_py.py 
 
 It also serves as an aid to memorize the correct options for "py.test".
 
-=== Shell ===
+Shell
+-----
 To run the tests from the shell, "cd" to the directory where this file 
-("README-TESTS") is located, and type the following commands:
+("README-TESTS") is located. You can either run a script:
+
+    run-all-tests
+
+Or you can type the following commands at the Bash prompt:
 
     export PYTHONPATH=`pwd`
     py.test -n 2 --tb=short --report=skipped

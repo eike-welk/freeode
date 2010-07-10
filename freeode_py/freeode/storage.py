@@ -24,8 +24,6 @@
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
 
-#TODO: better docstrings
-#TODO: some examples
 '''
 Two dict like classes to keep simulation results: ArrayStore, DictStore
 
@@ -161,10 +159,6 @@ class BaseStore(object):
             stats += '%-20s %-12s %-12s %-12s %-12s %-12s \n' \
                % (name1, minValStr, maxValStr, meanValStr, stdDevStr, sumNanStr)    
         return stats
-    
-    
-    #TODO: robust functions for checking and converting input arguments
-    #TODO: robust functions for CSV reading
 
 
 
@@ -239,7 +233,6 @@ class ArrayStore(BaseStore):
     
     def __repr__(self):
         '''Create a string representation that is valid python code.'''
-        #TODO: make output more beautifull
         return 'ArrayStore(' \
                 + repr(self.dataArray) +', ' \
                 + repr(self.attributeNames()) + ')'
@@ -311,7 +304,6 @@ class ArrayStore(BaseStore):
         #probably faster:
         #    scipy.io.read_array
         #    pylab's load function (seems to be fastest)
-        #TODO: more robustness
         
         #read whole file at once
         f = open(fileName, 'r')
@@ -717,7 +709,6 @@ class DictStore(BaseStore):
         #probably faster:
         #    scipy.io.read_array
         #    pylab's load function (seems to be fastest)
-        #TODO: more robustness
         
         #read whole file at once
         f = open(fileName, 'r')
@@ -1002,19 +993,19 @@ if __name__ == '__main__':
             '''ArrayStore: Test __init__ and createFromData'''
             #TODO: TEST results of init
             #init empty object
-            store = ArrayStore()
+            _store = ArrayStore()
             #init with array and list
             data = self.numData
             names = ['a','b','c','d','e']
-            store = ArrayStore(data, names)
+            _store = ArrayStore(data, names)
             #init with array and tuple
             data = self.numData
             names = ('a','b','c','d','e')
-            store = ArrayStore(data, names)
+            _store = ArrayStore(data, names)
             #init with 1D array
             data = array([1.0, 2, 3])
             names = ['a']
-            store = ArrayStore(data, names)
+            _store = ArrayStore(data, names)
             
         def test__init__2(self):
             '''ArrayStore: test __init__ from file'''
@@ -1192,15 +1183,15 @@ if __name__ == '__main__':
             '''DictStore: Test __init__ and createFromData'''
             #TODO: test results of init
             #init empty object
-            store = DictStore()
+            _store = DictStore()
             #init with array and list, dict
             data = self.numData
             names = ['a','b','c','d','e']
             vals = {'p':1.0, 'q':2}
-            store = DictStore(data, names, vals)
+            _store = DictStore(data, names, vals)
             #init only with dict
             vals = {'a':array([1.0,2,3]), 'b':array([4.0,5,6])}
-            store = DictStore(data, names)
+            _store = DictStore(data, names)
             
         def test__init__2(self):
             '''DictStore: test __init__ from file'''

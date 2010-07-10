@@ -32,8 +32,6 @@ Usage of new facility for wrapping Python code:
           def bar(a, b):
               return a
       foo_proxy.set(Foo) 
-
-TODO: Creation of new user defined class
 '''
 
 import inspect

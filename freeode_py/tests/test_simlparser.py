@@ -539,12 +539,12 @@ def test_parse_complete_program_1(): #IGNORE:C01111
 class Test:
     data V, h: Float
     data A_bott, A_o, mu, q, g: Float param
-
+                                               #5 
     func dynamic():
         h = V/A_bott
         $V = q - mu*A_o*sqrt(2*g*h)
-#        print('h: ', h)
-
+        print('h: ', h)
+                                               #10
     func init():
         V = 0;
         A_bott = 1; A_o = 0.02; mu = 0.55;
@@ -802,5 +802,5 @@ if a:
 # ---------- call function for debugging here ---------------------------------
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_parser_stack_overflow_bug()
+    test_parse_complete_program_1()
     pass #pylint:disable-msg=W0107

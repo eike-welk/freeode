@@ -32,14 +32,15 @@
 
 """
 Parser for the SIML simulation language.
+
+The parser produces a tree of ast.Node instances.
+Main entry points for users of this library are: 
+    Parser.parseModuleStr(...)
+    Parser.parseModuleFile(...)
 """
 
-#TODO: write unit tests that exercise every error message of simlparser.py
-
 from __future__ import division
-
-__version__ = "$Revision: $"
-# $Source$
+from __future__ import absolute_import
 
 import os
 #import parser library
@@ -79,13 +80,13 @@ class ChMsg(object):
         self.prepend_str = prepend
         self.append_str = append
 
-    def __call__(self, s,loc,expr,err):
+    def __call__(self, _s,_loc,_expr,err):
         '''Change error message. Called by parser when it fails.
 
         Arguments:
-            - s = string being parsed
-            - loc = location where expression match was attempted and failed
-            - expr = the parse expression that failed
+            - _s = string being parsed
+            - _loc = location where expression match was attempted and failed
+            - _expr = the parse expression that failed
             - err = the exception thrown
 
         Return:
@@ -126,7 +127,7 @@ class Parser(object):
     ast2 = parser.parseModuleFile('foo-bar.siml')
     '''
 
-    # Define how much the parse result is modified, for easier debuging.
+    # Define how much the parse result is modified, for easier debugging.
     #  0: normal operation. Compilation does not work otherwise.
     #  1: Do not modify parse result from the Pyparsing library.
     #
@@ -638,36 +639,6 @@ class Parser(object):
                             self.createTextLocation(loc), errno=2139010)
 
 
-#    def _action_func_call_arg(self, s, loc, toks): 
-#        '''
-#        Create node for one argument of a function call.
-#            x=2.5  ,  x*2+sin(a)
-#        Node types are: either a mathematical expression, or an assignment.
-#        BNF:
-#        call_argument = ( Group(identifier                         .setResultsName('keyword')
-#                                + '=' + expression                 .setResultsName('value')
-#                                )                                  .setResultsName('keyword_argument')
-#                        | Group(expression)                        .setResultsName('positional_argument')
-#                        )                                          .setParseAction(self._action_func_call_arg)
-#        '''
-#        if Parser.noTreeModification:
-#            return None #No parse result modifications for debuging
-#        #named argument: x=2.5
-#        if toks.keyword_argument:
-#            #TODO:Should a new node NodeNamedArg be introduced? A named argument is
-#            # not really an assignment. Making it an assignment may break the
-#            # attribute renaming algorithm.
-#            raise UserException('Keyword arguments are currently unsupported!',
-#                                self.createTextLocation(loc))
-#        #positional argument: 2.5
-#        elif toks.positional_argument:
-#            nCurr = toks.positionalArg[0]
-#        else:
-#            raise ParseActionException('Broken function argument. ' +
-#                                        str(self.createTextLocation(loc)) + ' ' +
-#                                        str(toks))
-#        return nCurr
-
     def _action_func_call(self, _s, loc, toks): 
         '''
         Create node for calling a function or method.
@@ -859,7 +830,6 @@ class Parser(object):
                     Optional(eE + Word('+-'+nums, nums))))          .setParseAction(self._action_number)\
                                                                     .setName('uFloat')#.setDebug(True)
         #string
-        #TODO: good error message for missing 2nd quote in single line string
         stringLiteral = quotedString                                .setParseAction(self._action_string)\
                                                                     .setName('string')#.setDebug(True)
         literal = uFloat | stringLiteral
@@ -886,14 +856,10 @@ class Parser(object):
 
         #Atoms are the most basic elements of expressions.
         #Brackets or braces are also categorized syntactically as atoms.
-        #TODO: future extension: enclosures can also create tuples
-        #TODO: Inside brackets any number of newlines should be allowed!
         #      Look at setWhitespaceChars().
         enclosure = (S('(') - expression + S(')'))                  .setParseAction(self._action_parentheses_pair)
         atom = identifier | literal | enclosure
 
-        #TODO: Inside brackets any number of newlines should be allowed!
-        #      Look at setWhitespaceChars().
         #Function/method call: everything within the round brackets is parsed here;
         # the function name is parsed in 'expression'. This parser is quite general;
         # more syntax checks are done in parse action to generate better error messages.
@@ -906,7 +872,6 @@ class Parser(object):
         call_argument = Group(keyword_argument | positional_argument) #extra group to make setResultsName work
         argument_list = ( delimitedList(call_argument)              .setResultsName('argument_list')
                           + Optional(',') )
-        #TODO: Error message 'Function arguments: '
         call = Group('(' - Optional(argument_list) + ')')
 
         #Slicing/subscription: everything within the rectangular brackets is parsed here;
@@ -976,13 +941,6 @@ class Parser(object):
 #                                + stmtEnd)                           .setErrMsgStart('Foreign code statement: ')
 #                           )                                         .setParseAction(self._actionForeignCodeStmt)
 
-#        #expression list - parse: 2, foo.bar, 3*sin(baz)
-        #TODO: create built in store function instead
-        #store to disk
-#        store_stmt = Group(kw('save') - expression_list             .setResultsName('arg_list')
-#                          - Optional(','))                          .setParseAction(self._actionStoreStmt)\
-#                                                                    .setFailAction(ChMsg(prepend='save statement: '))
-
         #pass statement, do nothing - necessary for empty compund statements
         pass_stmt = kw('pass')                                      .setParseAction(self._action_pass_stmt)
 
@@ -1003,14 +961,12 @@ class Parser(object):
 
         #------------ data statemnt -------------------------------------------------------------------------
         #define parameters, variables, constants and submodels
-        #TODO: add 'save' - 'no_save' keywords
         #The roles of data (maybe call it storage class?):
         #variable:    changes during the simulation
         #parameter:   constant during a (dynamic?) simulation, can change beween simulations,
         #             can be computed in the init function.
         #constant:    must be known at compile time, may be optimized away,
         #             the compiler may generate special code depending on the value.
-        #TODO: maybe add role for automatically created variables
         attrRole = (  kw('state_variable') | kw('time_differential')  | kw('algebraic_variable')
                     | kw('role_unknown')
                     | kw('variable') | kw('param') | kw('const')      )
@@ -1071,7 +1027,6 @@ class Parser(object):
 
         #---------- class  ......................................................................
         #definition of a class
-        #TODO: "inherit" statement
         class_stmt = Group(kw('class')
                            - newIdentifier                          .setResultsName('classname')
                            + Optional('(' - func_def_arg_list       .setResultsName('arg_list')
@@ -1092,8 +1047,7 @@ class Parser(object):
         #necessary for statement list (stmt_list) inside of block (stmt_block)
         stmt_list_1 = stmt_list.copy()                              .setParseAction(self._action_stmt_list)
         #Statement: one line of code, or a compound (if, class, func) statement
-        #TODO: set a fail action that says 'Expected statement here.' ('Expected end of file' is misleading.)
-        #TODO: good error messages for the parser are important.
+
         statement = (  simple_stmt + newline
                      | stmt_list_1 + newline
                      | compound_stmt         )
@@ -1102,13 +1056,6 @@ class Parser(object):
         #Body of class or function; the dependent code of 'if'
         # Statement list and indented block of statements lead to the same AST
         suite << ( stmt_list + newline | newline + stmt_block )     #IGNORE:W0104
-
-#        #simple definition for debuging:
-#        #simple statements are terminated by newline
-#        #while the indented block eats all newlines after the compound statement
-#        statement = simple_stmt + newline | compound_stmt
-#        #a suite is an indented block of statements
-#        suite << indentedBlock(statement, self.indentStack)
 
 #---------- module ------------------------------------------------------------------------------------#
         module = (indentedBlock(statement, self.indentStack, indent=False)
@@ -1178,7 +1125,6 @@ class Parser(object):
     def parseModuleFile(self, fileName, moduleName=None):
         '''Parse a whole program. The program's file name is supplied.'''
         self.progFileName = os.path.abspath(fileName)
-        #TODO: deduce from file name?
         self.moduleName = moduleName
         #open and read the file
         try:
@@ -1190,9 +1136,3 @@ class Parser(object):
             raise UserException(message, None)
         #parse the program
         return self.parseModuleStr(inputFileContents)
-
-
-
-if __name__ == '__main__':
-    #TODO: add doctest tests.
-    pass

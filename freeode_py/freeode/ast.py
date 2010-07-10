@@ -82,39 +82,6 @@ class Node(object):
         '''
         return self.__siml_aa_tree_maker__.make_tree(self)   
              
-#    def copy(self):
-#        '''
-#        Return a (recursive) deep copy of the node.
-#
-#        Only objects owned by this object are copied deeply.
-#        For objects owned by other nodes proxies should be created:
-#        self.foo = proxy(other.foo)
-#        '''
-#        return copy.deepcopy(self)
-#
-#    def __deepcopy__(self, memo_dict):
-#        '''
-#        Hook that does the copying for Node.copy.
-#        Called by copy.deepcopy()
-#        
-#        copy - weakref interaction problems:
-#        http://coding.derkeiler.com/Archive/Python/comp.lang.python/2008-02/msg01873.html
-#        '''
-#        #TODO: new ast.Node.copy mechanism for shallow copy, just referencing
-#        #create empty instance of self.__class__
-#        new_obj = Node.__new__(self.__class__)
-#        for name, attr in self.__dict__.iteritems():
-#            if isinstance(attr, Node._weak_types):
-#                #attribute owned by other object: no copy only reference
-#                setattr(new_obj, name, attr)
-#            else:
-#                #attribute owned by self: make deep copy
-#                new_attr = copy.deepcopy(attr, memo_dict)
-#                setattr(new_obj, name, new_attr)
-#        return new_obj
-
-
-
 #---------- Nodes Start ------------------------------------------------------------*
 #--------- Expression --------------------------------------------------------------
 class NodeFloat(Node):
@@ -150,9 +117,6 @@ class NodeIdentifier(Node):
     AST node for an identifier. 
     
     Using an identifier always means some access to data.
-    
-    TODO: the '$' and 'deriv' operators will mean access to special variables 
-          with mangeld names: $foo.bar --> foo.bar$time; deriv(foo, x) --> foo$x
     
     Data Attributes:
         name: str()
@@ -331,7 +295,6 @@ class NodeFuncCall(Node):
         loc: 
             Location in input string
     '''
-    #TODO: give NodeFuncCall a nice constructor
     def __init__(self, function=None, arguments=None, keyword_arguments=None, 
                  loc=None):
         super(NodeFuncCall, self).__init__()
@@ -432,8 +395,6 @@ class NodeClause(Node):
 class NodeIfStmt(Node):
     '''
     AST node for an if ... elif ... else statement
-    
-    TODO: maybe rename to NodeCondStmt ???
     
     Data attributes
     ---------------
@@ -821,25 +782,6 @@ class NodeModule(Node):
         self.loc = None
 
 
-#class NodeFlatModule(Node):
-#    '''
-#    Module where all attributes have long, dotted names, and where all
-#    attributes are defined on the top (module) level.
-#    Data defs are only built in types.
-#
-#    Attributes:
-#    kids      : Definitions, the program's code.
-#    loc       : location in input string (~0)
-#    dat       : None
-#
-#    name      : Name of the module
-#    targetName: Name useful in the context of flattening or code generation
-#    '''
-#    def __init__(self, kids=None, loc=None, dat=None, name=None):
-#        Node.__init__(self, kids, loc, dat)
-#        self.name = name
-#        self.targetName = None
-
 #---------- Nodes End --------------------------------------------------------*
 
 #class DepthFirstIterator(object):
@@ -860,7 +802,6 @@ class NodeModule(Node):
 #    leaf
 #    leaf
 #    """
-#    #TODO: Find out if this is really depth first iteration.
 #
 #    def __init__(self, treeRoot, returnDepth=False):
 #        """
@@ -871,7 +812,6 @@ class NodeModule(Node):
 #        """
 # 
 #        raise Exception('DepthFirstIterator: Feaature not implemented!')
-#        #TODO: make it work with new node class again!
 #        self.stack = [(treeRoot, 0)] #tuples (node, childIndex).
 #        self.depth = 0  #how deep we are in the tree.
 #        self.returnDepth = returnDepth #flag: shoult we return the current depth
@@ -884,7 +824,6 @@ class NodeModule(Node):
 #
 #
 #    #TODO: enhance DepthFirstIterator: remember already seen nodes in set.
-#    #TODO: make possible child[i] == None
 #    def next(self):
 #        '''Go to the next node, return current node.'''
 #        #After tree has been traversed throw exception, don't start again
@@ -911,9 +850,6 @@ class NodeModule(Node):
 #
 #        #remember to visit next child when we come here again
 #        self.stack[-1] = (currNode, currChild+1)
-#        #TODO: Make iterator work also with objects that are not children of Node;
-#        #TODO: or make iterator throw an exception with useful error message when
-#        #      non Node object is discovered
 #        #get node that will be visited next
 #        nextNode = currNode[currChild]
 #        #go to one level down, to current child.
