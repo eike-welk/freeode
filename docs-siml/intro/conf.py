@@ -31,13 +31,13 @@ templates_path = ['_templates']
 source_suffix = '.rst'
 
 # The encoding of source files.
-#source_encoding = 'utf-8'
+source_encoding = 'utf-8'
 
 # The master toctree document.
 master_doc = 'index'
 
 # General information about the project.
-project = u'Siml Introduction'
+project = u'The Siml Programming Language'
 copyright = u'2010, Eike Welk'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -70,7 +70,7 @@ exclude_trees = ['_build']
 #default_role = None
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
-#add_function_parentheses = True
+add_function_parentheses = True
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
@@ -172,7 +172,7 @@ htmlhelp_basename = 'SimlIntroductiondoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'SimlIntroduction.tex', u'Siml Introduction Documentation',
+  ('index', 'TheSimlLanguage.tex', u'The Siml Programming Language',
    u'Eike Welk', 'manual'),
 ]
 
