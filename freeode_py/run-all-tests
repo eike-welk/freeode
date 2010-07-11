@@ -5,4 +5,4 @@
 set -x #enable debug output
 
 export PYTHONPATH=`pwd`
-py.test -n 2 --tb=short --report=skipped
+time py.test -n 2 --tb=short --report=skipped

@@ -52,6 +52,37 @@ def test_parser_construction(): #IGNORE:C01111
 
 
 
+def test_number_1(): #IGNORE:C01111
+    msg = 'Parse a floating point number.'
+    #py.test.skip(msg)
+    print msg
+    
+    from freeode.simlparser import Parser   
+    from freeode.ast import NodeFloat
+    from freeode.util import aa_make_tree
+    
+    parser = Parser()
+    #For debugging: keep Pyparsing's  original parse results.
+    # Exit immediately from all action functions
+    #Parser.noTreeModification = 1
+    
+    def test_number(num_str):
+        ast = parser.parseExpressionStr(num_str)
+#        print aa_make_tree(ast)
+        assert isinstance(ast, NodeFloat)
+        assert ast.value == num_str
+    
+    test_number("2")
+    test_number("2.")
+    test_number(".2")
+    test_number("2.5")
+    test_number("2E2")
+    test_number("2.5E2")
+    test_number("2.5E-2")
+    test_number("2.5E+2")
+    
+    
+
 def test_identifier_1(): #IGNORE:C01111
     msg = 'Parse an identifier.'
     #py.test.skip(msg)
@@ -547,7 +578,7 @@ class Test:
                                                #10
     func init():
         V = 0;
-        A_bott = 1; A_o = 0.02; mu = 0.55;
+        A_bott = 1E0; A_o = 0.02; mu = 0.55;
         q = 0.05
  
  
@@ -802,5 +833,5 @@ if a:
 # ---------- call function for debugging here ---------------------------------
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_parse_complete_program_1()
+    test_number_1()
     pass #pylint:disable-msg=W0107

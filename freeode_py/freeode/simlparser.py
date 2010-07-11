@@ -45,7 +45,7 @@ from __future__ import absolute_import
 import os
 #import parser library
 from freeode.third_party.pyparsing import (
-    Literal, CaselessLiteral, Keyword, Word,
+    Literal, CaselessLiteral, Keyword, Word, Regex,
     ZeroOrMore, OneOrMore, Forward, nums, alphas, alphanums, restOfLine,
     oneOf, LineEnd, indentedBlock,
     delimitedList, Suppress, operatorPrecedence, opAssoc,
@@ -225,35 +225,14 @@ class Parser(object):
             raise ParseFatalException(s, loc, errMsg)
         return
 
-#    def _actionBuiltInValue(self, str, loc, toks):
-#        '''
-#        Create AST node for a built in value: pi, time
-#        tokList has the following structure:
-#        [<identifier>]
-#        '''
-#        if Parser.noTreeModification:
-#            return None #No parse result modifications for debugging
-#        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-#        #create AST node
-#        nCurr = NodeBuiltInVal()
-#        nCurr.loc = self.createTextLocation(loc) #Store position
-#        nCurr.dat = tokList #Store the built in value's name
-#        return nCurr
-
-
     def _action_number(self, _s, loc, toks): 
         '''
-        Create node for a number: 5.23
-        tokList has the following structure:
-        [<number>]
+        Create node for a floating point number: 5.23
         '''
         if Parser.noTreeModification:
             return None #No parse result modifications for debugging
-        tokList = toks.asList()[0] #asList() ads an extra pair of brackets
-        nCurr = NodeFloat()
-        nCurr.loc = self.createTextLocation(loc) #Store position
-        nCurr.value = tokList[0] #Store the number
-        return nCurr
+        n_curr = NodeFloat(toks[0], self.createTextLocation(loc))
+        return n_curr
 
     def _action_string(self, _s, loc, toks): 
         '''
@@ -814,28 +793,15 @@ class Parser(object):
         newline = LineEnd().suppress()
 
 #------------------ Literals .................................................................
-
-        #Integer (unsigned).
-        uInteger = Word(nums)                                       .setName('uInteger')#.setDebug(True)
-#        # TODO: Change for speedup
-#        #Snippet taken from: donn <donn.ingle@gmail.com> who quotes Paul McGuire:
-#        # "I'm finding that complex items like real numbers just work better
-#        # using a Regex than Combine'ing Words, Optionals, etc."
-#        floater = PP.Regex(r"-?\d+(\.\d*)?([Ee][+-]?\d+)?")
-        #Floating point number (unsigned).
-        eE = CaselessLiteral( 'E' )
-        uFloat = Group( Combine(
-                    uInteger +
-                    Optional('.' + Optional(uInteger)) +
-                    Optional(eE + Word('+-'+nums, nums))))          .setParseAction(self._action_number)\
-                                                                    .setName('uFloat')#.setDebug(True)
-        #string
-        stringLiteral = quotedString                                .setParseAction(self._action_string)\
+        #Floating point number (unsigned)
+        u_float = Regex(r"((\d+(\.\d*)?)|\.\d+)([Ee][+-]?\d+)?")    .setParseAction(self._action_number) \
+                                                                    .setName('floating point number')
+        #String
+        string_literal = quotedString                               .setParseAction(self._action_string)\
                                                                     .setName('string')#.setDebug(True)
-        literal = uFloat | stringLiteral
+        literal = u_float | string_literal
 
 #------------------ Identifiers .................................................................
-
         #Built in variables, handled specially at attribute access.
         Parser.builtInVars = set(['time', 'this'])
         #identifiers
