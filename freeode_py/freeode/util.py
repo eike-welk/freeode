@@ -770,18 +770,56 @@ def search_result_lines(text, line_templates):
 
 
 
-def compile_run(in_name, out_name, extra_args='', run_sims='all', clean_up=True):
-    '''Compile and run a simulation.'''
+def compile_run(in_name, test_suffix='_testprog', 
+                  extra_args='', run_sims='all', no_graphs=True, clean_up=True):
+    '''
+    Compile and run a simulation. 
+    
+    Returns the simulation's text output (stdout). The created files are removed
+    after the simulation has been run.
+    
+    Arguments
+    ---------
+    in_name: str
+        Name of the Siml program which is tested. 
+    test_suffix: str
+        Prefix for all generated files. Every test should have a different 
+        prefix so that there is no interference between them in the file system.
+    extra_args: str
+        Additional arguments for the compiler. Appended to the command string.
+    run_sims: str
+        Specify the which simulation should be run. Can be a string containing 
+        a mumber (for example '1'), or the special value 'all' which chooses all 
+        simulations. 
+    no_graphs: bool
+        If True: Do not show any graphs even if the simulation contains "graph"
+        commands. (Passes "--no-graphs" to the simulation") 
+    clean_up: bool
+        If True: delete the Python program that is created by the compiler. 
+        (And also the *.pyc file.)
+    '''
+    #test and create the filenames
+    extension = in_name.split('.',)[-1]
+    assert extension.lower() == 'siml', \
+           'The input file must have the extension *.siml'
+    out_base = in_name[:-5] + test_suffix
+    
+    #create the bash command
+    outname_args = ' -o %s ' % (out_base + '.py')
+    run_args = '-r %s ' % run_sims
+    graph_args = '--no-graphs ' if no_graphs else ''
+    cmd_str = 'python simlc ' + in_name + outname_args + run_args + graph_args \
+              + extra_args
+    debug_print('cmd_str: ', cmd_str, area='compile_run')
+    
     #Run compiler and simulation(s); catch the output
-    cmd_str = 'python simlc %s -o %s -r %s %s' % (in_name, out_name, 
-                                                  run_sims, extra_args)
     sim = Popen(cmd_str, shell=True, stdout=PIPE)
     res_txt, _ = sim.communicate()
     debug_print('Program output: \n', res_txt, sep='')
     debug_print('Return code: ', sim.returncode)
+    assert sim.returncode == 0, 'Siml compiler exited with error.'
+    
     #Clean up
     if clean_up:
-        os.remove(out_name)
-    #Program must say that it terminated successfully 
-    assert sim.returncode == 0, 'Program exited with error.'
+        os.remove(out_base+'.py')
     return res_txt

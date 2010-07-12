@@ -42,15 +42,14 @@ def test_fibonacci_compile_time(): #IGNORE:C01111
  
     directory = 'models/other/'
     base_name = 'fibonacci_compile_time'
-    output_suffix = '_test1'
+    test_suffix = '_testprog8'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs --debug-areas=perf')
+    res_txt = compile_run(in_name, test_suffix, '--debug-areas=perf')
     #Search for the test lines
     search_result_lines(res_txt, [Line(['Recursive algorithm:', 55.0 ]), 
                                   Line(['Closed solution:',     55.0 ]),
@@ -66,15 +65,14 @@ def test_sum_compile_time(): #IGNORE:C01111
  
     directory = 'models/other/'
     base_name = 'sum_compile_time'
-    output_suffix = '_test1'
+    test_suffix = '_testprog9'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs --debug-areas=perf')
+    res_txt = compile_run(in_name, test_suffix, '--debug-areas=perf')
     #Search for the test lines
     search_result_lines(res_txt, [Line(['Recursive sum:' , 55.0 ]), 
                                   Line(['Closed formula:', 55.0 ])
@@ -89,16 +87,15 @@ def test_debug_areas(): #IGNORE:C01111
  
     directory = 'models/other/'
     base_name = 'debug_areas'
-    output_suffix = '_test1'
+    test_suffix = '_testprog10'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation with standard debug areas. All special output 
     #should be disabled
-    res_txt = compile_run(in_name, out_name, '')
+    res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
     search_result_lines(res_txt, [Line('print-always: 1'), 
                                   Line('init-x: 0.0'), 
@@ -107,7 +104,7 @@ def test_debug_areas(): #IGNORE:C01111
 
     #Run compiler and simulation with debug area "debug-compile-time" (and "perf")
     #enabled. All additional output with this debug area should be displayed.
-    res_txt = compile_run(in_name, out_name, '--debug-areas=debug-compile-time,perf')
+    res_txt = compile_run(in_name, test_suffix, '--debug-areas=debug-compile-time,perf')
     #Search for the test lines
     search_result_lines(res_txt, [Line('print-always: 1'), 
                                   Line('init-x: 0.0'), 
@@ -120,7 +117,7 @@ def test_debug_areas(): #IGNORE:C01111
 
     #Run compiler and simulation with debug area "debug-run-time" (and "perf")
     #enabled. All additional output with this debug area should be displayed.
-    res_txt = compile_run(in_name, out_name, '--debug-areas=debug-run-time,perf')
+    res_txt = compile_run(in_name, test_suffix, '--debug-areas=debug-run-time,perf')
     #Search for the test lines
     search_result_lines(res_txt, [Line('print-always: 1'), 
                                   Line('init-x: 0.0'), 

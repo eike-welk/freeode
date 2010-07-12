@@ -316,6 +316,7 @@ def test_UserException():
 
 
 
+# -------- Testing aids --------------------------------------------------------  
 def test_assert_raises():
     msg = "Test function for checking that the correct exceptions are raised."
     #skip_test(msg)
@@ -440,7 +441,58 @@ klajfd
     
     
  
+def test_compile_run_lines(): #IGNORE:C01111
+    msg = '''Test function compile_run'''
+#    skip_test(msg)
+    print msg
+    
+    from freeode.util import assert_raises, compile_run, DEBUG_AREAS
+    import os
+    
+    DEBUG_AREAS.add('compile_run')
+    
+    prog_text = \
+'''
+class Foo:
+    data x: Float
+    
+    func initialize(this):
+        x = 0
+        solution_parameters(100, 1)
+        print('in initialize')
+        
+    func dynamic(this):
+        $x = 1
+        
+    func final(this):
+        print('final x:', x)
+    
+
+compile Foo
+'''
+    base_name = ('compile_run_output')
+    test_prefix = 'testprefix_'
+    out_file = open(base_name + '.siml', 'w')
+    out_file.write(prog_text)
+    out_file.close()
+    
+#    os.system('pwd')
+#    os.system('ls')
+
+    compile_run(base_name + '.siml', test_prefix)
+    assert_raises(AssertionError, None, compile_run, 
+                  (base_name + '.siml', test_prefix, '--foo'))
+    
+    #compile_run(base_name + '.siml', test_prefix, '--foo', run_sims, no_graphs, clean_up)
+    #assert_raises(exc_type, errno, func, args, kwargs)
+    #TODO: clean up junk
+    
+    #remove the siml file
+    os.remove(base_name + '.siml')
+    
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_debug_print()
+    test_compile_run_lines()
     pass #pylint: disable-msg=W0107

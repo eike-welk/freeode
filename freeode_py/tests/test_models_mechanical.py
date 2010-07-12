@@ -42,15 +42,14 @@ def test_tank(): #IGNORE:C01111
  
     directory = 'models/mechanical/'
     base_name = 'tank'
-    output_suffix = '_test1'
+    test_suffix = '_testprog6'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs')#, clean_up=False)
+    res_txt = compile_run(in_name, test_suffix)#, clean_up=False)
     #Search for the test lines
     search_result_lines(res_txt, [Line('initial-values: 0.0     0.0'), 
                                   Line('final-values:   0.030 600.0')
@@ -65,15 +64,14 @@ def test_tuned_abs_damper(): #IGNORE:C01111
  
     directory = 'models/mechanical/'
     base_name = 'tuned_abs_damper'
-    output_suffix = '_test1'
+    test_suffix = '_testprog7'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    _res_txt = compile_run(in_name, out_name, '--no-graphs')#, clean_up=False)
+    _res_txt = compile_run(in_name, test_suffix)#, clean_up=False)
     #No testing; I don't understand any of it
     #TODO: do some testing
 

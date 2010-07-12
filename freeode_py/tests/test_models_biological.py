@@ -42,15 +42,14 @@ def test_bioreactor_simple(): #IGNORE:C01111
  
     directory = 'models/biological/'
     base_name = 'bioreactor_simple'
-    output_suffix = '_test1'
+    test_suffix = 'testprog_1'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs')
+    res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
     search_result_lines(res_txt, [Line(['initial-values:', 0.1, 20]), 
                                   Line(['final-values:',   10.1, 0])
@@ -65,15 +64,14 @@ def test_bioreactor(): #IGNORE:C01111
  
     directory = 'models/biological/'
     base_name = 'bioreactor'
-    output_suffix = '_test1'
+    test_suffix = 'testprog_2'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs')
+    res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
     search_result_lines(res_txt, [Line(['initial-values-batch:', 0.1,  20   ], 0.01), 
                                   Line(['final-values-batch:',   9.79, -3.06], 0.01), 
@@ -92,15 +90,14 @@ def test_competition(): #IGNORE:C01111
  
     directory = 'models/biological/'
     base_name = 'competition'
-    output_suffix = '_test1'
+    test_suffix = 'testprog_3'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs')
+    res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
     search_result_lines(res_txt, [Line(['case1-final:', 4e-7,  10.0 ]), 
                                   Line(['case2-final:', 9.999, 4e-7 ]), 
@@ -117,15 +114,14 @@ def test_predator_prey_2(): #IGNORE:C01111
  
     directory = 'models/biological/'
     base_name = 'predator_prey_2'
-    output_suffix = '_test1'
+    test_suffix = 'testprog_4'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs')
+    res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
     search_result_lines(res_txt, [Line(['initial_state', 2.0,   2.0,    0.0 ]), 
                                   Line(['final_state'  , 0.130, 1.350, 30.0 ])
@@ -140,15 +136,14 @@ def test_predator_prey(): #IGNORE:C01111
  
     directory = 'models/biological/'
     base_name = 'predator_prey'
-    output_suffix = '_test1'
+    test_suffix = 'testprog_5'
     
     #Special name for output, to avoid race condition if input  file is used 
     #by other test too
     in_name = directory + base_name + '.siml'
-    out_name = directory + base_name + output_suffix + '.py'
     
     #Run compiler and simulation(s); catch the output
-    res_txt = compile_run(in_name, out_name, '--no-graphs')
+    res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
     search_result_lines(res_txt, [Line('classic_final  1.906 0.427 30.0'), 
                                   Line('logistic_final 4.987 0.780 30.0'), 
