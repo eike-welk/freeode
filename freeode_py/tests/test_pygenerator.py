@@ -261,6 +261,7 @@ compile A
     
     #clean up
     os.remove(progname + '.py')
+    os.remove(progname + '.pyc')
 
 
 
@@ -323,6 +324,7 @@ compile A
     
     #clean up
     os.remove(progname + '.py')
+    os.remove(progname + '.pyc')
     
 
 
@@ -400,6 +402,7 @@ compile A
     
     #clean up
     os.remove(progname + '.py')
+    os.remove(progname + '.pyc')
     
 
 
@@ -456,12 +459,13 @@ compile A
     pg.create_program('foo.siml', intp.get_compiled_objects())
     #print pg.get_buffer()
     
-    #write the buffer into a file, import the file as a module
+    #write the buffer into a file
     progname = 'prog_test_ProgramGenerator__all_variables_visible'
     prog_text_file = open(progname + '.py','w')
     prog_text_file.write(pg.get_buffer())
     prog_text_file.close()
     
+    #run the generated program
     sim = Popen('python ' + progname + '.py', shell=True, stdout=PIPE)
     res_txt, _ = sim.communicate()
 #    print 'Program output: \n', res_txt     
@@ -469,6 +473,7 @@ compile A
     #the program must say that it terminated successfully
     assert sim.returncode == 0
 
+    #TODO: do the following with search_result_lines
     #Scan the program's output to check if it's working.
     init_vals, final_vals = [], []
     dyn_error = False
