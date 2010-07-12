@@ -56,7 +56,7 @@ foo(a, b)
     intp = Interpreter()
     
     assert_raises(UserException, 3200250, 
-                  intp.interpret_module_string, (prog_text, None, 'test'))
+                  intp.interpret_module_string, prog_text, None, 'test')
     
 #    print 'module after interpreter run: ---------------------------------'
 #    print aa_make_tree(intp.modules['test'])
@@ -510,7 +510,7 @@ compile A
     intp = Interpreter()
     #intp.interpret_module_string(prog_text, None, 'test')
     assert_raises(UserException, 3190110, 
-                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+                  intp.interpret_module_string, prog_text, '-dummy-', 'test')
     #return
     
     # --- built in function and unknown constant ----------------------
@@ -528,7 +528,7 @@ compile A
     intp = Interpreter()
     #intp.interpret_module_string(prog_text, None, 'test')
     assert_raises(UserException, 3190110, 
-                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+                  intp.interpret_module_string, prog_text, '-dummy-', 'test')
     #return
 
     # --- print function and unknown constant ----------------------
@@ -546,7 +546,7 @@ compile A
     intp = Interpreter()
     #intp.interpret_module_string(prog_text, None, 'test')
     assert_raises(UserException, 3190110, 
-                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+                  intp.interpret_module_string, prog_text, '-dummy-', 'test')
     #return
 
     # --- printc function must work, it does never generate code. -------------
@@ -581,7 +581,7 @@ compile A
     intp = Interpreter()
     #intp.interpret_module_string(prog_text, None, 'test')
     assert_raises(UserException, 3190110, 
-                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+                  intp.interpret_module_string, prog_text, '-dummy-', 'test')
 
     # --- assignment and unknown constant ----------------------
     prog_text = \
@@ -598,7 +598,7 @@ compile A
     intp = Interpreter()
     #intp.interpret_module_string(prog_text, None, 'test')
     assert_raises(UserException, 3190110, 
-                  intp.interpret_module_string, (prog_text, '-dummy-', 'test'))
+                  intp.interpret_module_string, prog_text, '-dummy-', 'test')
 
 
 

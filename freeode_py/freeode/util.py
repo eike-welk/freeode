@@ -434,7 +434,7 @@ class UserException(Exception):
 
 
 
-def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-msg=W0102,W0621
+def assert_raises(exc_type, errno, func, *args, **kwargs): #pylint:disable-msg=W0621
     '''
     Test if a function raises the expected exception. Can test error number of 
     UserException.
@@ -450,17 +450,17 @@ def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-ms
         If errno is None it is ignored
     func: Python function
         The tested function which must raise an exception.
-    args: tuple
-        Positional arguments for tested function.
-    kwargs: dict
-        Keyword arguments for tested function.
+    args: 
+    kwargs: 
+        Further positional and keyword arguments are supplied to the tested 
+        function (argument func).
     '''
     assert issubclass(exc_type, BaseException), \
            'Argument exc_type must be an exception type.'
     assert callable(func), 'Argument func must be call-able.'
     
     try:
-        func(*args, **kwargs) #pylint:disable-msg=W0142
+        func(*args, **kwargs) 
     except exc_type, e:
         #print e
         if errno is not None:

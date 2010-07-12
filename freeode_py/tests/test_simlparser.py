@@ -684,7 +684,7 @@ if a:  #There must be an if statement at the end for the error to happen
 '''
     parser = Parser()
     assert_raises(UserException, None, 
-                  parser.parseModuleStr, (prog_text,))
+                  parser.parseModuleStr, prog_text)
     
     #--- second example --------------------------------------------------
     #Modified version of:
@@ -779,7 +779,7 @@ func a():
     
     parser = Parser()
     assert_raises(UserException, None, 
-                  parser.parseModuleStr, (prog_text,))
+                  parser.parseModuleStr, prog_text)
     
     #--- fourth example ------------------------------------------------------
     #http://launchpadlibrarian.net/28144635/crash_parser5.siml
@@ -826,7 +826,7 @@ if a:
     
     parser = Parser()
     assert_raises(UserException, None, 
-                  parser.parseModuleStr, (prog_text,))
+                  parser.parseModuleStr, prog_text)
        
     
     

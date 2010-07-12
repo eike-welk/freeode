@@ -109,31 +109,31 @@ compile A
     initialize = vu.main_funcs[DotName('init_1')]
     #vu.check_initialize_function(initialize) 
     assert_raises(UserException, 4500100, 
-                  vu.check_initialize_function, (initialize,))
+                  vu.check_initialize_function, initialize)
     
     #illegal write to differential $a
     initialize = vu.main_funcs[DotName('init_2')]
     #vu.check_initialize_function(initialize) 
     assert_raises(UserException, 4500200, 
-                  vu.check_initialize_function, (initialize,))
+                  vu.check_initialize_function, initialize)
     
     #Missing assignment to parameter p1
     initialize = vu.main_funcs[DotName('init_3')]
     #vu.check_initialize_function(initialize) 
     assert_raises(UserException, 4500300, 
-                  vu.check_initialize_function, (initialize,))
+                  vu.check_initialize_function, initialize)
     
     #illegal write to state variable a
     dynamic = vu.main_funcs[DotName('dynamic')]
     #vu.check_dynamic_function(dynamic) 
     assert_raises(UserException, 4500200, 
-                  vu.check_dynamic_function, (dynamic,))
+                  vu.check_dynamic_function, dynamic)
     
     #illegal write to state variable a
     final = vu.main_funcs[DotName('final')]
     #vu.check_final_function(final) 
     assert_raises(UserException, 4500200, 
-                  vu.check_final_function, (final,))
+                  vu.check_final_function, final)
 
 
 

@@ -333,7 +333,7 @@ def test_assert_raises():
     def raise_errno_001(a, b, c, d):
         assert a == 1 and b == 2 and c == 3 and d == 4
         raise UserException('Test message', None, 1)
-    assert_raises(UserException, 1, raise_errno_001, (1, 2), {'c':3, 'd':4})
+    assert_raises(UserException, 1, raise_errno_001, 1, 2, c=3, d=4)
     
     #Test case: correct exception is raised no errno
     def raise_DummyException_1():
@@ -480,8 +480,8 @@ compile Foo
 #    os.system('ls')
 
     compile_run(base_name + '.siml', test_prefix)
-    assert_raises(AssertionError, None, compile_run, 
-                  (base_name + '.siml', test_prefix, '--foo'))
+    assert_raises(AssertionError, None, 
+                  compile_run, base_name + '.siml', test_prefix, '--foo')
     
     #compile_run(base_name + '.siml', test_prefix, '--foo', run_sims, no_graphs, clean_up)
     #assert_raises(exc_type, errno, func, args, kwargs)
@@ -494,5 +494,5 @@ compile Foo
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_compile_run_lines()
+    test_assert_raises()
     pass #pylint: disable-msg=W0107
