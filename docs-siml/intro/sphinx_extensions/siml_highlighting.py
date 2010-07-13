@@ -7,7 +7,15 @@
     
     Derived from `pygments.lexers.agile.py`
     Sphinx integration taken from Matplotlib's `ipython_console_highlighting.py`
-
+    
+    
+    Documentation on writing lexers is here:
+    http://pygments.org/docs/lexerdevelopment/
+    
+    Integrating your extensions with Sphinx is documented here:
+    http://matplotlib.sourceforge.net/sampledoc/extensions.html
+    
+    
     :copyright: Copyright 2006-2010 by the Pygments team, see AUTHORS.
     :copyright: Copyright 2010-2010 by Eike Welk.
     :license: BSD, see LICENSE for details.
@@ -18,7 +26,6 @@ import re
 from pygments.lexer import RegexLexer, include, combined, bygroups
 from pygments.token import Text, Comment, Operator, Keyword, Name, String, \
                            Number, Punctuation
-#from pygments.util import get_bool_opt, get_list_opt, shebang_matches
 from pygments import unistring as uni
 
 from sphinx import highlighting
@@ -52,55 +59,47 @@ class SimlLexer(RegexLexer):
             (r'[]{}:(),;[]', Punctuation),
             (r'\\\n', Text),
             (r'\\', Text),
-            (r'(in|is|and|or|not)\b', Operator.Word),
-            (r'!=|==|<<|>>|[-~+/*%=<>&^|.]', Operator),
+            (r'(and|or|not)\b', Operator.Word),
+            (r'!=|==|<<|>>|[-~+/*%=<>&^|.\$]', Operator),
             include('keywords'),
-            (r'(def)((?:\s|\\\s)+)', bygroups(Keyword, Text), 'funcname'),
+            (r'(func)((?:\s|\\\s)+)', bygroups(Keyword, Text), 'funcname'),
             (r'(class)((?:\s|\\\s)+)', bygroups(Keyword, Text), 'classname'),
             (r'(from)((?:\s|\\\s)+)', bygroups(Keyword.Namespace, Text), 'fromimport'),
             (r'(import)((?:\s|\\\s)+)', bygroups(Keyword.Namespace, Text), 'import'),
             include('builtins'),
             include('backtick'),
-            ('(?:[rR]|[uU][rR]|[rR][uU])"""', String, 'tdqs'),
-            ("(?:[rR]|[uU][rR]|[rR][uU])'''", String, 'tsqs'),
             ('(?:[rR]|[uU][rR]|[rR][uU])"', String, 'dqs'),
             ("(?:[rR]|[uU][rR]|[rR][uU])'", String, 'sqs'),
-            ('[uU]?"""', String, combined('stringescape', 'tdqs')),
-            ("[uU]?'''", String, combined('stringescape', 'tsqs')),
             ('[uU]?"', String, combined('stringescape', 'dqs')),
             ("[uU]?'", String, combined('stringescape', 'sqs')),
             include('name'),
             include('numbers'),
         ],
         'keywords': [
-            (r'(assert|break|continue|del|elif|else|except|'
-             r'finally|for|global|if|lambda|pass|raise|'
-             r'return|try|while|yield|as|with|True|False|None)\b', Keyword),
+            (r'(data|if|ifc|elif|else|pass|return|compile|'
+             r'const|param|variable)\b', Keyword),
         ],
         'builtins': [
-            (r'(?<!\.)(__import__|abs|all|any|bin|bool|bytearray|bytes|'
-             r'chr|classmethod|cmp|compile|complex|delattr|dict|dir|'
-             r'divmod|enumerate|eval|filter|float|format|frozenset|getattr|'
-             r'globals|hasattr|hash|hex|id|input|int|isinstance|issubclass|'
-             r'iter|len|list|locals|map|max|memoryview|min|next|object|oct|'
-             r'open|ord|pow|print|property|range|repr|reversed|round|'
-             r'set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|'
-             r'vars|zip)\b', Name.Builtin),
-            (r'(?<!\.)(self|Ellipsis|NotImplemented)\b', Name.Builtin.Pseudo),
-            (r'(?<!\.)(ArithmeticError|AssertionError|AttributeError|'
-             r'BaseException|BufferError|BytesWarning|DeprecationWarning|'
-             r'EOFError|EnvironmentError|Exception|FloatingPointError|'
-             r'FutureWarning|GeneratorExit|IOError|ImportError|'
-             r'ImportWarning|IndentationError|IndexError|KeyError|'
-             r'KeyboardInterrupt|LookupError|MemoryError|NameError|'
-             r'NotImplementedError|OSError|OverflowError|'
-             r'PendingDeprecationWarning|ReferenceError|'
-             r'RuntimeError|RuntimeWarning|StopIteration|'
-             r'SyntaxError|SyntaxWarning|SystemError|SystemExit|TabError|'
-             r'TypeError|UnboundLocalError|UnicodeDecodeError|'
-             r'UnicodeEncodeError|UnicodeError|UnicodeTranslateError|'
-             r'UnicodeWarning|UserWarning|ValueError|VMSError|Warning|'
-             r'WindowsError|ZeroDivisionError)\b', Name.Exception),
+            (r'(?<!\.)(True|False|None|'
+             r'NoneType|Bool|String|Float|'
+             r'print|printc|graph|save|solution_parameters|associate_state_dt|'
+             r'istype|'
+             r'sqrt|log|exp|sin|cos|tan|abs|max|min)\b', Name.Builtin),
+            (r'(?<!\.)(this|time)\b', Name.Builtin.Pseudo),
+#            (r'(?<!\.)(ArithmeticError|AssertionError|AttributeError|'
+#             r'BaseException|BufferError|BytesWarning|DeprecationWarning|'
+#             r'EOFError|EnvironmentError|Exception|FloatingPointError|'
+#             r'FutureWarning|GeneratorExit|IOError|ImportError|'
+#             r'ImportWarning|IndentationError|IndexError|KeyError|'
+#             r'KeyboardInterrupt|LookupError|MemoryError|NameError|'
+#             r'NotImplementedError|OSError|OverflowError|'
+#             r'PendingDeprecationWarning|ReferenceError|'
+#             r'RuntimeError|RuntimeWarning|StopIteration|'
+#             r'SyntaxError|SyntaxWarning|SystemError|SystemExit|TabError|'
+#             r'TypeError|UnboundLocalError|UnicodeDecodeError|'
+#             r'UnicodeEncodeError|UnicodeError|UnicodeTranslateError|'
+#             r'UnicodeWarning|UserWarning|ValueError|VMSError|Warning|'
+#             r'WindowsError|ZeroDivisionError)\b', Name.Exception),
         ],
         'numbers': [
             (r'(\d+\.\d*|\d*\.\d+)([eE][+-]?[0-9]+)?', Number.Float),
@@ -144,9 +143,6 @@ class SimlLexer(RegexLexer):
             (r'%', String)
             # newlines are an error (use "nl" state)
         ],
-        'nl': [
-            (r'\n', String)
-        ],
         'dqs': [
             (r'"', String, '#pop'),
             (r'\\\\|\\"|\\\n', String.Escape), # included here again for raw strings
@@ -156,17 +152,7 @@ class SimlLexer(RegexLexer):
             (r"'", String, '#pop'),
             (r"\\\\|\\'|\\\n", String.Escape), # included here again for raw strings
             include('strings')
-        ],
-        'tdqs': [
-            (r'"""', String, '#pop'),
-            include('strings'),
-            include('nl')
-        ],
-        'tsqs': [
-            (r"'''", String, '#pop'),
-            include('strings'),
-            include('nl')
-        ],
+        ]
     }
 
 

@@ -67,23 +67,24 @@ SIML Program
             #Specify options for the simulation algorithm.
             solution_parameters(duration=20, reporting_interval=0.1)
             #Give values to the parameters
-            mu_max = 0.32; #max growth speed
-            Ks     = 0.01; #at this sugar concentration growth speed is 0.5*mu_max
-            Yxs    = 0.5;  #one g sugar gives this much biomass
+            mu_max = 0.32 #max growth speed
+            Ks     = 0.01 #at this sugar concentration growth speed is 0.5*mu_max
+            Yxs    = 0.5  #one g sugar gives this much biomass
             #Give initial values to the state variables.
-            X      = 0.1;  #initial biomass concentration
-            S      = 20;   #initial sugar concentration
+            X      = 0.1  #initial biomass concentration
+            S      = 20   #initial sugar concentration
 
         #compute dynamic behaviour - the system's 'equations'
         func dynamic(this):
-            mu = mu_max * S/(S+Ks); #growth speed (of biomass)
-            $X = mu*X;              #change of biomass concentration
-            $S = -1/Yxs*mu*X;       #change of sugar concentration
+            mu = mu_max * S/(S+Ks) #growth speed (of biomass)
+            $X = mu*X              #change of biomass concentration
+            $S = -1/Yxs*mu*X       #change of sugar concentration
 
         #show results
         func final(this):
-            graph(mu, X, S);
-
+            graph(mu, X, S)
+            #For the test scripts
+            print('final-values:', X, S)
 
     compile Batch
 
