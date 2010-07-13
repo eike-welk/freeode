@@ -52,7 +52,7 @@ Initial values and the values of the parameters have been omitted for brevity.
 SIML Program
 ============
 
-.. code-block:: python
+.. code-block:: siml
     :linenos:
 
     #Biological reactor with no inflow or outfow
