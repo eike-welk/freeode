@@ -45,10 +45,6 @@ class Batch:
         X      = 0.1  #initial biomass concentration
         S      = 20   #initial sugar concentration
 
-        #For the test scripts.
-        print('initial-values:', X, S)
-
-
     #compute dynamic behaviour - the system's 'equations'
     func dynamic(this):
         mu = mu_max * S/(S+Ks) #growth speed (of biomass)
@@ -58,11 +54,10 @@ class Batch:
 
     #show results
     func final(this):
-        graph(mu, X, S);
-
+        graph(mu, X, S, title="Batch Reactor");
         #For the test scripts, the example programs are run and the output 
         #is analyzed.
-        print('final-values:', X, S)
+        print("final-values:", X, S, time)
 
 
 compile Batch
