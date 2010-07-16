@@ -599,7 +599,7 @@ class RoleOutputVariable(RoleVariable):
     This variable is a returned from the simulation function.
     The solution algorithm needs this variable to compute the solution.
     '''
-class RoleTimeDifferential(RoleOutputVariable):
+class RoleTimeDerivative(RoleOutputVariable):
     '''The attribute is a time derivative'''
 #    userStr = 'algebraic_variable'
 

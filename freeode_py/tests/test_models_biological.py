@@ -52,8 +52,7 @@ def test_bioreactor_simple(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, out_name, '--no-graphs')
     #Search for the test lines
-    search_result_lines(res_txt, [Line(['initial-values:', 0.1, 20]), 
-                                  Line(['final-values:',   10.1, 0])
+    search_result_lines(res_txt, [Line(['final-values:',   10.1, 0, 20])
                                   ])
 
       

@@ -1,3 +1,14 @@
+..  Copyright (C) 2010 - 2010 Eike Welk 
+
+    License: GNU FDL
+
+    Everyone is permitted to copy, distribute and/or modify this
+    document under the terms of the GNU Free Documentation License,
+    Version 1.3 or any later version published by the Free Software
+    Foundation; with no Invariant Sections, no Front-Cover Texts and
+    no Back-Cover Texts. A copy of the license is included in the
+    file "GNU-Free-Documentation-License-1.3.txt"
+
 ************************************
 The Siml Tutorial - Bioreactors
 ************************************
@@ -93,7 +104,7 @@ that are called by the run time library during the simulation:
     :lines: 2-6
     :language: siml
 
-Lines 2-4 of the Exponential Growth program.
+Lines 2-6 of the Exponential Growth program.
 
 The ``class`` statement defines an object. The 
 simulation object's name ``ExponentialGrowth`` can be freely chosen by the user.
@@ -110,7 +121,7 @@ of the simulation object have to be indented to the same level.
 
 Line 3 of the Exponential Growth program.
 
-Define the variable **x**.
+Define the variable **x** as a floating point number.
 
 .. todo:: Float ":"
 
@@ -201,131 +212,140 @@ function. The text contains the final values of ``x`` and ``time``.
 Running the Simulation
 ----------------------
 
-.. todo:: editor save bash run
+The Exponential Growth program is available on the website, and in the 
+``*.tar.gz`` and ``*.zip`` archives as ``models/biological/exponential_growth.siml``
+
+The simulation program can be typed into any text editor. 
+For details on editors see: :ref:`editor-usage-intro`.
+
+If you have saved the Exponential Growth program under the name 
+``exponential_growth.siml`` you can compile and run the program at once by typing 
+the following into a shell window:
 
 .. code-block:: bash
 
-    $> kwrite exponential_growth.siml        #Edit Siml file
-    $> simlc exponential_growth.siml -r all  #Run compiler
-
+    $> simlc exponential_growth.siml -r all
 
 When run, the simulation opens a window with a graph similar to the one below.
 The graph matches the exact solution :eq:`biomass_exp_soln` 
 (:math:`x = 0.1 \cdot e^{0.3 \cdot time}`) very well.
 
-.. image:: exponential_growth_x.png
+.. figure:: exponential_growth_x.png
 
+    Biomass concentration versus simulation time.
 
-Example 2: Growth Limited by Available Food
-===========================================
+Example 2: Batch Reactor 
+========================
 
-A simple biological reactor should be simulated. The simulation has two
-state variables:
+The second example is more complex as well as more detailed. 
+It consists of two coupled differential
+equations, both are non linear. The bacteria this time live in a 
+*batch reactor*. This is a 
+container which is initially full of nutrient broth, and a small initial 
+amount of bacteria. While the bacteria multiply in the reactor, they consume 
+the nutrients until there are none left. In the end there is a 
+high concentration of bacteria in the reactor and a low concentration of 
+nutrients.
+
+The simulation does not simulate the size of the reactor, only the 
+concentrations of bacteria and nutrients. The reactor could be a shaking flask
+as well as a big tank. 
+
+The simulation has two state variables:
 **X** the concentration of biomass, and
-**S** the concentration of nutrient (often called *substrate*).
+**S** the concentration of nutrients (usually called *substrate*).
 The growth speed **µ** is an algebraic variable.
 
 
-
-Differential Equations
-----------------------
-
-Change of biomass concentration :eq:`biomass_eq`
+The growth of the bacteria is described by equation :eq:`biomass_eq`; 
+the nutrient consumption is described by equation :eq:`substrate_eq`.
+The growth speed of the biomass :eq:`growth_speed` is dependent on the 
+nutrient concentration.
 
 .. math::
     :label: biomass_eq
 
     {dX \over dt} = \mu \cdot X
 
-Change of sugar concentration :eq:`substrate_eq`
-
 .. math:: 
     :label: substrate_eq
     
     {dS \over dt} = - {1 \over Y_{xs}} \cdot  \mu \cdot X
-
-with:
-Growth speed of biomass :eq:`growth_speed`
 
 .. math::
     :label: growth_speed
 
     \mu = \mu_{max} \cdot {S \over S+K_s}
 
-Initial values and the values of the parameters have been omitted for brevity.
-
-
 
 SIML Program
 ------------
 
-.. code-block:: siml
+This SIML program solves the system of differential equations.
+The initial values and parameters are realistic values for 
+*Corynebacterium Glutamicum* growing on lactate.
+
+.. literalinclude:: models/biological/bioreactor_simple.siml
+    :language: siml
     :linenos:
 
-    #Biological reactor with no inflow or outflow
-    class Batch:
-        #Define values that stay constant during the simulation.
-        data mu_max, Ks, Yxs: Float param
-        #Define values that change during the simulation.
-        data mu, X, S: Float
+.. todo:: param const
+.. todo:: short all functions
 
-        #Initialize the simulation.
-        func initialize(this):
-            #Specify options for the simulation algorithm.
-            solution_parameters(duration=20, reporting_interval=0.1)
-            #Give values to the parameters
-            mu_max = 0.32 #max growth speed
-            Ks     = 0.01 #at this sugar concentration growth speed is 0.5*mu_max
-            Yxs    = 0.5  #one g sugar gives this much biomass
-            #Give initial values to the state variables.
-            X      = 0.1  #initial biomass concentration
-            S      = 20   #initial sugar concentration
-
-        #compute dynamic behaviour - the system's 'equations'
-        func dynamic(this):
-            mu = mu_max * S/(S+Ks) #growth speed (of biomass)
-            $X = mu*X              #change of biomass concentration
-            $S = -1/Yxs*mu*X       #change of sugar concentration
-
-        #show results
-        func final(this):
-            graph(mu, X, S)
-            #For the test scripts
-            print('final-values:', X, S)
-
-    compile Batch
-
-This is a complete SIML program to to solve the system of differential equations.
 The differential equations are in the **dynamic** function.
 The **initialize** function is invoked once at the beginning of the simulation,
 the **final** function is invoked at the end.
 
 
 
-Shell Commands
---------------
+Running the Simulation
+----------------------
 
-These are the (bash) commands to edit the program, compile it, and run it.
+The program for the batch reactor is available on the website, and in the 
+``*.tar.gz`` and ``*.zip`` archives as ``models/biological/bioreactor_simple.siml``
+
+The simulation program can be typed into any text editor. 
+For details on editors see: :ref:`editor-usage-intro`.
+
+If you have saved the program under the name 
+``bioreactor_simple.siml`` you can compile and run the program at once by typing 
+the following into a shell window:
 
 .. code-block:: bash
 
-    $> kwrite bioreactor_simple.siml #Edit Siml file
-    $> simlc bioreactor_simple.siml  #Run compiler
-    $> ./bioreactor_simple.py        #Run generated program
+    $> simlc bioreactor_simple.siml -r all
 
-The compiler can also run the generated Program.
-This is useful for the development of simulation programs.
+At the end of the simulation a window opens, that shows the simulation results:
+
+.. figure:: bioreactor_simple--S-X.png
+
+    Graph of X, S and mu, versus simulation time.
+
+
+
+
+.. _editor-usage-intro:
+
+Editors
+=======
+
+A program in the Siml language can be typed into any text editor. If the editor has
+syntax highlighting, choose Python highlighting which works reasonably well
+for Siml.
+
+For editors based on the *Kate Part* (
+`Kate <http://kate-editor.org/>`_,
+`Kwrite <http://kate-editor.org/about-kwrite/>`_,
+`Kdevelop <http://www.kdevelop.org/>`_)
+there is a special highlight file for Siml available: ``hl_siml.xml``.
+To copy this file to the Kate Part's highlight directory run the script
+``hl_install`` (in a shell window).
 
 .. code-block:: bash
 
-    $> kwrite bioreactor_simple.siml        #Edit Siml file
-    $> simlc bioreactor_simple.siml -r all  #Run compiler
+    $> ./hl_install 
 
-After the commands have been executed, a window opens, that shows the simulation results:
 
-.. image:: bioreactor_simple--S-X.png
-
-Graph of X, S and mu, versus simulation time.
 
 
 .. rubric:: Footnotes
@@ -341,10 +361,10 @@ Graph of X, S and mu, versus simulation time.
         that contains a refference to the current object, and the automatic 
         attribute lookup through ``this``.
 
-.. [#dollar_operator] The dollar operator has really three functions: it 
+.. [#dollar_operator] The dollar operator really has three functions: it 
         accesses the time derivative; it marks a variable as a state variable;
         and it creates a place to store the time derivative (if necesary). The time 
-        derivative is just an other variable, but it can usually only be 
+        derivative is just an other variable, but usually it can only be 
         accessed by the ``$`` operator. 
                 
                 

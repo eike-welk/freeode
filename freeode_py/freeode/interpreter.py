@@ -67,7 +67,7 @@ from copy import deepcopy
 from freeode.util import (UserException, DotName, TextLocation, AATreeMaker, 
                           aa_make_tree, DEBUG_AREAS, EnumMeta, debug_print)
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
-                         RoleAlgebraicVariable, RoleTimeDifferential, 
+                         RoleAlgebraicVariable, RoleTimeDerivative, 
                          RoleStateVariable, RoleInputVariable,
                          SimpleSignature,
                          Node, NodeFuncArg, NodeFuncCall, NodeOpInfix2, 
@@ -1311,9 +1311,9 @@ def associate_state_dt(state_var, derivative_var):
     #Test if variable is already a state variable.
     if isrole(state_var, RoleStateVariable):
         raise UserException('Variable is already a state variable.')
-    #Test if variable is a time differential. 
-    if isrole(derivative_var, RoleTimeDifferential):
-        raise UserException('Variable is already a time differential.')
+    #Test if variable is a time derivative. 
+    if isrole(derivative_var, RoleTimeDerivative):
+        raise UserException('Variable is already a time derivative.')
     #TODO: for those error messages it would be useful to know the variable name.
     #      Maybe all objects could be given __siml_dotname__ in the Interpreter.
 
@@ -1321,7 +1321,7 @@ def associate_state_dt(state_var, derivative_var):
     state_var.time_derivative = derivative_var
     #set the new (refined) roles
     state_var.__siml_role__ = RoleStateVariable
-    derivative_var.__siml_role__ = RoleTimeDifferential
+    derivative_var.__siml_role__ = RoleTimeDerivative
 
 
 #def make_proxy(in_obj):
@@ -2332,7 +2332,7 @@ class Interpreter(object):
 
         #specify and discover main functions ---------------------------------------
         main_func_specs = \
-            [Node(#target_roles=(RoleAlgebraicVariable, RoleTimeDifferential,
+            [Node(#target_roles=(RoleAlgebraicVariable, RoleTimeDerivative,
                                 #RoleConstant),
                   call_argument_role=RoleInputVariable,
                   proto=SimlFunction('dynamic',

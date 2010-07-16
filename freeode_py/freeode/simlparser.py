@@ -60,7 +60,7 @@ from freeode.ast import (NodeFloat, NodeString, NodeParentheses, NodeOpInfix2,
                          NodeDataDef, NodeFuncCall, NodeFuncArg, NodeFuncDef, 
                          NodeClassDef, NodeModule, SimpleSignature,
                          RoleConstant, RoleParameter, RoleAlgebraicVariable, 
-                         RoleStateVariable, RoleTimeDifferential, RoleUnkown)
+                         RoleStateVariable, RoleTimeDerivative, RoleUnkown)
 from freeode.util import TextLocation, UserException
 
 
@@ -591,7 +591,7 @@ class Parser(object):
             role_dict = {'const':RoleConstant, 'param':RoleParameter, 'variable':RoleAlgebraicVariable,
                         'algebraic_variable':RoleAlgebraicVariable,
                         'state_variable':RoleStateVariable,
-                        'time_differential':RoleTimeDifferential,
+                        'time_derivative':RoleTimeDerivative,
                         'role_unknown':RoleUnkown}
             data_def.role = role_dict.get(toks.attr_role, None)
             #store the default value
@@ -853,7 +853,7 @@ class Parser(object):
         #attribute access, function call, and slicing. (operators with the strongest binding come first.)
         expression_ex = operatorPrecedence(atom,
             [(L('.'),       2, opAssoc.LEFT,             self._action_op_infix_left), #access to an object's attributes
-             (L('$'),       1, opAssoc.RIGHT,            self._action_op_prefix), #time differential
+             (L('$'),       1, opAssoc.RIGHT,            self._action_op_prefix), #time derivative
              (call,         1, opAssoc.LEFT,             self._action_func_call), #function/method call: f(23)
              (slicing,      1, opAssoc.LEFT,             self._action_slicing), #slicing/subscription: a[23]
              ], handleBrackets=False)                               .setName('expression_ex')
@@ -933,7 +933,7 @@ class Parser(object):
         #             can be computed in the init function.
         #constant:    must be known at compile time, may be optimized away,
         #             the compiler may generate special code depending on the value.
-        attrRole = (  kw('state_variable') | kw('time_differential')  | kw('algebraic_variable')
+        attrRole = (  kw('state_variable') | kw('time_derivative')  | kw('algebraic_variable')
                     | kw('role_unknown')
                     | kw('variable') | kw('param') | kw('const')      )
         #parse: 'foo, bar, baz
