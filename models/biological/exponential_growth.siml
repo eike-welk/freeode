@@ -11,7 +11,7 @@ class ExponentialGrowth:
 
     func final(this):
         graph(x, title="Exponential Growth")
-        print("final-x-time:", x, time) #For the automatic test script
+        print("final-values:", x, time) #For the automatic test script
 
 
 compile ExponentialGrowth

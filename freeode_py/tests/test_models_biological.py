@@ -35,6 +35,28 @@ from freeode.util import compile_run, search_result_lines, Line
 
 
 
+def test_exponential_growth(): #IGNORE:C01111
+    msg = '''Test model: exponential_growth.siml'''
+#    skip_test(msg)
+    print msg
+ 
+    directory = 'models/biological/'
+    base_name = 'exponential_growth'
+    output_suffix = '_test1'
+    
+    #Special name for output, to avoid race condition if input  file is used 
+    #by other test too
+    in_name = directory + base_name + '.siml'
+    out_name = directory + base_name + output_suffix + '.py'
+    
+    #Run compiler and simulation(s); catch the output
+    res_txt = compile_run(in_name, out_name, '--no-graphs')
+    #Search for the test lines
+    search_result_lines(res_txt, [Line(['final-values:', 40.343, 20])
+                                  ])
+
+
+      
 def test_bioreactor_simple(): #IGNORE:C01111
     msg = '''Test model: bioreactor_simple.siml'''
 #    skip_test(msg)
@@ -55,7 +77,7 @@ def test_bioreactor_simple(): #IGNORE:C01111
     search_result_lines(res_txt, [Line(['final-values:',   10.1, 0, 20])
                                   ])
 
-      
+
 
 def test_bioreactor(): #IGNORE:C01111
     msg = '''Test model: bioreactor.siml'''
@@ -158,6 +180,6 @@ def test_predator_prey(): #IGNORE:C01111
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_bioreactor_simple()
+    test_exponential_growth()
     pass #pylint:disable-msg=W0107
 
