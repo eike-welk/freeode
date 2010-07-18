@@ -452,11 +452,11 @@ Built in functions for use in the ``final`` method.
 -------------------------------------------------------------------------------
 What           Name       Signature               Description
 ============== ========== ======================= =============================
-Display graph  ``graph``  ``(\*args, title="")``  Takes any number of arguments; 
+Display graph  ``graph``  ``(*args, title="")``   Takes any number of arguments; 
                                                   the special keyword argument ``title`` 
                                                   sets the graph's title.
 Save results   ``save``   ``(file_name)``         File name must be text string.
-Output text    ``print``  ``(\*args, area="",``   Takes any number of arguments. 
+Output text    ``print``  ``(*args, area="",``    Takes any number of arguments. 
                           ``end="\n")``           
 ============== ========== ======================= =============================
 

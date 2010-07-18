@@ -35,7 +35,8 @@
 
   <a name="tutorial"></a>
   <h2>Tutorial</h2>
-  <p>To be done</p>
+  <p><a href="siml-intro/fermenter-intro.html">The Siml Tutorial - Bioreactors</a>
+  </p>
 
   <a name="program-at-python-level"></a>
   <h2>Generated Program at Python Level</h2>
@@ -48,7 +49,7 @@
     have to be declared before use, and there is (currently) no inheritance. 
     A simulation consists of one or more class definitions.
   </p>
-  
+</div>  
 
 <!--footer with the required berlios image-->
 <?php if( file_exists("footer.html") ){ include("footer.html"); } ?>
