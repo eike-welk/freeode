@@ -67,7 +67,7 @@ from copy import deepcopy
 from freeode.util import (UserException, DotName, TextLocation, AATreeMaker, 
                           aa_make_tree, DEBUG_AREAS, EnumMeta, debug_print)
 from freeode.ast import (RoleUnkown, RoleConstant, RoleParameter, RoleVariable, 
-                         RoleAlgebraicVariable, RoleTimeDifferential, 
+                         RoleAlgebraicVariable, RoleTimeDerivative, 
                          RoleStateVariable, RoleInputVariable,
                          SimpleSignature,
                          Node, NodeFuncArg, NodeFuncCall, NodeOpInfix2, 
@@ -1107,11 +1107,11 @@ def siml_print(*args, **kwargs):
     representation of the object.
     
     The function supports a number of keyword arguments:
-    area='' : str
+    area="" : str
         Only produce output when area is in global set DEBUG_AREAS.
         The special value '' means: print unconditionally.
         To change use command line option --debug-area=area1,area2, ...    
-    end='\n': String
+    end="\n": String
         This string is appended at the end of the printed output.
         
     The function executes at runtime; calling this function always creates code.
@@ -1245,7 +1245,7 @@ def siml_graph(*args, **kwargs):
 @signature([IString], INoneType)
 def siml_save(file_name): #pylint:disable-msg=W0613
     '''
-    The store function.
+    Save the simulation's results.
 
     At compile time the store function raises an error.
     At run time it stores all recorded variables in the file system.
@@ -1311,9 +1311,9 @@ def associate_state_dt(state_var, derivative_var):
     #Test if variable is already a state variable.
     if isrole(state_var, RoleStateVariable):
         raise UserException('Variable is already a state variable.')
-    #Test if variable is a time differential. 
-    if isrole(derivative_var, RoleTimeDifferential):
-        raise UserException('Variable is already a time differential.')
+    #Test if variable is a time derivative. 
+    if isrole(derivative_var, RoleTimeDerivative):
+        raise UserException('Variable is already a time derivative.')
     #TODO: for those error messages it would be useful to know the variable name.
     #      Maybe all objects could be given __siml_dotname__ in the Interpreter.
 
@@ -1321,7 +1321,7 @@ def associate_state_dt(state_var, derivative_var):
     state_var.time_derivative = derivative_var
     #set the new (refined) roles
     state_var.__siml_role__ = RoleStateVariable
-    derivative_var.__siml_role__ = RoleTimeDifferential
+    derivative_var.__siml_role__ = RoleTimeDerivative
 
 
 #def make_proxy(in_obj):
@@ -2332,7 +2332,7 @@ class Interpreter(object):
 
         #specify and discover main functions ---------------------------------------
         main_func_specs = \
-            [Node(#target_roles=(RoleAlgebraicVariable, RoleTimeDifferential,
+            [Node(#target_roles=(RoleAlgebraicVariable, RoleTimeDerivative,
                                 #RoleConstant),
                   call_argument_role=RoleInputVariable,
                   proto=SimlFunction('dynamic',

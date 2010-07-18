@@ -1,0 +1,35 @@
+#!/bin/bash
+# Run all scripts that create the website, and copy all generated files to the 
+#correct location.
+# (must be run in directory "website")
+
+set -x #enable debug output
+
+WEBSITE_DIR=$PWD
+COMPILER_DIR="../freeode_py"
+INTRO_DIR="../docs-siml/intro/"
+
+
+#compile all models
+cd $COMPILER_DIR
+./compile-all-models
+
+cd $WEBSITE_DIR
+
+
+#create the introduction to Siml - Shinx project 
+cd $INTRO_DIR
+touch index.rst fermenter-intro.rst
+make html
+
+cd $WEBSITE_DIR
+
+
+##copy the generated html to the website directory
+#cd $WEBSITE_DIR
+#rm -rf siml-intro
+#cp -r "$INTRO_DIR/_build/html" siml-intro
+#
+#cd $WEBSITE_DIR
+
+

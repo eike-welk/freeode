@@ -55,7 +55,7 @@ class A:
         p2 = p1
         a = 0
         
-    #illegal write to differential $a
+    #illegal write to derivative $a
     func init_2(this):
         $a = 1
         p1 = 1
@@ -111,7 +111,7 @@ compile A
     assert_raises(UserException, 4500100, 
                   vu.check_initialize_function, (initialize,))
     
-    #illegal write to differential $a
+    #illegal write to derivative $a
     initialize = vu.main_funcs[DotName('init_2')]
     #vu.check_initialize_function(initialize) 
     assert_raises(UserException, 4500200, 

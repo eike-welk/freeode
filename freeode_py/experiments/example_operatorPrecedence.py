@@ -89,7 +89,7 @@ slicing = Group(S('[') - slice_list + S(']'))
 print 'syntax definition before operatorPrecedence'
 expression << operatorPrecedence(atom,
     [(L('.'),       2, opAssoc.LEFT,                action_op_infix_left), #access to an object's attributes
-     (L('$'),       1, opAssoc.RIGHT,               action_op_prefix), #time differential
+     (L('$'),       1, opAssoc.RIGHT,               action_op_prefix), #time derivative
      (call,         1, opAssoc.LEFT,                action_call), #function/method call: f(23)
      (slicing,      1, opAssoc.LEFT,                action_slicing), #slicing/subscription: a[23]
      #Power and unary operations are intertwined to get correct operator precedence:

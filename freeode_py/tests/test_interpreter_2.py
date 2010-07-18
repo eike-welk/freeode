@@ -1258,7 +1258,7 @@ def test_interpreter_dollar_operator_1(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import Interpreter, IFloat, SimlFunction, isrole
-    from freeode.ast import RoleStateVariable, RoleTimeDifferential
+    from freeode.ast import RoleStateVariable, RoleTimeDerivative
     from freeode.util import DotName
     #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
 
@@ -1291,7 +1291,7 @@ compile A
     assert isinstance(a1, IFloat)             #a1 is state variable, because it 
     assert isrole(a1, RoleStateVariable)      #has derivative
     assert isinstance(a1_dt, IFloat)     
-    assert isrole(a1_dt, RoleTimeDifferential)# $a1 is a time differential
+    assert isrole(a1_dt, RoleTimeDerivative)# $a1 is a time derivative
     assert isinstance(dynamic, SimlFunction)
     
     #test if assignment really is 'a1$time' = 'a1'
@@ -1310,7 +1310,7 @@ def test_interpreter_dollar_operator_2(): #IGNORE:C01111
     print msg
     
     from freeode.interpreter import Interpreter, SimlFunction, IFloat, isrole
-    from freeode.ast import RoleStateVariable, RoleTimeDifferential
+    from freeode.ast import RoleStateVariable, RoleTimeDerivative
     from freeode.util import DotName    
     #from freeode.util import aa_make_tree  #pylint:disable-msg=W0612 
 
@@ -1350,7 +1350,7 @@ compile B
     assert isinstance(az, IFloat)        #a1 is state variable, because it 
     assert isrole(az, RoleStateVariable) #has derivative
     assert isinstance(az_dt, IFloat)     
-    assert isrole(az_dt, RoleTimeDifferential) # $a1 is time differential
+    assert isrole(az_dt, RoleTimeDerivative) # $a1 is time derivative
     assert isinstance(dynamic, SimlFunction)
     
     #test if assignment really is 'a1$time' = 'a1'

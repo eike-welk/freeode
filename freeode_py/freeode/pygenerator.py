@@ -349,8 +349,8 @@ class SimulationClassGenerator(object):
         #The state variables: dict: {DotName: InterpreterObject]
         self.state_variables = {}
         self.state_variables_ordered = []
-        #generated differential variables: dict: {DotName: InterpreterObject]
-        self.time_differentials = {}
+        #generated derivative variables: dict: {DotName: InterpreterObject]
+        self.time_derivatives = {}
         
         
     def write(self, string):
@@ -365,7 +365,7 @@ class SimulationClassGenerator(object):
         Results:
         self.parameters, self.algebraic_variables, self.state_variables
         '''
-        #time_differentials = set()
+        #time_derivatives = set()
         #create dicts to find and classify attributes fast
         for name, attr in self.flat_object.attributes.iteritems(): 
             if not isinstance(attr, (CodeGeneratorObject)):
@@ -374,9 +374,9 @@ class SimulationClassGenerator(object):
                 self.parameters[name] = attr
             elif isrole(attr, RoleInputVariable):
                 self.state_variables[name] = attr
-                #time_differentials.add(attr.time_derivative)
+                #time_derivatives.add(attr.time_derivative)
             elif isrole(attr, RoleOutputVariable):
-                self.time_differentials[name] = attr
+                self.time_derivatives[name] = attr
             elif isrole(attr, RoleIntermediateVariable):
                 self.algebraic_variables[name] = attr
             else:
@@ -522,7 +522,7 @@ class SimulationClassGenerator(object):
                            'to prevent runtime errors.\n')
         for var in (self.algebraic_variables.values() + 
                     self.state_variables.values() + 
-                    self.time_differentials.values()):
+                    self.time_derivatives.values()):
             self.write(ind8 + '%s = 0.0 \n' % (var.target_name, ))
 
 #        #create dict for parameter override
@@ -645,8 +645,8 @@ class SimulationClassGenerator(object):
             self.write(ind8 + '%s = state_alg_vars[%d] \n' % (var.target_name, n_var))
             
         #Create the algebraic variables
-        self.write(ind8 + '#Create time differentials with value 0.\n')
-        for var in (self.time_differentials.values()):
+        self.write(ind8 + '#Create time derivatives with value 0.\n')
+        for var in (self.time_derivatives.values()):
             self.write(ind8 + '%s = 0.0 \n' % (var.target_name, ))
             
         #generate code for the statements

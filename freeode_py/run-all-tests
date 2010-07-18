@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run all tests, sets the correct PYTHONPATH
-# <must be run in directory "freeode_py"
+# (must be run in directory "freeode_py")
 
 set -x #enable debug output
 

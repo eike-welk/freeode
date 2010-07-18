@@ -1,32 +1,4 @@
-#############################################################################
-#    Copyright (c) 2007 - 2010  Eike Welk                                   #
-#    eike.welk@gmx.net                                                      #
-#                                                                           #
-#    License: Expat License (X11 License)                                   #
-#                                                                           #
-#    Permission is hereby granted, free of charge, to any person obtaining  #
-#    a copy of this software and associated documentation files (the        #
-#    "Software"), to deal in the Software without restriction, including    #
-#    without limitation the rights to use, copy, modify, merge, publish,    #
-#    distribute, sublicense, and/or sell copies of the Software, and to     #
-#    permit persons to whom the Software is furnished to do so, subject to  #
-#    the following conditions:                                              #
-#                                                                           #
-#    The above copyright notice and this permission notice shall be         #
-#    included in all copies or substantial portions of the Software.        #
-#                                                                           #
-#    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        #
-#    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     #
-#    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. #
-#    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   #
-#    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   #
-#    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      #
-#    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 #
-#############################################################################
-
-
-
-#Biological reactor with no inflow or outfow
+#Biological reactor with no inflow or outflow
 class Batch:
     #Define values that stay constant during the simulation.
     data mu_max, Ks, Yxs: Float param
@@ -38,31 +10,24 @@ class Batch:
         #Specify options for the simulation algorithm.
         solution_parameters(duration=20, reporting_interval=0.1)
         #Give values to the parameters
-        mu_max = 0.32 #max growth speed
-        Ks     = 0.01 #at this sugar concentration growth speed is 0.5*mu_max
-        Yxs    = 0.5  #one g sugar gives this much biomass
+        mu_max = 0.32 #[1/h] max growth speed
+        Ks     = 0.01 #[g/l] at this lactate concentration growth speed is 0.5*mu_max
+        Yxs    = 0.5  #[g/g] one g lactate gives this much biomass
         #Give initial values to the state variables.
-        X      = 0.1  #initial biomass concentration
-        S      = 20   #initial sugar concentration
+        X      = 0.1  #[g/l] initial biomass concentration
+        S      = 20   #[g/l] initial sugar concentration
 
-        #For the test scripts.
-        print('initial-values:', X, S)
-
-
-    #compute dynamic behaviour - the system's 'equations'
+    #compute dynamic behavior - the system's 'equations'
     func dynamic(this):
-        mu = mu_max * S/(S+Ks) #growth speed (of biomass)
-        $X = mu*X              #change of biomass concentration
-        $S = -1/Yxs*mu*X       #change of sugar concentration
-
+        mu = mu_max * S/(S+Ks) #growth speed (of biomass) [1/h]
+        $X = mu*X              #change of biomass concentration [g/l/h]
+        $S = -1/Yxs*mu*X       #change of sugar concentration [g/l/h]
 
     #show results
     func final(this):
-        graph(mu, X, S);
-
-        #For the test scripts, the example programs are run and the output 
-        #is analyzed.
-        print('final-values:', X, S)
+        graph(mu, X, S, title="Batch Reactor");
+        #For the test scripts
+        print("final-values:", X, S, time)
 
 
 compile Batch

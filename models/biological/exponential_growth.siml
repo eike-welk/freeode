@@ -1,0 +1,17 @@
+#Simulation of exponential growth
+class ExponentialGrowth:
+    data x: Float  #Define variable x
+
+    func initialize(this):
+        x = 0.1  #Set initial value
+        solution_parameters(20, 0.1)
+
+    func dynamic(this):
+        $x = 0.3 * x   #The differential equation
+
+    func final(this):
+        graph(x, title="Exponential Growth")
+        print("final-values:", x, time) #For the automatic test script
+
+
+compile ExponentialGrowth
