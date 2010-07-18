@@ -89,10 +89,10 @@ Object Oriented Language
 ------------------------
 
 In Siml all simulations are objects [#like_java]_. They must have certain *main* methods,
-that are called by the run time library during the simulation:
+that are invoked during the simulation:
 
 * The **initialize** method is invoked once at the beginning of the simulation.
-* The **dynamic** method contains the differential equations. It is called 
+* The **dynamic** method contains the differential equations. It is invoked 
   repeatedly during the simulation.
 * The **final** method is invoked at the end.
 
@@ -123,11 +123,26 @@ Line 3 of the Exponential Growth program.
 
 Define the variable **x** as a floating point number.
 
-.. todo:: Float ":"
-
 The ``data`` statement defines attributes (variables, parameters and constants).
+It is followed by the attribute's name,
+a colon ``:``, and the type of attribute.
+
 In Siml attributes have to be defined before they can be used 
 (differently to Python). 
+
+=========== ===========================================
+Important built in types                              
+-------------------------------------------------------
+Type        Description                              
+=========== ===========================================
+``Float``   Floating point number                    
+                                                       
+            You will normally use only this type.    
+            All other types are only rarely useful.  
+
+``String``  Sequence of characters                   
+``Bool``    Logical value                            
+=========== ===========================================
 
 
 ``func`` Statement 
@@ -140,12 +155,18 @@ In Siml attributes have to be defined before they can be used
 Line 5 of the Exponential Growth program.
 
 Here the method ``initialize`` is defined.
+
 The ``func`` keyword defines functions and methods [#member_functions]_.
+It is followed by the method's name, then comes a parenthesized list of the 
+method's arguments, followed by a colon (*:*). 
+
+The first argument of a method must always be **this**, it has exactly the same
+role as ``self`` in Python: It contains the object on which the 
+method operates. Differently to Python you don't have to write ``this.x`` to
+access the attribute **x** of the simulation object. Attributes that are 
+accessible through the special argument ``this`` are looked up automatically.
+  
 All statements in the method's body must be indented to the same level.
-
-.. todo:: this
-
-.. todo:: attribute access
 
 
 ``initialize`` method
@@ -159,7 +180,7 @@ Lines 5-7 of the Exponential Growth program.
 
 The ``initialize`` method is invoked once at the beginning of the simulation.
 
-Here it first computes the *initial value* of the (state) variable **x**.
+It first computes the *initial value* of the (state) variable **x**.
 
 Then the *duration* of the simulation (20), and the *resolution* on the time
 axis (0.1) are determined. 
@@ -169,7 +190,7 @@ Therefore the simulation's variables will be recorded 200 times.
 The built in function ``solution_parameters`` has two parameters:
 
 * ``duration``:           Duration of the simulation.
-* ``reporting_interval``: Time between data points
+* ``reporting_interval``: Time between data points.
                                 
 
 ``dynamic`` method
@@ -209,6 +230,21 @@ Then it sends a short text to the standard output with the built in ``print``
 function. The text contains the final values of ``x`` and ``time``. 
 
 
+``compile`` statement
+---------------------
+
+.. literalinclude:: models/biological/exponential_growth.siml
+    :lines: 17 
+    :language: siml
+
+Line 17 of the Exponential Growth program.
+
+Tell the compiler to compile the object **ExponentialGrowth**.
+
+The keyword ``compile`` is followed by the (class) name of the simulation 
+object. There can be multiple compile statements in one file.
+
+
 Running the Simulation
 ----------------------
 
@@ -233,6 +269,9 @@ The graph matches the exact solution :eq:`biomass_exp_soln`
 .. figure:: exponential_growth_x.png
 
     Biomass concentration versus simulation time.
+
+
+
 
 Example 2: Batch Reactor 
 ========================
@@ -289,13 +328,137 @@ The initial values and parameters are realistic values for
     :language: siml
     :linenos:
 
-.. todo:: param const
-.. todo:: short all functions
+Program Overview
+----------------
 
-The differential equations are in the **dynamic** function.
-The **initialize** function is invoked once at the beginning of the simulation,
-the **final** function is invoked at the end.
+Again, the simulation object is defined with a ``class`` statement.
 
+First the simulation's data attributes are defined:
+
+* In line 4 so called **parameters** are defined. These attributes stay constant 
+  during the simulation, but they can change in between simulations. 
+* In line 6 the **variables** are defined, these attributes change during the 
+  simulation. The recorded values of ``X`` and ``S`` 
+  are the solution of the differential equation.
+
+In Lines 9 - 30 the simulation object's methods are defined.
+Simulation objects must have certain *main* methods,
+that are called by the run time library during the simulation:
+
+* The **initialize** method is called once at the beginning of the simulation.
+* The **dynamic** method contains the differential equations. It is called 
+  repeatedly during the simulation.
+* The **final** method is called at the end.
+
+Finally the ``compile`` statement tells the compiler to create code for the 
+class ``Batch``. The compiler creates a Python class for the Siml class 
+``Batch``.
+
+
+Attribute Roles
+---------------
+
+Attributes of a simulation object have one of three different *roles*. These
+roles are selected by putting a *modifier keyword* after the *type* in the 
+``data`` statement:
+
+* **Constants** are known at compile time, and don't change at all.
+  The compiler computes expressions with constants at compile time; therefore
+  constants may not appear in the compiled program. 
+  Constants are defined with the modifier ``const``.
+* **Parameters** stay constant during the simulation, but they can change in
+  between simulation runs. They are defined with the modifier ``param``.
+* **Variables** change during the simulation. The recorded values of the state 
+  variables versus simulation time, are the solution of the differential equation.
+  Class attributes without modifiers become variables; however they
+  can be defined with the optional modifier ``variable``.
+
+========= ============ ===========================================
+Roles for attributes in Siml
+------------------------------------------------------------------
+Role      Keyword      Description
+========= ============ ===========================================
+Constant  ``const``    Attributes that are known at compile time.
+Parameter ``param``    Constant during the simulation run, 
+                       but can change in between simulations.
+Variable  ``variable`` Attributes that vary during the simulation.
+                       Modifier is optional.
+========= ============ ===========================================
+
+
+``initialize`` Method
+---------------------
+
+.. literalinclude:: models/biological/bioreactor_simple.siml
+    :language: siml
+    :lines: 9-18
+
+Lines 9-18 of the Batch simulation.
+
+The ``initialize`` method is called at the beginning of the simulation run. Its
+purpose is to compute parameters and initial values, as well as to configure
+the solver.
+
+In this example the solver is configured first. This is done with the built in function
+``solution_parameters`` which has two parameters: 
+
+* ``duration``:           Duration of the simulation.
+* ``reporting_interval``: Time between data points.
+
+Then the values of the parameters are computed. 
+Finally the initial values of the state variables (**X** and **S**) are computed.
+ 
+ 
+``dynamic`` Method
+------------------
+
+.. literalinclude:: models/biological/bioreactor_simple.siml
+    :language: siml
+    :lines: 21-24
+
+Lines 21-24 of the Batch simulation.
+
+The ``dynamic`` method is called repeatedly during the simulation by the 
+solver algorithm. It computes the time derivatives of the state variables.
+
+As Siml has `imperative semantics <http://en.wikipedia.org/wiki/Imperative_programming>`_, 
+``mu`` has to be computed first [#statement_reordering]_. 
+Also because of these imperative semantics the equal (``=``) operator really is an 
+`assignment <http://en.wikipedia.org/wiki/Assignment_%28computer_science%29>`_.
+On the left hand side of the equal operator there must always be just an 
+attribute. All attributes can only be assigned once; no assigned 
+value can ever be changed. 
+
+
+``final`` Method
+----------------
+
+.. literalinclude:: models/biological/bioreactor_simple.siml
+    :language: siml
+    :lines: 27-30
+
+Lines 27-30 of the Batch simulation.
+
+The ``final`` method is called at the end of the simulation, its purpose is to 
+display or store the simulation results. All variables have the values that were
+computed for the last point in time. 
+
+In this example a graph of the variables **µ**, **X** and **S** is produced.
+Then a line of text is written to the standard output, which contains the final
+values of  **X**, **S** and **time**. 
+
+============== ========== ======================= =============================
+Built in functions for use in the ``final`` method.
+-------------------------------------------------------------------------------
+What           Name       Signature               Description
+============== ========== ======================= =============================
+Display graph  ``graph``  ``(\*args, title="")``  Takes any number of arguments; 
+                                                  the special keyword argument ``title`` 
+                                                  sets the graph's title.
+Save results   ``save``   ``(file_name)``         File name must be text string.
+Output text    ``print``  ``(\*args, area="",``   Takes any number of arguments. 
+                          ``end="\n")``           
+============== ========== ======================= =============================
 
 
 Running the Simulation
@@ -366,5 +529,8 @@ To copy this file to the Kate Part's highlight directory run the script
         and it creates a place to store the time derivative (if necesary). The time 
         derivative is just an other variable, but usually it can only be 
         accessed by the ``$`` operator. 
-                
-                
+
+.. [#statement_reordering] Statement reordering is a planned feature, but it 
+        is unclear if it would cause much confusion for relative little gain
+        in convenience. 
+   

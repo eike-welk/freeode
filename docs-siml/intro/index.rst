@@ -14,6 +14,11 @@
 Introduction to the Siml Language
 #############################################
 
+Welcome to the documentation for the Siml programming language.
+This is work in progress. 
+
+`Back to the website of the Freeode project <http://freeode.berlios.de/>`_
+
 Contents:
 
 .. toctree::

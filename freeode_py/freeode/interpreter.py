@@ -1107,11 +1107,11 @@ def siml_print(*args, **kwargs):
     representation of the object.
     
     The function supports a number of keyword arguments:
-    area='' : str
+    area="" : str
         Only produce output when area is in global set DEBUG_AREAS.
         The special value '' means: print unconditionally.
         To change use command line option --debug-area=area1,area2, ...    
-    end='\n': String
+    end="\n": String
         This string is appended at the end of the printed output.
         
     The function executes at runtime; calling this function always creates code.
@@ -1245,7 +1245,7 @@ def siml_graph(*args, **kwargs):
 @signature([IString], INoneType)
 def siml_save(file_name): #pylint:disable-msg=W0613
     '''
-    The store function.
+    Save the simulation's results.
 
     At compile time the store function raises an error.
     At run time it stores all recorded variables in the file system.
