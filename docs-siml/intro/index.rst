@@ -25,7 +25,7 @@ Contents:
     :maxdepth: 2
 
     fermenter-intro
-
+    built-in-library
 
 
 Indices and tables

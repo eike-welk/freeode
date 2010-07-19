@@ -17,12 +17,14 @@ import sys, os
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.append(os.path.abspath('sphinx_extensions'))
+sys.path.append(os.path.abspath('../../freeode_py'))
 
 # -- General configuration -----------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath', 'siml_highlighting']
+extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath', 'sphinx.ext.autodoc', 
+              'siml_highlighting']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -45,9 +47,9 @@ copyright = u'2010 - 2010, Eike Welk'
 # built documents.
 #
 # The short X.Y version.
-version = '0.1.0'
+version = '0.4.0'
 # The full version, including alpha/beta/rc tags.
-release = '0.1.0'
+release = '0.4.0'
 
 #If this is True, ".. todo::" and ".. todolist::" produce output, else they
 #produce nothing. The default is False.
@@ -78,7 +80,7 @@ add_function_parentheses = True
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
-#add_module_names = True
+add_module_names = False
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
