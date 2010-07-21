@@ -9,6 +9,11 @@
     no Back-Cover Texts. A copy of the license is included in the
     file "GNU-Free-Documentation-License-1.3.txt"
 
+
+.. Let all references go to the built in module. This shortens all references.
+.. currentmodule:: __siml_builtin__
+
+
 ************************************
 The Siml Tutorial - Bioreactors
 ************************************
@@ -124,25 +129,25 @@ Line 3 of the Exponential Growth program.
 Define the variable **x** as a floating point number.
 
 The ``data`` statement defines attributes (variables, parameters and constants).
-It is followed by the attribute's name,
-a colon ``:``, and the type of attribute.
+The ``data`` keyword is followed by the attribute's name (``x``),
+a colon ``:``, and the type of attribute (``Float``).
 
 In Siml attributes have to be defined before they can be used 
 (differently to Python). 
 
-=========== ===========================================
+================= ===========================================
 Important built in types                              
--------------------------------------------------------
-Type        Description                              
-=========== ===========================================
-``Float``   Floating point number                    
+-------------------------------------------------------------
+Type              Description                              
+================= ===========================================
+\ :class:`Float`  Floating point number                    
                                                        
-            You will normally use only this type.    
-            All other types are only rarely useful.  
+                  You will normally use only this type.    
+                  All other types are only rarely useful.  
 
-``String``  Sequence of characters                   
-``Bool``    Logical value                            
-=========== ===========================================
+\ :class:`String` Sequence of characters                   
+\ :class:`Bool`   Logical value                            
+================= ===========================================
 
 
 ``func`` Statement 
@@ -182,16 +187,12 @@ The ``initialize`` method is invoked once at the beginning of the simulation.
 
 It first computes the *initial value* of the (state) variable **x**.
 
-Then the *duration* of the simulation (20), and the *resolution* on the time
-axis (0.1) are determined. 
+Then the built in function :func:`solution_parameters` is invoked.
+It determines the *duration* of the simulation (20), and the *resolution* 
+on the time axis (0.1). 
 The simulation always starts at time=0.
 Therefore the simulation's variables will be recorded 200 times.
 
-The built in function ``solution_parameters`` has two parameters:
-
-* ``duration``:           Duration of the simulation.
-* ``reporting_interval``: Time between data points.
-                                
 
 ``dynamic`` method
 ---------------------
@@ -225,8 +226,8 @@ Lines 12-14 of the Exponential Growth program.
 The ``final`` method is invoked at the end of the simulation.
 
 In this simulation proigram is creates a graph of the variable ``x`` versus
-``time`` with the built in ``graph`` function. 
-Then it sends a short text to the standard output with the built in ``print`` 
+``time`` with the built in :func:`graph` function. 
+Then it sends a short text to the standard output with the built in :func:`print`
 function. The text contains the final values of ``x`` and ``time``. 
 
 
@@ -249,7 +250,7 @@ Running the Simulation
 ----------------------
 
 The Exponential Growth program is available on the website, and in the 
-``*.tar.gz`` and ``*.zip`` archives as ``models/biological/exponential_growth.siml``
+``*.tar.gz`` and ``*.zip`` archives as :download:`models/biological/exponential_growth.siml`
 
 The simulation program can be typed into any text editor. 
 For details on editors see: :ref:`editor-usage-intro`.
@@ -399,14 +400,13 @@ The ``initialize`` method is called at the beginning of the simulation run. Its
 purpose is to compute parameters and initial values, as well as to configure
 the solver.
 
-In this example the solver is configured first. This is done with the built in function
-``solution_parameters`` which has two parameters: 
+In this example the solver is configured first, which is done with the built in function
+:func:`solution_parameters`. The duration of the simulation is set to 20, the time between 
+data points is set to 0.1.
 
-* ``duration``:           Duration of the simulation.
-* ``reporting_interval``: Time between data points.
-
-Then the values of the parameters are computed. 
-Finally the initial values of the state variables (**X** and **S**) are computed.
+Then the values of the parameters (:math:`\mu_{max}, K_s, Y_{xs}`) are determined. 
+Finally the initial values of the state variables (:math:`X, S`) are determined.
+The algebraic variable :math:`\mu` does not need an initial value.
  
  
 ``dynamic`` Method
@@ -447,25 +447,23 @@ In this example a graph of the variables **µ**, **X** and **S** is produced.
 Then a line of text is written to the standard output, which contains the final
 values of  **X**, **S** and **time**. 
 
-============== ========== ======================= =============================
+============================================= =======================================
 Built in functions for use in the ``final`` method.
--------------------------------------------------------------------------------
-What           Name       Signature               Description
-============== ========== ======================= =============================
-Display graph  ``graph``  ``(*args, title="")``   Takes any number of arguments; 
-                                                  the special keyword argument ``title`` 
-                                                  sets the graph's title.
-Save results   ``save``   ``(file_name)``         File name must be text string.
-Output text    ``print``  ``(*args, area="",``    Takes any number of arguments. 
-                          ``end="\n")``           
-============== ========== ======================= =============================
+-------------------------------------------------------------------------------------
+Name                                          Description
+============================================= =======================================
+\ :func:`graph` ``(*args, title="")``         Display graph of (possibly multiple) 
+                                              variables versus time.
+\ :func:`save` ``(file_name)``                Save simulation results into a file.
+\ :func:`print` ``(*args, area="",end="\n")`` Output text. 
+============================================= =======================================
 
 
 Running the Simulation
 ----------------------
 
 The program for the batch reactor is available on the website, and in the 
-``*.tar.gz`` and ``*.zip`` archives as ``models/biological/bioreactor_simple.siml``
+``*.tar.gz`` and ``*.zip`` archives as :download:`models/biological/bioreactor_simple.siml`
 
 The simulation program can be typed into any text editor. 
 For details on editors see: :ref:`editor-usage-intro`.

@@ -32,6 +32,8 @@
 <div id="contents">
   <a name="top"></a>
   <h1>The SIML Language</h1>
+  <p><a href="siml-intro/index.html">Siml Programming Language Documentation</a>
+  </p>
 
   <a name="tutorial"></a>
   <h2>Tutorial</h2>

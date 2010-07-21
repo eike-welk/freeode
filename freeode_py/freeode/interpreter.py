@@ -1100,21 +1100,35 @@ TIME.__siml_role__ = RoleAlgebraicVariable
 @signature(None, INoneType)
 def siml_print(*args, **kwargs):
     '''
-    The runtime print function.
+    Print text at **run time**.
 
-    The print function takes an arbitrary number of positional arguments.
-    For each argument print calls its '__siml_str__' function to create a text
+    The ``print`` function takes an arbitrary number of positional arguments.
+    For each argument print calls its ``__siml_str__`` function to create a text
     representation of the object.
+
+    Additionally the function supports a number of keyword arguments (see 
+    below).
     
-    The function supports a number of keyword arguments:
-    area="" : str
+    ARGUMENTS
+    ---------
+    
+    `*args` : Any type
+        The function can print all legal Siml expressions.
+    
+    area="" : String
         Only produce output when area is in global set DEBUG_AREAS.
         The special value '' means: print unconditionally.
-        To change use command line option --debug-area=area1,area2, ...    
+
+        To change use command line ``option --debug-area=area1,area2,...`` 
+        of the compiler or the generated program. 
+     
     end="\n": String
         This string is appended at the end of the printed output.
-        
-    The function executes at runtime; calling this function always creates code.
+
+    RETURNS
+    -------
+
+    NONE
     '''
     #check keyword arguments
     legal_kwarg_names = set(['area', 'end'])
@@ -1150,22 +1164,40 @@ def siml_print(*args, **kwargs):
 @signature(None, INoneType)
 def siml_printc(*args, **kwargs):
     '''
-    The compile time print function.
+    Print text at **compile time**.
 
-    The print function takes an arbitrary number of positional arguments.
+    The ``printc`` function takes an arbitrary number of positional arguments.
     The arguments are converted to strings and printed at compile time.
+    The function prints unevaluated expressions as ASCII-art trees, that show 
+    the structure of the AST.
+
+    Additionally the function supports a number of keyword arguments (see 
+    below).
+
+    The function executes at **compile time**; calling this function does 
+    **not create code**.
+
+    ARGUMENTS
+    ---------
     
-    The function supports a number of keyword arguments:
-    area='' : str
+    `*args` : Any type
+        The function can print all legal Siml expressions.
+    
+    area="" : String
         Only produce output when area is in global set DEBUG_AREAS.
         The special value '' means: print unconditionally.
-        To change use command line option --debug-area=area1,area2, ...
-    end='\n': String
+
+        To change use command line ``option --debug-area=area1,area2,...`` 
+        of the compiler or the generated program. 
+     
+    end="\n": String
         This string is appended at the end of the printed output.
-        
-    The function executes at compile time; calling this function does not create 
-    code.
-    '''
+
+    RETURNS
+    -------
+
+    NONE
+     '''
     #check keyword arguments
     legal_kwarg_names = set(['area', 'end'])
     for arg_name in kwargs.keys():
@@ -1199,27 +1231,37 @@ def siml_printc(*args, **kwargs):
 @signature(None, INoneType)
 def siml_graph(*args, **kwargs):
     '''
-    The graph special-function.
+    Create a graph (at runtime).
 
-    ARGUMENTS
-    ---------
-    Positional arguments:
-    The graph function takes an arbitrary number of positional arguments.
-    These values must be Floats that were created with a data statement, and
-    whose values are also recorded during the solution process. The arguments
-    are interpreted as all recorded values during the solution process, and
-    not as a single value at a specific moment in time like variables
-    normally are interpreted.
+    The ``graph`` function takes an arbitrary number of positional arguments.
+    These values must be ``Float`` values that were created with a ``data`` 
+    statement, and whose values are also recorded during the solution process. 
+    The function's arguments are interpreted specially: 
+    As all recorded values at all points in time; 
+    not as a single value at a specific moment in time, like variables
+    are interpreted normally.
+
+    Additionally the function supports a keyword argument ``title`` (see 
+    below).
 
     However, the Python implementation here does nothing. The code generator
     generates a call to a function/method of the runtime when it sees
     a call to this function. (This case is treated specially in the code
     generator.)
 
-
-    Keyword arguments:
-    title: String
+    ARGUMENTS
+    ---------
+    
+    *args: Float
+        The variable(s) that is/are graphed.
+        
+    title="": String
         The title of the graph, shown at the top.
+        
+    RETURNS
+    -------
+    
+    NONE
     '''
     #check arguments
     for arg_val in args:
@@ -1245,10 +1287,9 @@ def siml_graph(*args, **kwargs):
 @signature([IString], INoneType)
 def siml_save(file_name): #pylint:disable-msg=W0613
     '''
-    Save the simulation's results.
+    Save the simulation's results (at runtime).
 
-    At compile time the store function raises an error.
-    At run time it stores all recorded variables in the file system.
+    This function stores all recorded variables in the file system.
 
     However, the Python implementation here does nothing. The code generator
     generates a call to a function/method of the runtime when it sees
@@ -1256,8 +1297,9 @@ def siml_save(file_name): #pylint:disable-msg=W0613
 
     ARGUMENTS
     ---------
+    
     file_name: String
-        Filename of the stored variables.
+        Name of file, where the variables are stored.
     '''
     raise UnknownArgumentsException('Exception to create function call.')
 
@@ -1265,19 +1307,20 @@ def siml_save(file_name): #pylint:disable-msg=W0613
 @signature([IFloat, IFloat], INoneType)
 def siml_solution_parameters(duration=None, reporting_interval=None): #pylint:disable-msg=W0613
     '''
-    The solution_parameters function.
+    Set parameters for the solver (at run time).
 
-    At compile time this function raises an error.
-    At run time it changes parameters of the solution algorithm.
+    This function changes parameters of the solution algorithm.
 
     However, the Python implementation here does nothing. The code generator
     generates a call to a function/method of the runtime when it sees
     a call to this function.
 
     ARGUMENTS
-    ---------
+    --------- 
+    
     duration: Float
         Duration of the simulation.
+        
     reporting_interval: Float
         Interval at which the simulation results are recorded.
         Time between data points
@@ -1345,16 +1388,40 @@ def associate_state_dt(state_var, derivative_var):
 
 
 @signature(None, None)
-def istype(in_object, class_or_type_or_tuple):
+def istype(in_object, class_or_tuple):
     '''
-    Check if an object's type is in class_or_type_or_tuple.
+    Check if an object has a certain type.
 
-    Similar to isinstance(...) but works with unevaluated expressions too.
-    If the expression (in_object) would evaluate to an object of the
-    correct type, the function returns True.
+    Similar to isinstance(...) but works with unevaluated expressions too, 
+    because attribute ``__siml_type__``  is used instead of ``__class__``.
+    If an expression (in_object) would evaluate to an object of the
+    correct type, the function returns TRUE.
+
+    This function executes at compile time and does not produce any code
+    in the compiled program.
+
+    **ARGUMENTS**
+    
+    in_object : any object or expression
+        The object that is tested whether it has the correct type.
+
+    class_or_tuple : a class or a tuple of classes
+        The class that ``in_object`` must be an instance of.
+
+        The argument can be a tuple of classes, then the function returns TRUE
+        if ``in_object`` is an instance of any of these classes.
+
+    **RETURNS**
+    
+    Bool
+        The function returns TRUE if ``in_object`` is an instance of 
+        ``class_or_tuple``. It returns FALSE otherwise.
+
+        ``class_or_tuple`` can be a tuple of classes, then the function returns 
+        TRUE if ``in_object`` is an instance of any of these classes.
     '''
     if in_object.__siml_type__ is not None:
-        return issubclass(in_object.__siml_type__, class_or_type_or_tuple)
+        return issubclass(in_object.__siml_type__, class_or_tuple)
     else:
         return False
 
@@ -1450,6 +1517,7 @@ def create_built_in_lib():
     lib.time = TIME
     
     #basic data types
+    # TODO: Module?
     lib.NoneType = INoneType
     lib.Bool = IBool
     lib.String = IString
