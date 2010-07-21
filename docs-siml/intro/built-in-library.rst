@@ -265,16 +265,38 @@ Output
 
     Save the simulation's results (at runtime).
 
+    Stores the data in a **CSV** or **Pickle** file.
+    The encoding is determined by the filename's extension:
+    
+    ".csv": Comma Separated Values 
+        When the filename ends in ".csv" the data is stored in a human 
+        readable format, where values are separated by commas: CSV. 
+        
+        * Comments in the CSV file start with "#" and continue to the end of 
+          the line.
+        * Two blocks of information are written, separated by comments: 
+          first the parameters, then the variables. 
+        * In each block the first row contains the 
+          attribute names, subsequent rows contain the numeric values.
+            
+    For any other extension a file in Python's "pickle" format (version 2) is created. 
+        Python's "pickle" mechanism is documented 
+        `here <http://docs.python.org/library/pickle.html>`_.
+ 
     **ARGUMENTS**
     
     file_name: :class:`String`
-        Name of file, where the variables are stored.
-
+        Name of the file where the simulation results are stored.
+        
+        When the filename ends with ".csv" a human readable file with 
+        comma separated values is created.
+        Otherwise Python's "pickle" format (version 2) is used. 
+ 
     **RETURNS**
     
     :data:`NONE`
-
-.. todo:: File extension for ``file_name`` in ``save``. How can the file type be selected?
+         
+---------------------------------------------------------------------
 
 
 Administrative

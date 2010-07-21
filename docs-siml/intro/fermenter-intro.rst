@@ -400,14 +400,13 @@ The ``initialize`` method is called at the beginning of the simulation run. Its
 purpose is to compute parameters and initial values, as well as to configure
 the solver.
 
-In this example the solver is configured first. This is done with the built in function
-``solution_parameters`` which has two parameters: 
+In this example the solver is configured first, which is done with the built in function
+:func:`solution_parameters`. The duration of the simulation is set to 20, the time between 
+data points is set to 0.1.
 
-* ``duration``:           Duration of the simulation.
-* ``reporting_interval``: Time between data points.
-
-Then the values of the parameters are computed. 
-Finally the initial values of the state variables (**X** and **S**) are computed.
+Then the values of the parameters (:math:`\mu_{max}, K_s, Y_{xs}`) are determined. 
+Finally the initial values of the state variables (:math:`X, S`) are determined.
+The algebraic variable :math:`\mu` does not need an initial value.
  
  
 ``dynamic`` Method
@@ -448,25 +447,23 @@ In this example a graph of the variables **µ**, **X** and **S** is produced.
 Then a line of text is written to the standard output, which contains the final
 values of  **X**, **S** and **time**. 
 
-============== ========== ======================= =============================
+============================================= =======================================
 Built in functions for use in the ``final`` method.
--------------------------------------------------------------------------------
-What           Name       Signature               Description
-============== ========== ======================= =============================
-Display graph  ``graph``  ``(*args, title="")``   Takes any number of arguments; 
-                                                  the special keyword argument ``title`` 
-                                                  sets the graph's title.
-Save results   ``save``   ``(file_name)``         File name must be text string.
-Output text    ``print``  ``(*args, area="",``    Takes any number of arguments. 
-                          ``end="\n")``           
-============== ========== ======================= =============================
+-------------------------------------------------------------------------------------
+Name                                          Description
+============================================= =======================================
+\ :func:`graph` ``(*args, title="")``         Display graph of (possibly multiple) 
+                                              variables versus time.
+\ :func:`save` ``(file_name)``                Save simulation results into a file.
+\ :func:`print` ``(*args, area="",end="\n")`` Output text. 
+============================================= =======================================
 
 
 Running the Simulation
 ----------------------
 
 The program for the batch reactor is available on the website, and in the 
-``*.tar.gz`` and ``*.zip`` archives as ``models/biological/bioreactor_simple.siml``
+``*.tar.gz`` and ``*.zip`` archives as :download:`models/biological/bioreactor_simple.siml`
 
 The simulation program can be typed into any text editor. 
 For details on editors see: :ref:`editor-usage-intro`.
