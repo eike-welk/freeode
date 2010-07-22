@@ -749,32 +749,50 @@ class DictStore(BaseStore):
         '''Load data from a file in pickle format.'''
         f = open(fileName, 'rb')
         newStore = cPickle.load(f) #this should also work for derived classes
+        #TODO: This does not work for derived classes; maybe use dict.update(...) ?
         self.__dict__ = newStore.__dict__ #copy the (all) data attributes
         f.close()
 
 
-    def save(self, fileName):
+    def save(self, file_name):
         '''
-        Dump the class data into a csv or pickle file
+        Store the data in a CSV or Pickle file.
         
         The encoding is determined by the filename's extension:
-        'csv' : When the filename ends in '.csv' the routine tries to 
-                interpret the file as comma seperated values. The attribute 
-                names must be in the first row
-        Any other extension is considered to mean a file in Python's pickle
-        format.
         
-        Arguments:
-        fileName    : filename; string
+        'csv' : When the filename ends in '.csv' the data is stored in a
+            human readable format, where values are separated by commas: CSV. 
+            
+            * Comments in the CSV file start with "#" and continue to the end of 
+              the line.
+            * Two blocks of information are written, separated by comments: 
+              first the parameters, then the variables. 
+            * In each block of information, the first row contains the 
+              attribute names, subsequent rows contain the numeric values.
+                
+        For any other extension a file in Python's "pickle" format (version 2) 
+        is created.
         
-        Returns:
+        ARGUMENTS
+        ---------
+        
+        file_name: str
+            Name of the file where the simulation results are stored.
+            
+            When the filename ends with ".csv" a human readable file with 
+            comma separated values is created.
+            Otherwise Python's "pickle" format (version 2) is used. 
+        
+        RETURNS
+        -------
+        
         None
         '''
-        fext = self._getExtension(fileName)
+        fext = self._getExtension(file_name)
         if fext == 'csv':
-            self._saveCSV(fileName)
+            self._saveCSV(file_name)
         else: #elif fext == 'pickle':
-            self._savePickle(fileName)
+            self._savePickle(file_name)
 
 
     def _saveCSV(self, fileName):

@@ -316,6 +316,7 @@ def test_UserException():
 
 
 
+# -------- Testing aids --------------------------------------------------------  
 def test_assert_raises():
     msg = "Test function for checking that the correct exceptions are raised."
     #skip_test(msg)
@@ -332,7 +333,7 @@ def test_assert_raises():
     def raise_errno_001(a, b, c, d):
         assert a == 1 and b == 2 and c == 3 and d == 4
         raise UserException('Test message', None, 1)
-    assert_raises(UserException, 1, raise_errno_001, (1, 2), {'c':3, 'd':4})
+    assert_raises(UserException, 1, raise_errno_001, 1, 2, c=3, d=4)
     
     #Test case: correct exception is raised no errno
     def raise_DummyException_1():
@@ -404,13 +405,80 @@ def test_debug_print():
                 area="test")
         
         
+        
+def test_LineTemplate(): #IGNORE:C01111
+    msg = '''Test function test_search_result_lines'''
+#    skip_test(msg)
+    print msg
+    
+    from freeode.util import assert_raises, LineTemplate
+    
+    #Call constructor ----------------------------
+    #All details are specified
+    lt = LineTemplate('foo', [1, 2.0, 'a'], [1, 0.2, 0], [int, float, str])
+    assert lt.head == 'foo'
+    assert lt.vals == [1, 2.0, 'a']
+    assert lt.tols == [1, 0.2, 0]
+    assert lt.convs == [int, float, str]
+    
+    #Test stripping of head, common tolerance, 
+    # and automatic choice of conversion function
+    lt = LineTemplate(' foo:', [1, 2.0, 'a'], 0.2 )
+    assert lt.head == 'foo'
+    assert lt.vals == [1, 2.0, 'a']
+    assert lt.tols == [0.2, 0.2, 0.2]
+    assert lt.convs == [int, float, str]
+    
+    #Create from string -------------------------
+    #Everything automatic
+    lt = LineTemplate.from_str(' foo: 1 2.0 a')
+    assert lt.head == 'foo'
+    assert lt.vals == [1.0, 2.0, 'a']
+    assert lt.tols == [1e-3, 1e-3, 1e-3]
+    assert lt.convs == [int, float, str]
+    
+    #Call from_str with LineTemplate argument
+    lt1 = LineTemplate('foo', [1, 2.0, 'a'], [1, 0.2, 0], [int, float, str])
+    lt = LineTemplate.from_str(lt1)
+    assert lt.head == 'foo'
+    assert lt.vals == [1, 2.0, 'a']
+    assert lt.tols == [1, 0.2, 0]
+    assert lt.convs == [int, float, str]
+    
+    #Test split head ---------------------------------
+    head, tail = LineTemplate.split_head(' foo:a b c  ')
+    assert head == 'foo'
+    assert tail == 'a b c'
+    
+    #Test matching ---------------------------------
+    #Specify everything
+    lt = LineTemplate('foo', [1, 2.0, 'a'], [1, 0.2, 0], [int, float, str])
+    assert lt.match_tail('1 2.0 a')
+    assert lt.match_tail('1 2.1 a')
+    assert lt.match_tail('1 1.9 a')
+    assert not lt.match_tail('1 2.3 a')
+    assert not lt.match_tail('1 2.0 b')
+    assert not lt.match_tail('1.1 2.0 a')
+    
+    #create from line
+    lt = LineTemplate.from_str('foo: 1 2.0 a')
+    assert lt.match_tail('1 2.0 a')
+    assert lt.match_tail('1 2.0005 a') # 2nd arg:in tolerance
+    assert lt.match_tail('1 2 a')      # 2nd arg: float can convert int too
+    assert not lt.match_tail('1.0 2.0 a') # 1st arg: conversion function (int) raises ValueError
+    assert not lt.match_tail('2 2.0 a')   # 1st arg: no match
+    assert not lt.match_tail('1 2.002 a') # 2nd arg: no match: outside tolerance
+    assert not lt.match_tail('1 1.998 a') # 2nd arg: no match: outside tolerance
+    assert not lt.match_tail('1 2.0 b')   # 3rd arg: no match
+
+    
     
 def test_search_result_lines(): #IGNORE:C01111
     msg = '''Test function test_search_result_lines'''
 #    skip_test(msg)
     print msg
     
-    from freeode.util import assert_raises, search_result_lines, Line
+    from freeode.util import assert_raises, search_result_lines, LineTemplate
     
     in_text = '''
 lkasdf kldfj ladkfj 
@@ -419,28 +487,79 @@ klasdf asdf
 foo test2: 1 2 3
 klajfd 
 '''
-    search_result_lines(in_text, [Line(['test1:', 4, 5, 6]),
-                                  Line(['foo test2:', 1, 2, 3])])
+    search_result_lines(in_text, [LineTemplate('test1:', [4, 5, 6]),
+                                  LineTemplate('foo test2:', [1, 2, 3])])
     
     def raise1():
-        search_result_lines(in_text, [Line(['test1:', 4, 5, 7]),
-                                      Line(['foo test2:', 1, 2, 3])])
+        search_result_lines(in_text, [LineTemplate('test1:', [4, 5, 7]),
+                                      LineTemplate('foo test2:', [1, 2, 3])])
     assert_raises(AssertionError, None, raise1)
     
     def raise2():
-        search_result_lines(in_text, [Line(['test1:', 4, 5, 6, 7]),
-                                      Line(['foo test2:', 1, 2, 3])])
+        search_result_lines(in_text, [LineTemplate('test1:', [4, 5, 6, 7]),
+                                      LineTemplate('foo test2:', [1, 2, 3])])
     assert_raises(AssertionError, None, raise2)
     
     def raise3():
-        search_result_lines(in_text, [Line(['test0:', 0, 0, 0, 0]),
-                                      Line(['test1:', 4, 5, 6]),
-                                      Line(['foo test2:', 1, 2, 3])])
+        search_result_lines(in_text, [LineTemplate('test0:', [0, 0, 0, 0]),
+                                      LineTemplate('test1:', [4, 5, 6]),
+                                      LineTemplate('foo test2:', [1, 2, 3])])
     assert_raises(AssertionError, None, raise3)
     
     
  
+def test_compile_run(): #IGNORE:C01111
+    msg = '''Test function compile_run'''
+#    skip_test(msg)
+    print msg
+    
+    from freeode.util import assert_raises, compile_run, DEBUG_AREAS
+    import os
+    
+    DEBUG_AREAS.add('compile_run')
+    
+    prog_text = \
+'''
+class Foo:
+    data x: Float
+    
+    func initialize(this):
+        x = 0
+        solution_parameters(100, 1)
+        print('in initialize')
+        
+    func dynamic(this):
+        $x = 1
+        
+    func final(this):
+        print('final x:', x)
+    
+
+compile Foo
+'''
+    base_name = ('compile_run_output')
+    test_prefix = 'testprefix_'
+    out_file = open(base_name + '.siml', 'w')
+    out_file.write(prog_text)
+    out_file.close()
+    
+#    os.system('pwd')
+#    os.system('ls')
+
+    compile_run(base_name + '.siml', test_prefix)
+    assert_raises(AssertionError, None, 
+                  compile_run, base_name + '.siml', test_prefix, '--foo')
+    
+    #compile_run(base_name + '.siml', test_prefix, '--foo', run_sims, no_graphs, clean_up)
+    #assert_raises(exc_type, errno, func, args, kwargs)
+    #TODO: clean up junk
+    
+    #remove the siml file
+    os.remove(base_name + '.siml')
+    
+
+
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_debug_print()
+    test_LineTemplate()
     pass #pylint: disable-msg=W0107

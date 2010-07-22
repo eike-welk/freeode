@@ -30,6 +30,7 @@ from __future__ import absolute_import
 
 import os
 import sys
+import functools
 from subprocess import Popen, PIPE
 from types import NoneType
 import freeode.third_party.pyparsing as pyparsing
@@ -434,7 +435,7 @@ class UserException(Exception):
 
 
 
-def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-msg=W0102,W0621
+def assert_raises(exc_type, errno, func, *args, **kwargs): #pylint:disable-msg=W0621
     '''
     Test if a function raises the expected exception. Can test error number of 
     UserException.
@@ -450,17 +451,17 @@ def assert_raises(exc_type, errno, func, args=(), kwargs={}): #pylint:disable-ms
         If errno is None it is ignored
     func: Python function
         The tested function which must raise an exception.
-    args: tuple
-        Positional arguments for tested function.
-    kwargs: dict
-        Keyword arguments for tested function.
+    args: 
+    kwargs: 
+        Further positional and keyword arguments are supplied to the tested 
+        function (argument func).
     '''
     assert issubclass(exc_type, BaseException), \
            'Argument exc_type must be an exception type.'
     assert callable(func), 'Argument func must be call-able.'
     
     try:
-        func(*args, **kwargs) #pylint:disable-msg=W0142
+        func(*args, **kwargs) 
     except exc_type, e:
         #print e
         if errno is not None:
@@ -671,117 +672,340 @@ def debug_print(*args, **kwargs):
 
 
 # ----- Testing program output -------------------------------------------------
-class Line(object):
+class LineTemplate(object):
     '''
     Represents a line that is expected in the output of a program.
     
     The line has the pattern:
-        string float float float ....
+        head string: value1 value2 ....
+        
+    Currently well supported types for values are: int, float, str 
+    
+    The head string must be separated from the values with a colon ':' 
+    character.
     '''
-    def __init__(self, item_list=['foo:', 1., 2.], tol=1e-3, converter=float): #pylint:disable-msg=W0102
+    def __init__(self, head, vals, tols=1e-3, convs=None): 
         '''
-        item_list : [str, float, float, ...] or str
-            The items that are expected in the line.
-            - If item_list is a string it is split into a list; elements [1:] 
-              are then converted to float with the converter function.
-        tol : float
-            Tolerance for comparing the found values with the expected values.
+        ARGUMENTS
+        ---------
+        
+        head: str
+            The leading string that identifies the line. It is separated from
+            the rest of the line by a colon ':'
+            
+        vals: [str | float]
+            The items that are expected in the line. These items are not 
+            converted.
+            
+        tols: float | [float]
+            A tolerance for comparing found floating point values with expected 
+            values, or a list of tolerances
+            
         converter: call-able object or None
             This function is called with each of the detected values as its argument.
             The function's result is compared to the values of the template. 
             If convertes is None no conversion takes place
         '''
         object.__init__(self)
-        if isinstance(item_list, str):
-            item_list = item_list.split() #pylint:disable-msg=E1103
-            self.vals = map(converter, item_list[1:])
+        
+        #care for head: remove leading whitespace and trailing ':'
+        assert isinstance(head, str)
+        head = head.lstrip()
+        head = head.rstrip(':')
+        self.head = head
+        
+        assert isinstance(vals, list)
+        self.vals = vals
+        
+        #care for the tolerances
+        if isinstance(tols, list):
+            #A list of tolerances is given: store it
+            assert len(tols) == len(self.vals)
+            self.tols = tols
+        elif isinstance(tols, float):
+            #The same tolerances for all examples
+            self.tols = [tols] * len(self.vals)
         else:
-            #item_list is list
-            self.vals = item_list[1:]
-        self.start = str(item_list[0])
-        self.tol = tol
-        self.converter = converter
+            raise TypeError('Argument "tols" must be a list or a float number.')
+        
+        #care for the conversion functions
+        if isinstance(convs, list):
+            #A list of conversion functions is given: store it
+            assert len(convs) == len(self.vals)
+            self.convs = convs
+        elif convs is None:
+            #Use the constructors of each value as conversion functions
+            self.convs = [type(v) for v in self.vals]
+        else:
+            raise TypeError('Argument "convs" must be None or a list of functions.')
+            
+        #Create *the* list of matching functions; 
+        #float is matched with tolerance, everything else is matched with ==
+        def match_float(tol, a, b):
+            return abs(a - b) < tol
+        def match_default(a, b):    
+            return a == b
+        matchers = []
+        for val, tol in zip(self.vals, self.tols):
+            if isinstance(val, float):
+                m_fun = functools.partial(match_float, tol)
+            else:
+                m_fun = match_default
+            matchers.append(m_fun)
+        self.matchers = matchers
+            
+        #The line has off course not been matched.
         self.is_matched = False
     
-    def make_line(self):
+    
+    def to_str(self):
         'Create the line that the template describes.'
-        return self.start + ' ' + ' '.join(map(str,self.vals))
-         
+        return self.head + ': ' + ' '.join(map(str,self.vals))
 
+
+    @staticmethod
+    def split_head(line_str):
+        '''
+        Cut the line into two parts: "head: tail"
+        
+        Leading and trailing whitespace are removed, and the line is
+        split at the first colon ':'. 
+
+        When the line cant't be usefully split, the function returns None.
+        
+        ARGUMENTS
+        ---------
+        
+        line_str: str
+            The line that is split.
+            
+        RETURNS
+        -------
+        tuple(head, tail)
+        '''
+        s_line = line_str.strip()
+        head_tail = s_line.split(':', 1)
+        if len(head_tail) == 2:
+            return tuple(head_tail)
+        else:
+            return None
+        
+    
+    @staticmethod
+    def from_str(line_str):
+        '''
+        Create a LineTemplate instance from a string that looks like it.
+        
+        The line has the pattern:
+            head string: value1 value2 ....
+            
+        The types of the values are guessed. This function tries to convert 
+        them from strings with the following constructors: 
+            int, float, str 
+            
+        The first constructor that does not raise ValueError determines the 
+        type.
+        
+        All other details are the default values from LineTemplate.__init__
+        
+        ARGUMENTS
+        ---------
+        
+        line_str: str
+            The line that should be matched by the new object
+        
+        RETURNS
+        -------
+        
+        LineTemplate
+        '''
+        #See if first argument line_str is already a LineTemplate
+        if isinstance(line_str, LineTemplate):
+            return line_str
+        
+        #Get head
+        head_tail = LineTemplate.split_head(line_str)
+        if head_tail is None:
+            raise ValueError('LineTemplate: Could not identify a head in: ' 
+                             + line_str)
+        head, tail = head_tail
+        
+#        #Possible extension: Argument conv_order:
+#        conv_order: [call-able object]
+#            The converters for the fields. They are tried in the order
+#            given by the list. 
+#            
+#            The first converter that runs without raising an exception
+#            is stored as the converter for the field, the value that it 
+#            returns is stored as the value that must be matched.
+#        
+#        #always have conversion to string as the last possibility. 
+#        #Conversion to string always works.
+#        if conv_order[-1] is not str:
+#            conv_order.append(str)
+        
+        conv_order = [int, float, str]
+        
+        #convert the values
+        raw_vals = tail.split()
+        vals = []
+        for val_str in raw_vals:
+            val = None
+            #Try the conversion functions, the first function that works determines
+            #the type of the matched value
+            for conv in conv_order:
+                try:
+                    val = conv(val_str)
+                except ValueError:
+                    continue
+                break
+            vals.append(val)
+         
+        return LineTemplate(head, vals)
+    
+
+    def match_tail(self, tail_str):
+        '''
+        Test if tail_str matches the values.
+        '''
+        test_vals = tail_str.split()
+        #There must be the expected number of values in the string 
+        if len(test_vals) != len(self.vals):
+            return False
+        #values from tail_str -> convert to desired type -> test if correct
+        for test_val, val, conv, match_fun in zip(test_vals, self.vals, 
+                                            self.convs, self.matchers):
+            #Convert with stored conversion function
+            try:
+                test_val_conv = conv(test_val)
+            except ValueError:
+                return False
+            #Match with stored matching function
+            if not match_fun(test_val_conv, val):
+                return False
+        #All tests passed
+        return True
         
         
-def search_result_lines(text, line_templates):
+        
+def search_result_lines(text, templates_list):
     '''
     Test if a number of special lines can be found in a text.
     
     The lines which are expected in the text are given by a list of Line 
     objects. Each line has the pattern:
-        string float float float ....
+        head string: value1 value2 value3 ....
         
+    Supported values are currently float and str. Other types may work if 
+    LineTemplate is used explicitly.
     Spaces at the start and end of each line are ignored (stripped).
     
-    The string at the beginning identifies the line, the numbers following 
-    the string must match within the given tolerance. All lines must occur in 
-    the text. 
+    The *head string* at the beginning identifies the line, the values following 
+    the string must match, for floats within the given tolerance. 
+    All lines must occur in the text. 
     
     If any mismatch is detected an AssertionError is raised.
     
     ARGUMENTS
     ---------
+    
     text: str
         The text which is scanned
-    line_templates: list(Line)
-        Description of the lines that must appear in the text
-    '''        
+        
+    templates_list: [str | LineTemplate]
+        Description of the lines that must appear in the text.
+        
+        Each entry of type str is converted to a LineTemplate with function
+        LineTemplate.from_str(...). When more details need to be specified
+        a LineTemplate should be used instead of a str.
+    '''      
+    #Make dictionary {head: line_template} for fast template lookup.
+    #and also create LineTemplate from strings if necessary.
+    line_templates = {}
+    for raw_template in templates_list:
+        line_tmpl = LineTemplate.from_str(raw_template)
+        line_templates[line_tmpl.head] = line_tmpl
+      
     for line in text.split('\n'): 
         s_line = line.strip()
-        #see if the line is one of the interesting lines
-        for tmpl in line_templates:
-            #The line is one of the interesting lines -> extract the values
-            if s_line.startswith(tmpl.start):
-                try:
-                    val_line = s_line[len(tmpl.start):] #remove tmpl.start
-                    s_vals = val_line.split()
-                    #Convert the values with the conversion function
-                    if tmpl.converter:
-                        vals = map(tmpl.converter, s_vals)
-                    else:
-                        vals = s_vals
-                    #Test the assertions
-                    if len(vals) != len(tmpl.vals):
-                        raise AssertionError()
-                    def compare((a, b)):
-                        return abs(a - b) < tmpl.tol   #pylint:disable-msg=W0631
-                    if not all(map(compare, zip(vals, tmpl.vals))):
-                        raise AssertionError()
-                    tmpl.is_matched = True
-                    break #Assume each line is matched by only one template
-                except AssertionError, _err:
-                    raise AssertionError(
-                    'Error: text template was violated! \n' +
-                    'Expected line: "%s" \n' % tmpl.make_line() +
-                    'Got line     : "%s" \n' % line)
-                    
+        #See if line contains a head of a test line
+        head_tail = LineTemplate.split_head(s_line)
+        if head_tail is None:
+            continue
+        
+        #See if the head belongs to a template that we want to match
+        head, tail = head_tail
+        template = line_templates.get(head, None)
+        if template is None:
+            continue
+        
+        #See if the values in the line's tail match the template
+        if template.match_tail(tail):
+            template.is_matched = True
+        else:
+            raise AssertionError(
+            'Error: text template was violated! \n' +
+            'Expected line: "%s" \n' % template.to_str() +
+            'Got line     : "%s" \n' % line)
+        
     #Test if all templates are matched        
-    for tmpl in line_templates:
+    for tmpl in line_templates.values():
         if tmpl.is_matched == False:
             raise AssertionError('Not all templates were matched! \n' +
-                                 'Missing line: "%s" \n' % tmpl.make_line())
+                                 'Missing line: "%s" \n' % tmpl.to_str())
 
 
 
-def compile_run(in_name, out_name, extra_args='', run_sims='all', clean_up=True):
-    '''Compile and run a simulation.'''
+def compile_run(in_name, test_suffix='_testprog', 
+                  extra_args='', run_sims='all', no_graphs=True, clean_up=True):
+    '''
+    Compile and run a simulation. 
+    
+    Returns the simulation's text output (stdout). The created files are removed
+    after the simulation has been run.
+    
+    Arguments
+    ---------
+    in_name: str
+        Name of the Siml program which is tested. 
+    test_suffix: str
+        Prefix for all generated files. Every test should have a different 
+        prefix so that there is no interference between them in the file system.
+    extra_args: str
+        Additional arguments for the compiler. Appended to the command string.
+    run_sims: str
+        Specify the which simulation should be run. Can be a string containing 
+        a mumber (for example '1'), or the special value 'all' which chooses all 
+        simulations. 
+    no_graphs: bool
+        If True: Do not show any graphs even if the simulation contains "graph"
+        commands. (Passes "--no-graphs" to the simulation") 
+    clean_up: bool
+        If True: delete the Python program that is created by the compiler. 
+        (And also the *.pyc file.)
+    '''
+    #test and create the filenames
+    extension = in_name.split('.',)[-1]
+    assert extension.lower() == 'siml', \
+           'The input file must have the extension *.siml'
+    out_base = in_name[:-5] + test_suffix
+    
+    #create the bash command
+    outname_args = ' -o %s ' % (out_base + '.py')
+    run_args = '-r %s ' % run_sims
+    graph_args = '--no-graphs ' if no_graphs else ''
+    cmd_str = 'python simlc ' + in_name + outname_args + run_args + graph_args \
+              + extra_args
+    debug_print('cmd_str: ', cmd_str, area='compile_run')
+    
     #Run compiler and simulation(s); catch the output
-    cmd_str = 'python simlc %s -o %s -r %s %s' % (in_name, out_name, 
-                                                  run_sims, extra_args)
     sim = Popen(cmd_str, shell=True, stdout=PIPE)
     res_txt, _ = sim.communicate()
     debug_print('Program output: \n', res_txt, sep='')
     debug_print('Return code: ', sim.returncode)
+    assert sim.returncode == 0, 'Siml compiler exited with error.'
+    
     #Clean up
     if clean_up:
-        os.remove(out_name)
-    #Program must say that it terminated successfully 
-    assert sim.returncode == 0, 'Program exited with error.'
+        os.remove(out_base+'.py')
     return res_txt

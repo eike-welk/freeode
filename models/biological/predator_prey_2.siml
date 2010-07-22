@@ -83,7 +83,7 @@ class EnhancedModel:
 
         #administrative parameters
         solution_parameters(duration = 30, reporting_interval = 0.1)
-        print('initial_state', x, y, time)
+        print('initial_state:', x, y, time)
 
 
     func init_hunting(this, Hx_in, Hy_in, x_in, y_in, duration):
@@ -106,7 +106,7 @@ class EnhancedModel:
 
     func final(this):
         graph(x, y, title='Strongly Modified Predator Prey Model')
-        print('final_state', x, y, time)
+        print('final_state:', x, y, time)
 
 
 

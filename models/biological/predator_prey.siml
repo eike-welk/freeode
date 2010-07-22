@@ -98,7 +98,7 @@ class ClassicModel:
 
     func final(this):
         graph(x, y, title='Classic Predator Prey Model')
-        print('classic_final', x, y, time)
+        print('classic_final:', x, y, time)
 
 
 
@@ -146,7 +146,7 @@ class LogisticPrey:
 
     func final(this):
         graph(x, y, title='Predator Prey Model; Logistic Growth of Prey')
-        print('logistic_final', x, y, time)
+        print('logistic_final:', x, y, time)
 
 
 
@@ -220,7 +220,7 @@ class EnhancedModel:
 
     func final(this):
         graph(x, y, title='Strongly Modified Predator Prey Model')
-        print('enhanced_final', x, y, time)
+        print('enhanced_final:', x, y, time)
 
 
 
