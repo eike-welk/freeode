@@ -405,13 +405,83 @@ def test_debug_print():
                 area="test")
         
         
+        
+def test_LineTemplate(): #IGNORE:C01111
+    msg = '''Test function test_search_result_lines'''
+#    skip_test(msg)
+    print msg
+    
+    from freeode.util import assert_raises, LineTemplate
+    
+    #Call constructor ----------------------------
+    #All details are specified
+    lt = LineTemplate('foo', [1, 2.0, 'a'], [1, 0.2, 0], [int, float, str])
+    assert lt.head == 'foo'
+    assert lt.vals == [1, 2.0, 'a']
+    assert lt.tols == [1, 0.2, 0]
+    assert lt.convs == [int, float, str]
+    
+    #Test stripping of head, common tolerance, 
+    # and automatic choice of conversion function
+    lt = LineTemplate(' foo:', [1, 2.0, 'a'], 0.2 )
+    assert lt.head == 'foo'
+    assert lt.vals == [1, 2.0, 'a']
+    assert lt.tols == [0.2, 0.2, 0.2]
+    assert lt.convs == [int, float, str]
+    
+    #Create from string -------------------------
+    #All details are specified
+    lt = LineTemplate.from_str(' foo: 1 2.0 a', [1, 0.2, 0], [int, float, str])
+    assert lt.head == 'foo'
+    assert lt.vals == [1, 2.0, 'a']
+    assert lt.tols == [1, 0.2, 0]
+    assert lt.convs == [int, float, str]
+    
+    #Everything automatic
+    lt = LineTemplate.from_str(' foo: 1 2.0 a')
+    assert lt.head == 'foo'
+    assert lt.vals == [1.0, 2.0, 'a']
+    assert lt.tols == [1e-3, 1e-3, 1e-3]
+    assert lt.convs == [float, float, str]
+    
+    #Call from_str with LineTemplate argument
+    lt1 = LineTemplate('foo', [1, 2.0, 'a'], [1, 0.2, 0], [int, float, str])
+    lt = LineTemplate.from_str(lt1)
+    assert lt.head == 'foo'
+    assert lt.vals == [1, 2.0, 'a']
+    assert lt.tols == [1, 0.2, 0]
+    assert lt.convs == [int, float, str]
+    
+    #Test split head ---------------------------------
+    head, tail = LineTemplate.split_head(' foo:a b c  ')
+    assert head == 'foo'
+    assert tail == 'a b c'
+    
+    #Test matching ---------------------------------
+    #Specify everything
+    lt = LineTemplate('foo', [1, 2.0, 'a'], [1, 0.2, 0], [int, float, str])
+    assert lt.match_tail('1 2.0 a')
+    assert lt.match_tail('1 2.1 a')
+    assert lt.match_tail('1 1.9 a')
+    assert not lt.match_tail('1 2.3 a')
+    assert not lt.match_tail('1 2.0 b')
+    assert not lt.match_tail('1.1 2.0 a')
+    
+    #create from line
+    lt = LineTemplate.from_str('foo: 1 2.0 a')
+    assert lt.match_tail('1 2.0 a')
+    assert lt.match_tail('1.0005 2.0005 a')
+    assert not lt.match_tail('1.002 2.0 a')
+    assert not lt.match_tail('1.0 2.0 b')
+
+    
     
 def test_search_result_lines(): #IGNORE:C01111
     msg = '''Test function test_search_result_lines'''
 #    skip_test(msg)
     print msg
     
-    from freeode.util import assert_raises, search_result_lines, Line
+    from freeode.util import assert_raises, search_result_lines, LineTemplate
     
     in_text = '''
 lkasdf kldfj ladkfj 
@@ -420,28 +490,28 @@ klasdf asdf
 foo test2: 1 2 3
 klajfd 
 '''
-    search_result_lines(in_text, [Line(['test1:', 4, 5, 6]),
-                                  Line(['foo test2:', 1, 2, 3])])
+    search_result_lines(in_text, [LineTemplate('test1:', [4, 5, 6]),
+                                  LineTemplate('foo test2:', [1, 2, 3])])
     
     def raise1():
-        search_result_lines(in_text, [Line(['test1:', 4, 5, 7]),
-                                      Line(['foo test2:', 1, 2, 3])])
+        search_result_lines(in_text, [LineTemplate('test1:', [4, 5, 7]),
+                                      LineTemplate('foo test2:', [1, 2, 3])])
     assert_raises(AssertionError, None, raise1)
     
     def raise2():
-        search_result_lines(in_text, [Line(['test1:', 4, 5, 6, 7]),
-                                      Line(['foo test2:', 1, 2, 3])])
+        search_result_lines(in_text, [LineTemplate('test1:', [4, 5, 6, 7]),
+                                      LineTemplate('foo test2:', [1, 2, 3])])
     assert_raises(AssertionError, None, raise2)
     
     def raise3():
-        search_result_lines(in_text, [Line(['test0:', 0, 0, 0, 0]),
-                                      Line(['test1:', 4, 5, 6]),
-                                      Line(['foo test2:', 1, 2, 3])])
+        search_result_lines(in_text, [LineTemplate('test0:', [0, 0, 0, 0]),
+                                      LineTemplate('test1:', [4, 5, 6]),
+                                      LineTemplate('foo test2:', [1, 2, 3])])
     assert_raises(AssertionError, None, raise3)
     
     
  
-def test_compile_run_lines(): #IGNORE:C01111
+def test_compile_run(): #IGNORE:C01111
     msg = '''Test function compile_run'''
 #    skip_test(msg)
     print msg
@@ -494,5 +564,5 @@ compile Foo
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_assert_raises()
+    test_LineTemplate()
     pass #pylint: disable-msg=W0107

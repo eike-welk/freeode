@@ -31,7 +31,7 @@ from __future__ import absolute_import              #IGNORE:W0410
 from py.test import skip as skip_test # pylint:disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint:disable-msg=F0401,E0611,W0611
 
-from freeode.util import compile_run, search_result_lines, Line
+from freeode.util import compile_run, search_result_lines
 
 
 
@@ -51,9 +51,9 @@ def test_fibonacci_compile_time(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix, '--debug-areas=perf')
     #Search for the test lines
-    search_result_lines(res_txt, [Line(['Recursive algorithm:', 55.0 ]), 
-                                  Line(['Closed solution:',     55.0 ]),
-                                  Line(['15.0 :', 610.0 ])
+    search_result_lines(res_txt, ['Recursive algorithm: 55.0 ', 
+                                  'Closed solution:     55.0 ',
+                                  '15.0 : 610.0 '
                                   ])
 
 
@@ -74,8 +74,8 @@ def test_sum_compile_time(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix, '--debug-areas=perf')
     #Search for the test lines
-    search_result_lines(res_txt, [Line(['Recursive sum:' , 55.0 ]), 
-                                  Line(['Closed formula:', 55.0 ])
+    search_result_lines(res_txt, ['Recursive sum:  55.0 ', 
+                                  'Closed formula: 55.0 '
                                   ])
 
 
@@ -97,34 +97,34 @@ def test_debug_areas(): #IGNORE:C01111
     #should be disabled
     res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
-    search_result_lines(res_txt, [Line('print-always: 1'), 
-                                  Line('init-x: 0.0'), 
-                                  Line('final-x: 100.0')
+    search_result_lines(res_txt, ['print-always: 1', 
+                                  'init-x: 0.0', 
+                                  'final-x: 100.0'
                                   ])
 
     #Run compiler and simulation with debug area "debug-compile-time" (and "perf")
     #enabled. All additional output with this debug area should be displayed.
     res_txt = compile_run(in_name, test_suffix, '--debug-areas=debug-compile-time,perf')
     #Search for the test lines
-    search_result_lines(res_txt, [Line('print-always: 1'), 
-                                  Line('init-x: 0.0'), 
-                                  Line('final-x: 100.0'), 
-                                  Line('debug-compile-time1: 1'), 
-                                  Line('debug-compile-time2: 2'), 
-                                  Line('debug-compile-time3: 3'), 
-                                  Line('debug-compile-time4: 4')
+    search_result_lines(res_txt, ['print-always: 1', 
+                                  'init-x: 0.0', 
+                                  'final-x: 100.0', 
+                                  'debug-compile-time1: 1', 
+                                  'debug-compile-time2: 2', 
+                                  'debug-compile-time3: 3', 
+                                  'debug-compile-time4: 4'
                                   ])
 
     #Run compiler and simulation with debug area "debug-run-time" (and "perf")
     #enabled. All additional output with this debug area should be displayed.
     res_txt = compile_run(in_name, test_suffix, '--debug-areas=debug-run-time,perf')
     #Search for the test lines
-    search_result_lines(res_txt, [Line('print-always: 1'), 
-                                  Line('init-x: 0.0'), 
-                                  Line('final-x: 100.0'), 
-                                  Line('debug-run-time2: 2'), 
-                                  Line('debug-run-time3: 3'), 
-                                  Line('debug-run-time4: 4')
+    search_result_lines(res_txt, ['print-always: 1', 
+                                  'init-x: 0.0', 
+                                  'final-x: 100.0', 
+                                  'debug-run-time2: 2', 
+                                  'debug-run-time3: 3', 
+                                  'debug-run-time4: 4'
                                   ])
 
 

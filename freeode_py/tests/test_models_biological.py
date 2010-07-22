@@ -31,7 +31,7 @@ from __future__ import absolute_import              #IGNORE:W0410
 from py.test import skip as skip_test # pylint:disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint:disable-msg=F0401,E0611,W0611
 
-from freeode.util import compile_run, search_result_lines, Line
+from freeode.util import compile_run, search_result_lines
 
 
 
@@ -51,8 +51,8 @@ def test_bioreactor_simple(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
-    search_result_lines(res_txt, [Line(['initial-values:', 0.1, 20]), 
-                                  Line(['final-values:',   10.1, 0])
+    search_result_lines(res_txt, ['initial-values: 0.1 20', 
+                                  'final-values:  10.1  0',
                                   ])
 
       
@@ -73,12 +73,12 @@ def test_bioreactor(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
-    search_result_lines(res_txt, [Line(['initial-values-batch:', 0.1,  20   ], 0.01), 
-                                  Line(['final-values-batch:',   9.79, -3.06], 0.01), 
-                                  Line(['initial-values-conti:', 0.1,  20   ], 0.01), 
-                                  Line(['final-values-conti:',   0.18, 19.62], 0.01), 
-                                  Line(['initial-values-smart:', 0.1,  20   ], 0.01), 
-                                  Line(['final-values-smart:',   9.60,  0.14], 0.01)
+    search_result_lines(res_txt, ['initial-values-batch: 0.1    20   ', 
+                                  'final-values-batch:   9.795  -3.065', 
+                                  'initial-values-conti: 0.1    20   ', 
+                                  'final-values-conti:   0.181  19.626', 
+                                  'initial-values-smart: 0.1    20   ', 
+                                  'final-values-smart:   9.606  0.149'
                                   ])
 
       
@@ -99,10 +99,10 @@ def test_competition(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
-    search_result_lines(res_txt, [Line(['case1-final:', 4e-7,  10.0 ]), 
-                                  Line(['case2-final:', 9.999, 4e-7 ]), 
-                                  Line(['case3-final:', 9.614, 0.047]), 
-                                  Line(['case4-final:', 6.678, 6.654])
+    search_result_lines(res_txt, ['case1-final: 4e-7   10.0 ', 
+                                  'case2-final: 9.999  4e-7 ', 
+                                  'case3-final: 9.614  0.047', 
+                                  'case4-final: 6.678  6.654'
                                   ])
 
 
@@ -123,8 +123,8 @@ def test_predator_prey_2(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
-    search_result_lines(res_txt, [Line(['initial_state', 2.0,   2.0,    0.0 ]), 
-                                  Line(['final_state'  , 0.130, 1.350, 30.0 ])
+    search_result_lines(res_txt, ['initial_state: 2.0    2.0      0.0 ', 
+                                  'final_state:   0.130  1.350   30.0 '
                                   ])
 
 
@@ -145,15 +145,15 @@ def test_predator_prey(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
-    search_result_lines(res_txt, [Line('classic_final  1.906 0.427 30.0'), 
-                                  Line('logistic_final 4.987 0.780 30.0'), 
-                                  Line('enhanced_final 0.130 1.350 30.0')
+    search_result_lines(res_txt, ['classic_final:  1.906 0.427 30.0', 
+                                  'logistic_final: 4.987 0.780 30.0', 
+                                  'enhanced_final: 0.130 1.350 30.0'
                                   ])
 
 
 
 if __name__ == '__main__':
     # Debugging code may go here.
-    test_bioreactor_simple()
+    test_predator_prey()
     pass #pylint:disable-msg=W0107
 

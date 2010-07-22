@@ -31,7 +31,7 @@ from __future__ import absolute_import              #IGNORE:W0410
 from py.test import skip as skip_test # pylint:disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint:disable-msg=F0401,E0611,W0611
 
-from freeode.util import compile_run, search_result_lines, Line
+from freeode.util import compile_run, search_result_lines
 
 
 
@@ -51,8 +51,8 @@ def test_tank(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix)#, clean_up=False)
     #Search for the test lines
-    search_result_lines(res_txt, [Line('initial-values: 0.0     0.0'), 
-                                  Line('final-values:   0.030 600.0')
+    search_result_lines(res_txt, ['initial-values: 0.0     0.0', 
+                                  'final-values:   0.030 600.0'
                                   ])
 
 
