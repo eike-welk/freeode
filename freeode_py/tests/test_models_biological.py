@@ -51,8 +51,8 @@ def test_bioreactor_simple(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
-    search_result_lines(res_txt, ['initial-values: 0.1 20', 
-                                  'final-values:  10.1  0',
+    search_result_lines(res_txt, ['initial-values: 0.1 20.0', 
+                                  'final-values:  10.1  0.0',
                                   ])
 
       
@@ -73,12 +73,12 @@ def test_bioreactor(): #IGNORE:C01111
     #Run compiler and simulation(s); catch the output
     res_txt = compile_run(in_name, test_suffix)
     #Search for the test lines
-    search_result_lines(res_txt, ['initial-values-batch: 0.1    20   ', 
+    search_result_lines(res_txt, ['initial-values-batch: 0.1    20.0  ', 
                                   'final-values-batch:   9.795  -3.065', 
-                                  'initial-values-conti: 0.1    20   ', 
+                                  'initial-values-conti: 0.1    20.0  ', 
                                   'final-values-conti:   0.181  19.626', 
-                                  'initial-values-smart: 0.1    20   ', 
-                                  'final-values-smart:   9.606  0.149'
+                                  'initial-values-smart: 0.1    20.0  ', 
+                                  'final-values-smart:   9.606  0.149 '
                                   ])
 
       

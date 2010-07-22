@@ -430,19 +430,12 @@ def test_LineTemplate(): #IGNORE:C01111
     assert lt.convs == [int, float, str]
     
     #Create from string -------------------------
-    #All details are specified
-    lt = LineTemplate.from_str(' foo: 1 2.0 a', [1, 0.2, 0], [int, float, str])
-    assert lt.head == 'foo'
-    assert lt.vals == [1, 2.0, 'a']
-    assert lt.tols == [1, 0.2, 0]
-    assert lt.convs == [int, float, str]
-    
     #Everything automatic
     lt = LineTemplate.from_str(' foo: 1 2.0 a')
     assert lt.head == 'foo'
     assert lt.vals == [1.0, 2.0, 'a']
     assert lt.tols == [1e-3, 1e-3, 1e-3]
-    assert lt.convs == [float, float, str]
+    assert lt.convs == [int, float, str]
     
     #Call from_str with LineTemplate argument
     lt1 = LineTemplate('foo', [1, 2.0, 'a'], [1, 0.2, 0], [int, float, str])
@@ -470,9 +463,13 @@ def test_LineTemplate(): #IGNORE:C01111
     #create from line
     lt = LineTemplate.from_str('foo: 1 2.0 a')
     assert lt.match_tail('1 2.0 a')
-    assert lt.match_tail('1.0005 2.0005 a')
-    assert not lt.match_tail('1.002 2.0 a')
-    assert not lt.match_tail('1.0 2.0 b')
+    assert lt.match_tail('1 2.0005 a') # 2nd arg:in tolerance
+    assert lt.match_tail('1 2 a')      # 2nd arg: float can convert int too
+    assert not lt.match_tail('1.0 2.0 a') # 1st arg: conversion function (int) raises ValueError
+    assert not lt.match_tail('2 2.0 a')   # 1st arg: no match
+    assert not lt.match_tail('1 2.002 a') # 2nd arg: no match: outside tolerance
+    assert not lt.match_tail('1 1.998 a') # 2nd arg: no match: outside tolerance
+    assert not lt.match_tail('1 2.0 b')   # 3rd arg: no match
 
     
     

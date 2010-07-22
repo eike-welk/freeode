@@ -680,7 +680,7 @@ class LineTemplate(object):
     The line has the pattern:
         head string: value1 value2 ....
         
-    Currently supported values are: float, str 
+    Currently well supported types for values are: int, float, str 
     
     The head string must be separated from the values with a colon ':' 
     character.
@@ -697,10 +697,10 @@ class LineTemplate(object):
         vals: [str | float]
             The items that are expected in the line. These items are not 
             converted.
-
-        tols: [floa] | float
-            Tolerance(s) for comparing the found values with the expected 
-            values.
+            
+        tols: float | [float]
+            A tolerance for comparing found floating point values with expected 
+            values, or a list of tolerances
             
         converter: call-able object or None
             This function is called with each of the detected values as its argument.
@@ -793,9 +793,21 @@ class LineTemplate(object):
         
     
     @staticmethod
-    def from_str(line_str, tols=1e-3, conv_order=[float, str]):
+    def from_str(line_str):
         '''
         Create a LineTemplate instance from a string that looks like it.
+        
+        The line has the pattern:
+            head string: value1 value2 ....
+            
+        The types of the values are guessed. This function tries to convert 
+        them from strings with the following constructors: 
+            int, float, str 
+            
+        The first constructor that does not raise ValueError determines the 
+        type.
+        
+        All other details are the default values from LineTemplate.__init__
         
         ARGUMENTS
         ---------
@@ -803,17 +815,10 @@ class LineTemplate(object):
         line_str: str
             The line that should be matched by the new object
         
-        tols: float | [float]
-            A tolerance for matching floating point values, or
-            a list of tolerances
-            
-        conv_order: [call-able object]
-            The converters for the fields. They are tried in the order
-            given by the list. 
-            
-            The first converter that runs without raising an exception
-            is stored as the converter for the field, the value that it 
-            returns is stored as the value that must be matched.
+        RETURNS
+        -------
+        
+        LineTemplate
         '''
         #See if first argument line_str is already a LineTemplate
         if isinstance(line_str, LineTemplate):
@@ -826,10 +831,21 @@ class LineTemplate(object):
                              + line_str)
         head, tail = head_tail
         
-        #always have conversion to string as the last possibility. 
-        #Conversion to string always works.
-        if conv_order[-1] is not str:
-            conv_order.append(str)
+#        #Possible extension: Argument conv_order:
+#        conv_order: [call-able object]
+#            The converters for the fields. They are tried in the order
+#            given by the list. 
+#            
+#            The first converter that runs without raising an exception
+#            is stored as the converter for the field, the value that it 
+#            returns is stored as the value that must be matched.
+#        
+#        #always have conversion to string as the last possibility. 
+#        #Conversion to string always works.
+#        if conv_order[-1] is not str:
+#            conv_order.append(str)
+        
+        conv_order = [int, float, str]
         
         #convert the values
         raw_vals = tail.split()
@@ -846,7 +862,7 @@ class LineTemplate(object):
                 break
             vals.append(val)
          
-        return LineTemplate(head, vals, tols)
+        return LineTemplate(head, vals)
     
 
     def match_tail(self, tail_str):
@@ -860,10 +876,12 @@ class LineTemplate(object):
         #values from tail_str -> convert to desired type -> test if correct
         for test_val, val, conv, match_fun in zip(test_vals, self.vals, 
                                             self.convs, self.matchers):
+            #Convert with stored conversion function
             try:
                 test_val_conv = conv(test_val)
-            except:
+            except ValueError:
                 return False
+            #Match with stored matching function
             if not match_fun(test_val_conv, val):
                 return False
         #All tests passed
@@ -877,13 +895,15 @@ def search_result_lines(text, templates_list):
     
     The lines which are expected in the text are given by a list of Line 
     objects. Each line has the pattern:
-        string float float float ....
+        head string: value1 value2 value3 ....
         
+    Supported values are currently float and str. Other types may work if 
+    LineTemplate is used explicitly.
     Spaces at the start and end of each line are ignored (stripped).
     
-    The string at the beginning identifies the line, the numbers following 
-    the string must match within the given tolerance. All lines must occur in 
-    the text. 
+    The *head string* at the beginning identifies the line, the values following 
+    the string must match, for floats within the given tolerance. 
+    All lines must occur in the text. 
     
     If any mismatch is detected an AssertionError is raised.
     
@@ -894,7 +914,11 @@ def search_result_lines(text, templates_list):
         The text which is scanned
         
     templates_list: [str | LineTemplate]
-        Description of the lines that must appear in the text
+        Description of the lines that must appear in the text.
+        
+        Each entry of type str is converted to a LineTemplate with function
+        LineTemplate.from_str(...). When more details need to be specified
+        a LineTemplate should be used instead of a str.
     '''      
     #Make dictionary {head: line_template} for fast template lookup.
     #and also create LineTemplate from strings if necessary.
