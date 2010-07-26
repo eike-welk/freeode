@@ -40,14 +40,20 @@ Expressions
 Statements
 ===================================
 
+.. _return-statement:
+
 ``return`` Statement
 ------------------------
 
 The ``return`` statement delivers data from a function back to its caller.
 Additionally it ends the execution of the function.
+
 The keyword ``return`` is followed an expression. The expression is evaluated
 and the result is delivered to the function's caller. Only a single 
 value can be returned. 
+Even though functions are always inlined (their code is copied into the 
+caller), the illusion (semantics) of calling a function and returning a value is 
+maintained for the user. 
 
 Return statements are illegal inside ``if`` statements: :ref:`if-statement`
 
@@ -88,6 +94,8 @@ because of the whitespace sensitive syntax.
 Example: The function ``dummy`` does nothing.
 
 
+.. _data-statement:
+
 ``data`` Statement
 ------------------------
 
@@ -97,6 +105,12 @@ Example: The function ``dummy`` does nothing.
 ``if elif else``  Statement
 ---------------------------
 
+``return`` statements are illegal inside ``if`` statements: :ref:`return-statement`
+
+See also :ref:`ifc-statement`
+
+
+.. _ifc-statement:
 
 ``ifc`` Statement
 ------------------------
@@ -107,6 +121,9 @@ Example: The function ``dummy`` does nothing.
 ``func`` Statement
 ------------------------
 
+See also :ref:`return-statement`
+
+.. _class-statement:
 
 ``class`` Statement
 ------------------------
