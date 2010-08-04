@@ -82,7 +82,7 @@ statement.
 ``pass`` Statement
 ------------------------
 
-The pass statement does nothing. It is needed to create *empty* compound 
+The ``pass`` statement does nothing. It is needed to create *empty* compound 
 statements (``if``, ``ifc``, ``func``, ``class``), 
 because of the whitespace sensitive syntax. 
 
@@ -98,6 +98,25 @@ Example: The function ``dummy`` does nothing.
 
 ``data`` Statement
 ------------------------
+
+The ``data`` statement creates *data attributes* (variables, parameters, constants): 
+It instantiates a class, and binds the new object to a name. 
+The new objects are intended to be unknown attributes,
+but the exact semantics can be decided by the implementor of the class.
+
+The ``data`` statement can create multiple objects of the same type.
+
+The ``data`` keyword is followed by one or more comma separated *attribute names*,
+a colon, a *class name*, and an optional *role modifier*.
+
+.. code-block:: siml
+
+    data a, b, c: Float param
+
+Example: The data statement creates three unknown attributes of type Float, with 
+*role* parameter. 
+
+.. todo:: Link to roles
 
 
 .. _if-statement:
