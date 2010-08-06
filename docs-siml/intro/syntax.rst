@@ -11,7 +11,10 @@
 
 
 .. Let all references go to the built in module. This shortens all references.
-    .. currentmodule:: __siml_builtin__
+.. currentmodule:: __siml_builtin__
+
+.. Set default syntax highlighting language to Siml.
+.. highlight:: siml
 
 
 ************************************
@@ -57,7 +60,7 @@ maintained for the user.
 
 Return statements are illegal inside ``if`` statements: :ref:`if-statement`
 
-.. code-block:: siml
+::
 
     func square(x):
         return x * x
@@ -86,7 +89,7 @@ The ``pass`` statement does nothing. It is needed to create *empty* compound
 statements (``if``, ``ifc``, ``func``, ``class``), 
 because of the whitespace sensitive syntax. 
 
-.. code-block:: siml
+::
 
     func dummy():
         pass
@@ -109,7 +112,7 @@ The ``data`` statement can create multiple objects of the same type.
 The ``data`` keyword is followed by one or more comma separated *attribute names*,
 a colon, a *class name*, and an optional *role modifier*.
 
-.. code-block:: siml
+::
 
     data a, b, c: Float param
 
@@ -121,18 +124,59 @@ Example: The data statement creates three unknown attributes of type Float, with
 
 .. _if-statement:
 
-``if elif else``  Statement
+``if`` Statement
 ---------------------------
 
-``return`` statements are illegal inside ``if`` statements: :ref:`return-statement`
+The keywords ``if``, ``elif``, and ``else`` together form a conditional 
+statement. Different computations can be executed depending on one or more 
+conditions. The conditions are evaluated and decided at **run-time**, in contrast
+to the ``ifc`` (note the **c**) statement, which is evaluated at **compile-time**. 
 
-See also :ref:`ifc-statement`
+As the ``if`` statement is executed at run-time, it must be part of a useful
+set of differential equations. Therefore it is subject to several restrictions: 
+
+* All clauses of the if statement must contain assignments to the same variables.
+    * The above is a simplification. The exact rules are not finished yet, but
+      will be similar to: 
+      All variables that are used outside the ``if`` statement must be assigned 
+      in all clauses.
+* An ``else`` clause is compulsory, because all variables must always be 
+  computed; ``elif`` clauses however are optional.  
+* ``return`` statements are illegal inside ``if`` statements: :ref:`return-statement`
+
+::
+
+    if a < 0:
+        b = 0
+    elif a < 2:
+        b = 0.5 * a
+    else:
+        b = 1
+
+Example: Definition of a piecewise function.
+
+See also: :ref:`ifc-statement`
 
 
 .. _ifc-statement:
 
 ``ifc`` Statement
 ------------------------
+
+The keywords ``ifc``, ``elif``, and ``else`` together form a conditional 
+statement, which is executed at **compile-time**. Different pieces of program code
+can be compiled depending on one or more conditions; it must be possible to 
+evaluate the conditions at **compile-time**.
+
+The ``elif`` and ``else`` clauses are optional. There are no restrictions
+for the ``ifc`` statement, all statements can appear inside each clause.
+
+The syntax is exactly like the ``if`` (note no **c**) statement.
+
+See also: :ref:`if-statement`, :func:`printc`
+
+
+.. todo:: Define  **compile-time** and **run-time**
 
 
 .. _func-statement:
