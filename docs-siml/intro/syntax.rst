@@ -43,6 +43,11 @@ Expressions
 Simple Statements
 ===================================
 
+.. index::
+    single: keyword; return
+    single: statement; return
+    single: return statement 
+
 .. _return-statement:
 
 ``return`` Statement
@@ -59,7 +64,6 @@ caller), the illusion (semantics) of calling a function and returning a value is
 maintained for the user. 
 
 Return statements are illegal inside ``if`` statements: :ref:`if-statement`
-
 ::
 
     func square(x):
@@ -72,6 +76,13 @@ where the function is called.
 See also: :ref:`func-statement`
 
 
+
+
+.. index::
+    single: keyword; pragma
+    single: statement; pragma
+    single: pragma statement 
+
 ``pragma`` Statement
 ------------------------
 
@@ -81,6 +92,13 @@ syntax has been developed yet.
 At the time of writing, no behavior can be triggered with the ``pragma`` 
 statement.
 
+
+
+
+.. index::
+    single: keyword; pass
+    single: statement; pass
+    single: pass statement 
 
 ``pass`` Statement
 ------------------------
@@ -97,17 +115,36 @@ because of the whitespace sensitive syntax.
 Example: The function ``dummy`` does nothing.
 
 
+
+
+.. index::
+    single: statement; assignment
+    single: assignment statement 
+
 .. _assignment-statement:
 
 Assignment (``=``) Statement
 ----------------------------
 
 
+
+
+.. index::
+    single: statement; expression
+    single: expression statement 
+
 .. _expression-statement:
 
 Expression Statement
 ------------------------
 
+
+
+
+.. index::
+    single: keyword; data
+    single: statement; data
+    single: data statement 
 
 .. _data-statement:
 
@@ -139,6 +176,11 @@ Example: The data statement creates three unknown attributes of type Float, with
 Compound Statements
 ===================================
 
+.. index::
+    single: keyword; if
+    single: statement; if
+    single: if statement 
+
 .. _if-statement:
 
 ``if`` Statement
@@ -153,6 +195,7 @@ at **compile-time**. :ref:`ifc-statement`
 The statement is structured into several *clauses*. The ``if`` clause is always 
 the first clause, it is followed by optional ``elif`` clauses, the ``else`` 
 clause comes always last.
+
     * The ``if`` clause begins with the keyword ``if``, which is followed by an 
       expression (the condition), a colon (``:``), and a usually indented *suite* of 
       statements. 
@@ -204,6 +247,12 @@ Example: The same piecewise function as above, but more compact syntax.
 See also: :ref:`ifc-statement`
 
 
+
+.. index::
+    single: keyword; ifc
+    single: statement; ifc
+    single: ifc statement 
+
 .. _ifc-statement:
 
 ``ifc`` Statement
@@ -221,9 +270,18 @@ The syntax is exactly like the ``if`` (note no **c**) statement.
 
 See also: :ref:`if-statement`, :func:`printc`
 
+.. Alternative "See also" syntax: 
+    .. seealso:: :ref:`if-statement`, :func:`printc`
 
 .. todo:: Define  **compile-time** and **run-time**
 
+
+
+
+.. index::
+    single: keyword; func
+    single: statement; func
+    single: func statement 
 
 .. _func-statement:
 
@@ -231,6 +289,14 @@ See also: :ref:`if-statement`, :func:`printc`
 ------------------------
 
 See also :ref:`return-statement`
+
+
+
+
+.. index::
+    single: keyword; class
+    single: statement; class
+    single: class statement 
 
 .. _class-statement:
 
