@@ -40,7 +40,7 @@ Expressions
 ===================================
 
 
-Statements
+Simple Statements
 ===================================
 
 .. _return-statement:
@@ -97,6 +97,18 @@ because of the whitespace sensitive syntax.
 Example: The function ``dummy`` does nothing.
 
 
+.. _assignment-statement:
+
+Assignment (``=``) Statement
+----------------------------
+
+
+.. _expression-statement:
+
+Expression Statement
+------------------------
+
+
 .. _data-statement:
 
 ``data`` Statement
@@ -122,6 +134,11 @@ Example: The data statement creates three unknown attributes of type Float, with
 .. todo:: Link to roles
 
 
+
+
+Compound Statements
+===================================
+
 .. _if-statement:
 
 ``if`` Statement
@@ -129,21 +146,26 @@ Example: The data statement creates three unknown attributes of type Float, with
 
 The keywords ``if``, ``elif``, and ``else`` together form a conditional 
 statement. Different computations can be executed depending on one or more 
-conditions. The conditions are evaluated and decided at **run-time**, in contrast
-to the ``ifc`` (note the **c**) statement, which is evaluated at **compile-time**. 
+conditions. The decision to perform a specific computation is done at **run-time**, 
+in contrast to the ``ifc`` (note the **c**) statement, which is evaluated 
+at **compile-time**. :ref:`ifc-statement`
 
-As the ``if`` statement is executed at run-time, it must be part of a useful
-set of differential equations. Therefore it is subject to several restrictions: 
+The statement is structured into several *clauses*. The ``if`` clause is always 
+the first clause, it is followed by optional ``elif`` clauses, the ``else`` 
+clause comes always last.
+    * The ``if`` clause begins with the keyword ``if``, which is followed by an 
+      expression (the condition), a colon (``:``), and a usually indented *suite* of 
+      statements. 
+    * The ``elif`` clause is structured exactly like the ``if`` clause.
+    * The ``else`` clause has no condition; the keyword ``else``
+      it is directly followed by a colon and a *suite* of statements. 
 
-* All clauses of the if statement must contain assignments to the same variables.
-    * The above is a simplification. The exact rules are not finished yet, but
-      will be similar to: 
-      All variables that are used outside the ``if`` statement must be assigned 
-      in all clauses.
-* An ``else`` clause is compulsory, because all variables must always be 
-  computed; ``elif`` clauses however are optional.  
-* ``return`` statements are illegal inside ``if`` statements: :ref:`return-statement`
-
+The conditions must evaluate to a :class:`Bool` value. The clauses' conditions 
+are evaluated in the order in which they appear in the program text. 
+If a condition evaluates to :data:`TRUE` the statements in the clause's suite 
+are executed. If no condition is :data:`TRUE`
+then the statements of the ``else`` clause are executed. Only the statements of 
+one clause are executed.  
 ::
 
     if a < 0:
@@ -153,7 +175,31 @@ set of differential equations. Therefore it is subject to several restrictions:
     else:
         b = 1
 
-Example: Definition of a piecewise function.
+Example: Definition of a piecewise function *b(a)*. 
+
+Like in Python there is an alternative syntax for compound statements: 
+The dependent statements can be written directly after the colon (``:``),
+separated by semicolons (``;``).
+::
+
+    if a < 0:   b = 0
+    elif a < 2: b = 0.5 * a
+    else:       b = 1
+
+Example: The same piecewise function as above, but more compact syntax.
+
+.. note::
+    As the ``if`` statement is executed at run-time, it must be part of a useful
+    set of differential equations. Therefore it is subject to several restrictions: 
+
+    * All clauses of the if statement must contain assignments to the same variables.
+        * The above is a simplification. The exact rules are not finished yet, but
+          will be similar to: 
+          All variables that are used outside the ``if`` statement must be assigned 
+          in all clauses.
+    * An ``else`` clause is compulsory, because all variables must always be 
+      computed; ``elif`` clauses however are optional.  
+    * ``return`` statements are illegal inside ``if`` statements: :ref:`return-statement`
 
 See also: :ref:`ifc-statement`
 

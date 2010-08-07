@@ -45,6 +45,8 @@ Built in Classes
     This is the ``data`` type you will use most often. 
     Declaring variables of any other data type is only rarely necessary.
 
+.. todo:: Mention all operators of **Float** and their associated special functions.
+
 
 .. class:: Bool
 
@@ -55,6 +57,8 @@ Built in Classes
     The logical operators (``and``, ``or``, ``not``) work only on Bool values 
     and also return Bool vaues.
     
+.. todo:: Mention all operators of **Bool** and their associated special functions.
+
     
 .. class:: String
 
