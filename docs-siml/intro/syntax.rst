@@ -40,8 +40,16 @@ Expressions
 ===================================
 
 
+
+.. index::
+    single: statement; simple statements
+    single: simple statements 
+
 Simple Statements
 ===================================
+
+
+
 
 .. index::
     single: keyword; return
@@ -173,8 +181,57 @@ Example: The data statement creates three unknown attributes of type Float, with
 
 
 
+.. index::
+    single: statement; compound statements
+    single: compound statements
+
 Compound Statements
 ===================================
+
+*Compound statements* [#like_python_compound_statement]_ 
+contain other dependent statements. They somehow 
+control the execution or meaning of those dependent statements. They usually 
+occupy multiple lines, although they can sometimes be written in a single line.
+
+All *compound statements* have a similar syntactic structure:
+They consist of a *header*, and a *suite* of dependent statements.
+The *header* starts with a keyword (``if``, ``ifc``, ``func``, ``class``, ...),
+followed by syntax specific to the statement, it always ends with a colon (``:``).
+Then follows the *suite*.   
+                 
+.. index::
+    single: suite of statements
+
+A **suite** is a group of statements. It is usually written as an indented 
+block of statements; but simple statements can be written on the same line
+as the compound statement's *header*, separated by semicolons (``;``).
+::
+    #The suite in the function body is written as an indented block of statements
+    func bacterial_growth_1(s, x): #The compund statement's header
+        mu = 0.3 * s/(s+0.01) # This
+        dx = mu*x             # is 
+        return dx             # the suite
+        
+    #Here the suite is written in the same line as the compund statement's header
+    func bacterial_growth_2(s, x): mu = 0.3 * s/(s+0.01); dx = mu*x; return dx
+
+Example: Two function definitions that perform the same computations. 
+
+.. index::
+    single: clause
+
+Some *compound statements* (``if``, ``ifc``) consist of multiple **clauses**. 
+A *clause* is a *header* with its *suite*.
+::
+    if a < 2:
+        b = 0
+    else:
+        b = (a - 2) * 0.5
+
+Example: An ``if`` statement, which consists of two *clauses*.
+
+
+
 
 .. index::
     single: keyword; if
@@ -220,8 +277,7 @@ one clause are executed.
 
 Example: Definition of a piecewise function *b(a)*. 
 
-Like in Python there is an alternative syntax for compound statements: 
-The dependent statements can be written directly after the colon (``:``),
+The dependent statements can also be written directly after the colon (``:``),
 separated by semicolons (``;``).
 ::
 
@@ -303,4 +359,12 @@ See also :ref:`return-statement`
 ``class`` Statement
 ------------------------
 
+
+
+
+
+.. [#like_python_compound_statement] The general definition of  
+        *compound statements* is 
+        `exactly <http://docs.python.org/reference/compound_stmts.html>`_
+        as in the Python language.
 
