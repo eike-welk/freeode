@@ -134,17 +134,53 @@ Example: The function ``dummy`` does nothing.
 Assignment (``=``) Statement
 ----------------------------
 
+The *assignment statement* stores values in *data attributes* (variables, 
+parameters, constants). The value on the *right hand side* of the ``=`` operator
+is stored in the attribute on the *left hand side*. Attributes must be assigned 
+to exactly once; however it is possible to implement special *classes* that 
+behave differently.
+
+An *assignment statement* begins with the *expression* on the left hand side, 
+followed by an equal (``=``) character, followed by the *expression* on the 
+right hand side.
+::
+
+    a = 3 * 2
+
+Example: This assignment stores the value 6 in an attribute named ``a``.
+
+If an assignment is possible is constrained by the *roles* of attribute and 
+value. If both objects are *constant* the assignment is performed at *compile 
+time*.
+
+The *assignment statement* calls the *method* ``__siml_assign__`` of the 
+attribute on the *left hand side*. Therefore the exact meaning of a particular
+assignment is determined by the programmer who writes 
+the *class* of the attribute on the *left hand side*.
+
+.. todo:: Link to roles
+.. todo:: Expand roles section
+
 
 
 
 .. index::
-    single: statement; expression
+    single: statement; expression statement
     single: expression statement 
 
 .. _expression-statement:
 
 Expression Statement
 ------------------------
+
+The expression statement contains an expression, which is evaluated. 
+The expression's value is discarded. This statement is normally used to call 
+a function or method.
+::
+
+    print('hello')
+
+Example: Call the built in function ``print`` with a ``String`` argument.
 
 
 
@@ -168,7 +204,6 @@ The ``data`` statement can create multiple objects of the same type.
 
 The ``data`` keyword is followed by one or more comma separated *attribute names*,
 a colon, a *class name*, and an optional *role modifier*.
-
 ::
 
     data a, b, c: Float param
@@ -176,10 +211,13 @@ a colon, a *class name*, and an optional *role modifier*.
 Example: The data statement creates three unknown attributes of type Float, with 
 *role* parameter. 
 
+See also: :ref:`class-statement`
+
 .. todo:: Link to roles
 
 
 
+.. ----------------------------------------------------------------------------------------------------------
 
 .. index::
     single: statement; compound statements
@@ -206,6 +244,7 @@ A **suite** is a group of statements. It is usually written as an indented
 block of statements; but simple statements can be written on the same line
 as the compound statement's *header*, separated by semicolons (``;``).
 ::
+
     #The suite in the function body is written as an indented block of statements
     func bacterial_growth_1(s, x): #The compund statement's header
         mu = 0.3 * s/(s+0.01) # This
@@ -223,6 +262,7 @@ Example: Two function definitions that perform the same computations.
 Some *compound statements* (``if``, ``ifc``) consist of multiple **clauses**. 
 A *clause* is a *header* with its *suite*.
 ::
+
     if a < 2:
         b = 0
     else:
@@ -344,7 +384,7 @@ See also: :ref:`if-statement`, :func:`printc`
 ``func`` Statement
 ------------------------
 
-See also :ref:`return-statement`
+See also: :ref:`return-statement`
 
 
 
@@ -359,6 +399,7 @@ See also :ref:`return-statement`
 ``class`` Statement
 ------------------------
 
+See also: :ref:`data-statement`
 
 
 
