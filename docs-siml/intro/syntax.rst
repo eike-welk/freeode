@@ -182,6 +182,8 @@ a function or method.
 
 Example: Call the built in function ``print`` with a ``String`` argument.
 
+.. todo:: Link to function call
+
 
 
 
@@ -217,6 +219,23 @@ See also: :ref:`class-statement`
 
 
 
+
+.. index::
+    single: keyword; compile
+    single: statement; compile
+    single: compile statement 
+
+.. _compile-statement:
+
+``compile`` Statement
+------------------------
+
+See also: :ref:`class-statement`, :ref:`data-statement`
+
+
+
+
+
 .. ----------------------------------------------------------------------------------------------------------
 
 .. index::
@@ -233,7 +252,7 @@ occupy multiple lines, although they can sometimes be written in a single line.
 
 All *compound statements* have a similar syntactic structure:
 They consist of a *header*, and a *suite* of dependent statements.
-The *header* starts with a keyword (``if``, ``ifc``, ``func``, ``class``, ...),
+The *header* starts with a unique keyword (``if``, ``ifc``, ``func``, ``class``, ...),
 followed by syntax specific to the statement, it always ends with a colon (``:``).
 Then follows the *suite*.   
                  
@@ -245,16 +264,17 @@ block of statements; but simple statements can be written on the same line
 as the compound statement's *header*, separated by semicolons (``;``).
 ::
 
-    #The suite in the function body is written as an indented block of statements
-    func bacterial_growth_1(s, x): #The compund statement's header
+    #The suite in the function body is written as an indented block of statements.
+    func bacterial_growth_1(s, x): #The compound statement's header
         mu = 0.3 * s/(s+0.01) # This
         dx = mu*x             # is 
         return dx             # the suite
         
-    #Here the suite is written in the same line as the compund statement's header
+    #Function definition written in one line:
+    #---- This is the header ----| |----------- This is the suite -----------|
     func bacterial_growth_2(s, x): mu = 0.3 * s/(s+0.01); dx = mu*x; return dx
 
-Example: Two function definitions that perform the same computations. 
+Example: Two functions that perform the same computation. 
 
 .. index::
     single: clause
@@ -263,10 +283,10 @@ Some *compound statements* (``if``, ``ifc``) consist of multiple **clauses**.
 A *clause* is a *header* with its *suite*.
 ::
 
-    if a < 2:
-        b = 0
-    else:
-        b = (a - 2) * 0.5
+    if a < 2:             #clause 1
+        b = 0             #   ~   1
+    else:                 #clause 2
+        b = (a - 2) * 0.5 #   ~   2
 
 Example: An ``if`` statement, which consists of two *clauses*.
 
@@ -378,14 +398,39 @@ See also: :ref:`if-statement`, :func:`printc`
     single: keyword; func
     single: statement; func
     single: func statement 
+    single: statement; function definition
+    single: function definition
 
 .. _func-statement:
 
-``func`` Statement
+Function Definition 
 ------------------------
+
+A function definition creates a function object and binds it to a name in 
+the local *name space*. 
+
+
+::
+
+    func bacterial_growth(s, x): 
+        mu = 0.3 * s/(s+0.01) 
+        dx = mu*x              
+        return dx             
+        
+Example: A function definition that could be useful in the context of 
+:ref:`intro-batch-reactor-example`.
+
+Function definitions can often be written in a single line, although it 
+usually results in poorly readable programs.
+::
+        
+    func bacterial_growth(s, x): mu = 0.3 * s/(s+0.01); dx = mu*x; return dx
+
+Example: The same function as above, but written in one line.
 
 See also: :ref:`return-statement`
 
+.. todo:: Link to function call
 
 
 
@@ -393,13 +438,56 @@ See also: :ref:`return-statement`
     single: keyword; class
     single: statement; class
     single: class statement 
+    single: statement; class definition
+    single: class definition
 
 .. _class-statement:
 
-``class`` Statement
+Class Definition
 ------------------------
 
-See also: :ref:`data-statement`
+A *class* definition creates a class *object* and binds it to a name. 
+*Data attributes* and *methods* must be defined in the class definition 
+[#python_class_defines_no_data_attributes]_. 
+**Currently there is no inheritance.**
+
+A *class* definition begins with the ``class`` keyword, followed by the 
+class' name, and a colon (``:``). 
+Then follows a *suite* of statements, the class' body.
+::
+
+    class LinearGrowth:
+        data x: Float  
+
+        func initialize(this):
+            x = 0  
+            solution_parameters(20, 0.1)
+
+        func dynamic(this):
+            $x = 0.5  
+
+        func final(this):
+            graph(x, title="Linear Growth")
+            
+Example: A class definition. When compiled this class solves the equation 
+:math:`{dx \over dt} = 0.5`.
+
+When the compiler encounters a *class definition* it creates a new local 
+*name space*, and executes the statements of the class' body in it. 
+The attributes of this *name space* then become the class' *attributes*.
+As the class' body's statements are executed at *compile time* they must not 
+contain any computations with unknown variables.
+
+Classes are *specifications* that say how *other objects* should be structured. 
+Objects that are structured to a class' specification are called the class'
+*instances*. Creating instances of a class is called *instantiation*. 
+During *instantiation* the class' *data attributes* are copied into the new 
+instance. The *methods* are not copied but shared by all instances of a class.
+
+The first argument of all methods must be named ``this``. It contains the
+instance upon which the method currently acts [#this_equivalent_to_python_self]_. 
+
+See also: :ref:`data-statement`, :ref:`compile-statement`
 
 
 
@@ -408,4 +496,19 @@ See also: :ref:`data-statement`
         *compound statements* is 
         `exactly <http://docs.python.org/reference/compound_stmts.html>`_
         as in the Python language.
+
+..
+    .. [#like_python_function_definition] Function definitions are 
+            `very similar <http://docs.python.org/reference/compound_stmts.html#function-definitions>`_
+            to Python's function definitions. However some features are not 
+            implemented: *decorators*, and the special arguemnts ``*args`` and 
+            ``**kwargs``.
+
+.. [#python_class_defines_no_data_attributes] Python classes by contrast 
+        do not define their instances' data attributes. In Python they are 
+        created in the ``__init__`` method.
+
+.. [#this_equivalent_to_python_self] The special ``this`` argument is 
+        equivalent to Python's ``self``. However Siml requires that it 
+        is named "this".
 

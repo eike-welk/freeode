@@ -90,8 +90,11 @@ Built in Constants and Special Variables
 
     Special global variable that contains the current time.
 
-    At compile time it is an unknown variable (but it is accessible).
-    At runtime it is always known, it has sensible values in all *main* functions.
+    At compile time it is an unknown variable, which is defined globally. 
+    It can be used in any *main* function, any computations with it on a global 
+    level results in an error.
+    
+    At runtime it is always known, it has sensible values in all *main* functions:
 
     * ``initialize``, ``init_*``: 0
     * ``dynamic``: the current simulation time.

@@ -273,6 +273,7 @@ The graph matches the exact solution :eq:`biomass_exp_soln`
 
 
 
+.. _intro-batch-reactor-example:
 
 Example 2: Batch Reactor 
 ========================
