@@ -36,6 +36,26 @@ Text Strings
 Identifiers
 -------------------
 
+Type Systems
+-------------------
+
+Structural typing
+    This type system is enforced by the compiler for data attributes that are 
+    passed to the code generator. These built in objects (Float, String, Bool)
+    must be compatible for all operations. 
+    `<http://en.wikipedia.org/wiki/Structural_typing>`_
+    
+Nominal typing
+    Nominal typing is used at function call sites, if type annotations are 
+    present. `<http://en.wikipedia.org/wiki/Nominative_type_system>`_
+
+Duck typing
+    Duck typing is used for data attributes with user defined types. 
+    The attribute must only have the correct name. If the attribute 
+    can be used correctly is determined by its leaf objects.
+    `<http://en.wikipedia.org/wiki/Duck_typing>`_
+
+
 Expressions
 ===================================
 
@@ -431,6 +451,11 @@ Example: The same function as above, but written in one line.
 See also: :ref:`return-statement`
 
 .. todo:: Link to function call
+.. todo:: Functions are polymorphic (generic), but argument types can be constrained
+.. todo:: Arguments: type annotations
+.. todo:: Arguments: default values
+.. todo:: Code of functions is copied into caller
+.. todo:: Complete section.
 
 
 
@@ -505,8 +530,9 @@ See also: :ref:`data-statement`, :ref:`compile-statement`
             ``**kwargs``.
 
 .. [#python_class_defines_no_data_attributes] Python classes by contrast 
-        do not define their instances' data attributes. In Python they are 
-        created in the ``__init__`` method.
+        do not define their instances' data attributes. In Python data attributes 
+        can be created any time after instantiation. They are often created in  
+        the ``__init__`` method.
 
 .. [#this_equivalent_to_python_self] The special ``this`` argument is 
         equivalent to Python's ``self``. However Siml requires that it 
