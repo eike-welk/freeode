@@ -165,6 +165,8 @@ class MakeDataFlowDecorations(object):
             #compute inputs and outputs of whole 'if' statement
             inputs.update(inp)
             outputs.update(out)
+            #TODO: outputs of the if statement are those variables, that are 
+            #      computed in all clauses of the "if" statement. ???
             
         #decorate the 'if' statement
         stmt.inputs = inputs

@@ -26,7 +26,7 @@ Test code for the ast module
 """
 
 from __future__ import division
-from __future__ import absolute_import              #IGNORE:W0410
+from __future__ import absolute_import              
 
 from py.test import skip as skip_test # pylint: disable-msg=F0401,E0611,W0611
 from py.test import fail as fail_test # pylint: disable-msg=F0401,E0611,W0611
