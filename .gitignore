@@ -1,0 +1,10 @@
+#Binary files
+*.pyc
+*.so
+
+#Editor swap files
+*.swp
+
+#Other version control systems.
+.bzr/
+
