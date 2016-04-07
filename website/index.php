@@ -74,7 +74,7 @@
     can be solved.
   </p>
   <p>
-    The generated Python code can be used as a stand-dalone program, or in an
+    The generated Python code can be used as a stand-alone program, or in an
     interactive Python session. Especially can the generated Python objects be used
     as building blocks of more complex programs. The programmer is freed
     from the relatively mechanical task of implementing the simulation function, and
@@ -82,7 +82,7 @@
   </p>
   <p>
     Python promises to be highly platform independent.
-    Therfore everything should work on Windows exactly as it works on Linux.
+    Therefore everything should work on Windows exactly as it works on Linux.
   </p>
 
 
@@ -115,7 +115,7 @@
     <abbr title="GNU General Public License">GPL</abbr>.
     The runtime libraries are licensed under the
     <abbr title="GNU Library General Public License">LGPL</abbr> so they can be linked to commercial
-    applications. The generated program can offcourse be licensed under any license you whish.
+    applications. The generated program can off course be licensed under any license you wish.
   </p>
 
 
