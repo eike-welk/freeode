@@ -1,6 +1,5 @@
 ###############################################################################
-                             Running the Test Suite 
-                      for SIML Compiler and Example Models
+Running the Test Suite 
 ###############################################################################
  
 The test suite uses the "py.test" framework, which does a lot of magic, and 
