@@ -13,20 +13,40 @@
 
 <body>
 <!--Title-->
-<?php if( file_exists("header.html") ){ include("header.html"); } ?>
+<!--Header for inclusion into all files-->
+<div id="header">
+  <!--<h1>-->
+  Freeode&nbsp;&nbsp;&nbsp;&nbsp;
+  <font size="-1">Concentrate on the important things</font>
+ <!-- </h1>-->
+</div>
 
 <!--Navigation-->
-<?php if( file_exists("menu-left.html") ){ include("menu-left.html"); } ?>
+<!--Navigation menu for inclusion in all files-->
+<div id="navigation_site">
+  <ul>
+    <li><A href="index.html">Home</A> </li>
+    <li><A href="usage.html">Usage</A> </li>
+    <li><A href="language.html">Language</A> </li>
+    <li><A href="examples.html">Examples</A> </li>
+    <li><A href="installation.html">Installation</A> </li>
+    <li><A href="development.html">Development</A> </li>
+    <li><A href="links.html">Links</A></li>
+    <li><A href="https://github.com/eike-welk/freeode">Developer Pages</A> </li>
+    <li><A href="https://bugs.launchpad.net/freeode">Report Bugs</A> </li>
+    <li><A href="https://github.com/eike-welk/freeode/releases"> Download</A> </li>
+  </ul>
+</div>
 
 
 <div id="navigation_page">
   <ul>
     <li>Installation</li>
-    <li><A href="installation.php#top">Top</A></li>
-    <li><A href="installation.php#install-python">Python</A></li>
-    <li><A href="installation.php#install-numpy-scipy-matplotlib">
+    <li><A href="installation.html#top">Top</A></li>
+    <li><A href="installation.html#install-python">Python</A></li>
+    <li><A href="installation.html#install-numpy-scipy-matplotlib">
                    NumPy, SciPy, Matplotlib</A></li>
-    <li><A href="installation.php#install-freeode">Freeode</A></li>
+    <li><A href="installation.html#install-freeode">Freeode</A></li>
   </ul>
 </div>
 
@@ -196,7 +216,7 @@
   </p>
   <p>
     All files are available from Freeode's
-    <A href="https://developer.berlios.de/project/showfiles.php?group_id=5610">download area</A>
+    <A href="https://github.com/eike-welk/freeode/releases">download area</A>
     .
   </p>
 
@@ -282,6 +302,13 @@ Password:
 </div>
 
 
-<!--footer with the required berlios image-->
-<?php if( file_exists("footer.html") ){ include("footer.html"); } ?></body>
+<!--footer for inclusion into all files-->
+<div id="footer">
+  <br>
+  Copyright (C) 2006 - 2010 Eike Welk.
+  You can redistribute this file and/or modify it
+  under the terms of the GNU General Public License (GPL).
+</div>
+
+</body>
 </html>

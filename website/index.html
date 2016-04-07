@@ -13,24 +13,43 @@
 
 <body>
 <!--Title-->
-<?php if( file_exists("header.html") ){ include("header.html"); } ?>
+<!--Header for inclusion into all files-->
+<div id="header">
+  <!--<h1>-->
+  Freeode&nbsp;&nbsp;&nbsp;&nbsp;
+  <font size="-1">Concentrate on the important things</font>
+ <!-- </h1>-->
+</div>
 
 <!--Navigation-->
-<?php if( file_exists("menu-left.html") ){ include("menu-left.html"); } ?>
-
+<!--Navigation menu for inclusion in all files-->
+<div id="navigation_site">
+  <ul>
+    <li><A href="index.html">Home</A> </li>
+    <li><A href="usage.html">Usage</A> </li>
+    <li><A href="language.html">Language</A> </li>
+    <li><A href="examples.html">Examples</A> </li>
+    <li><A href="installation.html">Installation</A> </li>
+    <li><A href="development.html">Development</A> </li>
+    <li><A href="links.html">Links</A></li>
+    <li><A href="https://github.com/eike-welk/freeode">Developer Pages</A> </li>
+    <li><A href="https://bugs.launchpad.net/freeode">Report Bugs</A> </li>
+    <li><A href="https://github.com/eike-welk/freeode/releases"> Download</A> </li>
+  </ul>
+</div>
 
 <!--Navigation on the page-->
 <div id="navigation_page">
   <ul>
     <li>The Freeode Project</li>
-    <li><a href="index.php#top">Top</a></li>
-    <li><a href="index.php#why_python">Why Python</a></li>
-    <li><a href="index.php#license">License</a></li>
-    <li><a href="index.php#example_session">Example Session</a></li>
-    <li><a href="index.php#differential_equations">Differential Equations</a></li>
-    <li><a href="index.php#siml_program">SIML Program</a></li>
-    <li><a href="index.php#generated_python_code">Generated Python Code</a></li>
-    <li><a href="index.php#shell_commands">Shell Commands</a></li>
+    <li><a href="index.html#top">Top</a></li>
+    <li><a href="index.html#why_python">Why Python</a></li>
+    <li><a href="index.html#license">License</a></li>
+    <li><a href="index.html#example_session">Example Session</a></li>
+    <li><a href="index.html#differential_equations">Differential Equations</a></li>
+    <li><a href="index.html#siml_program">SIML Program</a></li>
+    <li><a href="index.html#generated_python_code">Generated Python Code</a></li>
+    <li><a href="index.html#shell_commands">Shell Commands</a></li>
   </ul>
 </div>
 
@@ -315,8 +334,13 @@ $> simlc bioreactor_simple.siml -r all <span style="font-style: italic;color: #8
 </div>
 
 
-<!--footer with the required berlios image-->
-<?php if( file_exists("footer.html") ){ include("footer.html"); } ?>
+<!--footer for inclusion into all files-->
+<div id="footer">
+  <br>
+  Copyright (C) 2006 - 2010 Eike Welk.
+  You can redistribute this file and/or modify it
+  under the terms of the GNU General Public License (GPL).
+</div>
 
 </body>
 </html>
