@@ -6,8 +6,9 @@ Compiler for the SIML Simulation Language
 ###############################################################################
 
 This package contains a compiler for a specialized language (SIML) for the
-simulation of differential equations (ODE). The generated simulation program
-is in the Python programming language, using the Numpy and Scipy libraries.
+simulation of differential equations (ODE). The Compiler is written in Python.
+The generated simulation program is also in the Python programming language, 
+using the Numpy and Scipy libraries.
 
 
 
