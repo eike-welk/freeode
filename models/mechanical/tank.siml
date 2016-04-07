@@ -66,7 +66,7 @@
 #  g*z + p/rho + c**2/2 = const
 #
 # g     : gravitational acceleration
-# z     : height of fluid particle (above center of hole in this derivation)
+# z     : height of fluid particle (above center of hole in this example)
 # p     : pressure at particle's position
 # rho   : density of fluid
 # c     : speed of particle
@@ -88,8 +88,8 @@
 #   law for a particle at the surface therefore simplifies to:
 #       g*z = const
 #
-#2: In hole the pressure is zero, because it is in contact to the surrounding;
-#   and the height is also zero. The particle in the hole however has a
+#2: In hole the pressure is zero, because it is in contact to the surrounding
+#   air; and the height is also zero. The particle in the hole however has a
 #   nonzero speed, which is currently unknown.
 #   For a particle in the hole the Bernoulli law simplifies to:
 #       c**2/2 = const
@@ -143,7 +143,7 @@ class Tank:
 
         $V = q_in - q_out
         #print('h: ', h, 'time: ', time)
-        
+
 
     func initialize(this):
         V = 0
@@ -154,13 +154,13 @@ class Tank:
         q_in   = 0.0001 # [m**3/s] = 0.1 l/s
         #duration of simulation, interval at which values are stored; both in [s]
         solution_parameters(duration=600, reporting_interval=1)
-        print('initial-values:', V, time) 
-        
+        print('initial-values:', V, time)
+
 
     func final(this):
         #save('fill-tank')
         graph(h, q_out)
-        print('final-values:', V, time) 
+        print('final-values:', V, time)
 
 
 

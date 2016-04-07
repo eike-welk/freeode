@@ -25,6 +25,7 @@ Contents:
     :maxdepth: 2
 
     fermenter-intro
+    syntax
     built-in-library
 
 
