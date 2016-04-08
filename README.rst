@@ -1,13 +1,15 @@
 ###############################################################################
-                                   Freeode
+                                 **Freeode**
 ###############################################################################
 
 Compiler for the SIML Simulation Language
 ###############################################################################
 
-This package contains a compiler for a specialized language (SIML), for the
-simulation of continuous systems, by solving differential equations. 
-Only ordinary differential equations (ODE) can be currently solved.
+This project provides a compiler for the domain specific language **SIML**, 
+that is intended for simulation of continuous systems.
+The systems are described with differential equations, 
+which are solved during the simulation.
+Only ordinary differential equations (ODE) can be solved. 
 
 The Compiler is written in ``Python``.
 The generated simulation program is also in the Python programming language, 
