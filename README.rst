@@ -20,6 +20,10 @@ is here:
 
     http://freeode.sourceforge.net/index.html
 
+Bugs and Ideas are kept in Launchpad:
+
+    https://bugs.launchpad.net/freeode
+
 
 Directories
 ===============================================================================
